@@ -10,7 +10,6 @@ import {
   DEFAULT_MEMORY_SETTINGS,
 } from "@/lib/memory";
 import type { KinMemoryState, Message } from "@/types/chat";
-import { generateId } from "@/lib/uuid";
 
 export type TokenUsage = {
   inputTokens: number;
@@ -144,6 +143,30 @@ const buildTopicContext = (
     currentTask: currentMemory.context.currentTask,
     followUpRule: currentMemory.context.followUpRule,
     lastUserIntent: currentMemory.context.lastUserIntent,
+  };
+};
+
+const normalizeUsage = (usage: unknown): TokenUsage | null => {
+  if (!usage || typeof usage !== "object") return null;
+
+  const obj = usage as Record<string, unknown>;
+  const inputTokens =
+    typeof obj.inputTokens === "number" && Number.isFinite(obj.inputTokens)
+      ? obj.inputTokens
+      : 0;
+  const outputTokens =
+    typeof obj.outputTokens === "number" && Number.isFinite(obj.outputTokens)
+      ? obj.outputTokens
+      : 0;
+  const totalTokens =
+    typeof obj.totalTokens === "number" && Number.isFinite(obj.totalTokens)
+      ? obj.totalTokens
+      : inputTokens + outputTokens;
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
   };
 };
 
@@ -289,19 +312,71 @@ export function useGptMemory(currentKin: string | null) {
       updatedRecent: Message[]
     ): Promise<{ summaryUsage: TokenUsage | null }> => {
       const current = gptStateRef.current;
+      const trimmedRecent = updatedRecent.slice(-settings.chatRecentLimit);
+      const needsSummary = trimmedRecent.length >= settings.summarizeThreshold;
 
-      const nextState: KinMemoryState = {
-        memory: trimMemory(current.memory, settings),
-        recentMessages: updatedRecent.slice(-settings.chatRecentLimit),
-      };
+      if (!needsSummary) {
+        const nextState: KinMemoryState = {
+          memory: trimMemory(current.memory, settings),
+          recentMessages: trimmedRecent,
+        };
 
-      setGptState(nextState);
-      gptStateRef.current = nextState;
-      persistKinState(currentKin, nextState);
+        setGptState(nextState);
+        gptStateRef.current = nextState;
+        persistKinState(currentKin, nextState);
 
-      return {
-        summaryUsage: null,
-      };
+        return { summaryUsage: null };
+      }
+
+      try {
+        const response = await fetch("/api/chatgpt", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mode: "summarize",
+            memory: current.memory,
+            messages: trimmedRecent,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`summarize failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const summarizedMemory = trimMemory(
+          normalizeMemoryShape(data?.memory),
+          settings
+        );
+
+        const nextState: KinMemoryState = {
+          memory: summarizedMemory,
+          recentMessages: trimmedRecent.slice(-settings.recentKeep),
+        };
+
+        setGptState(nextState);
+        gptStateRef.current = nextState;
+        persistKinState(currentKin, nextState);
+
+        return {
+          summaryUsage: normalizeUsage(data?.usage),
+        };
+      } catch (error) {
+        console.error("gpt memory summarize failed", error);
+
+        const fallbackState: KinMemoryState = {
+          memory: trimMemory(current.memory, settings),
+          recentMessages: trimmedRecent,
+        };
+
+        setGptState(fallbackState);
+        gptStateRef.current = fallbackState;
+        persistKinState(currentKin, fallbackState);
+
+        return { summaryUsage: null };
+      }
     },
     [currentKin, persistKinState, settings]
   );

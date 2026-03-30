@@ -10,8 +10,20 @@ import {
 // 🔍 検索コマンド解析
 function parseSearchCommand(text: string) {
   if (!text) return null;
-  const match = text.match(/検索[\s　]*(.+)/);
-  return match ? match[1].trim() : null;
+
+  const lines = text.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const match = line.match(/^検索[:：]\s*(.+)$/);
+
+    if (match) {
+      const query = match[1].trim();
+      return query || null;
+    }
+  }
+
+  return null;
 }
 
 function parsePolishInput(input: string) {

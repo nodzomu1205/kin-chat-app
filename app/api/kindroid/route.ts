@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 
+const KINDROID_TIMEOUT_MS = 45000;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { message, kinId } = body;
 
-    // =========================
-    // 入力チェック
-    // =========================
     if (!message || !kinId) {
       return NextResponse.json(
         { error: "message or kinId missing" },
@@ -15,9 +14,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // =========================
-    // APIキー確認
-    // =========================
     if (!process.env.KINDROID_API_KEY) {
       return NextResponse.json(
         { error: "KINDROID_API_KEY not set" },
@@ -25,15 +21,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // =========================
-    // タイムアウト設定
-    // =========================
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(
+      () => controller.abort(),
+      KINDROID_TIMEOUT_MS
+    );
 
-    // =========================
-    // Kindroid API 呼び出し
-    // =========================
     const response = await fetch("https://api.kindroid.ai/v1/send-message", {
       method: "POST",
       headers: {
@@ -42,16 +35,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         ai_id: kinId,
-        message: message,
+        message,
       }),
       signal: controller.signal,
     });
 
     clearTimeout(timeout);
 
-    // =========================
-    // エラーハンドリング
-    // =========================
     if (!response.ok) {
       const errorText = await response.text();
 
@@ -66,30 +56,23 @@ export async function POST(req: Request) {
       );
     }
 
-    // =========================
-    // レスポンス処理
-    // =========================
     const text = await response.text();
 
-    let data;
+    let data: any;
     try {
       data = JSON.parse(text);
     } catch {
-      // JSONじゃない場合はそのまま返す
       return NextResponse.json({ reply: text });
     }
 
-    // =========================
-    // reply抽出
-    // =========================
-    const extractReply = (data: any) => {
+    const extractReply = (payload: any) => {
       return (
-        data.reply ??
-        data.response ??
-        data.text ??
-        data.message ??
-        data.messages?.[0]?.text ??
-        data.data?.text ??
+        payload.reply ??
+        payload.response ??
+        payload.text ??
+        payload.message ??
+        payload.messages?.[0]?.text ??
+        payload.data?.text ??
         null
       );
     };
@@ -97,15 +80,15 @@ export async function POST(req: Request) {
     const reply = extractReply(data) || "⚠️ 返答が見つかりません";
 
     return NextResponse.json({ reply });
-
   } catch (error: any) {
-    // =========================
-    // タイムアウト処理
-    // =========================
-    if (error.name === "AbortError") {
-      console.error("⏱ Kindroid timeout");
+    if (error?.name === "AbortError") {
+      console.error(`⏱ Kindroid timeout after ${KINDROID_TIMEOUT_MS}ms`);
+
       return NextResponse.json(
-        { error: "Kindroid timeout" },
+        {
+          error: "Kindroidの応答待ちがタイムアウトしました",
+          timeoutMs: KINDROID_TIMEOUT_MS,
+        },
         { status: 504 }
       );
     }

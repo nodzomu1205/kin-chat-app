@@ -1,14 +1,21 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import KinPanel from "@/components/KinPanel";
-import GptPanel from "@/components/GptPanel";
-import { getSessions, createSession } from "@/lib/storage";
+import { useEffect, useRef, useState } from "react";
+import KinPanel from "@/components/panels/kin/KinPanel";
+import GptPanel from "@/components/panels/gpt/GptPanel";
 import { useKinManager } from "@/hooks/useKinManager";
-import { useGptMemory, type TokenUsage } from "@/hooks/useGptMemory";
-import type { Message } from "@/types/chat";
+import { useGptMemory } from "@/hooks/useGptMemory";
+import { useResponsive } from "@/hooks/useResponsive";
+import { useAutoScroll } from "@/hooks/useAutoScroll";
+import { createSession, getSessions } from "@/lib/storage";
 import type { MemorySettings } from "@/lib/memory";
+import type { Message } from "@/types/chat";
 import { generateId } from "@/lib/uuid";
+import {
+  type TokenStats,
+  emptyTokenStats,
+  normalizeUsage,
+} from "@/lib/tokenStats";
 
 type GptInstructionMode =
   | "normal"
@@ -16,46 +23,29 @@ type GptInstructionMode =
   | "reply_only"
   | "polish";
 
-type TokenStats = {
-  lastChatUsage: TokenUsage | null;
-  recentChatUsages: TokenUsage[];
-  threadChatTotal: TokenUsage;
-  lastSummaryUsage: TokenUsage | null;
-  threadSummaryTotal: TokenUsage;
-};
-
 type MobileTab = "kin" | "gpt";
 
-const MOBILE_BREAKPOINT = 768;
-
-const emptyUsage = (): TokenUsage => ({
-  inputTokens: 0,
-  outputTokens: 0,
-  totalTokens: 0,
-});
-
-const emptyTokenStats = (): TokenStats => ({
-  lastChatUsage: null,
-  recentChatUsages: [],
-  threadChatTotal: emptyUsage(),
-  lastSummaryUsage: null,
-  threadSummaryTotal: emptyUsage(),
-});
+const MOBILE_BREAKPOINT = 900;
 
 export default function ChatApp() {
   const [kinMessages, setKinMessages] = useState<Message[]>([]);
   const [gptMessages, setGptMessages] = useState<Message[]>([]);
   const [kinInput, setKinInput] = useState("");
   const [gptInput, setGptInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [kinLoading, setKinLoading] = useState(false);
+  const [gptLoading, setGptLoading] = useState(false);
   const [, setCurrentSessionId] = useState<string | null>(null);
   const [tokenStats, setTokenStats] = useState<TokenStats>(emptyTokenStats());
 
-  const [isMobile, setIsMobile] = useState(false);
   const [activeTab, setActiveTab] = useState<MobileTab>("kin");
+
+  const isMobile = useResponsive(MOBILE_BREAKPOINT);
 
   const kinBottomRef = useRef<HTMLDivElement>(null);
   const gptBottomRef = useRef<HTMLDivElement>(null);
+
+  useAutoScroll(kinBottomRef, [kinMessages, kinLoading]);
+  useAutoScroll(gptBottomRef, [gptMessages, gptLoading]);
 
   const {
     kinIdInput,
@@ -88,66 +78,27 @@ export default function ChatApp() {
     defaultMemorySettings,
   } = useGptMemory(currentKin);
 
-  const currentKinProfile =
-    kinList.find((kin) => kin.id === currentKin) ?? null;
-
+  const currentKinProfile = kinList.find((kin) => kin.id === currentKin) ?? null;
   const currentKinLabel = currentKinProfile?.label ?? null;
 
   useEffect(() => {
     const sessions = getSessions();
+
     if (sessions.length === 0) {
       const newSession = createSession();
       setCurrentSessionId(newSession.id);
-    } else {
-      setCurrentSessionId(sessions[0].id);
+      return;
     }
+
+    setCurrentSessionId(sessions[0].id);
   }, []);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
-    };
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-
-    return () => {
-      window.removeEventListener("resize", checkMobile);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (kinMessages.length === 0) return;
-    kinBottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
-  }, [kinMessages]);
-
-  useEffect(() => {
-    if (gptMessages.length === 0) return;
-    gptBottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
-  }, [gptMessages]);
 
   useEffect(() => {
     if (!currentKin) return;
     ensureKinState(currentKin);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentKin]);
+  }, [currentKin, ensureKinState]);
 
-  const normalizeUsage = (usage: TokenUsage | null | undefined): TokenUsage => {
-    if (!usage) return emptyUsage();
-
-    return {
-      inputTokens:
-        typeof usage.inputTokens === "number" ? usage.inputTokens : 0,
-      outputTokens:
-        typeof usage.outputTokens === "number" ? usage.outputTokens : 0,
-      totalTokens:
-        typeof usage.totalTokens === "number"
-          ? usage.totalTokens
-          : (usage.inputTokens || 0) + (usage.outputTokens || 0),
-    };
-  };
-
-  const applyChatUsage = (usage: TokenUsage | null | undefined) => {
+  const applyChatUsage = (usage: Parameters<typeof normalizeUsage>[0]) => {
     const safeUsage = normalizeUsage(usage);
 
     setTokenStats((prev) => {
@@ -159,15 +110,14 @@ export default function ChatApp() {
         recentChatUsages,
         threadChatTotal: {
           inputTokens: prev.threadChatTotal.inputTokens + safeUsage.inputTokens,
-          outputTokens:
-            prev.threadChatTotal.outputTokens + safeUsage.outputTokens,
+          outputTokens: prev.threadChatTotal.outputTokens + safeUsage.outputTokens,
           totalTokens: prev.threadChatTotal.totalTokens + safeUsage.totalTokens,
         },
       };
     });
   };
 
-  const applySummaryUsage = (usage: TokenUsage | null | undefined) => {
+  const applySummaryUsage = (usage: Parameters<typeof normalizeUsage>[0]) => {
     if (!usage) return;
 
     const safeUsage = normalizeUsage(usage);
@@ -184,13 +134,11 @@ export default function ChatApp() {
       ...prev,
       lastSummaryUsage: safeUsage,
       threadSummaryTotal: {
-        inputTokens:
-          prev.threadSummaryTotal.inputTokens + safeUsage.inputTokens,
-        outputTokens:
-          prev.threadSummaryTotal.outputTokens + safeUsage.outputTokens,
-        totalTokens:
-          prev.threadSummaryTotal.totalTokens + safeUsage.totalTokens,
+        inputTokens: prev.threadSummaryTotal.inputTokens + safeUsage.inputTokens,
+        outputTokens: prev.threadSummaryTotal.outputTokens + safeUsage.outputTokens,
+        totalTokens: prev.threadSummaryTotal.totalTokens + safeUsage.totalTokens,
       },
+      summaryRunCount: prev.summaryRunCount + 1,
     }));
   };
 
@@ -233,16 +181,14 @@ export default function ChatApp() {
   };
 
   const sendToKin = async () => {
-    if (!kinInput.trim() || !currentKin) return;
+    if (!kinInput.trim() || !currentKin || kinLoading) return;
 
     setKinStatus("idle");
+    setKinLoading(true);
 
     const text = kinInput.trim();
 
-    setKinMessages((prev) => [
-      ...prev,
-      { id: generateId(), role: "user", text },
-    ]);
+    setKinMessages((prev) => [...prev, { id: generateId(), role: "user", text }]);
     setKinInput("");
 
     try {
@@ -256,19 +202,27 @@ export default function ChatApp() {
 
       setKinMessages((prev) => [
         ...prev,
-        { id: generateId(), role: "kin", text: data.reply },
+        {
+          id: generateId(),
+          role: "kin",
+          text:
+            typeof data.reply === "string" && data.reply.trim()
+              ? data.reply
+              : "⚠️ Kinの返答取得に失敗しました",
+        },
       ]);
 
       setKinStatus("connected");
-    } catch {
+    } catch (error) {
+      console.error(error);
       setKinStatus("error");
+    } finally {
+      setKinLoading(false);
     }
   };
 
-  const sendToGpt = async (
-    instructionMode: GptInstructionMode = "normal"
-  ) => {
-    if (!gptInput.trim()) return;
+  const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
+    if (!gptInput.trim() || gptLoading) return;
 
     const text = gptInput.trim();
 
@@ -284,7 +238,7 @@ export default function ChatApp() {
 
     setGptMessages((prev) => [...prev, userMsg]);
     setGptInput("");
-    setLoading(true);
+    setGptLoading(true);
 
     setGptState((prev) => ({
       ...prev,
@@ -311,22 +265,28 @@ export default function ChatApp() {
       const assistantMsg: Message = {
         id: generateId(),
         role: "gpt",
-        text: data.reply,
+        text:
+          typeof data.reply === "string" && data.reply.trim()
+            ? data.reply
+            : "⚠️ GPTの返答取得に失敗しました",
         sources: Array.isArray(data.sources) ? data.sources : [],
       };
 
       const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
 
       setGptMessages((prev) => [...prev, assistantMsg]);
-
       applyChatUsage(data.usage);
 
       const memoryResult = await handleGptMemory(updatedRecent);
       applySummaryUsage(memoryResult.summaryUsage);
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        { id: generateId(), role: "gpt", text: "⚠️ GPT通信でエラーが発生しました" },
+      ]);
     } finally {
-      setLoading(false);
+      setGptLoading(false);
     }
   };
 
@@ -393,6 +353,7 @@ export default function ChatApp() {
       kinBottomRef={kinBottomRef}
       isMobile={isMobile}
       onSwitchPanel={() => setActiveTab("gpt")}
+      loading={kinLoading}
     />
   );
 
@@ -408,7 +369,7 @@ export default function ChatApp() {
       sendToGpt={sendToGpt}
       resetGptForCurrentKin={handleResetGpt}
       sendLastGptToKinDraft={sendLastGptToKinDraft}
-      loading={loading}
+      loading={gptLoading}
       gptBottomRef={gptBottomRef}
       memorySettings={memorySettings}
       defaultMemorySettings={defaultMemorySettings}
@@ -423,14 +384,14 @@ export default function ChatApp() {
   return (
     <div
       style={{
-  height: "100dvh",
-  minHeight: "100dvh",
-  display: "flex",
-  flexDirection: "column",
-  backgroundColor: "#ffffff",
-  backgroundPosition: "top left",
-  overflow: "hidden",
-}}
+        height: "100dvh",
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#ffffff",
+        backgroundPosition: "top left",
+        overflow: "hidden",
+      }}
     >
       <div
         style={{
