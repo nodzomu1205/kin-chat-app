@@ -7,7 +7,7 @@ import {
   memoryToPrompt,
 } from "@/lib/memory";
 
-// 🔍 検索コマンド解析
+// 検索コマンド解析
 function parseSearchCommand(text: string) {
   if (!text) return null;
 
@@ -58,6 +58,8 @@ type InstructionMode =
   | "translate_explain"
   | "reply_only"
   | "polish";
+
+type ReasoningMode = "strict" | "creative";
 
 type UsageSummary = {
   inputTokens: number;
@@ -159,16 +161,163 @@ ${request || "なし"}
   return input;
 }
 
+function buildBaseSystemPrompt(params: {
+  normalizedMemory: ReturnType<typeof createEmptyMemory>;
+  reasoningMode: ReasoningMode;
+}) {
+  const { normalizedMemory, reasoningMode } = params;
+
+  const modeBlock =
+    reasoningMode === "strict"
+      ? `
+You are a reasoning engine operating under strict information control.
+
+# Source priority
+System > User > Search Evidence > Internal Knowledge
+
+# No guessing
+- Never guess missing information.
+- Never deny or override explicit source evidence with general memory.
+- If something is not explicitly confirmed by the provided evidence, say it is unknown.
+
+# Fact-first reasoning
+Always reason in this order:
+1. Extract verifiable facts
+2. Separate known vs unknown
+3. Interpret carefully
+4. Conclude
+
+# Scope separation
+Always distinguish between:
+- API capabilities
+- This implementation limitations
+
+# Model identity
+- You do NOT know your real hidden runtime identity unless explicitly provided by system message.
+- Never deny a user-provided model name unless system message explicitly contradicts it.
+
+# Search handling
+- Treat provided search evidence as higher priority than internal knowledge.
+- If a source contains an explicit list, table, matrix, accepted types section, or bullet list, treat it as authoritative.
+- Do NOT downgrade an explicit listed support item to "unclear".
+- Only mark something unknown if the provided evidence does not explicitly confirm it.
+- Prefer extracted evidence over broad summarization.
+
+# Verification step
+Before finalizing, silently check:
+"Did I label any explicitly listed item as unknown or unclear?"
+If yes, revise.
+
+# Output requirement
+For factual verification tasks, use this exact structure:
+1. 確認できる事実
+2. 不明点
+3. 解釈
+4. 結論
+
+# Style
+- Be precise
+- Be cautious
+- Be audit-like when appropriate
+      `.trim()
+      : `
+You are a helpful assistant in creative conversation mode.
+
+Goals:
+- Be natural, fluent, and user-friendly.
+- You may summarize and explain more conversationally than strict mode.
+- Prefer readability over rigid structure unless the user requests structure.
+- Use memory and recent context naturally.
+- Prefer continuity across turns unless the user clearly changes topic.
+
+Rules:
+- If search evidence is provided, use it seriously.
+- You may combine confirmed facts into a concise explanation.
+- Do not invent unsupported facts.
+- You do not need to explicitly separate known/unknown unless useful.
+- You do not need to use the strict 4-section output format unless the user asks for verification or audit-style output.
+
+Style:
+- Answer naturally.
+- Prefer concise synthesis over compliance-style formatting.
+- Avoid sounding like a policy engine.
+      `.trim();
+
+  return `
+${modeBlock}
+
+You MUST always use the structured long-term memory below when relevant.
+This memory is the source of truth for preserved context across turns.
+
+Important conversation rules:
+- Continue the current topic naturally across follow-up questions.
+- Short follow-up questions often omit the topic. Infer the omitted topic from memory and recent messages.
+- If the user gives only a place name such as "鹿児島は？" and the active topic is weather, interpret it as asking about the weather in that place.
+- If the user gives only a noun or short phrase, prefer continuity with the current topic unless the user clearly changed topics.
+- Treat numbered items, lists, sequences, and structured data as exact when possible.
+- If recent messages are incomplete, rely on memory.
+- If memory and recent messages conflict, prefer the user's most recent explicit correction.
+- Do not explicitly mention "memory" unless the user asks.
+
+=== LONG-TERM MEMORY (JSON) ===
+${memoryToPrompt(normalizedMemory)}
+================================
+  `.trim();
+}
+
+function buildSearchSystemPrompt(
+  searchQuery: string,
+  searchText: string,
+  reasoningMode: ReasoningMode
+) {
+  if (reasoningMode === "strict") {
+    return `
+The user requested factual lookup with this query:
+${searchQuery}
+
+Below is source-grounded evidence collected from search results.
+
+Critical rules:
+- Use this evidence before any general model knowledge.
+- If the evidence includes explicit accepted/supported items in a list, table, or bullet list, treat those items as confirmed.
+- Do not collapse a confirmed item into "unclear".
+- Keep unknowns narrow. Unknown means not explicitly stated in the provided evidence.
+- When answering, rely on the extracted evidence, not on assumptions about the page.
+- Use an audit style when appropriate.
+
+SEARCH EVIDENCE START
+${searchText}
+SEARCH EVIDENCE END
+    `.trim();
+  }
+
+  return `
+The user requested lookup with this query:
+${searchQuery}
+
+Below is source-grounded evidence collected from search results.
+
+Guidance:
+- Prefer this evidence over vague prior knowledge.
+- You may summarize the evidence naturally and conversationally.
+- You do not need to preserve rigid audit structure.
+- If a fact is explicitly listed in the evidence, treat it as reliable.
+- If something is not clearly stated, avoid overstating certainty.
+
+SEARCH EVIDENCE START
+${searchText}
+SEARCH EVIDENCE END
+  `.trim();
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { mode } = body;
 
-    // =========================
-    // 🟢 CHATモード
-    // =========================
     if (mode === "chat") {
-      const { memory, recentMessages, input, instructionMode } = body;
+      const { memory, recentMessages, input, instructionMode, reasoningMode } =
+        body;
 
       if (!input || typeof input !== "string") {
         return NextResponse.json({ error: "input missing" }, { status: 400 });
@@ -188,6 +337,9 @@ export async function POST(req: Request) {
           ? instructionMode
           : "normal";
 
+      const safeReasoningMode: ReasoningMode =
+        reasoningMode === "strict" ? "strict" : "creative";
+
       const searchQuery = parseSearchCommand(input);
       const useSearch = !!searchQuery;
 
@@ -196,7 +348,6 @@ export async function POST(req: Request) {
 
       if (useSearch && searchQuery) {
         console.log("🔍 SEARCH:", searchQuery);
-
         const result = await searchGoogle(searchQuery);
         searchText = result.text;
         sources = result.sources;
@@ -206,37 +357,20 @@ export async function POST(req: Request) {
 
       messages.push({
         role: "system",
-        content: `
-You are a helpful assistant.
-
-You MUST always use the structured long-term memory below when relevant.
-This memory is the source of truth for preserved context across turns.
-
-Important conversation rules:
-- Continue the current topic naturally across follow-up questions.
-- Short follow-up questions often omit the topic. Infer the omitted topic from memory and recent messages.
-- If the user gives only a place name such as "鹿児島は？" and the active topic is weather, interpret it as asking about the weather in that place.
-- If the user gives only a noun or short phrase, prefer continuity with the current topic unless the user clearly changed topics.
-- Treat numbered items, lists, sequences, and structured data as exact when possible.
-- If recent messages are incomplete, rely on memory.
-- If memory and recent messages conflict, prefer the user's most recent explicit correction.
-- Do not explicitly mention "memory" unless the user asks.
-
-=== LONG-TERM MEMORY (JSON) ===
-${memoryToPrompt(normalizedMemory)}
-================================
-        `.trim(),
+        content: buildBaseSystemPrompt({
+          normalizedMemory,
+          reasoningMode: safeReasoningMode,
+        }),
       });
 
-      if (useSearch && searchQuery) {
+      if (useSearch && searchQuery && searchText) {
         messages.push({
           role: "system",
-          content: `
-以下は検索結果です。回答ではこの情報を優先して使用してください。
-特に、天気・ニュース・時事情報のような最新性が重要な内容では、この検索情報を土台に回答してください。
-
-${searchText}
-          `.trim(),
+          content: buildSearchSystemPrompt(
+            searchQuery,
+            searchText,
+            safeReasoningMode
+          ),
         });
       }
 
@@ -256,6 +390,7 @@ ${searchText}
         content: buildInstructionWrappedInput(input, safeInstructionMode),
       });
 
+      console.log("🧠 REASONING MODE:", safeReasoningMode);
       console.log("🧠 USING MEMORY:", JSON.stringify(normalizedMemory, null, 2));
       console.log("🧠 RECENT COUNT:", trimmedRecent.length);
       console.log("🧠 INPUT COUNT:", messages.length);
@@ -268,7 +403,7 @@ ${searchText}
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
+          model: "gpt-4o-mini",
           input: messages,
         }),
       });
@@ -289,9 +424,6 @@ ${searchText}
       });
     }
 
-    // =========================
-    // 🟡 MEMORY UPDATEモード
-    // =========================
     if (mode === "summarize") {
       const { memory, messages } = body;
 
@@ -360,7 +492,7 @@ ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
+          model: "gpt-4o-mini",
           input: prompt,
         }),
       });

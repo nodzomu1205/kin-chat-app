@@ -1,4 +1,5 @@
 import React from "react";
+import type { ResponseMode } from "./gptPanelTypes";
 import { pillButton, statusDotStyle } from "./gptPanelStyles";
 
 type Props = {
@@ -6,10 +7,12 @@ type Props = {
   kinStatus: "idle" | "connected" | "error";
   memoryUsed: number;
   memoryCapacity: number;
+  responseMode: ResponseMode;
   showMeta: boolean;
   showSettings: boolean;
   onToggleMeta: () => void;
   onToggleSettings: () => void;
+  onToggleResponseMode: () => void;
   isMobile?: boolean;
 };
 
@@ -18,10 +21,12 @@ export default function GptHeader({
   kinStatus,
   memoryUsed,
   memoryCapacity,
+  responseMode,
   showMeta,
   showSettings,
   onToggleMeta,
   onToggleSettings,
+  onToggleResponseMode,
   isMobile = false,
 }: Props) {
   return (
@@ -71,6 +76,21 @@ export default function GptHeader({
         <span style={statusDotStyle(kinStatus)} aria-label={kinStatus} />
 
         <div style={{ flex: 1 }} />
+
+        <button
+          type="button"
+          style={{
+            ...pillButton,
+            background:
+              responseMode === "strict"
+                ? "rgba(255,255,255,0.22)"
+                : pillButton.background,
+          }}
+          onClick={onToggleResponseMode}
+          title="strict は事実優先、creative は通常会話です。"
+        >
+          {responseMode === "strict" ? "STRICT" : "CREATIVE"}
+        </button>
 
         <button
           type="button"

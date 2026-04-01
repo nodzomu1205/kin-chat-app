@@ -16,6 +16,7 @@ import {
   emptyTokenStats,
   normalizeUsage,
 } from "@/lib/tokenStats";
+import type { ResponseMode } from "@/components/panels/gpt/gptPanelTypes";
 
 type GptInstructionMode =
   | "normal"
@@ -26,6 +27,7 @@ type GptInstructionMode =
 type MobileTab = "kin" | "gpt";
 
 const MOBILE_BREAKPOINT = 900;
+const RESPONSE_MODE_KEY = "gpt_response_mode";
 
 export default function ChatApp() {
   const [kinMessages, setKinMessages] = useState<Message[]>([]);
@@ -36,6 +38,7 @@ export default function ChatApp() {
   const [gptLoading, setGptLoading] = useState(false);
   const [, setCurrentSessionId] = useState<string | null>(null);
   const [tokenStats, setTokenStats] = useState<TokenStats>(emptyTokenStats());
+  const [responseMode, setResponseMode] = useState<ResponseMode>("strict");
 
   const [activeTab, setActiveTab] = useState<MobileTab>("kin");
 
@@ -58,6 +61,7 @@ export default function ChatApp() {
     setKinStatus,
     connectKin,
     switchKin,
+    disconnectKin,
     removeKin,
     renameKin,
   } = useKinManager();
@@ -92,6 +96,17 @@ export default function ChatApp() {
 
     setCurrentSessionId(sessions[0].id);
   }, []);
+
+  useEffect(() => {
+    const savedMode = localStorage.getItem(RESPONSE_MODE_KEY);
+    if (savedMode === "creative") {
+      setResponseMode("creative");
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(RESPONSE_MODE_KEY, responseMode);
+  }, [responseMode]);
 
   useEffect(() => {
     if (!currentKin) return;
@@ -159,6 +174,17 @@ export default function ChatApp() {
 
   const handleSwitchKin = (id: string) => {
     switchKin(id);
+    setKinMessages([]);
+    setGptMessages([]);
+    resetTokenStats();
+
+    if (isMobile) {
+      setActiveTab("kin");
+    }
+  };
+
+  const handleDisconnectKin = () => {
+    disconnectKin();
     setKinMessages([]);
     setGptMessages([]);
     resetTokenStats();
@@ -252,12 +278,13 @@ export default function ChatApp() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          mode: "chat",
-          memory: provisionalMemory,
-          recentMessages: newRecent,
-          input: text,
-          instructionMode,
-        }),
+  mode: "chat",
+  memory: provisionalMemory,
+  recentMessages: newRecent,
+  input: text,
+  instructionMode,
+  reasoningMode: responseMode, // ← これ
+}),
       });
 
       const data = await res.json();
@@ -337,6 +364,7 @@ export default function ChatApp() {
       kinNameInput={kinNameInput}
       setKinNameInput={setKinNameInput}
       connectKin={handleConnectKin}
+      disconnectKin={handleDisconnectKin}
       kinStatus={kinStatus}
       currentKin={currentKin}
       currentKinLabel={currentKinLabel}
@@ -376,6 +404,8 @@ export default function ChatApp() {
       onSaveMemorySettings={handleSaveMemorySettings}
       onResetMemorySettings={handleResetMemorySettings}
       tokenStats={tokenStats}
+      responseMode={responseMode}
+      onChangeResponseMode={setResponseMode}
       onSwitchPanel={() => setActiveTab("kin")}
       isMobile={isMobile}
     />
@@ -408,11 +438,29 @@ export default function ChatApp() {
             style={{
               flex: 1,
               minHeight: 0,
-              display: "flex",
+              position: "relative",
               overflow: "hidden",
             }}
           >
-            {activeTab === "kin" ? kinPanel : gptPanel}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: activeTab === "kin" ? "flex" : "none",
+              }}
+            >
+              {kinPanel}
+            </div>
+
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: activeTab === "gpt" ? "flex" : "none",
+              }}
+            >
+              {gptPanel}
+            </div>
           </div>
         ) : (
           <>

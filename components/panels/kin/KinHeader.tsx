@@ -1,10 +1,9 @@
 import React from "react";
-import type { KinStatus } from "./kinPanelTypes";
-import { headerActionButton, statusDotStyle } from "./kinPanelStyles";
+import { pillButton, statusDotStyle } from "../gpt/gptPanelStyles";
 
 type Props = {
   currentKinLabel: string | null;
-  kinStatus: KinStatus;
+  kinStatus: "idle" | "connected" | "error";
   onToggleKinList: () => void;
   onToggleConnectForm: () => void;
   isMobile?: boolean;
@@ -17,12 +16,10 @@ export default function KinHeader({
   onToggleConnectForm,
   isMobile = false,
 }: Props) {
-  const currentKinName = currentKinLabel || "未接続";
-
   return (
     <div
       style={{
-        background: "linear-gradient(90deg, #7a5aa6 0%, #8b6bb3 100%)",
+        background: "#6d4f97",
         color: "#fff",
         padding: isMobile ? "10px 12px" : "10px 14px",
         flexShrink: 0,
@@ -58,21 +55,21 @@ export default function KinHeader({
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
-          title={currentKinName}
+          title={currentKinLabel || "未接続"}
         >
-          {currentKinName}
+          {currentKinLabel || "未接続"}
         </div>
 
         <span style={statusDotStyle(kinStatus)} aria-label={kinStatus} />
 
         <div style={{ flex: 1 }} />
 
-        <button type="button" onClick={onToggleKinList} style={headerActionButton}>
+        <button type="button" style={pillButton} onClick={onToggleKinList}>
           Kin一覧
         </button>
 
-        <button type="button" onClick={onToggleConnectForm} style={headerActionButton}>
-          +接続
+        <button type="button" style={pillButton} onClick={onToggleConnectForm}>
+          接続
         </button>
       </div>
     </div>

@@ -39,6 +39,8 @@ export default function GptPanel(props: GptPanelProps) {
     onSaveMemorySettings,
     onResetMemorySettings,
     tokenStats,
+    responseMode,
+    onChangeResponseMode,
     onSwitchPanel,
     isMobile = false,
   } = props;
@@ -107,6 +109,7 @@ export default function GptPanel(props: GptPanelProps) {
         kinStatus={kinStatus}
         memoryUsed={memoryUsed}
         memoryCapacity={memoryCapacity}
+        responseMode={responseMode}
         showMeta={showMeta}
         showSettings={showSettings}
         onToggleMeta={() => {
@@ -125,6 +128,9 @@ export default function GptPanel(props: GptPanelProps) {
             setShowMeta(false);
           }
         }}
+        onToggleResponseMode={() =>
+          onChangeResponseMode(responseMode === "strict" ? "creative" : "strict")
+        }
         isMobile={isMobile}
       />
 

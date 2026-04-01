@@ -9,6 +9,8 @@ export type GptInstructionMode =
   | "reply_only"
   | "polish";
 
+export type ResponseMode = "strict" | "creative";
+
 export type TokenStats = {
   lastChatUsage: TokenUsage | null;
   recentChatUsages: TokenUsage[];
@@ -36,6 +38,8 @@ export type GptPanelProps = {
   onSaveMemorySettings: (next: MemorySettings) => void;
   onResetMemorySettings: () => void;
   tokenStats: TokenStats;
+  responseMode: ResponseMode;
+  onChangeResponseMode: (mode: ResponseMode) => void;
   onSwitchPanel?: () => void;
   isMobile?: boolean;
 };

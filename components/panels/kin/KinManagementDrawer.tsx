@@ -1,13 +1,48 @@
 import React from "react";
-import type { KinProfile } from "@/types/chat";
-import { buttonPrimary, kinTileStyle, miniButton } from "./kinPanelStyles";
+
+const buttonPrimary: React.CSSProperties = {
+  padding: "10px 14px",
+  borderRadius: 12,
+  border: "none",
+  background: "#6d4f97",
+  color: "#fff",
+  cursor: "pointer",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  fontSize: 14,
+};
+
+const buttonSecondary: React.CSSProperties = {
+  padding: "10px 14px",
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  background: "#fff",
+  color: "#374151",
+  cursor: "pointer",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  fontSize: 14,
+};
+
+const miniButton: React.CSSProperties = {
+  padding: "6px 8px",
+  borderRadius: 10,
+  border: "1px solid #d1d5db",
+  background: "#fff",
+  color: "#374151",
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: 12,
+  whiteSpace: "nowrap",
+};
 
 type Props = {
   showKinList: boolean;
   showConnectForm: boolean;
-  kinList: KinProfile[];
+  kinList: { id: string; label: string }[];
   currentKin: string | null;
   switchKin: (id: string) => void;
+  disconnectKin: () => void;
   removeKin: (id: string) => void;
   renameKin: (id: string, label: string) => void;
   kinIdInput: string;
@@ -24,6 +59,7 @@ export default function KinManagementDrawer({
   kinList,
   currentKin,
   switchKin,
+  disconnectKin,
   removeKin,
   renameKin,
   kinIdInput,
@@ -33,39 +69,57 @@ export default function KinManagementDrawer({
   connectKin,
   isMobile = false,
 }: Props) {
-  if (!showKinList && !showConnectForm) return null;
-
   return (
     <>
       {showKinList && (
         <div
           style={{
-            border: "1px solid #ede7f7",
-            background: "rgba(250,248,255,0.9)",
+            border: "1px solid #e5e7eb",
             borderRadius: 12,
-            padding: "8px 9px",
+            background: "rgba(255,255,255,0.9)",
+            padding: isMobile ? "8px" : "10px",
           }}
         >
           <div
             style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#6d4f97",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
               marginBottom: 8,
             }}
           >
-            Kin一覧
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#374151",
+              }}
+            >
+              登録済みKin
+            </div>
+
+            <button
+              type="button"
+              style={{
+                ...buttonSecondary,
+                padding: "6px 10px",
+                fontSize: 12,
+              }}
+              onClick={disconnectKin}
+              disabled={!currentKin}
+              title="どのKinとも接続しない状態にします"
+            >
+              接続解除
+            </button>
           </div>
 
           {kinList.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#6b7280" }}>
-              まだ登録された Kin はありません。
-            </div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>まだKinが登録されていません。</div>
           ) : (
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
                 gap: 8,
               }}
             >
@@ -73,10 +127,19 @@ export default function KinManagementDrawer({
                 const active = kin.id === currentKin;
 
                 return (
-                  <div key={kin.id} style={kinTileStyle(active)}>
+                  <div
+                    key={kin.id}
+                    style={{
+                      border: active ? "1px solid #c4b5fd" : "1px solid #e5e7eb",
+                      background: active ? "#faf5ff" : "#fff",
+                      borderRadius: 12,
+                      padding: 10,
+                    }}
+                  >
                     <div
                       style={{
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
                         gap: 8,
                       }}
@@ -131,7 +194,7 @@ export default function KinManagementDrawer({
                               whiteSpace: "nowrap",
                             }}
                           >
-                            選択中
+                            接続中
                           </span>
                         )}
 
@@ -172,6 +235,7 @@ export default function KinManagementDrawer({
                         fontSize: 12,
                         boxSizing: "border-box",
                         background: "#fff",
+                        marginTop: 8,
                       }}
                     />
                   </div>

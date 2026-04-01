@@ -9,6 +9,7 @@ export type KinPanelProps = {
   kinNameInput: string;
   setKinNameInput: (value: string) => void;
   connectKin: () => void;
+  disconnectKin: () => void;
   kinStatus: KinStatus;
   currentKin: string | null;
   currentKinLabel: string | null;

@@ -21,6 +21,7 @@ export default function KinPanel(props: KinPanelProps) {
     kinNameInput,
     setKinNameInput,
     connectKin,
+    disconnectKin,
     kinStatus,
     currentKinLabel,
     kinList,
@@ -76,6 +77,7 @@ export default function KinPanel(props: KinPanelProps) {
             kinList={kinList}
             currentKin={currentKin}
             switchKin={switchKin}
+            disconnectKin={disconnectKin}
             removeKin={removeKin}
             renameKin={renameKin}
             kinIdInput={kinIdInput}
