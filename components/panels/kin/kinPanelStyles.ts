@@ -113,6 +113,7 @@ export const kinTileStyle = (active: boolean): React.CSSProperties => ({
 
 export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
   flex: 1,
+  width: "100%",
   minHeight: 0,
   display: "flex",
   flexDirection: "column",

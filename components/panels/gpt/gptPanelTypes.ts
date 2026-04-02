@@ -13,6 +13,7 @@ export type ResponseMode = "strict" | "creative";
 export type IngestMode = "compact" | "full";
 export type ImageDetail = "basic" | "detailed" | "max";
 export type FileUploadKind = "text" | "visual";
+
 export type PostIngestAction =
   | "inject_only"
   | "inject_and_prep"

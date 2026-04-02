@@ -132,8 +132,44 @@ export default function GptPanel(props: GptPanelProps) {
     });
   };
 
-  return (
-    <div style={panelShellStyle(isMobile)}>
+return (
+  <div
+    style={{
+      ...panelShellStyle(isMobile),
+      height: "100%",
+      minHeight: 0,
+    }}
+  >
+      <GptHeader
+        currentKinLabel={currentKinLabel}
+        kinStatus={kinStatus}
+        memoryUsed={memoryUsed}
+        memoryCapacity={memoryCapacity}
+        responseMode={responseMode}
+        showMeta={showMeta}
+        showSettings={showSettings}
+        onToggleMeta={() => {
+          if (showMeta) {
+            setShowMeta(false);
+          } else {
+            setShowMeta(true);
+            setShowSettings(false);
+          }
+        }}
+        onToggleSettings={() => {
+          if (showSettings) {
+            setShowSettings(false);
+          } else {
+            setShowSettings(true);
+            setShowMeta(false);
+          }
+        }}
+        onToggleResponseMode={() =>
+          onChangeResponseMode(responseMode === "strict" ? "creative" : "strict")
+        }
+        isMobile={isMobile}
+      />
+
       {(showMeta || showSettings) && (
         <div style={drawerWrapStyle(isMobile)}>
           {showMeta ? (
@@ -165,38 +201,13 @@ export default function GptPanel(props: GptPanelProps) {
         </div>
       )}
 
-      <GptHeader
-        currentKinLabel={currentKinLabel}
-        kinStatus={kinStatus}
-        memoryUsed={memoryUsed}
-        memoryCapacity={memoryCapacity}
-        responseMode={responseMode}
-        showMeta={showMeta}
-        showSettings={showSettings}
-        onToggleMeta={() => {
-          if (showMeta) {
-            setShowMeta(false);
-          } else {
-            setShowMeta(true);
-            setShowSettings(false);
-          }
-        }}
-        onToggleSettings={() => {
-          if (showSettings) {
-            setShowSettings(false);
-          } else {
-            setShowSettings(true);
-            setShowMeta(false);
-          }
-        }}
-        onToggleResponseMode={() =>
-          onChangeResponseMode(responseMode === "strict" ? "creative" : "strict")
-        }
-        isMobile={isMobile}
-      />
-
       <div
-        style={{ ...chatBodyStyle(isMobile), position: "relative" }}
+        style={{
+          ...chatBodyStyle(isMobile),
+          position: "relative",
+          flex: 1,
+          minHeight: 0,
+        }}
         onDragOver={(event) => {
           if (isMobile || !canInjectFile) return;
           event.preventDefault();

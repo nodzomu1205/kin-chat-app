@@ -21,6 +21,7 @@ import type {
   GptInstructionMode,
   ImageDetail,
   IngestMode,
+  PostIngestAction,
   ResponseMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 
@@ -31,6 +32,7 @@ const RESPONSE_MODE_KEY = "gpt_response_mode";
 const UPLOAD_KIND_KEY = "gpt_upload_kind";
 const INGEST_MODE_KEY = "gpt_ingest_mode";
 const IMAGE_DETAIL_KEY = "gpt_image_detail";
+const POST_INGEST_ACTION_KEY = "gpt_post_ingest_action";
 
 function getExtension(filename: string) {
   return filename.split(".").pop()?.toLowerCase() || "";
@@ -113,6 +115,8 @@ export default function ChatApp() {
   const [uploadKind, setUploadKind] = useState<FileUploadKind>("text");
   const [ingestMode, setIngestMode] = useState<IngestMode>("compact");
   const [imageDetail, setImageDetail] = useState<ImageDetail>("basic");
+  const [postIngestAction, setPostIngestAction] =
+    useState<PostIngestAction>("inject_only");
   const [activeTab, setActiveTab] = useState<MobileTab>("kin");
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
@@ -194,6 +198,15 @@ export default function ChatApp() {
     ) {
       setImageDetail(savedImageDetail);
     }
+
+    const savedPostIngestAction = localStorage.getItem(POST_INGEST_ACTION_KEY);
+    if (
+      savedPostIngestAction === "inject_only" ||
+      savedPostIngestAction === "inject_and_prep" ||
+      savedPostIngestAction === "inject_prep_deepen"
+    ) {
+      setPostIngestAction(savedPostIngestAction);
+    }
   }, []);
 
   useEffect(() => {
@@ -211,6 +224,10 @@ export default function ChatApp() {
   useEffect(() => {
     localStorage.setItem(IMAGE_DETAIL_KEY, imageDetail);
   }, [imageDetail]);
+
+  useEffect(() => {
+    localStorage.setItem(POST_INGEST_ACTION_KEY, postIngestAction);
+  }, [postIngestAction]);
 
   useEffect(() => {
     if (!currentKin) return;
@@ -521,42 +538,38 @@ export default function ChatApp() {
     return lines.join("\n");
   };
 
-const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
-  const result = data?.result ?? {};
+  const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
+    const result = data?.result ?? {};
 
-  const title =
-    typeof result?.title === "string" && result.title.trim()
-      ? result.title.trim()
-      : fileName;
+    const title =
+      typeof result?.title === "string" && result.title.trim()
+        ? result.title.trim()
+        : fileName;
 
-  const rawText =
-    typeof result?.rawText === "string"
-      ? result.rawText.trim()
+    const rawText =
+      typeof result?.rawText === "string" ? result.rawText.trim() : "";
+
+    const summaryLines = Array.isArray(result?.kinCompact)
+      ? result.kinCompact.join("\n")
       : "";
 
-  const summaryLines = Array.isArray(result?.kinCompact)
-    ? result.kinCompact.join("\n")
-    : "";
+    const detailedLines = Array.isArray(result?.kinDetailed)
+      ? result.kinDetailed.join("\n")
+      : "";
 
-  const detailedLines = Array.isArray(result?.kinDetailed)
-    ? result.kinDetailed.join("\n")
-    : "";
+    const textParts = [
+      `ファイル名: ${fileName}`,
+      `タイトル: ${title}`,
+      summaryLines ? `要点:\n${summaryLines}` : "",
+      detailedLines
+        ? `詳細情報:\n${detailedLines}`
+        : rawText
+        ? `本文:\n${rawText}`
+        : "",
+    ].filter(Boolean);
 
-  const textParts = [
-    `ファイル名: ${fileName}`,
-    `タイトル: ${title}`,
-
-    summaryLines ? `要点:\n${summaryLines}` : "",
-
-    detailedLines
-      ? `詳細情報:\n${detailedLines}`
-      : rawText
-      ? `本文:\n${rawText}`
-      : "",
-  ].filter(Boolean);
-
-  return textParts.join("\n\n");
-};
+    return textParts.join("\n\n");
+  };
 
   const runAutoPrepTask = async (inputText: string, label = "ingest-result") => {
     const res = await fetch("/api/task", {
@@ -579,7 +592,7 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
             "推測が必要な場合は推測ではなく入力不足として扱う",
             "重要点優先",
             "簡潔",
-            "日本語で整理"
+            "日本語で整理",
           ],
           outputFormat: "sections",
           priority: "HIGH",
@@ -615,7 +628,7 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
             "新しい事実を捏造しない",
             "不足している情報は不足情報として明示する",
             "必要であれば、追加で集めるべき情報を具体化する",
-            "日本語で整理"
+            "日本語で整理",
           ],
           outputFormat: "sections",
           priority: "HIGH",
@@ -628,7 +641,7 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
 
     return res.json();
   };
-  
+
   const runPrepTaskFromInput = async () => {
     if (!gptInput.trim() || gptLoading) return;
 
@@ -668,7 +681,7 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
               "推測が必要な場合は推測ではなく入力不足として扱う",
               "重要点優先",
               "簡潔",
-              "日本語で整理"
+              "日本語で整理",
             ],
             outputFormat: "sections",
             priority: "HIGH",
@@ -764,7 +777,7 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
               "新しい事実を捏造しない",
               "不足している情報は不足情報として明示する",
               "必要であれば、追加で集めるべき情報を具体化する",
-              "日本語で整理"
+              "日本語で整理",
             ],
             outputFormat: "sections",
             priority: "HIGH",
@@ -835,6 +848,7 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
       kind: FileUploadKind;
       mode: IngestMode;
       detail: ImageDetail;
+      action: PostIngestAction;
     }
   ) => {
     if (ingestLoading) return;
@@ -912,28 +926,35 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
       let prepTaskText = "";
       let deepenTaskText = "";
 
-      try {
-        const prepData = await runAutoPrepTask(prepInput, `ingest-${file.name}`);
-        prepTaskText = formatTaskResultText(prepData?.parsed, prepData?.raw);
-        applyChatUsage(prepData?.usage);
-
+      if (
+        options.action === "inject_and_prep" ||
+        options.action === "inject_prep_deepen"
+      ) {
         try {
-          const deepenData = await runAutoDeepenTask(
-            prepTaskText,
-            `prep-${file.name}`
-          );
-          deepenTaskText = formatTaskResultText(
-            deepenData?.parsed,
-            deepenData?.raw
-          );
-          applyChatUsage(deepenData?.usage);
+          const prepData = await runAutoPrepTask(prepInput, `ingest-${file.name}`);
+          prepTaskText = formatTaskResultText(prepData?.parsed, prepData?.raw);
+          applyChatUsage(prepData?.usage);
+
+          if (options.action === "inject_prep_deepen") {
+            try {
+              const deepenData = await runAutoDeepenTask(
+                prepTaskText,
+                `prep-${file.name}`
+              );
+              deepenTaskText = formatTaskResultText(
+                deepenData?.parsed,
+                deepenData?.raw
+              );
+              applyChatUsage(deepenData?.usage);
+            } catch (error) {
+              console.error("auto DEEPEN task failed", error);
+              deepenTaskText = "⚠️ 自動DEEPENに失敗しました";
+            }
+          }
         } catch (error) {
-          console.error("auto DEEPEN task failed", error);
-          deepenTaskText = "⚠️ 自動DEEPENに失敗しました";
+          console.error("auto PREP task failed", error);
+          prepTaskText = "⚠️ 抽出後の自動TASK整理に失敗しました";
         }
-      } catch (error) {
-        console.error("auto PREP task failed", error);
-        prepTaskText = "⚠️ 抽出後の自動TASK整理に失敗しました";
       }
 
       const title =
@@ -946,23 +967,38 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
           ? `テキスト注入: ${options.mode}`
           : `画像詳細度: ${options.detail}`;
 
+      const actionLabel =
+        options.action === "inject_only"
+          ? "注入のみ"
+          : options.action === "inject_and_prep"
+          ? "注入＋整理"
+          : "注入＋整理＋深掘り";
+
+      const messageParts = [
+        `ファイルをKin注入用テキストに変換しました。`,
+        `タイトル: ${title}`,
+        `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}`,
+        `${modeLine}`,
+        `注入後処理: ${actionLabel}`,
+        `分割数: ${blocks.length}`,
+        ``,
+        `Kin入力欄に 1/${blocks.length} をセットしました。送信後は次パートが自動で下書きに入ります。`,
+      ];
+
+      if (options.action !== "inject_only" && prepTaskText) {
+        messageParts.push("", "--------------------", prepTaskText);
+      }
+
+      if (options.action === "inject_prep_deepen" && deepenTaskText) {
+        messageParts.push("", "====================", "【自動深掘り結果】", deepenTaskText);
+      }
+
       setGptMessages((prev) => [
         ...prev,
         {
           id: generateId(),
           role: "gpt",
-          text:
-            `ファイルをKin注入用テキストに変換しました。\n` +
-            `タイトル: ${title}\n` +
-            `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}\n` +
-            `${modeLine}\n` +
-            `分割数: ${blocks.length}\n\n` +
-            `Kin入力欄に 1/${blocks.length} をセットしました。送信後は次パートが自動で下書きに入ります。\n\n` +
-            `--------------------\n` +
-            `${prepTaskText}\n\n` +
-            `====================\n` +
-            `【自動深掘り結果】\n` +
-            `${deepenTaskText}`,
+          text: messageParts.join("\n"),
         },
       ]);
 
@@ -1064,9 +1100,11 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
       uploadKind={uploadKind}
       ingestMode={ingestMode}
       imageDetail={imageDetail}
+      postIngestAction={postIngestAction}
       onChangeUploadKind={setUploadKind}
       onChangeIngestMode={setIngestMode}
       onChangeImageDetail={setImageDetail}
+      onChangePostIngestAction={setPostIngestAction}
       pendingInjectionCurrentPart={pendingKinInjectionIndex + 1}
       pendingInjectionTotalParts={pendingKinInjectionBlocks.length}
       onSwitchPanel={() => setActiveTab("kin")}
@@ -1131,8 +1169,8 @@ const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
           </div>
         ) : (
           <>
-            {kinPanel}
-            {gptPanel}
+            <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>{kinPanel}</div>
+            <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>{gptPanel}</div>
           </>
         )}
       </div>
