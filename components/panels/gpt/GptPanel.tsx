@@ -238,7 +238,7 @@ export default function GptPanel(props: GptPanelProps) {
           ...footerStyle(isMobile),
           position: "relative",
           overflow: "visible",
-          paddingTop: 18,
+          paddingTop: isMobile ? 22 : 20,
         }}
       >
         <button
@@ -246,7 +246,7 @@ export default function GptPanel(props: GptPanelProps) {
           onClick={() => setShowInjectTools((prev) => !prev)}
           style={{
             position: "absolute",
-            top: -14,
+            top: isMobile ? -22 : -20,
             right: 12,
             height: 32,
             borderRadius: "10px 10px 0 0",
@@ -259,7 +259,7 @@ export default function GptPanel(props: GptPanelProps) {
             padding: "0 12px",
             boxShadow: "0 -2px 8px rgba(15,23,42,0.08)",
             cursor: "pointer",
-            zIndex: 5,
+            zIndex: 20,
           }}
         >
           {showInjectTools ? "注入 ▲" : "注入 ▼"}
