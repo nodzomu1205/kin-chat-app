@@ -10,6 +10,9 @@ export type GptInstructionMode =
   | "polish";
 
 export type ResponseMode = "strict" | "creative";
+export type IngestMode = "compact" | "full";
+export type ImageDetail = "basic" | "detailed" | "max";
+export type FileUploadKind = "text" | "visual";
 
 export type TokenStats = {
   lastChatUsage: TokenUsage | null;
@@ -31,7 +34,17 @@ export type GptPanelProps = {
   sendToGpt: (mode?: GptInstructionMode) => void;
   resetGptForCurrentKin: () => void;
   sendLastGptToKinDraft: () => void;
+  injectFileToKinDraft: (
+    file: File,
+    options: {
+      kind: FileUploadKind;
+      mode: IngestMode;
+      detail: ImageDetail;
+    }
+  ) => Promise<void>;
+  canInjectFile: boolean;
   loading: boolean;
+  ingestLoading: boolean;
   gptBottomRef: React.RefObject<HTMLDivElement | null>;
   memorySettings: MemorySettings;
   defaultMemorySettings: MemorySettings;
@@ -40,6 +53,14 @@ export type GptPanelProps = {
   tokenStats: TokenStats;
   responseMode: ResponseMode;
   onChangeResponseMode: (mode: ResponseMode) => void;
+  uploadKind: FileUploadKind;
+  ingestMode: IngestMode;
+  imageDetail: ImageDetail;
+  onChangeUploadKind: (kind: FileUploadKind) => void;
+  onChangeIngestMode: (mode: IngestMode) => void;
+  onChangeImageDetail: (detail: ImageDetail) => void;
+  pendingInjectionCurrentPart: number;
+  pendingInjectionTotalParts: number;
   onSwitchPanel?: () => void;
   isMobile?: boolean;
 };

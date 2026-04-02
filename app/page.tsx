@@ -16,18 +16,84 @@ import {
   emptyTokenStats,
   normalizeUsage,
 } from "@/lib/tokenStats";
-import type { ResponseMode } from "@/components/panels/gpt/gptPanelTypes";
-
-type GptInstructionMode =
-  | "normal"
-  | "translate_explain"
-  | "reply_only"
-  | "polish";
+import type {
+  FileUploadKind,
+  GptInstructionMode,
+  ImageDetail,
+  IngestMode,
+  ResponseMode,
+} from "@/components/panels/gpt/gptPanelTypes";
 
 type MobileTab = "kin" | "gpt";
 
-const MOBILE_BREAKPOINT = 900;
+const MOBILE_BREAKPOINT = 1180;
 const RESPONSE_MODE_KEY = "gpt_response_mode";
+const UPLOAD_KIND_KEY = "gpt_upload_kind";
+const INGEST_MODE_KEY = "gpt_ingest_mode";
+const IMAGE_DETAIL_KEY = "gpt_image_detail";
+
+function getExtension(filename: string) {
+  return filename.split(".").pop()?.toLowerCase() || "";
+}
+
+function resolveUploadKindFromFile(
+  file: File,
+  requestedKind: FileUploadKind
+): FileUploadKind {
+  const ext = getExtension(file.name);
+
+  const visualExtensions = new Set([
+    "pdf",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "gif",
+    "bmp",
+    "svg",
+  ]);
+
+  const textExtensions = new Set([
+    "txt",
+    "md",
+    "json",
+    "csv",
+    "tsv",
+    "js",
+    "jsx",
+    "ts",
+    "tsx",
+    "py",
+    "java",
+    "go",
+    "rs",
+    "c",
+    "cpp",
+    "cs",
+    "rb",
+    "php",
+    "html",
+    "css",
+    "xml",
+    "yml",
+    "yaml",
+    "sql",
+  ]);
+
+  if (visualExtensions.has(ext) || file.type.startsWith("image/")) {
+    return "visual";
+  }
+
+  if (
+    textExtensions.has(ext) ||
+    file.type.startsWith("text/") ||
+    file.type === "application/json"
+  ) {
+    return "text";
+  }
+
+  return requestedKind;
+}
 
 export default function ChatApp() {
   const [kinMessages, setKinMessages] = useState<Message[]>([]);
@@ -36,10 +102,17 @@ export default function ChatApp() {
   const [gptInput, setGptInput] = useState("");
   const [kinLoading, setKinLoading] = useState(false);
   const [gptLoading, setGptLoading] = useState(false);
+  const [ingestLoading, setIngestLoading] = useState(false);
+  const [pendingKinInjectionBlocks, setPendingKinInjectionBlocks] = useState<
+    string[]
+  >([]);
+  const [pendingKinInjectionIndex, setPendingKinInjectionIndex] = useState(0);
   const [, setCurrentSessionId] = useState<string | null>(null);
   const [tokenStats, setTokenStats] = useState<TokenStats>(emptyTokenStats());
   const [responseMode, setResponseMode] = useState<ResponseMode>("strict");
-
+  const [uploadKind, setUploadKind] = useState<FileUploadKind>("text");
+  const [ingestMode, setIngestMode] = useState<IngestMode>("compact");
+  const [imageDetail, setImageDetail] = useState<ImageDetail>("basic");
   const [activeTab, setActiveTab] = useState<MobileTab>("kin");
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
@@ -102,6 +175,25 @@ export default function ChatApp() {
     if (savedMode === "creative") {
       setResponseMode("creative");
     }
+
+    const savedUploadKind = localStorage.getItem(UPLOAD_KIND_KEY);
+    if (savedUploadKind === "visual") {
+      setUploadKind("visual");
+    }
+
+    const savedIngestMode = localStorage.getItem(INGEST_MODE_KEY);
+    if (savedIngestMode === "full") {
+      setIngestMode("full");
+    }
+
+    const savedImageDetail = localStorage.getItem(IMAGE_DETAIL_KEY);
+    if (
+      savedImageDetail === "basic" ||
+      savedImageDetail === "detailed" ||
+      savedImageDetail === "max"
+    ) {
+      setImageDetail(savedImageDetail);
+    }
   }, []);
 
   useEffect(() => {
@@ -109,9 +201,27 @@ export default function ChatApp() {
   }, [responseMode]);
 
   useEffect(() => {
+    localStorage.setItem(UPLOAD_KIND_KEY, uploadKind);
+  }, [uploadKind]);
+
+  useEffect(() => {
+    localStorage.setItem(INGEST_MODE_KEY, ingestMode);
+  }, [ingestMode]);
+
+  useEffect(() => {
+    localStorage.setItem(IMAGE_DETAIL_KEY, imageDetail);
+  }, [imageDetail]);
+
+  useEffect(() => {
     if (!currentKin) return;
     ensureKinState(currentKin);
   }, [currentKin, ensureKinState]);
+
+  useEffect(() => {
+    if (isMobile) {
+      setActiveTab((prev) => (prev === "gpt" ? "gpt" : "kin"));
+    }
+  }, [isMobile]);
 
   const applyChatUsage = (usage: Parameters<typeof normalizeUsage>[0]) => {
     const safeUsage = normalizeUsage(usage);
@@ -150,7 +260,8 @@ export default function ChatApp() {
       lastSummaryUsage: safeUsage,
       threadSummaryTotal: {
         inputTokens: prev.threadSummaryTotal.inputTokens + safeUsage.inputTokens,
-        outputTokens: prev.threadSummaryTotal.outputTokens + safeUsage.outputTokens,
+        outputTokens:
+          prev.threadSummaryTotal.outputTokens + safeUsage.outputTokens,
         totalTokens: prev.threadSummaryTotal.totalTokens + safeUsage.totalTokens,
       },
       summaryRunCount: prev.summaryRunCount + 1,
@@ -161,11 +272,17 @@ export default function ChatApp() {
     setTokenStats(emptyTokenStats());
   };
 
+  const clearPendingKinInjection = () => {
+    setPendingKinInjectionBlocks([]);
+    setPendingKinInjectionIndex(0);
+  };
+
   const handleConnectKin = () => {
     connectKin();
     setKinMessages([]);
     setGptMessages([]);
     resetTokenStats();
+    clearPendingKinInjection();
 
     if (isMobile) {
       setActiveTab("kin");
@@ -177,6 +294,7 @@ export default function ChatApp() {
     setKinMessages([]);
     setGptMessages([]);
     resetTokenStats();
+    clearPendingKinInjection();
 
     if (isMobile) {
       setActiveTab("kin");
@@ -188,6 +306,7 @@ export default function ChatApp() {
     setKinMessages([]);
     setGptMessages([]);
     resetTokenStats();
+    clearPendingKinInjection();
 
     if (isMobile) {
       setActiveTab("kin");
@@ -200,6 +319,7 @@ export default function ChatApp() {
     setKinMessages([]);
     setGptMessages([]);
     resetTokenStats();
+    clearPendingKinInjection();
 
     if (isMobile) {
       setActiveTab("kin");
@@ -213,6 +333,8 @@ export default function ChatApp() {
     setKinLoading(true);
 
     const text = kinInput.trim();
+    const currentPendingBlock =
+      pendingKinInjectionBlocks[pendingKinInjectionIndex] ?? null;
 
     setKinMessages((prev) => [...prev, { id: generateId(), role: "user", text }]);
     setKinInput("");
@@ -239,6 +361,21 @@ export default function ChatApp() {
       ]);
 
       setKinStatus("connected");
+
+      const sentPendingPart =
+        typeof currentPendingBlock === "string" &&
+        text === currentPendingBlock.trim();
+
+      if (sentPendingPart) {
+        const nextIndex = pendingKinInjectionIndex + 1;
+
+        if (nextIndex < pendingKinInjectionBlocks.length) {
+          setPendingKinInjectionIndex(nextIndex);
+          setKinInput(pendingKinInjectionBlocks[nextIndex]);
+        } else {
+          clearPendingKinInjection();
+        }
+      }
     } catch (error) {
       console.error(error);
       setKinStatus("error");
@@ -278,13 +415,13 @@ export default function ChatApp() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-  mode: "chat",
-  memory: provisionalMemory,
-  recentMessages: newRecent,
-  input: text,
-  instructionMode,
-  reasoningMode: responseMode, // ← これ
-}),
+          mode: "chat",
+          memory: provisionalMemory,
+          recentMessages: newRecent,
+          input: text,
+          instructionMode,
+          reasoningMode: responseMode,
+        }),
       });
 
       const data = await res.json();
@@ -310,7 +447,11 @@ export default function ChatApp() {
       console.error(error);
       setGptMessages((prev) => [
         ...prev,
-        { id: generateId(), role: "gpt", text: "⚠️ GPT通信でエラーが発生しました" },
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ GPT通信でエラーが発生しました",
+        },
       ]);
     } finally {
       setGptLoading(false);
@@ -339,8 +480,130 @@ export default function ChatApp() {
     }
   };
 
+  const injectFileToKinDraft = async (
+    file: File,
+    options: {
+      kind: FileUploadKind;
+      mode: IngestMode;
+      detail: ImageDetail;
+    }
+  ) => {
+    if (ingestLoading) return;
+
+    if (!currentKin) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 先にKinを接続してから注入してください。",
+        },
+      ]);
+      return;
+    }
+
+    const resolvedKind = resolveUploadKindFromFile(file, options.kind);
+
+    setIngestLoading(true);
+
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("kind", resolvedKind);
+      form.append("mode", options.mode);
+      form.append("detail", options.detail);
+
+      const res = await fetch("/api/ingest", {
+        method: "POST",
+        body: form,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorText =
+          typeof data?.error === "string"
+            ? data.error
+            : "⚠️ ファイル変換に失敗しました";
+
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text:
+              `${errorText}\n\n` +
+              `必要なら /api/ingest のレスポンス詳細を確認してください。`,
+          },
+        ]);
+        return;
+      }
+
+      const blocks: string[] = Array.isArray(data?.kinBlocks) ? data.kinBlocks : [];
+
+      if (blocks.length === 0) {
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text: "⚠️ Kin注入用ブロックを生成できませんでした",
+          },
+        ]);
+        return;
+      }
+
+      setPendingKinInjectionBlocks(blocks);
+      setPendingKinInjectionIndex(0);
+      setKinInput(blocks[0]);
+      setUploadKind(resolvedKind);
+
+      const title =
+        typeof data?.result?.title === "string" && data.result.title.trim()
+          ? data.result.title
+          : file.name;
+
+      const modeLine =
+        resolvedKind === "text"
+          ? `テキスト注入: ${options.mode}`
+          : `画像詳細度: ${options.detail}`;
+
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text:
+            `ファイルをKin注入用テキストに変換しました。\n` +
+            `タイトル: ${title}\n` +
+            `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}\n` +
+            `${modeLine}\n` +
+            `分割数: ${blocks.length}\n\n` +
+            `Kin入力欄に 1/${blocks.length} をセットしました。送信後は次パートが自動で下書きに入ります。`,
+        },
+      ]);
+
+      if (isMobile) {
+        setActiveTab("kin");
+      }
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ ファイル変換中にエラーが発生しました",
+        },
+      ]);
+    } finally {
+      setIngestLoading(false);
+    }
+  };
+
   const resetKinMessages = () => {
     setKinMessages([]);
+    clearPendingKinInjection();
   };
 
   const handleResetGpt = () => {
@@ -378,6 +641,10 @@ export default function ChatApp() {
       sendToKin={sendToKin}
       sendLastKinToGptDraft={sendLastKinToGptDraft}
       resetKinMessages={resetKinMessages}
+      pendingInjectionCurrentPart={
+        pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0
+      }
+      pendingInjectionTotalParts={pendingKinInjectionBlocks.length}
       kinBottomRef={kinBottomRef}
       isMobile={isMobile}
       onSwitchPanel={() => setActiveTab("gpt")}
@@ -397,7 +664,10 @@ export default function ChatApp() {
       sendToGpt={sendToGpt}
       resetGptForCurrentKin={handleResetGpt}
       sendLastGptToKinDraft={sendLastGptToKinDraft}
+      injectFileToKinDraft={injectFileToKinDraft}
+      canInjectFile={!!currentKin}
       loading={gptLoading}
+      ingestLoading={ingestLoading}
       gptBottomRef={gptBottomRef}
       memorySettings={memorySettings}
       defaultMemorySettings={defaultMemorySettings}
@@ -406,6 +676,16 @@ export default function ChatApp() {
       tokenStats={tokenStats}
       responseMode={responseMode}
       onChangeResponseMode={setResponseMode}
+      uploadKind={uploadKind}
+      ingestMode={ingestMode}
+      imageDetail={imageDetail}
+      onChangeUploadKind={setUploadKind}
+      onChangeIngestMode={setIngestMode}
+      onChangeImageDetail={setImageDetail}
+      pendingInjectionCurrentPart={
+        pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0
+      }
+      pendingInjectionTotalParts={pendingKinInjectionBlocks.length}
       onSwitchPanel={() => setActiveTab("kin")}
       isMobile={isMobile}
     />
@@ -438,8 +718,10 @@ export default function ChatApp() {
             style={{
               flex: 1,
               minHeight: 0,
+              minWidth: 0,
               position: "relative",
               overflow: "hidden",
+              width: "100%",
             }}
           >
             <div
@@ -447,6 +729,7 @@ export default function ChatApp() {
                 position: "absolute",
                 inset: 0,
                 display: activeTab === "kin" ? "flex" : "none",
+                width: "100%",
               }}
             >
               {kinPanel}
@@ -457,6 +740,7 @@ export default function ChatApp() {
                 position: "absolute",
                 inset: 0,
                 display: activeTab === "gpt" ? "flex" : "none",
+                width: "100%",
               }}
             >
               {gptPanel}

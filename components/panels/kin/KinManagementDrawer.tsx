@@ -115,12 +115,17 @@ export default function KinManagementDrawer({
           </div>
 
           {kinList.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#6b7280" }}>まだKinが登録されていません。</div>
+            <div style={{ fontSize: 12, color: "#6b7280" }}>
+              まだKinが登録されていません。
+            </div>
           ) : (
             <div
               style={{
                 display: "grid",
                 gap: 8,
+                maxHeight: isMobile ? 220 : 320,
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               {kinList.map((kin) => {
@@ -255,61 +260,39 @@ export default function KinManagementDrawer({
             padding: isMobile ? "8px" : "10px",
           }}
         >
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#374151",
-              marginBottom: 8,
-            }}
-          >
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
             新規接続
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr auto",
-              gap: 8,
-              alignItems: "center",
-            }}
-          >
+          <div style={{ display: "flex", gap: 8 }}>
             <input
               value={kinIdInput}
               onChange={(e) => setKinIdInput(e.target.value)}
-              placeholder="Kin IDを入力"
+              placeholder="Kin ID"
               style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: 10,
-                border: "1px solid #d1d5db",
-                boxSizing: "border-box",
+                flex: 1,
                 minWidth: 0,
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid #d1d5db",
+                background: "#fff",
               }}
             />
 
             <input
               value={kinNameInput}
               onChange={(e) => setKinNameInput(e.target.value)}
-              placeholder="表示名（任意）"
+              placeholder="表示名"
               style={{
-                width: "100%",
-                padding: "10px",
-                borderRadius: 10,
+                width: isMobile ? 84 : 120,
+                padding: "10px 12px",
+                borderRadius: 12,
                 border: "1px solid #d1d5db",
-                boxSizing: "border-box",
-                minWidth: 0,
+                background: "#fff",
               }}
             />
 
-            <button
-              type="button"
-              style={{
-                ...buttonPrimary,
-                width: isMobile ? "100%" : "auto",
-              }}
-              onClick={connectKin}
-            >
+            <button type="button" style={buttonPrimary} onClick={connectKin}>
               接続
             </button>
           </div>

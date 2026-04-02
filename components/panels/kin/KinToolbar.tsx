@@ -1,5 +1,9 @@
 import React from "react";
-import { buttonReset, buttonSwitch, buttonTransfer } from "./kinPanelStyles";
+import {
+  buttonReset,
+  buttonSwitch,
+  buttonTransfer,
+} from "./kinPanelStyles";
 
 type Props = {
   isMobile?: boolean;

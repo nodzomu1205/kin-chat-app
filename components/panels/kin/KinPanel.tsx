@@ -35,6 +35,8 @@ export default function KinPanel(props: KinPanelProps) {
     sendToKin,
     sendLastKinToGptDraft,
     resetKinMessages,
+    pendingInjectionCurrentPart,
+    pendingInjectionTotalParts,
     kinBottomRef,
     isMobile = false,
     onSwitchPanel,
@@ -95,6 +97,23 @@ export default function KinPanel(props: KinPanelProps) {
       </div>
 
       <div style={footerStyle(isMobile)}>
+        {pendingInjectionTotalParts > 0 && (
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#6d4f97",
+              background: "#f5f3ff",
+              border: "1px solid #ddd6fe",
+              borderRadius: 10,
+              padding: "8px 10px",
+              marginBottom: 8,
+            }}
+          >
+            📦 注入送信中 {pendingInjectionCurrentPart}/{pendingInjectionTotalParts}
+          </div>
+        )}
+
         <KinToolbar
           isMobile={isMobile}
           onSwitchPanel={onSwitchPanel}

@@ -23,6 +23,8 @@ export type KinPanelProps = {
   sendToKin: () => void;
   sendLastKinToGptDraft: () => void;
   resetKinMessages: () => void;
+  pendingInjectionCurrentPart: number;
+  pendingInjectionTotalParts: number;
   kinBottomRef: React.RefObject<HTMLDivElement | null>;
   isMobile?: boolean;
   onSwitchPanel?: () => void;

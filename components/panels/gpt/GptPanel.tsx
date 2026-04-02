@@ -32,7 +32,10 @@ export default function GptPanel(props: GptPanelProps) {
     sendToGpt,
     resetGptForCurrentKin,
     sendLastGptToKinDraft,
+    injectFileToKinDraft,
+    canInjectFile,
     loading,
+    ingestLoading,
     gptBottomRef,
     memorySettings,
     defaultMemorySettings,
@@ -41,12 +44,22 @@ export default function GptPanel(props: GptPanelProps) {
     tokenStats,
     responseMode,
     onChangeResponseMode,
+    uploadKind,
+    ingestMode,
+    imageDetail,
+    onChangeUploadKind,
+    onChangeIngestMode,
+    onChangeImageDetail,
+    pendingInjectionCurrentPart,
+    pendingInjectionTotalParts,
     onSwitchPanel,
     isMobile = false,
   } = props;
 
   const [showSettings, setShowSettings] = useState(false);
   const [showMeta, setShowMeta] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [showInjectTools, setShowInjectTools] = useState(false);
   const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(
     memorySettingsToInput(memorySettings)
   );
@@ -100,6 +113,18 @@ export default function GptPanel(props: GptPanelProps) {
   const handleReset = () => {
     setLocalSettings(memorySettingsToInput(defaultMemorySettings));
     onResetMemorySettings();
+  };
+
+  const handleDroppedFiles = async (files: FileList | null) => {
+    const file = files?.[0];
+    setDragOver(false);
+    if (!file || isMobile || !canInjectFile || loading || ingestLoading) return;
+
+    await injectFileToKinDraft(file, {
+      kind: uploadKind,
+      mode: ingestMode,
+      detail: imageDetail,
+    });
   };
 
   return (
@@ -165,11 +190,96 @@ export default function GptPanel(props: GptPanelProps) {
         </div>
       )}
 
-      <div style={chatBodyStyle(isMobile)}>
+      <div
+        style={{ ...chatBodyStyle(isMobile), position: "relative" }}
+        onDragOver={(event) => {
+          if (isMobile || !canInjectFile) return;
+          event.preventDefault();
+          if (!dragOver) setDragOver(true);
+        }}
+        onDragLeave={(event) => {
+          if (isMobile) return;
+          if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            return;
+          }
+          setDragOver(false);
+        }}
+        onDrop={(event) => {
+          if (isMobile) return;
+          event.preventDefault();
+          handleDroppedFiles(event.dataTransfer.files);
+        }}
+      >
         <ChatMessages messages={gptMessages} bottomRef={gptBottomRef} />
+
+        {!isMobile && dragOver && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 12,
+              border: "2px dashed #10a37f",
+              borderRadius: 18,
+              background: "rgba(16,163,127,0.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 800,
+              color: "#047857",
+              pointerEvents: "none",
+            }}
+          >
+            ファイルをドロップして注入
+          </div>
+        )}
       </div>
 
-      <div style={footerStyle(isMobile)}>
+      <div style={{ ...footerStyle(isMobile), position: "relative" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: -6,
+            marginBottom: 4,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowInjectTools((prev) => !prev)}
+            style={{
+              height: 30,
+              borderRadius: "10px 10px 0 0",
+              border: "1px solid #cbd5e1",
+              borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
+              background: "#ffffff",
+              color: "#0f766e",
+              fontSize: 12,
+              fontWeight: 800,
+              padding: "0 12px",
+              boxShadow: "0 -1px 6px rgba(15,23,42,0.06)",
+              cursor: "pointer",
+            }}
+          >
+            {showInjectTools ? "注入 ▲" : "注入 ▼"}
+          </button>
+        </div>
+
+        {pendingInjectionTotalParts > 0 && (
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#0f766e",
+              background: "#ecfeff",
+              border: "1px solid #a5f3fc",
+              borderRadius: 10,
+              padding: "8px 10px",
+              marginBottom: 8,
+            }}
+          >
+            📦 注入準備 {pendingInjectionCurrentPart}/{pendingInjectionTotalParts}
+          </div>
+        )}
+
         <GptToolbar
           isMobile={isMobile}
           onSwitchPanel={onSwitchPanel}
@@ -182,7 +292,17 @@ export default function GptPanel(props: GptPanelProps) {
           value={gptInput}
           onChange={setGptInput}
           onSubmit={() => sendToGpt("normal")}
+          onInjectFile={injectFileToKinDraft}
+          canInjectFile={canInjectFile}
           loading={loading}
+          ingestLoading={ingestLoading}
+          uploadKind={uploadKind}
+          ingestMode={ingestMode}
+          imageDetail={imageDetail}
+          onChangeUploadKind={onChangeUploadKind}
+          onChangeIngestMode={onChangeIngestMode}
+          onChangeImageDetail={onChangeImageDetail}
+          showInjectTools={showInjectTools}
           isMobile={isMobile}
         />
       </div>
