@@ -202,7 +202,7 @@ export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
   flexDirection: "column",
   border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: isMobile ? 0 : 10,
-  overflow: "hidden",
+  overflow: "visible",
   backgroundImage: "url('/backgrounds/gpt-bg.png')",
   backgroundSize: "cover",
   backgroundPosition: "center",
@@ -215,7 +215,8 @@ export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
 export const drawerWrapStyle = (isMobile: boolean): React.CSSProperties => ({
   padding: "10px",
   borderBottom: "1px solid #e5e7eb",
-  background: "linear-gradient(180deg, rgba(248,255,252,0.96) 0%, rgba(243,251,248,0.94) 100%)",
+  background:
+    "linear-gradient(180deg, rgba(248,255,252,0.96) 0%, rgba(243,251,248,0.94) 100%)",
   flexShrink: 0,
   maxHeight: isMobile ? "50dvh" : "60dvh",
   overflowY: "auto",

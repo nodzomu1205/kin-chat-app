@@ -238,32 +238,40 @@ export default function GptPanel(props: GptPanelProps) {
           ...footerStyle(isMobile),
           position: "relative",
           overflow: "visible",
-          paddingTop: isMobile ? 22 : 20,
+          paddingTop: 24,
         }}
       >
-        <button
-          type="button"
-          onClick={() => setShowInjectTools((prev) => !prev)}
+        {/* 疑似タブ：フッター上辺にまたがる */}
+        <div
           style={{
             position: "absolute",
-            top: isMobile ? -22 : -20,
+            top: 0,
             right: 12,
-            height: 32,
-            borderRadius: "10px 10px 0 0",
-            border: "1px solid #cbd5e1",
-            borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
-            background: "#ffffff",
-            color: "#0f766e",
-            fontSize: 12,
-            fontWeight: 800,
-            padding: "0 12px",
-            boxShadow: "0 -2px 8px rgba(15,23,42,0.08)",
-            cursor: "pointer",
+            transform: "translateY(-55%)",
             zIndex: 20,
+            pointerEvents: "auto",
           }}
         >
-          {showInjectTools ? "注入 ▲" : "注入 ▼"}
-        </button>
+          <button
+            type="button"
+            onClick={() => setShowInjectTools((prev) => !prev)}
+            style={{
+              height: 32,
+              borderRadius: "10px 10px 0 0",
+              border: "1px solid #cbd5e1",
+              borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
+              background: "#ffffff",
+              color: "#0f766e",
+              fontSize: 12,
+              fontWeight: 800,
+              padding: "0 12px",
+              boxShadow: "0 -2px 8px rgba(15,23,42,0.08)",
+              cursor: "pointer",
+            }}
+          >
+            {showInjectTools ? "注入 ▲" : "注入 ▼"}
+          </button>
+        </div>
 
         {pendingInjectionTotalParts > 0 && (
           <div
