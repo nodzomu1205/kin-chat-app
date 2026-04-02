@@ -13,6 +13,10 @@ export type ResponseMode = "strict" | "creative";
 export type IngestMode = "compact" | "full";
 export type ImageDetail = "basic" | "detailed" | "max";
 export type FileUploadKind = "text" | "visual";
+export type PostIngestAction =
+  | "inject_only"
+  | "inject_and_prep"
+  | "inject_prep_deepen";
 
 export type TokenStats = {
   lastChatUsage: TokenUsage | null;
@@ -32,6 +36,8 @@ export type GptPanelProps = {
   gptInput: string;
   setGptInput: (value: string) => void;
   sendToGpt: (mode?: GptInstructionMode) => void;
+  runPrepTaskFromInput: () => void;
+  runDeepenTaskFromLast: () => void;
   resetGptForCurrentKin: () => void;
   sendLastGptToKinDraft: () => void;
   injectFileToKinDraft: (
@@ -40,6 +46,7 @@ export type GptPanelProps = {
       kind: FileUploadKind;
       mode: IngestMode;
       detail: ImageDetail;
+      action: PostIngestAction;
     }
   ) => Promise<void>;
   canInjectFile: boolean;
@@ -56,9 +63,11 @@ export type GptPanelProps = {
   uploadKind: FileUploadKind;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
+  postIngestAction: PostIngestAction;
   onChangeUploadKind: (kind: FileUploadKind) => void;
   onChangeIngestMode: (mode: IngestMode) => void;
   onChangeImageDetail: (detail: ImageDetail) => void;
+  onChangePostIngestAction: (action: PostIngestAction) => void;
   pendingInjectionCurrentPart: number;
   pendingInjectionTotalParts: number;
   onSwitchPanel?: () => void;

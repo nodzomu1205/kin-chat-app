@@ -30,6 +30,8 @@ export default function GptPanel(props: GptPanelProps) {
     gptInput,
     setGptInput,
     sendToGpt,
+    runPrepTaskFromInput,
+    runDeepenTaskFromLast,
     resetGptForCurrentKin,
     sendLastGptToKinDraft,
     injectFileToKinDraft,
@@ -47,9 +49,11 @@ export default function GptPanel(props: GptPanelProps) {
     uploadKind,
     ingestMode,
     imageDetail,
+    postIngestAction,
     onChangeUploadKind,
     onChangeIngestMode,
     onChangeImageDetail,
+    onChangePostIngestAction,
     pendingInjectionCurrentPart,
     pendingInjectionTotalParts,
     onSwitchPanel,
@@ -124,6 +128,7 @@ export default function GptPanel(props: GptPanelProps) {
       kind: uploadKind,
       mode: ingestMode,
       detail: imageDetail,
+      action: postIngestAction,
     });
   };
 
@@ -292,6 +297,8 @@ export default function GptPanel(props: GptPanelProps) {
           isMobile={isMobile}
           onSwitchPanel={onSwitchPanel}
           onAction={(mode) => sendToGpt(mode)}
+          onRunTask={runPrepTaskFromInput}
+          onRunDeepen={runDeepenTaskFromLast}
           onTransfer={sendLastGptToKinDraft}
           onReset={resetGptForCurrentKin}
         />
@@ -307,9 +314,11 @@ export default function GptPanel(props: GptPanelProps) {
           uploadKind={uploadKind}
           ingestMode={ingestMode}
           imageDetail={imageDetail}
+          postIngestAction={postIngestAction}
           onChangeUploadKind={onChangeUploadKind}
           onChangeIngestMode={onChangeIngestMode}
           onChangeImageDetail={onChangeImageDetail}
+          onChangePostIngestAction={onChangePostIngestAction}
           showInjectTools={showInjectTools}
           isMobile={isMobile}
         />

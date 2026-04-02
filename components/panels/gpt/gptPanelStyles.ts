@@ -72,6 +72,29 @@ export const buttonPolish: React.CSSProperties = {
   fontSize: 13,
 };
 
+export const buttonTask: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 12,
+  border: "1px solid #c4b5fd",
+  background: "#f5f3ff",
+  color: "#6d28d9",
+  cursor: "pointer",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  fontSize: 13,
+};
+
+export const buttonDeepen: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 12,
+  border: "1px solid #93c5fd",
+  background: "#eff6ff",
+  color: "#1d4ed8",
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: 13,
+};
+
 export const pillButton: React.CSSProperties = {
   padding: "6px 12px",
   borderRadius: 999,

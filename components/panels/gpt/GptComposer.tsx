@@ -7,6 +7,7 @@ import type {
   FileUploadKind,
   ImageDetail,
   IngestMode,
+  PostIngestAction,
 } from "./gptPanelTypes";
 
 type Props = {
@@ -19,6 +20,7 @@ type Props = {
       kind: FileUploadKind;
       mode: IngestMode;
       detail: ImageDetail;
+      action: PostIngestAction;
     }
   ) => Promise<void>;
   loading: boolean;
@@ -27,9 +29,11 @@ type Props = {
   uploadKind: FileUploadKind;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
+  postIngestAction: PostIngestAction;
   onChangeUploadKind: (kind: FileUploadKind) => void;
   onChangeIngestMode: (mode: IngestMode) => void;
   onChangeImageDetail: (detail: ImageDetail) => void;
+  onChangePostIngestAction: (action: PostIngestAction) => void;
   showInjectTools: boolean;
   isMobile?: boolean;
 };
@@ -68,9 +72,11 @@ export default function GptComposer({
   uploadKind,
   ingestMode,
   imageDetail,
+  postIngestAction,
   onChangeUploadKind,
   onChangeIngestMode,
   onChangeImageDetail,
+  onChangePostIngestAction,
   showInjectTools,
   isMobile = false,
 }: Props) {
@@ -106,6 +112,7 @@ export default function GptComposer({
       kind: uploadKind,
       mode: ingestMode,
       detail: imageDetail,
+      action: postIngestAction,
     });
   };
 
@@ -179,6 +186,7 @@ export default function GptComposer({
               alignItems: "center",
               gap: 8,
               flexWrap: "wrap",
+              marginBottom: 10,
             }}
           >
             {uploadKind === "text" ? (
@@ -205,6 +213,30 @@ export default function GptComposer({
                 <option value="max">画像: max</option>
               </select>
             )}
+
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                color: "#475569",
+                marginRight: 2,
+              }}
+            >
+              注入後処理:
+            </span>
+
+            <select
+              value={postIngestAction}
+              onChange={(e) =>
+                onChangePostIngestAction(e.target.value as PostIngestAction)
+              }
+              style={selectStyle}
+              title="注入後にどこまで自動処理するかを選びます"
+            >
+              <option value="inject_only">注入のみ</option>
+              <option value="inject_and_prep">注入＋整理</option>
+              <option value="inject_prep_deepen">注入＋整理＋深掘り</option>
+            </select>
 
             <button
               type="button"
@@ -275,8 +307,9 @@ export default function GptComposer({
           }}
           onClick={onSubmit}
           disabled={loading || ingestLoading}
+          title="ChatGPTへ送信"
         >
-          {loading ? "通信中" : "送信"}
+          {loading ? "送信中" : "送信"}
         </button>
       </div>
     </div>
