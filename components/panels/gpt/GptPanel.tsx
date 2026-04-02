@@ -129,36 +129,6 @@ export default function GptPanel(props: GptPanelProps) {
 
   return (
     <div style={panelShellStyle(isMobile)}>
-      <GptHeader
-        currentKinLabel={currentKinLabel}
-        kinStatus={kinStatus}
-        memoryUsed={memoryUsed}
-        memoryCapacity={memoryCapacity}
-        responseMode={responseMode}
-        showMeta={showMeta}
-        showSettings={showSettings}
-        onToggleMeta={() => {
-          if (showMeta) {
-            setShowMeta(false);
-          } else {
-            setShowMeta(true);
-            setShowSettings(false);
-          }
-        }}
-        onToggleSettings={() => {
-          if (showSettings) {
-            setShowSettings(false);
-          } else {
-            setShowSettings(true);
-            setShowMeta(false);
-          }
-        }}
-        onToggleResponseMode={() =>
-          onChangeResponseMode(responseMode === "strict" ? "creative" : "strict")
-        }
-        isMobile={isMobile}
-      />
-
       {(showMeta || showSettings) && (
         <div style={drawerWrapStyle(isMobile)}>
           {showMeta ? (
@@ -189,6 +159,36 @@ export default function GptPanel(props: GptPanelProps) {
           )}
         </div>
       )}
+
+      <GptHeader
+        currentKinLabel={currentKinLabel}
+        kinStatus={kinStatus}
+        memoryUsed={memoryUsed}
+        memoryCapacity={memoryCapacity}
+        responseMode={responseMode}
+        showMeta={showMeta}
+        showSettings={showSettings}
+        onToggleMeta={() => {
+          if (showMeta) {
+            setShowMeta(false);
+          } else {
+            setShowMeta(true);
+            setShowSettings(false);
+          }
+        }}
+        onToggleSettings={() => {
+          if (showSettings) {
+            setShowSettings(false);
+          } else {
+            setShowSettings(true);
+            setShowMeta(false);
+          }
+        }}
+        onToggleResponseMode={() =>
+          onChangeResponseMode(responseMode === "strict" ? "creative" : "strict")
+        }
+        isMobile={isMobile}
+      />
 
       <div
         style={{ ...chatBodyStyle(isMobile), position: "relative" }}
@@ -233,46 +233,7 @@ export default function GptPanel(props: GptPanelProps) {
         )}
       </div>
 
-      <div
-        style={{
-          ...footerStyle(isMobile),
-          position: "relative",
-          overflow: "visible",
-          paddingTop: 24,
-        }}
-      >
-        {/* 疑似タブ：フッター上辺にまたがる */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 12,
-            transform: "translateY(-55%)",
-            zIndex: 20,
-            pointerEvents: "auto",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setShowInjectTools((prev) => !prev)}
-            style={{
-              height: 32,
-              borderRadius: "10px 10px 0 0",
-              border: "1px solid #cbd5e1",
-              borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
-              background: "#ffffff",
-              color: "#0f766e",
-              fontSize: 12,
-              fontWeight: 800,
-              padding: "0 12px",
-              boxShadow: "0 -2px 8px rgba(15,23,42,0.08)",
-              cursor: "pointer",
-            }}
-          >
-            {showInjectTools ? "注入 ▲" : "注入 ▼"}
-          </button>
-        </div>
-
+      <div style={footerStyle(isMobile)}>
         {pendingInjectionTotalParts > 0 && (
           <div
             style={{
@@ -315,6 +276,37 @@ export default function GptPanel(props: GptPanelProps) {
           showInjectTools={showInjectTools}
           isMobile={isMobile}
         />
+      </div>
+
+      {/* panel root 直下に独立配置する注入タブ */}
+      <div
+        style={{
+          position: "absolute",
+          right: 12,
+          bottom: isMobile ? 208 : 152,
+          zIndex: 40,
+          pointerEvents: "auto",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setShowInjectTools((prev) => !prev)}
+          style={{
+            height: 34,
+            borderRadius: "10px 10px 0 0",
+            border: "1px solid #cbd5e1",
+            borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
+            background: "#ffffff",
+            color: "#0f766e",
+            fontSize: 12,
+            fontWeight: 800,
+            padding: "0 12px",
+            boxShadow: "0 -2px 8px rgba(15,23,42,0.10)",
+            cursor: "pointer",
+          }}
+        >
+          {showInjectTools ? "注入 ▲" : "注入 ▼"}
+        </button>
       </div>
     </div>
   );

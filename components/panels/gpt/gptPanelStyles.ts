@@ -203,6 +203,7 @@ export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
   border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: isMobile ? 0 : 10,
   overflow: "visible",
+  position: "relative",
   backgroundImage: "url('/backgrounds/gpt-bg.png')",
   backgroundSize: "cover",
   backgroundPosition: "center",
