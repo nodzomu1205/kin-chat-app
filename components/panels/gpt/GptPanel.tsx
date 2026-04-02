@@ -233,7 +233,44 @@ export default function GptPanel(props: GptPanelProps) {
         )}
       </div>
 
-      <div style={footerStyle(isMobile)}>
+      <div
+        style={{
+          ...footerStyle(isMobile),
+          position: "relative",
+          overflow: "visible",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            right: 12,
+            top: 0,
+            transform: "translateY(-100%)",
+            zIndex: 40,
+            pointerEvents: "auto",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setShowInjectTools((prev) => !prev)}
+            style={{
+              height: 34,
+              borderRadius: "10px 10px 0 0",
+              border: "1px solid #cbd5e1",
+              borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
+              background: "#ffffff",
+              color: "#0f766e",
+              fontSize: 12,
+              fontWeight: 800,
+              padding: "0 12px",
+              boxShadow: "0 -2px 8px rgba(15,23,42,0.10)",
+              cursor: "pointer",
+            }}
+          >
+            {showInjectTools ? "注入 ▲" : "注入 ▼"}
+          </button>
+        </div>
+
         {pendingInjectionTotalParts > 0 && (
           <div
             style={{
@@ -277,37 +314,6 @@ export default function GptPanel(props: GptPanelProps) {
           isMobile={isMobile}
         />
       </div>
-
-      {/* panel root 直下に独立配置する注入タブ */}
-      <div
-  style={{
-    position: "absolute",
-    right: 12,
-    top: "calc(100% - 90px)", // ←ここが核心
-    zIndex: 40,
-    pointerEvents: "auto",
-  }}
->
-  <button
-    type="button"
-    onClick={() => setShowInjectTools((prev) => !prev)}
-    style={{
-      height: 34,
-      borderRadius: "10px 10px 0 0",
-      border: "1px solid #cbd5e1",
-      borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
-      background: "#ffffff",
-      color: "#0f766e",
-      fontSize: 12,
-      fontWeight: 800,
-      padding: "0 12px",
-      boxShadow: "0 -2px 8px rgba(15,23,42,0.10)",
-      cursor: "pointer",
-    }}
-  >
-    {showInjectTools ? "注入 ▲" : "注入 ▼"}
-  </button>
-</div>
     </div>
   );
 }
