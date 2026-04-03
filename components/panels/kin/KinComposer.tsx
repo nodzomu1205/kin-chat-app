@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import ChatTextarea from "@/components/ChatTextarea";
-import { buttonPrimary } from "./kinPanelStyles";
 
 type Props = {
   value: string;
@@ -55,10 +54,18 @@ export default function KinComposer({
       <button
         type="button"
         style={{
-          ...buttonPrimary,
-          width: isMobile ? 48 : 56,
-          minWidth: isMobile ? 48 : 56,
+          width: 56,
+          minWidth: 56,
+          maxWidth: 56,
           alignSelf: "stretch",
+          flexShrink: 0,
+          border: "none",
+          background: "#2563eb",
+          color: "#fff",
+          cursor: loading ? "default" : "pointer",
+          fontWeight: 700,
+          fontSize: 14,
+          boxSizing: "border-box",
           borderRadius: 18,
           opacity: loading ? (blink ? 0.55 : 1) : 1,
           display: "flex",

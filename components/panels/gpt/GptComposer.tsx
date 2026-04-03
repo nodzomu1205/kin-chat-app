@@ -292,23 +292,31 @@ export default function GptComposer({
             </button>
           )}
 
-          <ChatTextarea
-            value={value}
-            onChange={onChange}
-            onSubmit={onSubmit}
-            submitOnEnter={!isMobile}
-          />
+        <ChatTextarea
+          value={value}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          submitOnEnter={!isMobile}
+        />
         </div>
 
         <button
           type="button"
           style={{
-            ...buttonPrimary,
-            width: isMobile ? 48 : 56,
-            minWidth: isMobile ? 48 : 56,
+            width: 56,
+            minWidth: 56,
+            maxWidth: 56,
             alignSelf: "stretch",
+            flexShrink: 0,
+            border: "none",
+            background: "#2563eb",
+            color: "#fff",
+            cursor: loading || ingestLoading ? "default" : "pointer",
+            fontWeight: 700,
+            fontSize: 14,
+            boxSizing: "border-box",
             borderRadius: 18,
-            opacity: loading ? (blink ? 0.55 : 1) : 1,
+            opacity: loading || ingestLoading ? (blink ? 0.55 : 1) : 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
