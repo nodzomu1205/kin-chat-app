@@ -222,17 +222,42 @@ export default function GptSettingsDrawer({
 
         <div
           style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 8,
-            marginTop: 12,
-            flexWrap: "wrap",
+          display: "flex",
+          justifyContent: "flex-end",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 12,
+          flexWrap: isMobile ? "wrap" : "nowrap",
           }}
         >
-          <button type="button" style={buttonSecondaryWide} onClick={onReset}>
+          <button
+            type="button"
+            style={{
+              ...buttonSecondaryWide,
+              minWidth: isMobile ? 64 : 72,
+              height: isMobile ? 38 : 40,
+              padding: isMobile ? "8px 12px" : buttonSecondaryWide.padding,
+              fontSize: isMobile ? 13 : 14,
+              writingMode: "horizontal-tb",
+              textOrientation: "mixed",
+            }}
+            onClick={onReset}
+          >
             初期化
           </button>
-          <button type="button" style={buttonPrimary} onClick={onSave}>
+          <button
+            type="button"
+            style={{
+              ...buttonPrimary,
+              minWidth: isMobile ? 64 : 64,
+              height: isMobile ? 38 : 40,
+              padding: isMobile ? "8px 12px" : buttonPrimary.padding,
+              fontSize: isMobile ? 13 : 14,
+              writingMode: "horizontal-tb",
+              textOrientation: "mixed",
+            }}
+            onClick={onSave}
+          >
             保存
           </button>
         </div>

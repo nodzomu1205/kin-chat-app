@@ -4,12 +4,12 @@ import React from "react";
 import type { GptBottomTab, GptInstructionMode } from "./gptPanelTypes";
 import {
   buttonDeepen,
+  buttonFile,
   buttonPolish,
   buttonReply,
   buttonReset,
   buttonSwitch,
   buttonTask,
-  buttonFile,
   buttonTransfer,
   buttonTranslate,
 } from "./gptPanelStyles";
