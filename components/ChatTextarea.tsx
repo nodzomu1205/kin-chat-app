@@ -10,7 +10,9 @@ type Props = {
 };
 
 const MIN_HEIGHT = 84;
-const MAX_HEIGHT = 200;
+
+const getMaxHeight = () =>
+  typeof window !== "undefined" ? Math.floor(window.innerHeight * 0.4) : 300;
 
 export default function ChatTextarea({
   value,
@@ -24,11 +26,17 @@ export default function ChatTextarea({
     const el = textareaRef.current;
     if (!el) return;
 
+    const maxHeight = getMaxHeight();
+
     el.style.height = "auto";
 
-    const nextHeight = Math.min(Math.max(el.scrollHeight, MIN_HEIGHT), MAX_HEIGHT);
+    const nextHeight = Math.min(
+      Math.max(el.scrollHeight, MIN_HEIGHT),
+      maxHeight
+    );
+
     el.style.height = `${nextHeight}px`;
-    el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
   };
 
   useLayoutEffect(() => {
@@ -37,6 +45,13 @@ export default function ChatTextarea({
 
   useEffect(() => {
     adjustHeight();
+
+    const handleResize = () => {
+      adjustHeight();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   return (
@@ -62,12 +77,14 @@ export default function ChatTextarea({
         lineHeight: 1.5,
         resize: "none",
         minHeight: MIN_HEIGHT,
-        maxHeight: MAX_HEIGHT,
+        maxHeight: "40dvh",
+        overflowY: "auto",
         boxSizing: "border-box",
         font: "inherit",
         fontSize: 15,
         WebkitAppearance: "none",
         background: "rgba(255,255,255,0.9)",
+        whiteSpace: "pre-wrap",
       }}
     />
   );
