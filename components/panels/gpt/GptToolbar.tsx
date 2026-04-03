@@ -166,7 +166,7 @@ export default function GptToolbar({
               style={restoredButton(buttonTask)}
               onClick={onRunTask}
             >
-              TASK
+              タスク整理
             </button>
 
             <button
@@ -182,7 +182,7 @@ export default function GptToolbar({
               style={restoredButton(buttonFile)}
               onClick={onToggleFileTools}
             >
-              {showFileTools ? "FILE ▲" : "FILE"}
+              {showFileTools ? "ファイル ▲" : "ファイル"}
             </button>
 
             <button

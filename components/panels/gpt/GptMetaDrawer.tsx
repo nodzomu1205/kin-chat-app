@@ -63,9 +63,9 @@ export default function GptMetaDrawer({
   onToggleMemoryContent,
   isMobile = false,
 }: Props) {
-  const searchTotal = tokenStats.threadSearchTotal || ZERO_USAGE;
-  const taskTotal = tokenStats.threadTaskTotal || ZERO_USAGE;
-  const summaryTotal = tokenStats.threadSummaryTotal || ZERO_USAGE;
+  const searchTotal = tokenStats.threadSearchTotal;
+  const taskTotal = tokenStats.threadTaskTotal;
+  const summaryTotal = tokenStats.threadSummaryTotal;
 
   const otherTrackedTotal = mergeUsage(
     summaryTotal,
@@ -240,23 +240,11 @@ export default function GptMetaDrawer({
           <UsageTriple usage={summaryTotal} />
           {"  "}（計 {tokenStats.summaryRunCount} 回）
           <br />
-          {tokenStats.threadSearchTotal ? (
-            <>
-              検索関連トークン <UsageTriple usage={searchTotal} />
-              {"  "}（計 {tokenStats.searchRunCount ?? 0} 回）
-            </>
-          ) : (
-            <>検索関連トークン 未接続</>
-          )}
+          検索関連トークン <UsageTriple usage={searchTotal} />
+          {"  "}（計 {tokenStats.searchRunCount} 回）
           <br />
-          {tokenStats.threadTaskTotal ? (
-            <>
-              TASK関連トークン <UsageTriple usage={taskTotal} />
-              {"  "}（計 {tokenStats.taskRunCount ?? 0} 回）
-            </>
-          ) : (
-            <>TASK関連トークン 未接続</>
-          )}
+          タスク関連トークン <UsageTriple usage={taskTotal} />
+          {"  "}（計 {tokenStats.taskRunCount} 回）
         </div>
       </div>
     </div>

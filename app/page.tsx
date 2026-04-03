@@ -7,95 +7,27 @@ import { useKinManager } from "@/hooks/useKinManager";
 import { useGptMemory } from "@/hooks/useGptMemory";
 import { useResponsive } from "@/hooks/useResponsive";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
+import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
+import { useTokenTracking } from "@/hooks/useTokenTracking";
 import { createSession, getSessions } from "@/lib/storage";
 import type { MemorySettings } from "@/lib/memory";
 import type { Message } from "@/types/chat";
 import { generateId } from "@/lib/uuid";
 import {
-  type TokenStats,
-  emptyTokenStats,
-  normalizeUsage,
-} from "@/lib/tokenStats";
+  buildPrepInputFromIngestResult,
+  formatTaskResultText,
+  resolveUploadKindFromFile,
+  runAutoDeepenTask,
+  runAutoPrepTask,
+} from "@/lib/app/gptTaskClient";
 import type {
-  FileUploadKind,
   GptInstructionMode,
-  ImageDetail,
-  IngestMode,
   PostIngestAction,
-  ResponseMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 
 type MobileTab = "kin" | "gpt";
 
 const MOBILE_BREAKPOINT = 1180;
-const RESPONSE_MODE_KEY = "gpt_response_mode";
-const UPLOAD_KIND_KEY = "gpt_upload_kind";
-const INGEST_MODE_KEY = "gpt_ingest_mode";
-const IMAGE_DETAIL_KEY = "gpt_image_detail";
-const POST_INGEST_ACTION_KEY = "gpt_post_ingest_action";
-
-function getExtension(filename: string) {
-  return filename.split(".").pop()?.toLowerCase() || "";
-}
-
-function resolveUploadKindFromFile(
-  file: File,
-  requestedKind: FileUploadKind
-): FileUploadKind {
-  const ext = getExtension(file.name);
-
-  const visualExtensions = new Set([
-    "pdf",
-    "png",
-    "jpg",
-    "jpeg",
-    "webp",
-    "gif",
-    "bmp",
-    "svg",
-  ]);
-
-  const textExtensions = new Set([
-    "txt",
-    "md",
-    "json",
-    "csv",
-    "tsv",
-    "js",
-    "jsx",
-    "ts",
-    "tsx",
-    "py",
-    "java",
-    "go",
-    "rs",
-    "c",
-    "cpp",
-    "cs",
-    "rb",
-    "php",
-    "html",
-    "css",
-    "xml",
-    "yml",
-    "yaml",
-    "sql",
-  ]);
-
-  if (visualExtensions.has(ext) || file.type.startsWith("image/")) {
-    return "visual";
-  }
-
-  if (
-    textExtensions.has(ext) ||
-    file.type.startsWith("text/") ||
-    file.type === "application/json"
-  ) {
-    return "text";
-  }
-
-  return requestedKind;
-}
 
 export default function ChatApp() {
   const [kinMessages, setKinMessages] = useState<Message[]>([]);
@@ -110,22 +42,36 @@ export default function ChatApp() {
   >([]);
   const [pendingKinInjectionIndex, setPendingKinInjectionIndex] = useState(0);
   const [, setCurrentSessionId] = useState<string | null>(null);
-  const [tokenStats, setTokenStats] = useState<TokenStats>(emptyTokenStats());
-  const [responseMode, setResponseMode] = useState<ResponseMode>("strict");
-  const [uploadKind, setUploadKind] = useState<FileUploadKind>("text");
-  const [ingestMode, setIngestMode] = useState<IngestMode>("compact");
-  const [imageDetail, setImageDetail] = useState<ImageDetail>("basic");
-  const [postIngestAction, setPostIngestAction] =
-    useState<PostIngestAction>("inject_only");
   const [activeTab, setActiveTab] = useState<MobileTab>("kin");
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
-
   const kinBottomRef = useRef<HTMLDivElement>(null);
   const gptBottomRef = useRef<HTMLDivElement>(null);
 
   useAutoScroll(kinBottomRef, [kinMessages, kinLoading]);
   useAutoScroll(gptBottomRef, [gptMessages, gptLoading]);
+
+  const {
+    responseMode,
+    setResponseMode,
+    uploadKind,
+    setUploadKind,
+    ingestMode,
+    setIngestMode,
+    imageDetail,
+    setImageDetail,
+    postIngestAction,
+    setPostIngestAction,
+  } = usePersistedGptOptions();
+
+  const {
+    tokenStats,
+    applyChatUsage,
+    applySummaryUsage,
+    applySearchUsage,
+    applyTaskUsage,
+    resetTokenStats,
+  } = useTokenTracking();
 
   const {
     kinIdInput,
@@ -175,61 +121,6 @@ export default function ChatApp() {
   }, []);
 
   useEffect(() => {
-    const savedMode = localStorage.getItem(RESPONSE_MODE_KEY);
-    if (savedMode === "creative") {
-      setResponseMode("creative");
-    }
-
-    const savedUploadKind = localStorage.getItem(UPLOAD_KIND_KEY);
-    if (savedUploadKind === "visual") {
-      setUploadKind("visual");
-    }
-
-    const savedIngestMode = localStorage.getItem(INGEST_MODE_KEY);
-    if (savedIngestMode === "full") {
-      setIngestMode("full");
-    }
-
-    const savedImageDetail = localStorage.getItem(IMAGE_DETAIL_KEY);
-    if (
-      savedImageDetail === "basic" ||
-      savedImageDetail === "detailed" ||
-      savedImageDetail === "max"
-    ) {
-      setImageDetail(savedImageDetail);
-    }
-
-    const savedPostIngestAction = localStorage.getItem(POST_INGEST_ACTION_KEY);
-    if (
-      savedPostIngestAction === "inject_only" ||
-      savedPostIngestAction === "inject_and_prep" ||
-      savedPostIngestAction === "inject_prep_deepen"
-    ) {
-      setPostIngestAction(savedPostIngestAction);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(RESPONSE_MODE_KEY, responseMode);
-  }, [responseMode]);
-
-  useEffect(() => {
-    localStorage.setItem(UPLOAD_KIND_KEY, uploadKind);
-  }, [uploadKind]);
-
-  useEffect(() => {
-    localStorage.setItem(INGEST_MODE_KEY, ingestMode);
-  }, [ingestMode]);
-
-  useEffect(() => {
-    localStorage.setItem(IMAGE_DETAIL_KEY, imageDetail);
-  }, [imageDetail]);
-
-  useEffect(() => {
-    localStorage.setItem(POST_INGEST_ACTION_KEY, postIngestAction);
-  }, [postIngestAction]);
-
-  useEffect(() => {
     if (!currentKin) return;
     ensureKinState(currentKin);
   }, [currentKin, ensureKinState]);
@@ -240,62 +131,12 @@ export default function ChatApp() {
     }
   }, [isMobile]);
 
-  const applyChatUsage = (usage: Parameters<typeof normalizeUsage>[0]) => {
-    const safeUsage = normalizeUsage(usage);
-
-    setTokenStats((prev) => {
-      const recentChatUsages = [...prev.recentChatUsages, safeUsage].slice(-5);
-
-      return {
-        ...prev,
-        lastChatUsage: safeUsage,
-        recentChatUsages,
-        threadChatTotal: {
-          inputTokens: prev.threadChatTotal.inputTokens + safeUsage.inputTokens,
-          outputTokens: prev.threadChatTotal.outputTokens + safeUsage.outputTokens,
-          totalTokens: prev.threadChatTotal.totalTokens + safeUsage.totalTokens,
-        },
-      };
-    });
-  };
-
-  const applySummaryUsage = (usage: Parameters<typeof normalizeUsage>[0]) => {
-    if (!usage) return;
-
-    const safeUsage = normalizeUsage(usage);
-
-    if (
-      safeUsage.inputTokens === 0 &&
-      safeUsage.outputTokens === 0 &&
-      safeUsage.totalTokens === 0
-    ) {
-      return;
-    }
-
-    setTokenStats((prev) => ({
-      ...prev,
-      lastSummaryUsage: safeUsage,
-      threadSummaryTotal: {
-        inputTokens: prev.threadSummaryTotal.inputTokens + safeUsage.inputTokens,
-        outputTokens:
-          prev.threadSummaryTotal.outputTokens + safeUsage.outputTokens,
-        totalTokens: prev.threadSummaryTotal.totalTokens + safeUsage.totalTokens,
-      },
-      summaryRunCount: prev.summaryRunCount + 1,
-    }));
-  };
-
-  const resetTokenStats = () => {
-    setTokenStats(emptyTokenStats());
-  };
-
   const clearPendingKinInjection = () => {
     setPendingKinInjectionBlocks([]);
     setPendingKinInjectionIndex(0);
   };
 
-  const handleConnectKin = () => {
-    connectKin();
+  const resetBothPanels = () => {
     setKinMessages([]);
     setGptMessages([]);
     resetTokenStats();
@@ -304,43 +145,27 @@ export default function ChatApp() {
     if (isMobile) {
       setActiveTab("kin");
     }
+  };
+
+  const handleConnectKin = () => {
+    connectKin();
+    resetBothPanels();
   };
 
   const handleSwitchKin = (id: string) => {
     switchKin(id);
-    setKinMessages([]);
-    setGptMessages([]);
-    resetTokenStats();
-    clearPendingKinInjection();
-
-    if (isMobile) {
-      setActiveTab("kin");
-    }
+    resetBothPanels();
   };
 
   const handleDisconnectKin = () => {
     disconnectKin();
-    setKinMessages([]);
-    setGptMessages([]);
-    resetTokenStats();
-    clearPendingKinInjection();
-
-    if (isMobile) {
-      setActiveTab("kin");
-    }
+    resetBothPanels();
   };
 
   const handleRemoveKin = (id: string) => {
     removeKinState(id);
     removeKin(id);
-    setKinMessages([]);
-    setGptMessages([]);
-    resetTokenStats();
-    clearPendingKinInjection();
-
-    if (isMobile) {
-      setActiveTab("kin");
-    }
+    resetBothPanels();
   };
 
   const sendToKin = async () => {
@@ -380,8 +205,7 @@ export default function ChatApp() {
       setKinStatus("connected");
 
       const sentPendingPart =
-        typeof currentPendingBlock === "string" &&
-        text === currentPendingBlock.trim();
+        typeof currentPendingBlock === "string" && text === currentPendingBlock.trim();
 
       if (sentPendingPart) {
         const nextIndex = pendingKinInjectionIndex + 1;
@@ -405,7 +229,6 @@ export default function ChatApp() {
     if (!gptInput.trim() || gptLoading) return;
 
     const text = gptInput.trim();
-
     const userMsg: Message = {
       id: generateId(),
       role: "user",
@@ -456,7 +279,12 @@ export default function ChatApp() {
       const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
 
       setGptMessages((prev) => [...prev, assistantMsg]);
-      applyChatUsage(data.usage);
+
+      if (data?.searchUsed) {
+        applySearchUsage(data.usage);
+      } else {
+        applyChatUsage(data.usage);
+      }
 
       const memoryResult = await handleGptMemory(updatedRecent);
       applySummaryUsage(memoryResult.summaryUsage);
@@ -475,182 +303,14 @@ export default function ChatApp() {
     }
   };
 
-  const formatTaskResultText = (parsed: any, raw: string) => {
-    if (!parsed) {
-      return raw?.trim() || "⚠️ TASK結果の解析に失敗しました";
-    }
-
-    const lines: string[] = [];
-
-    lines.push("【TASK整理結果】");
-
-    if (parsed.summary) {
-      lines.push(`概要: ${parsed.summary}`);
-    }
-
-    if (Array.isArray(parsed.keyPoints) && parsed.keyPoints.length > 0) {
-      lines.push("");
-      lines.push("■ 要点");
-      parsed.keyPoints.forEach((point: string) => {
-        lines.push(`- ${point}`);
-      });
-    }
-
-    if (Array.isArray(parsed.detailBlocks) && parsed.detailBlocks.length > 0) {
-      parsed.detailBlocks.forEach((block: any) => {
-        lines.push("");
-        lines.push(`■ ${block.title}`);
-        if (Array.isArray(block.body)) {
-          block.body.forEach((line: string) => {
-            lines.push(`- ${line}`);
-          });
-        }
-      });
-    }
-
-    if (Array.isArray(parsed.warnings) && parsed.warnings.length > 0) {
-      lines.push("");
-      lines.push("■ 注意");
-      parsed.warnings.forEach((item: string) => {
-        lines.push(`- ${item}`);
-      });
-    }
-
-    if (Array.isArray(parsed.missingInfo) && parsed.missingInfo.length > 0) {
-      lines.push("");
-      lines.push("■ 不足情報");
-      parsed.missingInfo.forEach((item: string) => {
-        lines.push(`- ${item}`);
-      });
-    }
-
-    if (
-      Array.isArray(parsed.nextSuggestion) &&
-      parsed.nextSuggestion.length > 0
-    ) {
-      lines.push("");
-      lines.push("■ 次の提案");
-      parsed.nextSuggestion.forEach((item: string) => {
-        lines.push(`- ${item}`);
-      });
-    }
-
-    return lines.join("\n");
-  };
-
-  const buildPrepInputFromIngestResult = (data: any, fileName: string) => {
-    const result = data?.result ?? {};
-
-    const title =
-      typeof result?.title === "string" && result.title.trim()
-        ? result.title.trim()
-        : fileName;
-
-    const rawText =
-      typeof result?.rawText === "string" ? result.rawText.trim() : "";
-
-    const summaryLines = Array.isArray(result?.kinCompact)
-      ? result.kinCompact.join("\n")
-      : "";
-
-    const detailedLines = Array.isArray(result?.kinDetailed)
-      ? result.kinDetailed.join("\n")
-      : "";
-
-    const textParts = [
-      `ファイル名: ${fileName}`,
-      `タイトル: ${title}`,
-      summaryLines ? `要点:\n${summaryLines}` : "",
-      detailedLines
-        ? `詳細情報:\n${detailedLines}`
-        : rawText
-        ? `本文:\n${rawText}`
-        : "",
-    ].filter(Boolean);
-
-    return textParts.join("\n\n");
-  };
-
-  const runAutoPrepTask = async (inputText: string, label = "ingest-result") => {
-    const res = await fetch("/api/task", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        task: {
-          type: "PREP_TASK",
-          taskId: `task-${Date.now()}`,
-          dataKind: "document_package",
-          goal: "与えられた抽出結果を整理し、重要点・不足情報・次の提案を明確化する",
-          inputRef: label,
-          inputSummary: inputText,
-          constraints: [
-            "与えられた入力に明示された内容のみを使う",
-            "入力にない事実を補わない",
-            "不明な点は不明と書く",
-            "推測が必要な場合は推測ではなく入力不足として扱う",
-            "重要点優先",
-            "簡潔",
-            "日本語で整理",
-          ],
-          outputFormat: "sections",
-          priority: "HIGH",
-          visibility: "INTERNAL",
-          responseMode: "STRUCTURED_RESULT",
-          groundingMode: "STRICT",
-        },
-      }),
-    });
-
-    return res.json();
-  };
-
-  const runAutoDeepenTask = async (
-    inputText: string,
-    label = "prep-result"
-  ) => {
-    const res = await fetch("/api/task", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        task: {
-          type: "DEEPEN_TASK",
-          taskId: `task-${Date.now()}`,
-          dataKind: "document_package",
-          goal: "整理結果をもとに、不足情報と次に必要な具体データを明確化する",
-          inputRef: label,
-          inputSummary: inputText,
-          constraints: [
-            "与えられた入力に含まれる内容を基準に整理する",
-            "新しい事実を捏造しない",
-            "不足している情報は不足情報として明示する",
-            "必要であれば、追加で集めるべき情報を具体化する",
-            "日本語で整理",
-          ],
-          outputFormat: "sections",
-          priority: "HIGH",
-          visibility: "INTERNAL",
-          responseMode: "STRUCTURED_RESULT",
-          groundingMode: "STRICT",
-        },
-      }),
-    });
-
-    return res.json();
-  };
-
   const runPrepTaskFromInput = async () => {
     if (!gptInput.trim() || gptLoading) return;
 
     const text = gptInput.trim();
-
     const userMsg: Message = {
       id: generateId(),
       role: "user",
-      text: `[TASK整理依頼]\n${text}`,
+      text: `[タスク整理依頼]\n${text}`,
     };
 
     const baseRecent = gptStateRef.current.recentMessages || [];
@@ -661,38 +321,7 @@ export default function ChatApp() {
     setGptLoading(true);
 
     try {
-      const res = await fetch("/api/task", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          task: {
-            type: "PREP_TASK",
-            taskId: `task-${Date.now()}`,
-            dataKind: "document_package",
-            goal: "入力テキストを整理して要点を抽出する",
-            inputRef: "gpt-input",
-            inputSummary: text,
-            constraints: [
-              "与えられた入力に明示された内容のみを使う",
-              "入力にない事実を補わない",
-              "不明な点は不明と書く",
-              "推測が必要な場合は推測ではなく入力不足として扱う",
-              "重要点優先",
-              "簡潔",
-              "日本語で整理",
-            ],
-            outputFormat: "sections",
-            priority: "HIGH",
-            visibility: "INTERNAL",
-            responseMode: "STRUCTURED_RESULT",
-            groundingMode: "STRICT",
-          },
-        }),
-      });
-
-      const data = await res.json();
+      const data = await runAutoPrepTask(text, "gpt-input");
 
       const assistantMsg: Message = {
         id: generateId(),
@@ -708,7 +337,7 @@ export default function ChatApp() {
         recentMessages: updatedRecent,
       }));
 
-      applyChatUsage(data?.usage);
+      applyTaskUsage(data?.usage);
     } catch (error) {
       console.error(error);
       setGptMessages((prev) => [
@@ -716,7 +345,7 @@ export default function ChatApp() {
         {
           id: generateId(),
           role: "gpt",
-          text: "⚠️ TASK実行中にエラーが発生しました",
+          text: "⚠️ タスク実行中にエラーが発生しました",
         },
       ]);
     } finally {
@@ -745,11 +374,10 @@ export default function ChatApp() {
     }
 
     const text = last.text.trim();
-
     const userMsg: Message = {
       id: generateId(),
       role: "user",
-      text: `[DEEPEN依頼]\n${text}`,
+      text: `[深掘り依頼]\n${text}`,
     };
 
     const baseRecent = gptStateRef.current.recentMessages || [];
@@ -759,36 +387,7 @@ export default function ChatApp() {
     setGptLoading(true);
 
     try {
-      const res = await fetch("/api/task", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          task: {
-            type: "DEEPEN_TASK",
-            taskId: `task-${Date.now()}`,
-            dataKind: "document_package",
-            goal: "直前の整理結果をもとに、不足情報と次に必要な具体データを明確化する",
-            inputRef: "last-task-result",
-            inputSummary: text,
-            constraints: [
-              "与えられた入力に含まれる内容を基準に整理する",
-              "新しい事実を捏造しない",
-              "不足している情報は不足情報として明示する",
-              "必要であれば、追加で集めるべき情報を具体化する",
-              "日本語で整理",
-            ],
-            outputFormat: "sections",
-            priority: "HIGH",
-            visibility: "INTERNAL",
-            responseMode: "STRUCTURED_RESULT",
-            groundingMode: "STRICT",
-          },
-        }),
-      });
-
-      const data = await res.json();
+      const data = await runAutoDeepenTask(text, "last-task-result");
 
       const assistantMsg: Message = {
         id: generateId(),
@@ -804,7 +403,7 @@ export default function ChatApp() {
         recentMessages: updatedRecent,
       }));
 
-      applyChatUsage(data?.usage);
+      applyTaskUsage(data?.usage);
     } catch (error) {
       console.error(error);
       setGptMessages((prev) => [
@@ -812,7 +411,7 @@ export default function ChatApp() {
         {
           id: generateId(),
           role: "gpt",
-          text: "⚠️ DEEPEN中にエラーが発生しました",
+          text: "⚠️ 深掘り中にエラーが発生しました",
         },
       ]);
     } finally {
@@ -825,10 +424,7 @@ export default function ChatApp() {
     if (!last) return;
 
     setGptInput(last.text);
-
-    if (isMobile) {
-      setActiveTab("gpt");
-    }
+    if (isMobile) setActiveTab("gpt");
   };
 
   const sendLastGptToKinDraft = () => {
@@ -836,18 +432,15 @@ export default function ChatApp() {
     if (!last) return;
 
     setKinInput(last.text);
-
-    if (isMobile) {
-      setActiveTab("kin");
-    }
+    if (isMobile) setActiveTab("kin");
   };
 
   const injectFileToKinDraft = async (
     file: File,
     options: {
-      kind: FileUploadKind;
-      mode: IngestMode;
-      detail: ImageDetail;
+      kind: typeof uploadKind;
+      mode: typeof ingestMode;
+      detail: typeof imageDetail;
       action: PostIngestAction;
     }
   ) => {
@@ -866,7 +459,6 @@ export default function ChatApp() {
     }
 
     const resolvedKind = resolveUploadKindFromFile(file, options.kind);
-
     setIngestLoading(true);
 
     try {
@@ -896,14 +488,13 @@ export default function ChatApp() {
             role: "gpt",
             text:
               `${errorText}\n\n` +
-              `必要なら /api/ingest のレスポンス詳細を確認してください。`,
+              "必要なら /api/ingest のレスポンス詳細を確認してください。",
           },
         ]);
         return;
       }
 
       const blocks: string[] = Array.isArray(data?.kinBlocks) ? data.kinBlocks : [];
-
       if (blocks.length === 0) {
         setGptMessages((prev) => [
           ...prev,
@@ -922,7 +513,6 @@ export default function ChatApp() {
       setUploadKind(resolvedKind);
 
       const prepInput = buildPrepInputFromIngestResult(data, file.name);
-
       let prepTaskText = "";
       let deepenTaskText = "";
 
@@ -933,7 +523,7 @@ export default function ChatApp() {
         try {
           const prepData = await runAutoPrepTask(prepInput, `ingest-${file.name}`);
           prepTaskText = formatTaskResultText(prepData?.parsed, prepData?.raw);
-          applyChatUsage(prepData?.usage);
+          applyTaskUsage(prepData?.usage);
 
           if (options.action === "inject_prep_deepen") {
             try {
@@ -945,15 +535,15 @@ export default function ChatApp() {
                 deepenData?.parsed,
                 deepenData?.raw
               );
-              applyChatUsage(deepenData?.usage);
+              applyTaskUsage(deepenData?.usage);
             } catch (error) {
-              console.error("auto DEEPEN task failed", error);
-              deepenTaskText = "⚠️ 自動DEEPENに失敗しました";
+              console.error("auto deepen task failed", error);
+              deepenTaskText = "⚠️ 自動深掘りに失敗しました";
             }
           }
         } catch (error) {
-          console.error("auto PREP task failed", error);
-          prepTaskText = "⚠️ 抽出後の自動TASK整理に失敗しました";
+          console.error("auto prep task failed", error);
+          prepTaskText = "⚠️ 抽出後の自動タスク整理に失敗しました";
         }
       }
 
@@ -971,17 +561,17 @@ export default function ChatApp() {
         options.action === "inject_only"
           ? "注入のみ"
           : options.action === "inject_and_prep"
-          ? "注入＋整理"
-          : "注入＋整理＋深掘り";
+            ? "注入＋タスク整理"
+            : "注入＋タスク整理＋深掘り";
 
       const messageParts = [
-        `ファイルをKin注入用テキストに変換しました。`,
+        "ファイルをKin注入用テキストに変換しました。",
         `タイトル: ${title}`,
         `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}`,
-        `${modeLine}`,
+        modeLine,
         `注入後処理: ${actionLabel}`,
         `分割数: ${blocks.length}`,
-        ``,
+        "",
         `Kin入力欄に 1/${blocks.length} をセットしました。送信後は次パートが自動で下書きに入ります。`,
       ];
 

@@ -421,6 +421,7 @@ export async function POST(req: Request) {
         reply,
         sources,
         usage: extractUsage(data),
+        searchUsed: useSearch,
       });
     }
 

@@ -8,6 +8,27 @@ const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
+function extractUsage(data: any) {
+  const inputTokens =
+    typeof data?.usage?.input_tokens === "number" ? data.usage.input_tokens : 0;
+
+  const outputTokens =
+    typeof data?.usage?.output_tokens === "number"
+      ? data.usage.output_tokens
+      : 0;
+
+  const totalTokens =
+    typeof data?.usage?.total_tokens === "number"
+      ? data.usage.total_tokens
+      : inputTokens + outputTokens;
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -30,7 +51,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       raw: text,
       parsed,
-      usage: response.usage,
+      usage: extractUsage(response),
     });
   } catch (error: any) {
     console.error(error);

@@ -30,14 +30,13 @@ export type TokenStats = {
   threadSummaryTotal: TokenUsage;
   summaryRunCount: number;
 
-  // 第2段階では UI 先行。未配線でも壊れないよう optional にしておく
-  lastSearchUsage?: TokenUsage | null;
-  threadSearchTotal?: TokenUsage;
-  searchRunCount?: number;
+    lastSearchUsage: TokenUsage | null;
+  threadSearchTotal: TokenUsage;
+  searchRunCount: number;
 
-  lastTaskUsage?: TokenUsage | null;
-  threadTaskTotal?: TokenUsage;
-  taskRunCount?: number;
+  lastTaskUsage: TokenUsage | null;
+  threadTaskTotal: TokenUsage;
+  taskRunCount: number;
 };
 
 export type GptPanelProps = {
