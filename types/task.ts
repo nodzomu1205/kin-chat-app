@@ -46,3 +46,52 @@ export type TaskResult = {
   missingInfo: string[];
   nextSuggestion: string[];
 };
+
+export type TaskSourceType =
+  | "gpt_chat"
+  | "file_ingest"
+  | "web_search"
+  | "manual_note"
+  | "kin_message";
+
+export type TaskSource = {
+  id: string;
+  type: TaskSourceType;
+  label: string;
+  content: string;
+  createdAt: string;
+};
+
+export type TaskDraftStatus =
+  | "idle"
+  | "prepared"
+  | "deepened"
+  | "formatted";
+
+export type TaskDraft = {
+  id: string;
+  title: string;
+  objective: string;
+  prepText: string;
+  deepenText: string;
+  mergedText: string;
+  kinTaskText: string;
+  status: TaskDraftStatus;
+  sources: TaskSource[];
+  updatedAt: string;
+};
+
+export function createEmptyTaskDraft(): TaskDraft {
+  return {
+    id: `task-draft-${Date.now()}`,
+    title: "",
+    objective: "",
+    prepText: "",
+    deepenText: "",
+    mergedText: "",
+    kinTaskText: "",
+    status: "idle",
+    sources: [],
+    updatedAt: new Date().toISOString(),
+  };
+}

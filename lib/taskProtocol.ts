@@ -37,6 +37,54 @@ export function buildTaskPrompt(task: TaskRequest): string {
   const groundingMode = task.groundingMode ?? "STRICT";
   const groundingRules = buildGroundingRules(groundingMode);
 
+  if (task.type === "FORMAT_TASK") {
+    return `
+<<SYS_TASK>>
+TYPE: ${task.type}
+TASK_ID: ${task.taskId}
+DATA_KIND: ${task.dataKind}
+GOAL: ${task.goal}
+INPUT_REF: ${task.inputRef}
+INPUT_SUMMARY: ${task.inputSummary}
+CONSTRAINTS:
+${task.constraints.map((c) => `- ${c}`).join("\n")}
+OUTPUT_FORMAT: ${task.outputFormat}
+PRIORITY: ${task.priority}
+VISIBILITY: ${task.visibility}
+RESPONSE_MODE: ${task.responseMode}
+GROUNDING_MODE: ${groundingMode}
+<<END_SYS_TASK>>
+
+You are a structured task formatter for Kin execution.
+${groundingRules}
+
+Return ONLY one executable task block in the exact format below.
+All meta headers and structural labels must be in English.
+Natural-language detail lines may be in Japanese if the source content is Japanese.
+Do not add any explanation before or after the block.
+
+<<TASK>>
+TITLE: ...
+GOAL:
+- ...
+CONTEXT:
+- ...
+INPUT:
+- ...
+CONSTRAINTS:
+- ...
+TODO:
+1. ...
+2. ...
+3. ...
+IF_MISSING:
+- ...
+OUTPUT:
+- ...
+<<END_TASK>>
+`;
+  }
+
   return `
 <<SYS_TASK>>
 TYPE: ${task.type}

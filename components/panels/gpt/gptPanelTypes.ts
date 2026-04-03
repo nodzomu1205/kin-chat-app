@@ -2,6 +2,7 @@ import type React from "react";
 import type { KinMemoryState, Message } from "@/types/chat";
 import type { MemorySettings } from "@/lib/memory";
 import type { TokenUsage } from "@/hooks/useGptMemory";
+import type { TaskDraft } from "@/types/task";
 
 export type GptInstructionMode =
   | "normal"
@@ -17,7 +18,8 @@ export type FileUploadKind = "text" | "visual";
 export type PostIngestAction =
   | "inject_only"
   | "inject_and_prep"
-  | "inject_prep_deepen";
+  | "inject_prep_deepen"
+  | "attach_to_current_task";
 
 export type GptBottomTab = "chat" | "task";
 export type GptTopDrawerTab = "memory" | "token" | "settings" | null;
@@ -30,7 +32,7 @@ export type TokenStats = {
   threadSummaryTotal: TokenUsage;
   summaryRunCount: number;
 
-    lastSearchUsage: TokenUsage | null;
+  lastSearchUsage: TokenUsage | null;
   threadSearchTotal: TokenUsage;
   searchRunCount: number;
 
@@ -50,8 +52,12 @@ export type GptPanelProps = {
   sendToGpt: (mode?: GptInstructionMode) => void;
   runPrepTaskFromInput: () => void;
   runDeepenTaskFromLast: () => void;
+  runUpdateTaskFromInput: () => Promise<void>;
+  runUpdateTaskFromLastGptMessage: () => Promise<void>;
+  runAttachSearchResultToTask: () => Promise<void>;
   resetGptForCurrentKin: () => void;
   sendLastGptToKinDraft: () => void;
+  sendTaskToKinDraft: () => Promise<void>;
   injectFileToKinDraft: (
     file: File,
     options: {
@@ -84,6 +90,7 @@ export type GptPanelProps = {
   pendingInjectionTotalParts: number;
   onSwitchPanel?: () => void;
   isMobile?: boolean;
+  currentTaskDraft: TaskDraft;
 };
 
 export type LocalMemorySettingsInput = {

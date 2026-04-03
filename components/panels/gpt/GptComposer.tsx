@@ -220,6 +220,7 @@ export default function GptComposer({
                 <option value="inject_only">注入のみ</option>
                 <option value="inject_and_prep">注入＋整理</option>
                 <option value="inject_prep_deepen">注入＋整理＋深堀り</option>
+                <option value="attach_to_current_task">現在タスクに追加</option>
               </select>
             </div>
           </div>
@@ -346,7 +347,7 @@ export default function GptComposer({
           disabled={loading || ingestLoading}
           title="ChatGPTへ送信"
         >
-          {loading ? "送信中" : "送信"}
+          {loading ? "通信中" : "送信"}
         </button>
       </div>
     </div>

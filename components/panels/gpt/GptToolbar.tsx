@@ -22,6 +22,9 @@ type Props = {
   onAction: (mode: GptInstructionMode) => void;
   onRunTask: () => void;
   onRunDeepen: () => void;
+  onRunTaskUpdate: () => void;
+  onImportLastResponse: () => void;
+  onAttachSearchResult: () => void;
   onToggleFileTools: () => void;
   showFileTools: boolean;
   onTransfer: () => void;
@@ -58,6 +61,9 @@ export default function GptToolbar({
   onAction,
   onRunTask,
   onRunDeepen,
+  onRunTaskUpdate,
+  onImportLastResponse,
+  onAttachSearchResult,
   onToggleFileTools,
   showFileTools,
   onTransfer,
@@ -179,6 +185,30 @@ export default function GptToolbar({
 
             <button
               type="button"
+              style={restoredButton(buttonTask)}
+              onClick={onRunTaskUpdate}
+            >
+              タスク更新
+            </button>
+
+            <button
+              type="button"
+              style={restoredButton(buttonTask)}
+              onClick={onImportLastResponse}
+            >
+              レス取込
+            </button>
+
+            <button
+              type="button"
+              style={restoredButton(buttonTask)}
+              onClick={onAttachSearchResult}
+            >
+              検索統合
+            </button>
+
+            <button
+              type="button"
               style={restoredButton(buttonFile)}
               onClick={onToggleFileTools}
             >
@@ -190,7 +220,7 @@ export default function GptToolbar({
               style={restoredButton(buttonTransfer)}
               onClick={onTransfer}
             >
-              Kinに送る
+              Kinタスク
             </button>
 
             <button

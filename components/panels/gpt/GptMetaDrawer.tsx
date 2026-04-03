@@ -1,6 +1,7 @@
 import React from "react";
 import type { KinMemoryState } from "@/types/chat";
 import type { TokenUsage } from "@/hooks/useGptMemory";
+import type { TaskDraft } from "@/types/task";
 import type { GptTopDrawerTab, TokenStats } from "./gptPanelTypes";
 import {
   longValueStyle,
@@ -43,6 +44,7 @@ type Props = {
   showMemoryContent: boolean;
   onToggleMemoryContent: () => void;
   isMobile?: boolean;
+  currentTaskDraft: TaskDraft;
 };
 
 export default function GptMetaDrawer({
@@ -62,6 +64,7 @@ export default function GptMetaDrawer({
   showMemoryContent,
   onToggleMemoryContent,
   isMobile = false,
+  currentTaskDraft,
 }: Props) {
   const searchTotal = tokenStats.threadSearchTotal;
   const taskTotal = tokenStats.threadTaskTotal;
@@ -165,6 +168,29 @@ export default function GptMetaDrawer({
               {JSON.stringify(gptState.memory, null, 2)}
             </pre>
           )}
+        </div>
+
+        <div
+          style={{
+            marginTop: 10,
+            border: "1px solid #cbd5e1",
+            borderRadius: 12,
+            padding: "10px 12px",
+            background: "#f8fafc",
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155" }}>
+            現在タスク
+          </div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 6 }}>
+            状態: {currentTaskDraft.status}
+          </div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+            ソース数: {currentTaskDraft.sources.length}
+          </div>
+          <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+            タイトル: {currentTaskDraft.title || "未設定"}
+          </div>
         </div>
       </div>
     );

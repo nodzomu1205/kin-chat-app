@@ -71,8 +71,12 @@ export default function GptPanel(props: GptPanelProps) {
     sendToGpt,
     runPrepTaskFromInput,
     runDeepenTaskFromLast,
+    runUpdateTaskFromInput,
+    runUpdateTaskFromLastGptMessage,
+    runAttachSearchResultToTask,
     resetGptForCurrentKin,
     sendLastGptToKinDraft,
+    sendTaskToKinDraft,
     injectFileToKinDraft,
     canInjectFile,
     loading,
@@ -97,6 +101,7 @@ export default function GptPanel(props: GptPanelProps) {
     pendingInjectionTotalParts,
     onSwitchPanel,
     isMobile = false,
+    currentTaskDraft,
   } = props;
 
   const [activeDrawerTab, setActiveDrawerTab] =
@@ -269,6 +274,7 @@ export default function GptPanel(props: GptPanelProps) {
                 setShowMemoryContent((prev) => !prev)
               }
               isMobile={isMobile}
+              currentTaskDraft={currentTaskDraft}
             />
           )}
         </div>
@@ -354,9 +360,24 @@ export default function GptPanel(props: GptPanelProps) {
           onAction={(mode) => sendToGpt(mode)}
           onRunTask={runPrepTaskFromInput}
           onRunDeepen={runDeepenTaskFromLast}
+          onRunTaskUpdate={() => {
+            void runUpdateTaskFromInput();
+          }}
+          onImportLastResponse={() => {
+            void runUpdateTaskFromLastGptMessage();
+          }}
+          onAttachSearchResult={() => {
+            void runAttachSearchResultToTask();
+          }}
           onToggleFileTools={() => setShowFileTools((prev) => !prev)}
           showFileTools={showFileTools}
-          onTransfer={sendLastGptToKinDraft}
+          onTransfer={
+            activeBottomTab === "chat"
+              ? sendLastGptToKinDraft
+              : () => {
+                  void sendTaskToKinDraft();
+                }
+          }
           onReset={resetGptForCurrentKin}
         />
 

@@ -130,12 +130,34 @@ export function buildPrepInputFromIngestResult(data: any, fileName: string) {
 }
 
 type TaskCallArgs = {
-  type: "PREP_TASK" | "DEEPEN_TASK";
+  type: "PREP_TASK" | "DEEPEN_TASK" | "FORMAT_TASK";
   goal: string;
   inputRef: string;
   inputSummary: string;
   constraints: string[];
 };
+
+export async function runFormatTaskForKin(
+  inputText: string,
+  label = "task-draft"
+) {
+  return callTaskApi({
+    type: "FORMAT_TASK",
+    goal: "Convert the prepared task content into an executable Kin task block.",
+    inputRef: label,
+    inputSummary: inputText,
+    constraints: [
+      "Return the meta block in English.",
+      "Start with <<TASK>> and end with <<END_TASK>>.",
+      "Use English section headers only.",
+      "Do not invent facts not explicitly present in the input.",
+      "If information is missing, put it under IF_MISSING.",
+      "Keep proper nouns, quoted names, and original identifiers as-is.",
+      "Make the task immediately executable by Kin.",
+      "Do not add explanation outside the task block.",
+    ],
+  });
+}
 
 async function callTaskApi(args: TaskCallArgs) {
   const res = await fetch("/api/task", {
@@ -203,3 +225,20 @@ export type InjectFileOptions = {
   mode: IngestMode;
   detail: ImageDetail;
 };
+
+export function buildMergedTaskInput(
+  currentTaskText: string,
+  newSourceLabel: string,
+  newSourceContent: string
+) {
+  return [
+    "【現在のタスク整理】",
+    currentTaskText,
+    "",
+    `【追加情報: ${newSourceLabel}】`,
+    newSourceContent,
+    "",
+    "上記を統合し、現在タスクを更新してください。",
+    "出力では、重複を整理し、不足情報・次アクションも必要に応じて更新してください。",
+  ].join("\n");
+}
