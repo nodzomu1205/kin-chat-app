@@ -26,6 +26,37 @@ import {
   sumUsages,
 } from "./gptPanelUtils";
 
+
+const topEarRailStyle = (isMobile: boolean): React.CSSProperties => ({
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "flex-start",
+  gap: 6,
+  paddingLeft: isMobile ? 8 : 12,
+  paddingRight: isMobile ? 8 : 12,
+  height: 18,
+  marginBottom: -1,
+  position: "relative",
+  zIndex: 12,
+  pointerEvents: "none",
+});
+
+const topEarTabStyle = (active: boolean): React.CSSProperties => ({
+  height: 30,
+  borderRadius: "0 0 10px 10px",
+  border: "1px solid #cbd5e1",
+  borderTop: "none",
+  background: active ? "#ffffff" : "#f8fafc",
+  color: active ? "#0f766e" : "#475569",
+  fontSize: 12,
+  fontWeight: 800,
+  padding: "0 12px",
+  boxShadow: active ? "0 4px 10px rgba(15,23,42,0.10)" : "none",
+  cursor: "pointer",
+  pointerEvents: "auto",
+  whiteSpace: "nowrap",
+});
+
 export default function GptPanel(props: GptPanelProps) {
   const {
     currentKinLabel,
@@ -153,6 +184,7 @@ export default function GptPanel(props: GptPanelProps) {
         ...panelShellStyle(isMobile),
         height: "100%",
         minHeight: 0,
+        overflow: "visible",
       }}
     >
       <GptHeader
@@ -171,8 +203,35 @@ export default function GptPanel(props: GptPanelProps) {
         isMobile={isMobile}
       />
 
+      <div style={topEarRailStyle(isMobile)}>
+        <button
+          type="button"
+          onClick={() =>
+            setActiveDrawerTab((prev) => (prev === "memory" ? null : "memory"))
+          }
+          style={topEarTabStyle(activeDrawerTab === "memory")}
+        >
+          メモリ
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setActiveDrawerTab((prev) => (prev === "token" ? null : "token"))
+          }
+          style={topEarTabStyle(activeDrawerTab === "token")}
+        >
+          トークン
+        </button>
+      </div>
+
       {activeDrawerTab && (
-        <div style={drawerWrapStyle(isMobile)}>
+        <div
+          style={{
+            ...drawerWrapStyle(isMobile),
+            marginTop: 0,
+          }}
+        >
           {activeDrawerTab === "settings" ? (
             <GptSettingsDrawer
               localSettings={localSettings}

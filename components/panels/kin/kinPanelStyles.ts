@@ -14,49 +14,56 @@ export const buttonPrimary: React.CSSProperties = {
 };
 
 export const buttonReset: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 14,
+  width: 32,
+  height: 32,
+  borderRadius: 10,
   border: "1px solid #d1d5db",
   background: "#fff",
   color: "#374151",
   cursor: "pointer",
   fontWeight: 700,
-  fontSize: 20,
+  fontSize: 16,
   lineHeight: 1,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   flexShrink: 0,
+  boxSizing: "border-box",
 };
 
 export const buttonTransfer: React.CSSProperties = {
-  padding: "8px 12px",
-  borderRadius: 12,
+  padding: "0 12px",
+  height: 32,
+  borderRadius: 10,
   border: "1px solid #99f6e4",
   background: "#ecfeff",
   color: "#0f766e",
   cursor: "pointer",
   fontWeight: 700,
   whiteSpace: "nowrap",
-  fontSize: 13,
+  fontSize: 12,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxSizing: "border-box",
 };
 
 export const buttonSwitch: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 14,
+  width: 32,
+  height: 32,
+  borderRadius: 10,
   border: "1px solid #d1d5db",
   background: "#fff",
   color: "#374151",
   cursor: "pointer",
   fontWeight: 700,
-  fontSize: 22,
+  fontSize: 16,
   lineHeight: 1,
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   flexShrink: 0,
+  boxSizing: "border-box",
 };
 
 export const headerActionButton: React.CSSProperties = {
@@ -119,7 +126,7 @@ export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
   flexDirection: "column",
   border: "1px solid rgba(0,0,0,0.08)",
   borderRadius: isMobile ? 0 : 10,
-  overflow: "hidden",
+  overflow: "visible",
   backgroundImage: "url('/backgrounds/kin-bg.png')",
   backgroundSize: "cover",
   backgroundPosition: "center",
@@ -166,4 +173,6 @@ export const footerStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "flex",
   flexDirection: "column",
   gap: 8,
+  minHeight: isMobile ? undefined : 110,
+  boxSizing: "border-box",
 });

@@ -43,11 +43,6 @@ const tabButtonStyle = (active: boolean): React.CSSProperties => ({
 
 const restoredButton = (base: React.CSSProperties): React.CSSProperties => ({
   ...base,
-  minHeight: 40,
-  padding: "8px 10px",
-  fontSize: 13,
-  borderRadius: 12,
-  lineHeight: 1.15,
   whiteSpace: "nowrap",
   writingMode: "horizontal-tb",
   textOrientation: "mixed",

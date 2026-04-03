@@ -1121,7 +1121,7 @@ export default function ChatApp() {
         flexDirection: "column",
         backgroundColor: "#ffffff",
         backgroundPosition: "top left",
-        overflow: "hidden",
+        overflow: "visible",
       }}
     >
       <div
@@ -1131,7 +1131,7 @@ export default function ChatApp() {
           display: "flex",
           gap: isMobile ? 0 : 12,
           padding: isMobile ? 0 : 12,
-          overflow: "hidden",
+          overflow: "visible",
         }}
       >
         {isMobile ? (
@@ -1141,7 +1141,7 @@ export default function ChatApp() {
               minHeight: 0,
               minWidth: 0,
               position: "relative",
-              overflow: "hidden",
+              overflow: "visible",
               width: "100%",
             }}
           >

@@ -64,9 +64,10 @@ export default function KinPanel(props: KinPanelProps) {
   return (
     <div
       style={{
-      ...panelShellStyle(isMobile),
-      height: "100%",
-      minHeight: 0,
+        ...panelShellStyle(isMobile),
+        height: "100%",
+        minHeight: 0,
+        overflow: "visible",
       }}
     >
       <KinHeader
@@ -100,10 +101,10 @@ export default function KinPanel(props: KinPanelProps) {
 
       <div
         style={{
-        ...chatBodyStyle(isMobile),
-        position: "relative",
-        flex: 1,
-        minHeight: 0,
+          ...chatBodyStyle(isMobile),
+          position: "relative",
+          flex: 1,
+          minHeight: 0,
         }}
       >
         <ChatMessages messages={kinMessages} bottomRef={kinBottomRef} />

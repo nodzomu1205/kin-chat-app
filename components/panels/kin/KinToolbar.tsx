@@ -24,7 +24,7 @@ export default function KinToolbar({
         display: "flex",
         alignItems: "center",
         gap: 6,
-        minHeight: 40,
+        minHeight: 32,
         overflowX: "auto",
         paddingBottom: 2,
         WebkitOverflowScrolling: "touch",

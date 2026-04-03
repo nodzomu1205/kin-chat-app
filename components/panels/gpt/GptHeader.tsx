@@ -12,36 +12,21 @@ type Props = {
   isMobile?: boolean;
 };
 
-const miniTabButton = (active: boolean): React.CSSProperties => ({
-  height: 32,
-  borderRadius: "10px 10px 0 0",
-  border: "1px solid rgba(255,255,255,0.42)",
-  borderBottom: active ? "none" : "1px solid rgba(255,255,255,0.42)",
-  background: active ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.16)",
-  color: active ? "#0f766e" : "#ffffff",
-  fontSize: 12,
-  fontWeight: 800,
-  padding: "0 12px",
-  cursor: "pointer",
-  boxShadow: active ? "0 -2px 8px rgba(15,23,42,0.10)" : "none",
-  whiteSpace: "nowrap",
-});
-
 export default function GptHeader({
   currentKinLabel,
   kinStatus,
   activeDrawerTab,
-  onToggleMemory,
-  onToggleToken,
   onToggleSettings,
   isMobile = false,
 }: Props) {
   return (
     <div
       style={{
+        position: "relative",
+        zIndex: 20,
         background: "#10a37f",
         color: "#fff",
-        padding: isMobile ? "10px 12px 0 12px" : "10px 14px 0 14px",
+        padding: isMobile ? "10px 12px" : "10px 14px",
         flexShrink: 0,
       }}
     >
@@ -96,31 +81,6 @@ export default function GptHeader({
           onClick={onToggleSettings}
         >
           設定
-        </button>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 6,
-          marginTop: 10,
-        }}
-      >
-        <button
-          type="button"
-          onClick={onToggleMemory}
-          style={miniTabButton(activeDrawerTab === "memory")}
-        >
-          メモリ
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleToken}
-          style={miniTabButton(activeDrawerTab === "token")}
-        >
-          トークン
         </button>
       </div>
     </div>
