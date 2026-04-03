@@ -5,6 +5,7 @@ import ChatMessages from "@/components/ChatMessages";
 import type {
   GptBottomTab,
   GptPanelProps,
+  GptTopDrawerTab,
   LocalMemorySettingsInput,
 } from "./gptPanelTypes";
 import GptHeader from "./GptHeader";
@@ -64,10 +65,11 @@ export default function GptPanel(props: GptPanelProps) {
     isMobile = false,
   } = props;
 
-  const [showSettings, setShowSettings] = useState(false);
-  const [showMeta, setShowMeta] = useState(false);
+  const [activeDrawerTab, setActiveDrawerTab] =
+    useState<GptTopDrawerTab>(null);
   const [dragOver, setDragOver] = useState(false);
   const [showFileTools, setShowFileTools] = useState(false);
+  const [showMemoryContent, setShowMemoryContent] = useState(false);
   const [activeBottomTab, setActiveBottomTab] =
     useState<GptBottomTab>("chat");
   const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(
@@ -156,37 +158,39 @@ export default function GptPanel(props: GptPanelProps) {
       <GptHeader
         currentKinLabel={currentKinLabel}
         kinStatus={kinStatus}
-        memoryUsed={memoryUsed}
-        memoryCapacity={memoryCapacity}
-        responseMode={responseMode}
-        showMeta={showMeta}
-        showSettings={showSettings}
-        onToggleMeta={() => {
-          if (showMeta) {
-            setShowMeta(false);
-          } else {
-            setShowMeta(true);
-            setShowSettings(false);
-          }
-        }}
-        onToggleSettings={() => {
-          if (showSettings) {
-            setShowSettings(false);
-          } else {
-            setShowSettings(true);
-            setShowMeta(false);
-          }
-        }}
-        onToggleResponseMode={() =>
-          onChangeResponseMode(responseMode === "strict" ? "creative" : "strict")
+        activeDrawerTab={activeDrawerTab}
+        onToggleMemory={() =>
+          setActiveDrawerTab((prev) => (prev === "memory" ? null : "memory"))
+        }
+        onToggleToken={() =>
+          setActiveDrawerTab((prev) => (prev === "token" ? null : "token"))
+        }
+        onToggleSettings={() =>
+          setActiveDrawerTab((prev) => (prev === "settings" ? null : "settings"))
         }
         isMobile={isMobile}
       />
 
-      {(showMeta || showSettings) && (
+      {activeDrawerTab && (
         <div style={drawerWrapStyle(isMobile)}>
-          {showMeta ? (
+          {activeDrawerTab === "settings" ? (
+            <GptSettingsDrawer
+              localSettings={localSettings}
+              onFieldChange={handleLocalFieldChange}
+              onReset={handleReset}
+              onSave={handleSave}
+              memoryCapacityPreview={memoryCapacityPreview}
+              responseMode={responseMode}
+              onChangeResponseMode={onChangeResponseMode}
+              ingestMode={ingestMode}
+              onChangeIngestMode={onChangeIngestMode}
+              imageDetail={imageDetail}
+              onChangeImageDetail={onChangeImageDetail}
+              isMobile={isMobile}
+            />
+          ) : (
             <GptMetaDrawer
+              mode={activeDrawerTab}
               gptState={gptState}
               tokenStats={tokenStats}
               recent5Chat={recent5Chat}
@@ -199,15 +203,10 @@ export default function GptPanel(props: GptPanelProps) {
               chatRecentLimit={memorySettings.chatRecentLimit}
               maxFacts={memorySettings.maxFacts}
               maxPreferences={memorySettings.maxPreferences}
-              isMobile={isMobile}
-            />
-          ) : (
-            <GptSettingsDrawer
-              localSettings={localSettings}
-              onFieldChange={handleLocalFieldChange}
-              onReset={handleReset}
-              onSave={handleSave}
-              memoryCapacityPreview={memoryCapacityPreview}
+              showMemoryContent={showMemoryContent}
+              onToggleMemoryContent={() =>
+                setShowMemoryContent((prev) => !prev)
+              }
               isMobile={isMobile}
             />
           )}

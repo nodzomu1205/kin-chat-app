@@ -20,6 +20,7 @@ export type PostIngestAction =
   | "inject_prep_deepen";
 
 export type GptBottomTab = "chat" | "task";
+export type GptTopDrawerTab = "memory" | "token" | "settings" | null;
 
 export type TokenStats = {
   lastChatUsage: TokenUsage | null;
@@ -28,6 +29,15 @@ export type TokenStats = {
   lastSummaryUsage: TokenUsage | null;
   threadSummaryTotal: TokenUsage;
   summaryRunCount: number;
+
+  // 第2段階では UI 先行。未配線でも壊れないよう optional にしておく
+  lastSearchUsage?: TokenUsage | null;
+  threadSearchTotal?: TokenUsage;
+  searchRunCount?: number;
+
+  lastTaskUsage?: TokenUsage | null;
+  threadTaskTotal?: TokenUsage;
+  taskRunCount?: number;
 };
 
 export type GptPanelProps = {

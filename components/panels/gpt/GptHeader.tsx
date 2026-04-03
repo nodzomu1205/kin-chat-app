@@ -1,32 +1,39 @@
 import React from "react";
-import type { ResponseMode } from "./gptPanelTypes";
+import type { GptTopDrawerTab } from "./gptPanelTypes";
 import { pillButton, statusDotStyle } from "./gptPanelStyles";
 
 type Props = {
   currentKinLabel: string | null;
   kinStatus: "idle" | "connected" | "error";
-  memoryUsed: number;
-  memoryCapacity: number;
-  responseMode: ResponseMode;
-  showMeta: boolean;
-  showSettings: boolean;
-  onToggleMeta: () => void;
+  activeDrawerTab: GptTopDrawerTab;
+  onToggleMemory: () => void;
+  onToggleToken: () => void;
   onToggleSettings: () => void;
-  onToggleResponseMode: () => void;
   isMobile?: boolean;
 };
+
+const miniTabButton = (active: boolean): React.CSSProperties => ({
+  height: 32,
+  borderRadius: "10px 10px 0 0",
+  border: "1px solid rgba(255,255,255,0.42)",
+  borderBottom: active ? "none" : "1px solid rgba(255,255,255,0.42)",
+  background: active ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.16)",
+  color: active ? "#0f766e" : "#ffffff",
+  fontSize: 12,
+  fontWeight: 800,
+  padding: "0 12px",
+  cursor: "pointer",
+  boxShadow: active ? "0 -2px 8px rgba(15,23,42,0.10)" : "none",
+  whiteSpace: "nowrap",
+});
 
 export default function GptHeader({
   currentKinLabel,
   kinStatus,
-  memoryUsed,
-  memoryCapacity,
-  responseMode,
-  showMeta,
-  showSettings,
-  onToggleMeta,
+  activeDrawerTab,
+  onToggleMemory,
+  onToggleToken,
   onToggleSettings,
-  onToggleResponseMode,
   isMobile = false,
 }: Props) {
   return (
@@ -34,7 +41,7 @@ export default function GptHeader({
       style={{
         background: "#10a37f",
         color: "#fff",
-        padding: isMobile ? "10px 12px" : "10px 14px",
+        padding: isMobile ? "10px 12px 0 12px" : "10px 14px 0 14px",
         flexShrink: 0,
       }}
     >
@@ -82,39 +89,38 @@ export default function GptHeader({
           style={{
             ...pillButton,
             background:
-              responseMode === "strict"
+              activeDrawerTab === "settings"
                 ? "rgba(255,255,255,0.22)"
                 : pillButton.background,
-          }}
-          onClick={onToggleResponseMode}
-          title="strict は事実優先、creative は通常会話です。"
-        >
-          {responseMode === "strict" ? "STRICT" : "CREATIVE"}
-        </button>
-
-        <button
-          type="button"
-          style={{
-            ...pillButton,
-            background: showMeta ? "rgba(255,255,255,0.18)" : pillButton.background,
-          }}
-          onClick={onToggleMeta}
-          title="直近チャット + ファクト + 好み の占有数です。"
-        >
-          メモリ {memoryUsed}/{memoryCapacity}
-        </button>
-
-        <button
-          type="button"
-          style={{
-            ...pillButton,
-            background: showSettings
-              ? "rgba(255,255,255,0.18)"
-              : pillButton.background,
           }}
           onClick={onToggleSettings}
         >
           設定
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 6,
+          marginTop: 10,
+        }}
+      >
+        <button
+          type="button"
+          onClick={onToggleMemory}
+          style={miniTabButton(activeDrawerTab === "memory")}
+        >
+          メモリ
+        </button>
+
+        <button
+          type="button"
+          onClick={onToggleToken}
+          style={miniTabButton(activeDrawerTab === "token")}
+        >
+          トークン
         </button>
       </div>
     </div>

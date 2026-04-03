@@ -41,13 +41,11 @@ const tabButtonStyle = (active: boolean): React.CSSProperties => ({
   cursor: "pointer",
 });
 
-const compactButton = (
-  base: React.CSSProperties,
-  isMobile: boolean
-): React.CSSProperties => ({
+const restoredButton = (base: React.CSSProperties): React.CSSProperties => ({
   ...base,
-  padding: isMobile ? "7px 9px" : base.padding,
-  fontSize: isMobile ? 12 : (base.fontSize as number | undefined) ?? 13,
+  minHeight: 40,
+  padding: "8px 10px",
+  fontSize: 13,
   borderRadius: 12,
   lineHeight: 1.15,
   whiteSpace: "nowrap",
@@ -126,7 +124,7 @@ export default function GptToolbar({
           <>
             <button
               type="button"
-              style={compactButton(buttonTranslate, isMobile)}
+              style={restoredButton(buttonTranslate)}
               onClick={() => onAction("translate_explain")}
             >
               解説
@@ -134,7 +132,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonReply, isMobile)}
+              style={restoredButton(buttonReply)}
               onClick={() => onAction("reply_only")}
             >
               返信案
@@ -142,7 +140,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonPolish, isMobile)}
+              style={restoredButton(buttonPolish)}
               onClick={() => onAction("polish")}
             >
               添削
@@ -150,7 +148,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonTransfer, isMobile)}
+              style={restoredButton(buttonTransfer)}
               onClick={onTransfer}
             >
               Kinに送る
@@ -158,7 +156,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonReset, isMobile)}
+              style={restoredButton(buttonReset)}
               onClick={onReset}
               title="リセット"
             >
@@ -169,7 +167,7 @@ export default function GptToolbar({
           <>
             <button
               type="button"
-              style={compactButton(buttonTask, isMobile)}
+              style={restoredButton(buttonTask)}
               onClick={onRunTask}
             >
               TASK
@@ -177,7 +175,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonDeepen, isMobile)}
+              style={restoredButton(buttonDeepen)}
               onClick={onRunDeepen}
             >
               深堀り
@@ -185,7 +183,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonTask, isMobile)}
+              style={restoredButton(buttonTask)}
               onClick={onToggleFileTools}
             >
               {showFileTools ? "FILE ▲" : "FILE"}
@@ -193,7 +191,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonTransfer, isMobile)}
+              style={restoredButton(buttonTransfer)}
               onClick={onTransfer}
             >
               Kinに送る
@@ -201,7 +199,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={compactButton(buttonReset, isMobile)}
+              style={restoredButton(buttonReset)}
               onClick={onReset}
               title="リセット"
             >
