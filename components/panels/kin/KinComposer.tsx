@@ -42,7 +42,33 @@ export default function KinComposer({
         minHeight: 0,
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+        {value.trim().length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            title="入力内容をクリア"
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              border: "1px solid #d1d5db",
+              background: "rgba(255,255,255,0.92)",
+              color: "#64748b",
+              fontSize: 14,
+              fontWeight: 800,
+              lineHeight: 1,
+              cursor: "pointer",
+              zIndex: 2,
+            }}
+          >
+            ×
+          </button>
+        )}
+
         <ChatTextarea
           value={value}
           onChange={onChange}
