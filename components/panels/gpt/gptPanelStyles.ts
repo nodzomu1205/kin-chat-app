@@ -2,6 +2,8 @@ import type React from "react";
 
 export const buttonPrimary: React.CSSProperties = {
   padding: "8px 14px",
+  minWidth: 64,
+  height: 40,
   borderRadius: 12,
   border: "none",
   background: "#2563eb",
@@ -10,6 +12,28 @@ export const buttonPrimary: React.CSSProperties = {
   fontWeight: 700,
   whiteSpace: "nowrap",
   fontSize: 14,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxSizing: "border-box",
+};
+
+export const buttonSecondaryWide: React.CSSProperties = {
+  padding: "8px 14px",
+  minWidth: 72,
+  height: 40,
+  borderRadius: 12,
+  border: "1px solid #d1d5db",
+  background: "#fff",
+  color: "#374151",
+  cursor: "pointer",
+  fontWeight: 700,
+  whiteSpace: "nowrap",
+  fontSize: 14,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxSizing: "border-box",
 };
 
 export const buttonReset: React.CSSProperties = {
@@ -122,6 +146,23 @@ export const buttonDeepen: React.CSSProperties = {
   border: "1px solid #93c5fd",
   background: "#eff6ff",
   color: "#1d4ed8",
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: 12,
+  whiteSpace: "nowrap",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxSizing: "border-box",
+};
+
+export const buttonFile: React.CSSProperties = {
+  padding: "0 12px",
+  height: 32,
+  borderRadius: 10,
+  border: "1px solid #d1d5db",
+  background: "#ffffff",
+  color: "#6d28d9",
   cursor: "pointer",
   fontWeight: 700,
   fontSize: 12,
@@ -264,7 +305,7 @@ export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "flex",
   flexDirection: "column",
   border: "1px solid rgba(0,0,0,0.08)",
-  borderRadius: isMobile ? 0 : 10,
+  borderRadius: 0,
   overflow: "visible",
   position: "relative",
   backgroundImage: "url('/backgrounds/gpt-bg.png')",

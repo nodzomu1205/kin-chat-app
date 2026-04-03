@@ -7,7 +7,7 @@ import type {
 } from "./gptPanelTypes";
 import {
   buttonPrimary,
-  buttonReset,
+  buttonSecondaryWide,
   helpTextStyle,
   inputStyle,
   labelStyle,
@@ -229,7 +229,7 @@ export default function GptSettingsDrawer({
             flexWrap: "wrap",
           }}
         >
-          <button type="button" style={buttonReset} onClick={onReset}>
+          <button type="button" style={buttonSecondaryWide} onClick={onReset}>
             初期化
           </button>
           <button type="button" style={buttonPrimary} onClick={onSave}>

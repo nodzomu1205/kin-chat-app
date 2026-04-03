@@ -125,7 +125,7 @@ export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "flex",
   flexDirection: "column",
   border: "1px solid rgba(0,0,0,0.08)",
-  borderRadius: isMobile ? 0 : 10,
+  borderRadius: 0,
   overflow: "visible",
   backgroundImage: "url('/backgrounds/kin-bg.png')",
   backgroundSize: "cover",

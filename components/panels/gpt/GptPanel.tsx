@@ -26,7 +26,6 @@ import {
   sumUsages,
 } from "./gptPanelUtils";
 
-
 const topEarRailStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "flex",
   justifyContent: "flex-end",
@@ -34,15 +33,19 @@ const topEarRailStyle = (isMobile: boolean): React.CSSProperties => ({
   gap: 6,
   paddingLeft: isMobile ? 8 : 12,
   paddingRight: isMobile ? 8 : 12,
-  height: 18,
-  marginBottom: -1,
+  height: isMobile ? 28 : 20,
+  marginTop: 0,
+  marginBottom: isMobile ? -10 : -2,
   position: "relative",
-  zIndex: 12,
+  zIndex: 30,
   pointerEvents: "none",
 });
 
-const topEarTabStyle = (active: boolean): React.CSSProperties => ({
-  height: 30,
+const topEarTabStyle = (
+  active: boolean,
+  isMobile: boolean
+): React.CSSProperties => ({
+  height: isMobile ? 34 : 32,
   borderRadius: "0 0 10px 10px",
   border: "1px solid #cbd5e1",
   borderTop: "none",
@@ -50,7 +53,7 @@ const topEarTabStyle = (active: boolean): React.CSSProperties => ({
   color: active ? "#0f766e" : "#475569",
   fontSize: 12,
   fontWeight: 800,
-  padding: "0 12px",
+  padding: isMobile ? "0 14px" : "0 12px",
   boxShadow: active ? "0 4px 10px rgba(15,23,42,0.10)" : "none",
   cursor: "pointer",
   pointerEvents: "auto",
@@ -184,7 +187,6 @@ export default function GptPanel(props: GptPanelProps) {
         ...panelShellStyle(isMobile),
         height: "100%",
         minHeight: 0,
-        overflow: "visible",
       }}
     >
       <GptHeader
@@ -209,7 +211,7 @@ export default function GptPanel(props: GptPanelProps) {
           onClick={() =>
             setActiveDrawerTab((prev) => (prev === "memory" ? null : "memory"))
           }
-          style={topEarTabStyle(activeDrawerTab === "memory")}
+          style={topEarTabStyle(activeDrawerTab === "memory", isMobile)}
         >
           メモリ
         </button>
@@ -219,7 +221,7 @@ export default function GptPanel(props: GptPanelProps) {
           onClick={() =>
             setActiveDrawerTab((prev) => (prev === "token" ? null : "token"))
           }
-          style={topEarTabStyle(activeDrawerTab === "token")}
+          style={topEarTabStyle(activeDrawerTab === "token", isMobile)}
         >
           トークン
         </button>

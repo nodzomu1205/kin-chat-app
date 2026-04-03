@@ -9,6 +9,7 @@ import {
   buttonReset,
   buttonSwitch,
   buttonTask,
+  buttonFile,
   buttonTransfer,
   buttonTranslate,
 } from "./gptPanelStyles";
@@ -178,7 +179,7 @@ export default function GptToolbar({
 
             <button
               type="button"
-              style={restoredButton(buttonTask)}
+              style={restoredButton(buttonFile)}
               onClick={onToggleFileTools}
             >
               {showFileTools ? "FILE ▲" : "FILE"}
