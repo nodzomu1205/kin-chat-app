@@ -229,21 +229,36 @@ export default function GptComposer({
             onClick={handlePickFile}
             disabled={loading || ingestLoading || !canInjectFile}
             style={{
-              ...buttonPrimary,
-              width: isMobile ? 44 : 48,
-              minWidth: isMobile ? 44 : 48,
-              borderRadius: 16,
-              padding: "8px 6px",
-              writingMode: "vertical-rl",
-              textOrientation: "upright",
-              letterSpacing: "0.08em",
-              lineHeight: 1.1,
+              width: 56,
+              minWidth: 56,
+              maxWidth: 56,
+              alignSelf: "stretch",
+              flexShrink: 0,
+              border: "none",
+              background: "#2563eb",
+              color: "#fff",
+              cursor:
+                loading || ingestLoading || !canInjectFile
+                  ? "default"
+                  : "pointer",
+              fontWeight: 700,
+              fontSize: 14,
+              boxSizing: "border-box",
+              borderRadius: 18,
               opacity:
                 loading || ingestLoading || !canInjectFile
                   ? blink
                     ? 0.55
                     : 0.8
                   : 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "8px 6px",
+              writingMode: "vertical-rl",
+              textOrientation: "upright",
+              lineHeight: 1.1,
+              letterSpacing: "0.08em",
               transition: "opacity 180ms ease",
             }}
             title={
