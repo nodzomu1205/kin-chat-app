@@ -34,7 +34,7 @@ type Props = {
   onChangeIngestMode: (mode: IngestMode) => void;
   onChangeImageDetail: (detail: ImageDetail) => void;
   onChangePostIngestAction: (action: PostIngestAction) => void;
-  showInjectTools: boolean;
+  showFileTools: boolean;
   isMobile?: boolean;
 };
 
@@ -49,7 +49,7 @@ const selectStyle: React.CSSProperties = {
   padding: "0 12px",
 };
 
-const kindButtonStyle = (active: boolean): React.CSSProperties => ({
+const choiceButton = (active: boolean): React.CSSProperties => ({
   height: 34,
   borderRadius: 999,
   border: active ? "1px solid #67e8f9" : "1px solid #cbd5e1",
@@ -59,6 +59,7 @@ const kindButtonStyle = (active: boolean): React.CSSProperties => ({
   fontWeight: 800,
   padding: "0 12px",
   cursor: "pointer",
+  lineHeight: 1,
 });
 
 export default function GptComposer({
@@ -77,14 +78,14 @@ export default function GptComposer({
   onChangeIngestMode,
   onChangeImageDetail,
   onChangePostIngestAction,
-  showInjectTools,
+  showFileTools,
   isMobile = false,
 }: Props) {
   const [blink, setBlink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !ingestLoading) {
       setBlink(false);
       return;
     }
@@ -94,7 +95,7 @@ export default function GptComposer({
     }, 520);
 
     return () => window.clearInterval(id);
-  }, [loading]);
+  }, [loading, ingestLoading]);
 
   const handlePickFile = () => {
     if (loading || ingestLoading || !canInjectFile) return;
@@ -133,139 +134,126 @@ export default function GptComposer({
         accept=".pdf,.txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql"
       />
 
-      {showInjectTools && (
+      {showFileTools && (
         <div
           style={{
-            background: "#f8fafc",
+            display: "flex",
+            alignItems: "stretch",
+            gap: 10,
             border: "1px solid #cbd5e1",
             borderRadius: 14,
+            background: "#f8fafc",
             padding: 12,
             boxShadow: "0 8px 20px rgba(15,23,42,0.08)",
           }}
         >
           <div
             style={{
+              flex: 1,
+              minWidth: 0,
               display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-              marginBottom: 10,
+              flexDirection: "column",
+              gap: 10,
             }}
           >
-            <span
+            <div
               style={{
-                fontSize: 12,
-                fontWeight: 800,
-                color: "#475569",
-                marginRight: 2,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
               }}
             >
-              対象:
-            </span>
-
-            <button
-              type="button"
-              style={kindButtonStyle(uploadKind === "text")}
-              onClick={() => onChangeUploadKind("text")}
-            >
-              テキスト
-            </button>
-
-            <button
-              type="button"
-              style={kindButtonStyle(uploadKind === "visual")}
-              onClick={() => onChangeUploadKind("visual")}
-            >
-              画像 / PDF
-            </button>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-              marginBottom: 10,
-            }}
-          >
-            {uploadKind === "text" ? (
-              <select
-                value={ingestMode}
-                onChange={(e) => onChangeIngestMode(e.target.value as IngestMode)}
-                style={selectStyle}
-                title="テキストやコードの注入方法です"
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: "#475569",
+                }}
               >
-                <option value="compact">テキスト: compact</option>
-                <option value="full">テキスト: full</option>
-              </select>
-            ) : (
+                対象:
+              </span>
+
+              <button
+                type="button"
+                style={choiceButton(uploadKind === "text")}
+                onClick={() => onChangeUploadKind("text")}
+              >
+                テキスト
+              </button>
+
+              <button
+                type="button"
+                style={choiceButton(uploadKind === "visual")}
+                onClick={() => onChangeUploadKind("visual")}
+              >
+                画像 / PDF
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: "#475569",
+                }}
+              >
+                注入後処理:
+              </span>
+
               <select
-                value={imageDetail}
+                value={postIngestAction}
                 onChange={(e) =>
-                  onChangeImageDetail(e.target.value as ImageDetail)
+                  onChangePostIngestAction(e.target.value as PostIngestAction)
                 }
                 style={selectStyle}
-                title="画像やPDFの視覚記述の詳細度です"
+                title="注入後にどこまで自動処理するか"
               >
-                <option value="basic">画像: basic</option>
-                <option value="detailed">画像: detailed</option>
-                <option value="max">画像: max</option>
+                <option value="inject_only">注入のみ</option>
+                <option value="inject_and_prep">注入＋整理</option>
+                <option value="inject_prep_deepen">注入＋整理＋深堀り</option>
               </select>
-            )}
-
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 800,
-                color: "#475569",
-                marginRight: 2,
-              }}
-            >
-              注入後処理:
-            </span>
-
-            <select
-              value={postIngestAction}
-              onChange={(e) =>
-                onChangePostIngestAction(e.target.value as PostIngestAction)
-              }
-              style={selectStyle}
-              title="注入後にどこまで自動処理するかを選びます"
-            >
-              <option value="inject_only">注入のみ</option>
-              <option value="inject_and_prep">注入＋整理</option>
-              <option value="inject_prep_deepen">注入＋整理＋深掘り</option>
-            </select>
-
-            <button
-              type="button"
-              onClick={handlePickFile}
-              disabled={loading || ingestLoading || !canInjectFile}
-              style={{
-                minWidth: 80,
-                borderRadius: 12,
-                border: "1px solid #d1d5db",
-                background: "#ffffff",
-                padding: "8px 12px",
-                fontSize: 12,
-                fontWeight: 800,
-                cursor:
-                  loading || ingestLoading || !canInjectFile
-                    ? "default"
-                    : "pointer",
-                opacity: loading || ingestLoading || !canInjectFile ? 0.6 : 1,
-                lineHeight: 1.2,
-              }}
-              title={
-                canInjectFile
-                  ? "ファイルを読み込んでKin用の情報ブロックを作成"
-                  : "先にKinを接続してください"
-              }
-            >
-              {ingestLoading ? "変換中" : "注入"}
-            </button>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handlePickFile}
+            disabled={loading || ingestLoading || !canInjectFile}
+            style={{
+              ...buttonPrimary,
+              width: isMobile ? 44 : 48,
+              minWidth: isMobile ? 44 : 48,
+              borderRadius: 16,
+              padding: "8px 6px",
+              writingMode: "vertical-rl",
+              textOrientation: "upright",
+              letterSpacing: "0.08em",
+              lineHeight: 1.1,
+              opacity:
+                loading || ingestLoading || !canInjectFile
+                  ? blink
+                    ? 0.55
+                    : 0.8
+                  : 1,
+              transition: "opacity 180ms ease",
+            }}
+            title={
+              canInjectFile
+                ? "ファイルを読み込んでKin用の情報ブロックを作成"
+                : "先にKinを接続してください"
+            }
+          >
+            {ingestLoading ? "変換中" : "注入"}
+          </button>
         </div>
       )}
 
@@ -277,7 +265,33 @@ export default function GptComposer({
           minHeight: 0,
         }}
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+          {value.trim().length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              title="入力内容をクリア"
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                border: "1px solid #d1d5db",
+                background: "rgba(255,255,255,0.92)",
+                color: "#64748b",
+                fontSize: 14,
+                fontWeight: 800,
+                lineHeight: 1,
+                cursor: "pointer",
+                zIndex: 2,
+              }}
+            >
+              ×
+            </button>
+          )}
+
           <ChatTextarea
             value={value}
             onChange={onChange}

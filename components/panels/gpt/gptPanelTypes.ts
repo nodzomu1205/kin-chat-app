@@ -19,6 +19,8 @@ export type PostIngestAction =
   | "inject_and_prep"
   | "inject_prep_deepen";
 
+export type GptBottomTab = "chat" | "task";
+
 export type TokenStats = {
   lastChatUsage: TokenUsage | null;
   recentChatUsages: TokenUsage[];

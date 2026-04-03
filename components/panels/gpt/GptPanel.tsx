@@ -2,7 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import ChatMessages from "@/components/ChatMessages";
-import type { GptPanelProps, LocalMemorySettingsInput } from "./gptPanelTypes";
+import type {
+  GptBottomTab,
+  GptPanelProps,
+  LocalMemorySettingsInput,
+} from "./gptPanelTypes";
 import GptHeader from "./GptHeader";
 import GptMetaDrawer from "./GptMetaDrawer";
 import GptSettingsDrawer from "./GptSettingsDrawer";
@@ -63,7 +67,9 @@ export default function GptPanel(props: GptPanelProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showMeta, setShowMeta] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [showInjectTools, setShowInjectTools] = useState(false);
+  const [showFileTools, setShowFileTools] = useState(false);
+  const [activeBottomTab, setActiveBottomTab] =
+    useState<GptBottomTab>("chat");
   const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(
     memorySettingsToInput(memorySettings)
   );
@@ -132,14 +138,21 @@ export default function GptPanel(props: GptPanelProps) {
     });
   };
 
-return (
-  <div
-    style={{
-      ...panelShellStyle(isMobile),
-      height: "100%",
-      minHeight: 0,
-    }}
-  >
+  const handleChangeBottomTab = (tab: GptBottomTab) => {
+    setActiveBottomTab(tab);
+    if (tab === "chat") {
+      setShowFileTools(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        ...panelShellStyle(isMobile),
+        height: "100%",
+        minHeight: 0,
+      }}
+    >
       <GptHeader
         currentKinLabel={currentKinLabel}
         kinStatus={kinStatus}
@@ -256,37 +269,6 @@ return (
           overflow: "visible",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            right: 12,
-            top: 0,
-            transform: "translateY(-100%)",
-            zIndex: 40,
-            pointerEvents: "auto",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setShowInjectTools((prev) => !prev)}
-            style={{
-              height: 34,
-              borderRadius: "10px 10px 0 0",
-              border: "1px solid #cbd5e1",
-              borderBottom: showInjectTools ? "none" : "1px solid #cbd5e1",
-              background: "#ffffff",
-              color: "#0f766e",
-              fontSize: 12,
-              fontWeight: 800,
-              padding: "0 12px",
-              boxShadow: "0 -2px 8px rgba(15,23,42,0.10)",
-              cursor: "pointer",
-            }}
-          >
-            {showInjectTools ? "注入 ▲" : "注入 ▼"}
-          </button>
-        </div>
-
         {pendingInjectionTotalParts > 0 && (
           <div
             style={{
@@ -305,11 +287,15 @@ return (
         )}
 
         <GptToolbar
+          activeTab={activeBottomTab}
           isMobile={isMobile}
           onSwitchPanel={onSwitchPanel}
+          onChangeTab={handleChangeBottomTab}
           onAction={(mode) => sendToGpt(mode)}
           onRunTask={runPrepTaskFromInput}
           onRunDeepen={runDeepenTaskFromLast}
+          onToggleFileTools={() => setShowFileTools((prev) => !prev)}
+          showFileTools={showFileTools}
           onTransfer={sendLastGptToKinDraft}
           onReset={resetGptForCurrentKin}
         />
@@ -330,7 +316,7 @@ return (
           onChangeIngestMode={onChangeIngestMode}
           onChangeImageDetail={onChangeImageDetail}
           onChangePostIngestAction={onChangePostIngestAction}
-          showInjectTools={showInjectTools}
+          showFileTools={activeBottomTab === "task" && showFileTools}
           isMobile={isMobile}
         />
       </div>
