@@ -1238,7 +1238,9 @@ export default function ChatApp() {
       onChangeIngestMode={setIngestMode}
       onChangeImageDetail={setImageDetail}
       onChangePostIngestAction={setPostIngestAction}
-      pendingInjectionCurrentPart={pendingKinInjectionIndex + 1}
+      pendingInjectionCurrentPart={
+        pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0
+      }
       pendingInjectionTotalParts={pendingKinInjectionBlocks.length}
       onSwitchPanel={() => setActiveTab("kin")}
       isMobile={isMobile}
