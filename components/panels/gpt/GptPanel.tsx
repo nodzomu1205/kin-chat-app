@@ -61,10 +61,10 @@ const topEarTabStyle = (
   whiteSpace: "nowrap",
 });
 
-function formatBarUpdatedAt(value?: string) {
-  if (!value) return "-";
+function formatContextUpdatedAt(value?: string) {
+  if (!value) return "";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
+  if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleString("ja-JP", {
     month: "2-digit",
     day: "2-digit",
@@ -73,29 +73,16 @@ function formatBarUpdatedAt(value?: string) {
   });
 }
 
-const taskStatusBarStyle = (isMobile: boolean): React.CSSProperties => ({
-  marginLeft: isMobile ? 8 : 12,
-  marginRight: isMobile ? 8 : 12,
-  marginTop: isMobile ? 8 : 6,
-  marginBottom: isMobile ? 8 : 8,
-  border: "1px solid #dbeafe",
-  background: "#f8fbff",
-  borderRadius: 12,
-  padding: isMobile ? "8px 10px" : "8px 12px",
-  display: "grid",
-  gap: isMobile ? 0 : 6,
-  cursor: "pointer",
-  boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
-});
-
-const taskStatusTopRowStyle = (
-  isMobile: boolean
-): React.CSSProperties => ({
-  display: "grid",
-  gridTemplateColumns: isMobile ? "1fr auto auto" : "1fr auto",
+const contextLineWrapStyle = (isMobile: boolean): React.CSSProperties => ({
+  marginLeft: isMobile ? 10 : 12,
+  marginRight: isMobile ? 10 : 12,
+  marginTop: isMobile ? 6 : 4,
+  marginBottom: isMobile ? 6 : 6,
+  minHeight: isMobile ? 18 : 20,
+  display: "flex",
   alignItems: "center",
-  gap: isMobile ? 8 : 10,
-  fontSize: isMobile ? 11 : 12,
+  justifyContent: "space-between",
+  gap: 8,
 });
 
 export default function GptPanel(props: GptPanelProps) {
@@ -236,15 +223,45 @@ export default function GptPanel(props: GptPanelProps) {
   const taskName =
     currentTaskDraft.title?.trim() ||
     currentTaskDraft.taskName?.trim() ||
-    "未設定";
+    "";
 
-  const instructionPreview = useMemo(() => {
-    const text = currentTaskDraft.userInstruction?.trim() || "";
-    if (!text) return "追加指示なし";
-    return text.length > 40 ? `${text.slice(0, 40)}…` : text;
-  }, [currentTaskDraft.userInstruction]);
+  const currentTopic =
+    gptState.memory.context.currentTopic?.trim() || "";
 
-  const hasSearchContext = !!currentTaskDraft.searchContext?.query?.trim();
+  const hasTask =
+    !!currentTaskDraft.body.trim() ||
+    !!currentTaskDraft.prepText.trim() ||
+    !!currentTaskDraft.deepenText.trim() ||
+    !!currentTaskDraft.mergedText.trim() ||
+    currentTaskDraft.sources.length > 0;
+
+  const taskFocused =
+    activeDrawerTab === "task_status" ||
+    activeBottomTab === "task_primary" ||
+    activeBottomTab === "task_secondary";
+
+  const contextKind: "task" | "chat" | null =
+    taskFocused && taskName && hasTask
+      ? "task"
+      : currentTopic
+        ? "chat"
+        : taskName && hasTask
+          ? "task"
+          : null;
+
+  const contextLabel =
+    contextKind === "task"
+      ? taskName
+      : contextKind === "chat"
+        ? currentTopic
+        : "";
+
+  const contextUpdatedAt =
+    contextKind === "task"
+      ? formatContextUpdatedAt(currentTaskDraft.updatedAt)
+      : "";
+
+  const showContextLine = !!contextLabel;
 
   return (
     <div
@@ -304,114 +321,39 @@ export default function GptPanel(props: GptPanelProps) {
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={() =>
-          setActiveDrawerTab((prev) =>
-            prev === "task_status" ? null : "task_status"
-          )
-        }
-        style={taskStatusBarStyle(isMobile)}
-      >
-        <div style={taskStatusTopRowStyle(isMobile)}>
+      {showContextLine && (
+        <div style={contextLineWrapStyle(isMobile)}>
           <div
             style={{
-              fontSize: isMobile ? 13 : 13,
-              fontWeight: 800,
-              color: "#0f172a",
-              lineHeight: 1.35,
-              textAlign: "left",
               minWidth: 0,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              fontSize: isMobile ? 13 : 13,
+              fontWeight: 800,
+              color: contextKind === "task" ? "#0f172a" : "#334155",
+              textAlign: "left",
+              lineHeight: 1.35,
             }}
+            title={contextLabel}
           >
-            {taskName}
+            {contextLabel}
           </div>
 
           <div
             style={{
+              flexShrink: 0,
               fontSize: 11,
               fontWeight: 700,
               color: "#64748b",
               whiteSpace: "nowrap",
+              lineHeight: 1.35,
             }}
           >
-            更新: {formatBarUpdatedAt(currentTaskDraft.updatedAt)}
+            {contextUpdatedAt ? `更新: ${contextUpdatedAt}` : ""}
           </div>
-
-          {isMobile && (
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 800,
-                color:
-                  activeDrawerTab === "task_status" ? "#0f766e" : "#64748b",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {activeDrawerTab === "task_status" ? "▲" : "▼"}
-            </div>
-          )}
         </div>
-
-        {!isMobile && (
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 6,
-            }}
-          >
-            <span
-              style={{
-                border: "1px solid #cbd5e1",
-                background: "#ffffff",
-                borderRadius: 999,
-                padding: "2px 8px",
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#475569",
-                lineHeight: 1.5,
-                whiteSpace: "nowrap",
-              }}
-            >
-              指示: {instructionPreview}
-            </span>
-            <span
-              style={{
-                border: "1px solid #cbd5e1",
-                background: "#ffffff",
-                borderRadius: 999,
-                padding: "2px 8px",
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#475569",
-                lineHeight: 1.5,
-                whiteSpace: "nowrap",
-              }}
-            >
-              検索: {hasSearchContext ? "あり" : "なし"}
-            </span>
-            <span
-              style={{
-                border: "1px solid #cbd5e1",
-                background: "#ffffff",
-                borderRadius: 999,
-                padding: "2px 8px",
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#475569",
-                lineHeight: 1.5,
-                whiteSpace: "nowrap",
-              }}
-            >
-              ソース: {currentTaskDraft.sources.length}件
-            </span>
-          </div>
-        )}
-      </button>
+      )}
 
       {activeDrawerTab && (
         <div
