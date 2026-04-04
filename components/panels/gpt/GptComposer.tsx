@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ChatTextarea from "@/components/ChatTextarea";
-import { buttonPrimary } from "./gptPanelStyles";
 import type {
   FileUploadKind,
   ImageDetail,
@@ -62,6 +61,30 @@ const choiceButton = (active: boolean): React.CSSProperties => ({
   lineHeight: 1,
 });
 
+const verticalButtonStyle: React.CSSProperties = {
+  width: 56,
+  minWidth: 56,
+  maxWidth: 56,
+  alignSelf: "stretch",
+  flexShrink: 0,
+  border: "none",
+  background: "#2563eb",
+  color: "#fff",
+  fontWeight: 700,
+  fontSize: 14,
+  boxSizing: "border-box",
+  borderRadius: 18,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "8px 6px",
+  writingMode: "vertical-rl",
+  textOrientation: "upright",
+  lineHeight: 1.1,
+  letterSpacing: "0.08em",
+  transition: "opacity 180ms ease",
+};
+
 export default function GptComposer({
   value,
   onChange,
@@ -82,7 +105,6 @@ export default function GptComposer({
   isMobile = false,
 }: Props) {
   const [blink, setBlink] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !ingestLoading) {
@@ -96,11 +118,6 @@ export default function GptComposer({
 
     return () => window.clearInterval(id);
   }, [loading, ingestLoading]);
-
-  const handlePickFile = () => {
-    if (loading || ingestLoading || !canInjectFile) return;
-    fileInputRef.current?.click();
-  };
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -117,6 +134,9 @@ export default function GptComposer({
     });
   };
 
+  const injectDisabled = loading || ingestLoading || !canInjectFile;
+  const sendDisabled = loading || ingestLoading;
+
   return (
     <div
       style={{
@@ -126,14 +146,6 @@ export default function GptComposer({
         minHeight: 0,
       }}
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        style={{ display: "none" }}
-        onChange={handleFileChange}
-        accept=".pdf,.txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql"
-      />
-
       {showFileTools && (
         <div
           style={{
@@ -225,51 +237,39 @@ export default function GptComposer({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handlePickFile}
-            disabled={loading || ingestLoading || !canInjectFile}
+          <div
             style={{
-              width: 56,
-              minWidth: 56,
-              maxWidth: 56,
-              alignSelf: "stretch",
-              flexShrink: 0,
-              border: "none",
-              background: "#2563eb",
-              color: "#fff",
-              cursor:
-                loading || ingestLoading || !canInjectFile
-                  ? "default"
-                  : "pointer",
-              fontWeight: 700,
-              fontSize: 14,
-              boxSizing: "border-box",
-              borderRadius: 18,
-              opacity:
-                loading || ingestLoading || !canInjectFile
-                  ? blink
-                    ? 0.55
-                    : 0.8
-                  : 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "8px 6px",
-              writingMode: "vertical-rl",
-              textOrientation: "upright",
-              lineHeight: 1.1,
-              letterSpacing: "0.08em",
-              transition: "opacity 180ms ease",
+              ...verticalButtonStyle,
+              position: "relative",
+              cursor: injectDisabled ? "default" : "pointer",
+              opacity: injectDisabled ? (blink ? 0.55 : 0.8) : 1,
             }}
             title={
               canInjectFile
                 ? "ファイルを読み込んでKin用の情報ブロックを作成"
                 : "先にKinを接続してください"
             }
+            aria-disabled={injectDisabled}
           >
             {ingestLoading ? "変換中" : "注入"}
-          </button>
+
+            {!injectDisabled && (
+              <input
+                type="file"
+                onChange={handleFileChange}
+                accept=".pdf,.txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  opacity: 0,
+                  cursor: "pointer",
+                }}
+                title=""
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -308,43 +308,23 @@ export default function GptComposer({
             </button>
           )}
 
-        <ChatTextarea
-          value={value}
-          onChange={onChange}
-          onSubmit={onSubmit}
-          submitOnEnter={!isMobile}
-        />
+          <ChatTextarea
+            value={value}
+            onChange={onChange}
+            onSubmit={onSubmit}
+            submitOnEnter={!isMobile}
+          />
         </div>
 
         <button
           type="button"
           style={{
-            width: 56,
-            minWidth: 56,
-            maxWidth: 56,
-            alignSelf: "stretch",
-            flexShrink: 0,
-            border: "none",
-            background: "#2563eb",
-            color: "#fff",
-            cursor: loading || ingestLoading ? "default" : "pointer",
-            fontWeight: 700,
-            fontSize: 14,
-            boxSizing: "border-box",
-            borderRadius: 18,
-            opacity: loading || ingestLoading ? (blink ? 0.55 : 1) : 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "8px 6px",
-            writingMode: "vertical-rl",
-            textOrientation: "upright",
-            lineHeight: 1.1,
-            letterSpacing: "0.08em",
-            transition: "opacity 180ms ease",
+            ...verticalButtonStyle,
+            cursor: sendDisabled ? "default" : "pointer",
+            opacity: sendDisabled ? (blink ? 0.55 : 1) : 1,
           }}
           onClick={onSubmit}
-          disabled={loading || ingestLoading}
+          disabled={sendDisabled}
           title="ChatGPTへ送信"
         >
           {loading ? "通信中" : "送信"}
