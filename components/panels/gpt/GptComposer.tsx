@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ChatTextarea from "@/components/ChatTextarea";
 import type {
+  FileReadPolicy,
   FileUploadKind,
   ImageDetail,
   IngestMode,
@@ -20,6 +21,7 @@ type Props = {
       mode: IngestMode;
       detail: ImageDetail;
       action: PostIngestAction;
+      readPolicy: FileReadPolicy;
     }
   ) => Promise<void>;
   loading: boolean;
@@ -29,6 +31,7 @@ type Props = {
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
   postIngestAction: PostIngestAction;
+  fileReadPolicy: FileReadPolicy;
   onChangeUploadKind: (kind: FileUploadKind) => void;
   onChangeIngestMode: (mode: IngestMode) => void;
   onChangeImageDetail: (detail: ImageDetail) => void;
@@ -111,6 +114,7 @@ export default function GptComposer({
   onChangeImageDetail,
   onChangePostIngestAction,
   showFileTools,
+  fileReadPolicy,
   isMobile = false,
 }: Props) {
   const [blink, setBlink] = useState(false);
@@ -144,6 +148,7 @@ export default function GptComposer({
       mode: ingestMode,
       detail: imageDetail,
       action: postIngestAction,
+      readPolicy: fileReadPolicy,
     });
   };
 

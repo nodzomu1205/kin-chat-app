@@ -74,6 +74,8 @@ export default function ChatApp() {
     setImageDetail,
     postIngestAction,
     setPostIngestAction,
+    fileReadPolicy,
+    setFileReadPolicy,
   } = usePersistedGptOptions();
 
   const {
@@ -82,6 +84,7 @@ export default function ChatApp() {
     applySummaryUsage,
     applySearchUsage,
     applyTaskUsage,
+    applyIngestUsage,
     resetTokenStats,
   } = useTokenTracking();
 
@@ -854,6 +857,7 @@ export default function ChatApp() {
       mode: typeof ingestMode;
       detail: typeof imageDetail;
       action: PostIngestAction;
+      readPolicy: typeof fileReadPolicy;
     }
   ) => {
     if (ingestLoading) return;
@@ -867,6 +871,7 @@ export default function ChatApp() {
       form.append("kind", resolvedKind);
       form.append("mode", options.mode);
       form.append("detail", options.detail);
+      form.append("readPolicy", options.readPolicy);
 
       const res = await fetch("/api/ingest", {
         method: "POST",
@@ -893,6 +898,8 @@ export default function ChatApp() {
         ]);
         return;
       }
+
+      applyIngestUsage(data?.usage);
 
       const blocks: string[] = Array.isArray(data?.kinBlocks) ? data.kinBlocks : [];
       if (blocks.length === 0) {
@@ -957,6 +964,13 @@ export default function ChatApp() {
           ? `テキスト注入: ${options.mode}`
           : `画像詳細度: ${options.detail}`;
 
+      const readPolicyLabel =
+        options.readPolicy === "text_first"
+          ? "文字優先"
+          : options.readPolicy === "visual_first"
+            ? "視覚優先"
+            : "統合";
+
       const actionLabel =
         options.action === "inject_only"
           ? "注入のみ"
@@ -970,6 +984,7 @@ export default function ChatApp() {
         "ファイルをKin注入用テキストに変換しました。",
         `タイトル: ${title}`,
         `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}`,
+        `読込方針: ${readPolicyLabel}`,
         modeLine,
         `注入後処理: ${actionLabel}`,
         `分割数: ${blocks.length}`,
@@ -1219,10 +1234,12 @@ export default function ChatApp() {
       ingestMode={ingestMode}
       imageDetail={imageDetail}
       postIngestAction={postIngestAction}
+      fileReadPolicy={fileReadPolicy}
       onChangeUploadKind={setUploadKind}
       onChangeIngestMode={setIngestMode}
       onChangeImageDetail={setImageDetail}
       onChangePostIngestAction={setPostIngestAction}
+      onChangeFileReadPolicy={setFileReadPolicy}
       pendingInjectionCurrentPart={
         pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0
       }

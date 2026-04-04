@@ -13,6 +13,9 @@ export type TokenStats = {
   lastTaskUsage: TokenUsage | null;
   threadTaskTotal: TokenUsage;
   taskRunCount: number;
+  lastIngestUsage: TokenUsage | null;
+  threadIngestTotal: TokenUsage;
+  ingestRunCount: number;
 };
 
 export const emptyUsage = (): TokenUsage => ({
@@ -34,6 +37,9 @@ export const emptyTokenStats = (): TokenStats => ({
   lastTaskUsage: null,
   threadTaskTotal: emptyUsage(),
   taskRunCount: 0,
+  lastIngestUsage: null,
+  threadIngestTotal: emptyUsage(),
+  ingestRunCount: 0,
 });
 
 export const normalizeUsage = (

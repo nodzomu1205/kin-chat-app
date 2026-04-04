@@ -94,10 +94,12 @@ export default function GptPanel(props: GptPanelProps) {
     ingestMode,
     imageDetail,
     postIngestAction,
+    fileReadPolicy,
     onChangeUploadKind,
     onChangeIngestMode,
     onChangeImageDetail,
     onChangePostIngestAction,
+    onChangeFileReadPolicy,
     pendingInjectionCurrentPart,
     pendingInjectionTotalParts,
     onSwitchPanel,
@@ -176,6 +178,7 @@ export default function GptPanel(props: GptPanelProps) {
       mode: ingestMode,
       detail: imageDetail,
       action: postIngestAction,
+      readPolicy: fileReadPolicy,
     });
   };
 
@@ -268,6 +271,8 @@ export default function GptPanel(props: GptPanelProps) {
               onChangeIngestMode={onChangeIngestMode}
               imageDetail={imageDetail}
               onChangeImageDetail={onChangeImageDetail}
+              fileReadPolicy={fileReadPolicy}
+              onChangeFileReadPolicy={onChangeFileReadPolicy}
               isMobile={isMobile}
             />
           ) : activeDrawerTab === "task_status" ? (
@@ -402,6 +407,7 @@ export default function GptPanel(props: GptPanelProps) {
           ingestMode={ingestMode}
           imageDetail={imageDetail}
           postIngestAction={postIngestAction}
+          fileReadPolicy={fileReadPolicy}
           onChangeUploadKind={onChangeUploadKind}
           onChangeIngestMode={onChangeIngestMode}
           onChangeImageDetail={onChangeImageDetail}

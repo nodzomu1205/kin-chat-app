@@ -1,5 +1,6 @@
 import React from "react";
 import type {
+  FileReadPolicy,
   ImageDetail,
   IngestMode,
   LocalMemorySettingsInput,
@@ -25,6 +26,8 @@ type Props = {
   onChangeIngestMode: (mode: IngestMode) => void;
   imageDetail: ImageDetail;
   onChangeImageDetail: (detail: ImageDetail) => void;
+  fileReadPolicy: FileReadPolicy;
+  onChangeFileReadPolicy: (policy: FileReadPolicy) => void;
   isMobile?: boolean;
 };
 
@@ -71,6 +74,8 @@ export default function GptSettingsDrawer({
   onChangeIngestMode,
   imageDetail,
   onChangeImageDetail,
+  fileReadPolicy,
+  onChangeFileReadPolicy,
   isMobile = false,
 }: Props) {
   return (
@@ -108,7 +113,41 @@ export default function GptSettingsDrawer({
       </div>
 
       <div style={sectionCard}>
-        <div style={{ ...labelStyle, marginBottom: 10 }}>FILE読込粒度</div>
+        <div style={{ ...labelStyle, marginBottom: 10 }}>ファイル読込方針</div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            style={choiceButton(fileReadPolicy === "text_first")}
+            onClick={() => onChangeFileReadPolicy("text_first")}
+          >
+            文字優先
+          </button>
+
+          <button
+            type="button"
+            style={choiceButton(fileReadPolicy === "visual_first")}
+            onClick={() => onChangeFileReadPolicy("visual_first")}
+          >
+            視覚優先
+          </button>
+
+          <button
+            type="button"
+            style={choiceButton(fileReadPolicy === "hybrid")}
+            onClick={() => onChangeFileReadPolicy("hybrid")}
+          >
+            統合
+          </button>
+        </div>
+
+        <div style={{ ...helpTextStyle, marginTop: 10, lineHeight: 1.7 }}>
+          文字中心PDFは「文字優先」、図表や画像中心資料は「視覚優先」、スライドや解説資料は「統合」が基準です。
+        </div>
+      </div>
+
+      <div style={sectionCard}>
+        <div style={{ ...labelStyle, marginBottom: 10 }}>テキスト・画像圧縮設定</div>
 
         <div
           style={{

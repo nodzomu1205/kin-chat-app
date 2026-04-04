@@ -14,6 +14,7 @@ export type ResponseMode = "strict" | "creative";
 export type IngestMode = "compact" | "full";
 export type ImageDetail = "basic" | "detailed" | "max";
 export type FileUploadKind = "text" | "visual";
+export type FileReadPolicy = "text_first" | "visual_first" | "hybrid";
 
 export type PostIngestAction =
   | "inject_only"
@@ -49,6 +50,9 @@ export type TokenStats = {
   lastTaskUsage: TokenUsage | null;
   threadTaskTotal: TokenUsage;
   taskRunCount: number;
+  lastIngestUsage: TokenUsage | null;
+  threadIngestTotal: TokenUsage;
+  ingestRunCount: number;
 };
 
 export type GptPanelProps = {
@@ -75,6 +79,7 @@ export type GptPanelProps = {
       mode: IngestMode;
       detail: ImageDetail;
       action: PostIngestAction;
+      readPolicy: FileReadPolicy;
     }
   ) => Promise<void>;
   canInjectFile: boolean;
@@ -92,10 +97,12 @@ export type GptPanelProps = {
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
   postIngestAction: PostIngestAction;
+  fileReadPolicy: FileReadPolicy;
   onChangeUploadKind: (kind: FileUploadKind) => void;
   onChangeIngestMode: (mode: IngestMode) => void;
   onChangeImageDetail: (detail: ImageDetail) => void;
   onChangePostIngestAction: (action: PostIngestAction) => void;
+  onChangeFileReadPolicy: (policy: FileReadPolicy) => void;
   pendingInjectionCurrentPart: number;
   pendingInjectionTotalParts: number;
   onSwitchPanel?: () => void;

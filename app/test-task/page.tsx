@@ -32,6 +32,8 @@ export default function TestTaskPage() {
     setImageDetail,
     postIngestAction,
     setPostIngestAction,
+    fileReadPolicy,
+    setFileReadPolicy,
   } = usePersistedGptOptions();
 
   const { tokenStats } = useTokenTracking();
@@ -100,10 +102,12 @@ export default function TestTaskPage() {
             ingestMode={ingestMode}
             imageDetail={imageDetail}
             postIngestAction={postIngestAction}
+            fileReadPolicy={fileReadPolicy}
             onChangeUploadKind={setUploadKind}
             onChangeIngestMode={setIngestMode}
             onChangeImageDetail={setImageDetail}
             onChangePostIngestAction={setPostIngestAction}
+            onChangeFileReadPolicy={setFileReadPolicy}
             pendingInjectionCurrentPart={0}
             pendingInjectionTotalParts={0}
             onSwitchPanel={noop}

@@ -12,6 +12,7 @@ const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 type IngestMode = "compact" | "full";
 type ImageDetail = "basic" | "detailed" | "max";
 type FileUploadKind = "text" | "visual";
+type FileReadPolicy = "text_first" | "visual_first" | "hybrid";
 
 const TEXT_EXTENSIONS = new Set([
   "txt",
@@ -164,6 +165,12 @@ function normalizeUploadKind(value: unknown): FileUploadKind {
   return value === "visual" ? "visual" : "text";
 }
 
+function normalizeFileReadPolicy(value: unknown): FileReadPolicy {
+  if (value === "text_first") return "text_first";
+  if (value === "visual_first") return "visual_first";
+  return "hybrid";
+}
+
 function resolveUploadKind(file: File, requestedKind: FileUploadKind) {
   if (isVisualLikeFile(file)) return "visual" as const;
   if (isTextLikeFile(file)) return "text" as const;
@@ -176,34 +183,66 @@ function buildPrompt(params: {
   uploadKind: FileUploadKind;
   mode: IngestMode;
   detail: ImageDetail;
+  readPolicy: FileReadPolicy;
 }) {
-  const { file, mimeType, uploadKind, mode, detail } = params;
+  const { file, mimeType, uploadKind, mode, detail, readPolicy } = params;
 
   if (uploadKind === "visual") {
     const detailInstruction =
       detail === "max"
-        ? "Describe the visible content at very high granularity. Cover composition, framing, face shape, eyes, eyebrows, nose, mouth, hair, skin impression, pose, clothing, accessories, background, visible text, and notable layout details. Do not identify the person."
+        ? "Use very high granularity when describing layouts, figures, images, and visible text."
         : detail === "detailed"
-        ? "Describe the visible content carefully, including face, hair, clothing, pose, framing, background, and visible text. Do not identify the person."
-        : "Describe only the main subject, basic appearance, setting, and visible text.";
+          ? "Describe layouts, figures, images, and visible text carefully."
+          : "Describe only the main structure, major visuals, and the most important visible text.";
+
+    const policyInstruction =
+      readPolicy === "text_first"
+        ? `
+Reading policy: text-first.
+- For PDFs, slides, and document-like images, prioritize readable text extraction over scene description.
+- Preserve headings, bullets, labels, numbers, dates, URLs, and wording as faithfully as possible.
+- Mention layout, charts, and images only when they change interpretation or supply missing context.
+- If text is partially unreadable, say so in warnings instead of guessing.
+- rawText should focus on extracted text, not narrative image description.
+- structuredSummary should summarize the textual content first.
+- kinCompact should be concise text-first notes.
+- kinDetailed should preserve more original wording and order, then add only necessary visual notes.
+      `.trim()
+        : readPolicy === "visual_first"
+          ? `
+Reading policy: visual-first.
+- Prioritize layout, composition, charts, figures, photos, and page structure.
+- Include visible text, but do not try to preserve full wording unless it is central.
+- rawText may mix short extracted text with visual explanation where helpful.
+- structuredSummary, kinCompact, and kinDetailed should center on visual interpretation.
+      `.trim()
+          : `
+Reading policy: hybrid.
+- Balance extracted text and visual structure.
+- Preserve important text verbatim where possible, especially titles, bullets, labels, numbers, and decisions.
+- Also explain layout, charts, diagrams, and imagery when they add meaning.
+- kinDetailed should combine text understanding and visual context in a stable, practical way.
+      `.trim();
 
     return `
 You are an ingestion engine for a Kin + GPT application.
 
 Goal:
-Convert the uploaded visual file into reliable descriptive knowledge that can be injected into a separate persona agent ("Kin") through plain text only.
+Convert the uploaded visual or document-like file into reliable knowledge that can be injected into a separate persona agent ("Kin") through plain text only.
 
 Return JSON only. No markdown fences.
 
 Rules:
-- Preserve factual visible details.
+- Preserve factual visible details and readable text.
 - Avoid guesses.
 - If something is unclear, mention it in warnings.
 - Do not identify real people in images.
-- ${detailInstruction}
 - Source filename: ${file.name}
 - Source mime: ${mimeType}
 - Visual detail level: ${detail}
+- ${detailInstruction}
+
+${policyInstruction}
 
 Return exactly this JSON shape:
 {
@@ -217,8 +256,8 @@ Return exactly this JSON shape:
 }
 
 Constraints:
-- kinCompact: short, high-signal visual description
-- kinDetailed: richer visual description than kinCompact
+- kinCompact: short, high-signal lines
+- kinDetailed: richer and longer than kinCompact when useful
 - No emotional language
 - No first-person voice
 `.trim();
@@ -251,6 +290,7 @@ Rules:
 - Source filename: ${file.name}
 - Source mime: ${mimeType}
 - Preferred text mode: ${mode}
+- File reading policy: ${readPolicy}
 
 ${fullModeInstruction}
 
@@ -287,6 +327,7 @@ export async function POST(req: Request) {
     const requestedKind = normalizeUploadKind(form.get("kind"));
     const mode = normalizeIngestMode(form.get("mode"));
     const detail = normalizeImageDetail(form.get("detail"));
+    const readPolicy = normalizeFileReadPolicy(form.get("readPolicy"));
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "file is required" }, { status: 400 });
@@ -342,6 +383,7 @@ export async function POST(req: Request) {
       uploadKind,
       mode,
       detail,
+      readPolicy,
     });
 
     const body = {
@@ -417,19 +459,33 @@ export async function POST(req: Request) {
     let summaryLevel = "kin_compact";
 
     if (uploadKind === "visual") {
-      selectedLines =
-        detail === "basic"
-          ? normalized.kinCompact
-          : normalized.kinDetailed.length > 0
-          ? normalized.kinDetailed
-          : normalized.kinCompact;
+      if (readPolicy === "text_first") {
+        selectedLines =
+          normalized.kinDetailed.length > 0
+            ? normalized.kinDetailed
+            : normalized.kinCompact;
+        summaryLevel = "visual_text_first";
+      } else if (readPolicy === "hybrid") {
+        selectedLines =
+          normalized.kinDetailed.length > 0
+            ? normalized.kinDetailed
+            : normalized.kinCompact;
+        summaryLevel = "visual_hybrid";
+      } else {
+        selectedLines =
+          detail === "basic"
+            ? normalized.kinCompact
+            : normalized.kinDetailed.length > 0
+              ? normalized.kinDetailed
+              : normalized.kinCompact;
 
-      summaryLevel =
-        detail === "max"
-          ? "visual_detail_max"
-          : detail === "detailed"
-          ? "visual_detail"
-          : "visual_basic";
+        summaryLevel =
+          detail === "max"
+            ? "visual_detail_max"
+            : detail === "detailed"
+              ? "visual_detail"
+              : "visual_basic";
+      }
     } else {
       selectedLines =
         mode === "full"

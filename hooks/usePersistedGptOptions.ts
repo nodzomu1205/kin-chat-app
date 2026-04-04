@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type {
+  FileReadPolicy,
   FileUploadKind,
   ImageDetail,
   IngestMode,
@@ -14,6 +15,7 @@ const UPLOAD_KIND_KEY = "gpt_upload_kind";
 const INGEST_MODE_KEY = "gpt_ingest_mode";
 const IMAGE_DETAIL_KEY = "gpt_image_detail";
 const POST_INGEST_ACTION_KEY = "gpt_post_ingest_action";
+const FILE_READ_POLICY_KEY = "gpt_file_read_policy";
 
 export function usePersistedGptOptions() {
   const [responseMode, setResponseMode] = useState<ResponseMode>("strict");
@@ -22,6 +24,8 @@ export function usePersistedGptOptions() {
   const [imageDetail, setImageDetail] = useState<ImageDetail>("basic");
   const [postIngestAction, setPostIngestAction] =
     useState<PostIngestAction>("inject_only");
+  const [fileReadPolicy, setFileReadPolicy] =
+    useState<FileReadPolicy>("hybrid");
 
   useEffect(() => {
     const savedMode = localStorage.getItem(RESPONSE_MODE_KEY);
@@ -56,6 +60,15 @@ export function usePersistedGptOptions() {
     ) {
       setPostIngestAction(savedPostIngestAction);
     }
+
+    const savedFileReadPolicy = localStorage.getItem(FILE_READ_POLICY_KEY);
+    if (
+      savedFileReadPolicy === "text_first" ||
+      savedFileReadPolicy === "visual_first" ||
+      savedFileReadPolicy === "hybrid"
+    ) {
+      setFileReadPolicy(savedFileReadPolicy);
+    }
   }, []);
 
   useEffect(() => {
@@ -78,6 +91,10 @@ export function usePersistedGptOptions() {
     localStorage.setItem(POST_INGEST_ACTION_KEY, postIngestAction);
   }, [postIngestAction]);
 
+  useEffect(() => {
+    localStorage.setItem(FILE_READ_POLICY_KEY, fileReadPolicy);
+  }, [fileReadPolicy]);
+
   return {
     responseMode,
     setResponseMode,
@@ -89,5 +106,7 @@ export function usePersistedGptOptions() {
     setImageDetail,
     postIngestAction,
     setPostIngestAction,
+    fileReadPolicy,
+    setFileReadPolicy,
   };
 }

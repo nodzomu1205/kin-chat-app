@@ -26,6 +26,19 @@ const ZERO_USAGE: TokenUsage = {
   totalTokens: 0,
 };
 
+function RunCount({ count }: { count: number }) {
+  return (
+    <span
+      style={{
+        color: "#64748b",
+        fontWeight: 500,
+      }}
+    >
+      （{count}回）
+    </span>
+  );
+}
+
 type Props = {
   mode: Exclude<GptTopDrawerTab, "settings" | "task_status" | null>;
   gptState: KinMemoryState;
@@ -66,11 +79,19 @@ export default function GptMetaDrawer({
   const searchTotal = tokenStats.threadSearchTotal;
   const taskTotal = tokenStats.threadTaskTotal;
   const summaryTotal = tokenStats.threadSummaryTotal;
+  const ingestTotal = tokenStats.threadIngestTotal;
+
+  const conversationTrackedTotal = mergeUsage(
+    tokenStats.threadChatTotal,
+    summaryTotal
+  );
 
   const otherTrackedTotal = mergeUsage(
-    summaryTotal,
-    mergeUsage(searchTotal, taskTotal)
+    searchTotal,
+    mergeUsage(taskTotal, ingestTotal)
   );
+
+  const grandTotal = mergeUsage(conversationTrackedTotal, otherTrackedTotal);
 
   if (mode === "memory") {
     return (
@@ -180,10 +201,7 @@ export default function GptMetaDrawer({
       }}
     >
       <div style={{ ...tokenLineStyle, padding: "0 2px" }}>
-        総トークン消費{" "}
-        <UsageTriple
-          usage={mergeUsage(totalUsage, mergeUsage(searchTotal, taskTotal))}
-        />
+        総トークン消費 <UsageTriple usage={grandTotal} />
       </div>
 
       <div style={tokenCardStyle}>
@@ -202,13 +220,16 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={{ ...tokenLineStyle, marginBottom: 8 }}>
-          累積 <UsageTriple usage={tokenStats.threadChatTotal} />
+          累積 <UsageTriple usage={conversationTrackedTotal} />
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
           直近1往復 <UsageTriple usage={tokenStats.lastChatUsage || ZERO_USAGE} />
           <br />
           直近5往復 <UsageTriple usage={recent5Chat} />
+          <br />
+          要約 <RunCount count={tokenStats.summaryRunCount} />{" "}
+          <UsageTriple usage={summaryTotal} />
         </div>
       </div>
 
@@ -223,7 +244,7 @@ export default function GptMetaDrawer({
             marginBottom: 8,
           }}
         >
-          <div style={tokenLeftLabelStyle}>その他トークン</div>
+          <div style={tokenLeftLabelStyle}>その他トークン消費</div>
           <div style={tokenMetaStyle}>（合計 / IN / OUT）</div>
         </div>
 
@@ -232,11 +253,14 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-          要約 {tokenStats.summaryRunCount}回 / <UsageTriple usage={summaryTotal} />
+          検索 <RunCount count={tokenStats.searchRunCount} />{" "}
+          <UsageTriple usage={searchTotal} />
           <br />
-          検索 {tokenStats.searchRunCount}回 / <UsageTriple usage={searchTotal} />
+          注入 <RunCount count={tokenStats.ingestRunCount} />{" "}
+          <UsageTriple usage={ingestTotal} />
           <br />
-          タスク {tokenStats.taskRunCount}回 / <UsageTriple usage={taskTotal} />
+          タスク <RunCount count={tokenStats.taskRunCount} />{" "}
+          <UsageTriple usage={taskTotal} />
         </div>
       </div>
     </div>

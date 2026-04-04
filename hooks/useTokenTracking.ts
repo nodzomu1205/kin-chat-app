@@ -84,6 +84,21 @@ export function useTokenTracking() {
     }));
   }, []);
 
+  const applyIngestUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
+    const safeUsage = normalizeUsage(usage);
+
+    setTokenStats((prev) => ({
+      ...prev,
+      lastIngestUsage: safeUsage,
+      threadIngestTotal: {
+        inputTokens: prev.threadIngestTotal.inputTokens + safeUsage.inputTokens,
+        outputTokens: prev.threadIngestTotal.outputTokens + safeUsage.outputTokens,
+        totalTokens: prev.threadIngestTotal.totalTokens + safeUsage.totalTokens,
+      },
+      ingestRunCount: prev.ingestRunCount + 1,
+    }));
+  }, []);
+
   const resetTokenStats = useCallback(() => {
     setTokenStats(emptyTokenStats());
   }, []);
@@ -93,17 +108,20 @@ export function useTokenTracking() {
       tokenStats.threadChatTotal.inputTokens +
       tokenStats.threadSummaryTotal.inputTokens +
       tokenStats.threadSearchTotal.inputTokens +
-      tokenStats.threadTaskTotal.inputTokens,
+      tokenStats.threadTaskTotal.inputTokens +
+      tokenStats.threadIngestTotal.inputTokens,
     outputTokens:
       tokenStats.threadChatTotal.outputTokens +
       tokenStats.threadSummaryTotal.outputTokens +
       tokenStats.threadSearchTotal.outputTokens +
-      tokenStats.threadTaskTotal.outputTokens,
+      tokenStats.threadTaskTotal.outputTokens +
+      tokenStats.threadIngestTotal.outputTokens,
     totalTokens:
       tokenStats.threadChatTotal.totalTokens +
       tokenStats.threadSummaryTotal.totalTokens +
       tokenStats.threadSearchTotal.totalTokens +
-      tokenStats.threadTaskTotal.totalTokens,
+      tokenStats.threadTaskTotal.totalTokens +
+      tokenStats.threadIngestTotal.totalTokens,
   }), [tokenStats]);
 
   return {
@@ -112,6 +130,7 @@ export function useTokenTracking() {
     applySummaryUsage,
     applySearchUsage,
     applyTaskUsage,
+    applyIngestUsage,
     resetTokenStats,
     totalTrackedUsage,
   };
