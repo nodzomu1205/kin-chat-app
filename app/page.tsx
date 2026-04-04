@@ -17,6 +17,7 @@ import {
   buildPrepInputFromIngestResult,
   buildMergedTaskInput,
   buildTaskStructuredInput,
+  buildTaskInput,
   formatTaskResultText,
   resolveUploadKindFromFile,
   runAutoDeepenTask,
@@ -168,6 +169,22 @@ export default function ChatApp() {
     }));
   };
 
+  const applyPrefixedTaskFieldsFromText = (text: string) => {
+    const parsed = parseTaskInput(text);
+
+    if (parsed.title || parsed.userInstruction) {
+      setCurrentTaskDraft((prev) => ({
+        ...prev,
+        title: parsed.title || prev.title,
+        taskName: parsed.title?.trim() ? parsed.title.trim() : prev.taskName,
+        userInstruction: parsed.userInstruction || prev.userInstruction,
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+
+    return parsed;
+  };
+
   const getTaskBaseText = () => {
     if (currentTaskDraft.body.trim()) return currentTaskDraft.body.trim();
     if (currentTaskDraft.mergedText.trim()) return currentTaskDraft.mergedText.trim();
@@ -272,16 +289,44 @@ export default function ChatApp() {
   const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
     if (!gptInput.trim() || gptLoading) return;
 
-    const text = gptInput.trim();
+    const rawText = gptInput.trim();
+    const parsedInput = applyPrefixedTaskFieldsFromText(rawText);
+
+    const hasSearch = !!parsedInput.searchQuery;
+    const hasTaskDirectives = !!(parsedInput.title || parsedInput.userInstruction);
+    const chatText = parsedInput.freeText || rawText;
+
+    if (hasTaskDirectives && !hasSearch && !parsedInput.freeText) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "✅ タスクのタイトル / 追加指示を更新しました。",
+          meta: {
+            kind: "task_info",
+            sourceType: "manual",
+          },
+        },
+      ]);
+      setGptInput("");
+      return;
+    }
+
+    const requestText =
+      hasSearch && !parsedInput.freeText
+        ? `検索：${parsedInput.searchQuery}`
+        : chatText;
+
     const userMsg: Message = {
       id: generateId(),
       role: "user",
-      text,
+      text: rawText,
     };
 
     const baseRecent = gptStateRef.current.recentMessages || [];
     const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-    const provisionalMemory = getProvisionalMemory(text);
+    const provisionalMemory = getProvisionalMemory(requestText);
 
     setGptMessages((prev) => [...prev, userMsg]);
     setGptInput("");
@@ -302,7 +347,7 @@ export default function ChatApp() {
           mode: "chat",
           memory: provisionalMemory,
           recentMessages: newRecent,
-          input: text,
+          input: requestText,
           instructionMode,
           reasoningMode: responseMode,
         }),
@@ -331,12 +376,11 @@ export default function ChatApp() {
       if (data?.searchUsed) {
         applySearchUsage(data.usage);
 
-        const parsedInput = parseTaskInput(text);
         setLastSearchContext({
           query:
             (typeof data?.searchQuery === "string" && data.searchQuery.trim()) ||
             parsedInput.searchQuery ||
-            text,
+            requestText,
           rawText:
             typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
           sources: Array.isArray(data?.sources) ? data.sources : [],
@@ -367,16 +411,7 @@ export default function ChatApp() {
     if (!gptInput.trim() || gptLoading) return;
 
     const text = gptInput.trim();
-    const parsedInput = parseTaskInput(text);
-    const effectiveSearchContext =
-      parsedInput.searchQuery && (!lastSearchContext || lastSearchContext.query !== parsedInput.searchQuery)
-        ? {
-            query: parsedInput.searchQuery,
-            rawText: "",
-            sources: [],
-            createdAt: new Date().toISOString(),
-          }
-        : lastSearchContext;
+    const parsedInput = applyPrefixedTaskFieldsFromText(text);
 
     const taskBodySource = parsedInput.freeText || text;
     const prepInput = buildTaskStructuredInput({
@@ -387,14 +422,13 @@ export default function ChatApp() {
       userInstruction:
         parsedInput.userInstruction || currentTaskDraft.userInstruction,
       body: taskBodySource,
-      searchRawText: effectiveSearchContext?.rawText || "",
+      searchRawText: currentTaskDraft.searchContext?.rawText || "",
     });
 
     const userMsg: Message = {
       id: generateId(),
       role: "user",
-      text: `[タスク整理依頼]
-${text}`,
+      text: `[タスク整理依頼]\n${text}`,
     };
 
     const baseRecent = gptStateRef.current.recentMessages || [];
@@ -438,10 +472,9 @@ ${text}`,
           ...prev,
           taskName: resolvedTitle,
           title: resolvedTitle,
-          userInstruction:
-            parsedInput.userInstruction || prev.userInstruction,
+          userInstruction: parsedInput.userInstruction || prev.userInstruction,
           body: taskText,
-          searchContext: effectiveSearchContext ?? prev.searchContext,
+          searchContext: currentTaskDraft.searchContext ?? prev.searchContext,
           objective: (parsedInput.freeText || text).slice(0, 120),
           prepText: taskText,
           deepenText: "",
@@ -487,13 +520,16 @@ ${text}`,
     }
 
     const additionalText = gptInput.trim();
+    const parsedInput = applyPrefixedTaskFieldsFromText(additionalText);
+
     const mergedInput = buildMergedTaskInput(
       currentTaskText,
       "GPT手入力補足",
-      additionalText,
+      parsedInput.freeText || additionalText,
       {
-        title: currentTaskDraft.title,
-        userInstruction: currentTaskDraft.userInstruction,
+        title: parsedInput.title || currentTaskDraft.title,
+        userInstruction:
+          parsedInput.userInstruction || currentTaskDraft.userInstruction,
         searchRawText: currentTaskDraft.searchContext?.rawText || "",
       }
     );
@@ -501,8 +537,7 @@ ${text}`,
     const userMsg: Message = {
       id: generateId(),
       role: "user",
-      text: `[タスク更新]
-${additionalText}`,
+      text: `[タスク更新]\n${additionalText}`,
       meta: {
         kind: "task_info",
         sourceType: "manual",
@@ -541,11 +576,16 @@ ${additionalText}`,
       const source = createTaskSource(
         "manual_note",
         "GPT手入力補足",
-        additionalText
+        parsedInput.freeText || additionalText
       );
 
       setCurrentTaskDraft((prev) => ({
         ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
         body: taskText,
         prepText: prev.prepText || prev.mergedText,
         deepenText: "",
@@ -605,21 +645,22 @@ ${additionalText}`,
       return;
     }
 
-    const mergedInput = buildMergedTaskInput(
-      currentTaskText,
-      "GPT最新レス",
-      lastGptMessage.text.trim(),
-      {
-        title: currentTaskDraft.title,
-        userInstruction: currentTaskDraft.userInstruction,
-        searchRawText: currentTaskDraft.searchContext?.rawText || "",
-      }
-    );
+    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
 
+    const taskInput = buildTaskInput({
+      title: parsedInput.title || currentTaskDraft.title,
+      userInstruction:
+        parsedInput.userInstruction || currentTaskDraft.userInstruction,
+      actionInstruction: parsedInput.freeText || gptInput.trim(),
+      body: currentTaskText,
+      material: lastGptMessage.text.trim(),
+    });
+
+    setGptInput("");
     setGptLoading(true);
 
     try {
-      const data = await runAutoPrepTask(mergedInput, "task-update-last-gpt");
+      const data = await runAutoPrepTask(taskInput, "task-update-last-gpt");
       const taskText = formatTaskResultText(data?.parsed, data?.raw);
 
       setGptMessages((prev) => [
@@ -643,6 +684,11 @@ ${additionalText}`,
 
       setCurrentTaskDraft((prev) => ({
         ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
         body: taskText,
         deepenText: "",
         mergedText: taskText,
@@ -699,21 +745,22 @@ ${additionalText}`,
       return;
     }
 
-    const mergedInput = buildMergedTaskInput(
-      currentTaskText,
-      `検索結果: ${lastSearchContext?.query || "未設定"}`,
-      searchRaw,
-      {
-        title: currentTaskDraft.title,
-        userInstruction: currentTaskDraft.userInstruction,
-        searchRawText: searchRaw,
-      }
-    );
+    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
 
+    const taskInput = buildTaskInput({
+      title: parsedInput.title || currentTaskDraft.title,
+      userInstruction:
+        parsedInput.userInstruction || currentTaskDraft.userInstruction,
+      actionInstruction: parsedInput.freeText || gptInput.trim(),
+      body: currentTaskText,
+      material: searchRaw,
+    });
+
+    setGptInput("");
     setGptLoading(true);
 
     try {
-      const data = await runAutoPrepTask(mergedInput, "attach-search-result");
+      const data = await runAutoPrepTask(taskInput, "attach-search-result");
       const taskText = formatTaskResultText(data?.parsed, data?.raw);
 
       setGptMessages((prev) => [
@@ -737,6 +784,11 @@ ${additionalText}`,
 
       setCurrentTaskDraft((prev) => ({
         ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
         body: taskText,
         searchContext: lastSearchContext ?? prev.searchContext,
         deepenText: "",
@@ -780,10 +832,21 @@ ${additionalText}`,
       return;
     }
 
+    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
+
+    const taskInput = buildTaskInput({
+      title: parsedInput.title || currentTaskDraft.title,
+      userInstruction:
+        parsedInput.userInstruction || currentTaskDraft.userInstruction,
+      actionInstruction: parsedInput.freeText || gptInput.trim(),
+      body: text,
+      material: text,
+    });
+
     const userMsg: Message = {
       id: generateId(),
       role: "user",
-      text: `[深掘り依頼]\n${text}`,
+      text: `[深掘り依頼]\n${parsedInput.freeText || "（追加指示なし）"}`,
       meta: {
         kind: "task_info",
       },
@@ -793,10 +856,11 @@ ${additionalText}`,
     const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
 
     setGptMessages((prev) => [...prev, userMsg]);
+    setGptInput("");
     setGptLoading(true);
 
     try {
-      const data = await runAutoDeepenTask(text, "current-task");
+      const data = await runAutoDeepenTask(taskInput, "current-task");
       const taskText = formatTaskResultText(data?.parsed, data?.raw);
 
       const assistantMsg: Message = {
@@ -818,6 +882,11 @@ ${additionalText}`,
 
       setCurrentTaskDraft((prev) => ({
         ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
         body: taskText,
         deepenText: taskText,
         mergedText: taskText,

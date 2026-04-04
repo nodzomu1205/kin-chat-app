@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import type { TaskDraft } from "@/types/task";
 import {
   tokenCardStyle,
@@ -29,9 +29,60 @@ function formatUpdatedAt(value: string) {
 
 type Props = {
   taskDraft: TaskDraft;
+  onChangeTaskTitle: (value: string) => void;
+  onChangeTaskUserInstruction: (value: string) => void;
+  onChangeTaskBody: (value: string) => void;
+  isMobile?: boolean;
 };
 
-export default function GptTaskStatusDrawer({ taskDraft }: Props) {
+const buttonStyle: React.CSSProperties = {
+  height: 30,
+  borderRadius: 8,
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  color: "#334155",
+  fontSize: 12,
+  fontWeight: 800,
+  padding: "0 10px",
+  cursor: "pointer",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  padding: "10px 12px",
+  fontSize: 13,
+  color: "#0f172a",
+  background: "#ffffff",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const textareaStyle: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 10,
+  border: "1px solid #cbd5e1",
+  padding: "10px 12px",
+  fontSize: 13,
+  color: "#0f172a",
+  background: "#ffffff",
+  outline: "none",
+  resize: "vertical",
+  lineHeight: 1.6,
+  boxSizing: "border-box",
+};
+
+export default function GptTaskStatusDrawer({
+  taskDraft,
+  onChangeTaskTitle,
+  onChangeTaskUserInstruction,
+  onChangeTaskBody,
+  isMobile = false,
+}: Props) {
+  const [editPolicyOpen, setEditPolicyOpen] = useState(false);
+  const [editBodyOpen, setEditBodyOpen] = useState(false);
+
   const latestSource =
     taskDraft.sources.length > 0
       ? taskDraft.sources[taskDraft.sources.length - 1]
@@ -40,12 +91,35 @@ export default function GptTaskStatusDrawer({ taskDraft }: Props) {
   const taskName = taskDraft.title || taskDraft.taskName || "未設定";
   const latestLabel = latestSource?.label || "-";
   const latestType = latestSource?.type || "-";
+
   const hasTask =
     !!taskDraft.body.trim() ||
     !!taskDraft.prepText.trim() ||
     !!taskDraft.deepenText.trim() ||
     !!taskDraft.mergedText.trim() ||
     taskDraft.sources.length > 0;
+
+  const instructionPreview = useMemo(() => {
+    const text = taskDraft.userInstruction?.trim() || "";
+    if (!text) return "-";
+    return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+  }, [taskDraft.userInstruction]);
+
+  const bodyPreview = useMemo(() => {
+    const text =
+      taskDraft.body?.trim() ||
+      taskDraft.mergedText?.trim() ||
+      taskDraft.deepenText?.trim() ||
+      taskDraft.prepText?.trim() ||
+      "";
+    if (!text) return "まだ本文はありません。";
+    return text.length > 220 ? `${text.slice(0, 220)}…` : text;
+  }, [
+    taskDraft.body,
+    taskDraft.mergedText,
+    taskDraft.deepenText,
+    taskDraft.prepText,
+  ]);
 
   return (
     <div
@@ -100,7 +174,7 @@ export default function GptTaskStatusDrawer({ taskDraft }: Props) {
           <div>{taskName}</div>
 
           <div style={{ fontWeight: 800, color: "#334155" }}>追加指示</div>
-          <div>{taskDraft.userInstruction || "-"}</div>
+          <div>{instructionPreview}</div>
 
           <div style={{ fontWeight: 800, color: "#334155" }}>検索素材</div>
           <div>{taskDraft.searchContext?.query || "-"}</div>
@@ -123,10 +197,146 @@ export default function GptTaskStatusDrawer({ taskDraft }: Props) {
       </div>
 
       <div style={tokenCardStyle}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 8,
+          }}
+        >
+          <div style={tokenLeftLabelStyle}>方針編集</div>
+          <button
+            type="button"
+            onClick={() => setEditPolicyOpen((prev) => !prev)}
+            style={buttonStyle}
+          >
+            {editPolicyOpen ? "閉じる" : "編集"}
+          </button>
+        </div>
+
+        {!editPolicyOpen ? (
+          <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
+            タイトルと追加指示はここで管理します。普段は閉じておいて、必要な時だけ編集できます。
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: "#334155",
+                  marginBottom: 6,
+                }}
+              >
+                タイトル
+              </div>
+              <input
+                value={taskDraft.title || ""}
+                onChange={(e) => onChangeTaskTitle(e.target.value)}
+                placeholder="タスクのタイトル"
+                style={inputStyle}
+              />
+            </div>
+
+            <div>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: "#334155",
+                  marginBottom: 6,
+                }}
+              >
+                追加指示
+              </div>
+              <textarea
+                value={taskDraft.userInstruction || ""}
+                onChange={(e) => onChangeTaskUserInstruction(e.target.value)}
+                placeholder="例: 日本人旅行者向けに簡潔に / Sandton周辺中心で"
+                rows={isMobile ? 4 : 3}
+                style={textareaStyle}
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => onChangeTaskUserInstruction("")}
+                style={buttonStyle}
+              >
+                追加指示クリア
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={tokenCardStyle}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 8,
+          }}
+        >
+          <div style={tokenLeftLabelStyle}>AI整理本文</div>
+          <button
+            type="button"
+            onClick={() => setEditBodyOpen((prev) => !prev)}
+            style={buttonStyle}
+          >
+            {editBodyOpen ? "閉じる" : "本文を編集"}
+          </button>
+        </div>
+
+        <div
+          style={{
+            fontSize: 12,
+            color: "#475569",
+            lineHeight: 1.8,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            marginBottom: editBodyOpen ? 10 : 0,
+          }}
+        >
+          {bodyPreview}
+        </div>
+
+        {editBodyOpen && (
+          <textarea
+            value={taskDraft.body || ""}
+            onChange={(e) => onChangeTaskBody(e.target.value)}
+            placeholder="AI整理本文"
+            rows={isMobile ? 10 : 12}
+            style={textareaStyle}
+          />
+        )}
+      </div>
+
+      <div style={tokenCardStyle}>
         <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>補足</div>
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
           {hasTask
-            ? "現在は「タイトル / 追加指示 / AI整理本文」の3層で運用しています。検索を伴う場合は検索素材も保持され、検索統合ボタンで再利用できます。"
+            ? "編集UIはタスク状態に集約し、タスク① / タスク②は操作専用に寄せています。検索素材は保持され、検索統合で再利用できます。"
             : "まだタスクは作成されていません。新規ボタンまたはファイル注入後処理から開始できます。"}
         </div>
       </div>

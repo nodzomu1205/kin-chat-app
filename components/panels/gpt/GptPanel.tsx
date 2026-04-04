@@ -14,7 +14,6 @@ import GptSettingsDrawer from "./GptSettingsDrawer";
 import GptTaskStatusDrawer from "./GptTaskStatusDrawer";
 import GptToolbar from "./GptToolbar";
 import GptComposer from "./GptComposer";
-import GptTaskEditor from "./GptTaskEditor";
 import {
   chatBodyStyle,
   drawerWrapStyle,
@@ -280,7 +279,13 @@ export default function GptPanel(props: GptPanelProps) {
               isMobile={isMobile}
             />
           ) : activeDrawerTab === "task_status" ? (
-            <GptTaskStatusDrawer taskDraft={currentTaskDraft} />
+            <GptTaskStatusDrawer
+              taskDraft={currentTaskDraft}
+              onChangeTaskTitle={onChangeTaskTitle}
+              onChangeTaskUserInstruction={onChangeTaskUserInstruction}
+              onChangeTaskBody={onChangeTaskBody}
+              isMobile={isMobile}
+            />
           ) : (
             <GptMetaDrawer
               mode={activeDrawerTab}
@@ -375,32 +380,6 @@ export default function GptPanel(props: GptPanelProps) {
             }}
           >
             📦 注入準備 {pendingInjectionCurrentPart}/{pendingInjectionTotalParts}
-          </div>
-        )}
-
-
-        {activeBottomTab === "task_primary" && (
-          <div style={{ marginBottom: 8 }}>
-            <GptTaskEditor
-              taskDraft={currentTaskDraft}
-              onChangeTitle={onChangeTaskTitle}
-              onChangeUserInstruction={onChangeTaskUserInstruction}
-              onChangeBody={onChangeTaskBody}
-              isMobile={isMobile}
-              compact
-            />
-          </div>
-        )}
-
-        {activeBottomTab === "task_secondary" && (
-          <div style={{ marginBottom: 8 }}>
-            <GptTaskEditor
-              taskDraft={currentTaskDraft}
-              onChangeTitle={onChangeTaskTitle}
-              onChangeUserInstruction={onChangeTaskUserInstruction}
-              onChangeBody={onChangeTaskBody}
-              isMobile={isMobile}
-            />
           </div>
         )}
 

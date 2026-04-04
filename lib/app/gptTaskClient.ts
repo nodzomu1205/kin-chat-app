@@ -292,3 +292,27 @@ export function buildMergedTaskInput(
     .filter(Boolean)
     .join("\n");
 }
+
+export function buildTaskInput({
+  title,
+  userInstruction,
+  actionInstruction,
+  body,
+  material,
+}: {
+  title: string;
+  userInstruction: string;
+  actionInstruction: string;
+  body: string;
+  material: string;
+}) {
+  return [
+    `タスクタイトル: ${title || "未設定"}`,
+    `ユーザー追加指示: ${userInstruction || "なし"}`,
+    `今回の実行指示: ${actionInstruction || "なし"}`,
+    body ? `現在の本文:\n${body}` : "",
+    material ? `取込素材:\n${material}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}

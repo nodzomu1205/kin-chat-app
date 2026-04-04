@@ -5,12 +5,6 @@ export type ParsedTaskInput = {
   freeText: string;
 };
 
-const PREFIX_PATTERNS = {
-  search: /^検索[:：]\s*(.+)$/i,
-  title: /^タイトル[:：]\s*(.+)$/i,
-  instruction: /^追加指示[:：]\s*(.+)$/i,
-};
-
 export function parseTaskInput(text: string): ParsedTaskInput {
   const lines = text.split(/\r?\n/);
 
@@ -23,21 +17,18 @@ export function parseTaskInput(text: string): ParsedTaskInput {
     const line = raw.trim();
     if (!line) continue;
 
-    const searchMatch = line.match(PREFIX_PATTERNS.search);
-    if (searchMatch) {
-      searchQuery = searchMatch[1].trim();
+    if (line.startsWith("検索：") || line.startsWith("検索:")) {
+      searchQuery = line.replace(/^検索[:：]/, "").trim();
       continue;
     }
 
-    const titleMatch = line.match(PREFIX_PATTERNS.title);
-    if (titleMatch) {
-      title = titleMatch[1].trim();
+    if (line.startsWith("タイトル：") || line.startsWith("タイトル:")) {
+      title = line.replace(/^タイトル[:：]/, "").trim();
       continue;
     }
 
-    const instructionMatch = line.match(PREFIX_PATTERNS.instruction);
-    if (instructionMatch) {
-      userInstruction = instructionMatch[1].trim();
+    if (line.startsWith("追加指示：") || line.startsWith("追加指示:")) {
+      userInstruction = line.replace(/^追加指示[:：]/, "").trim();
       continue;
     }
 
