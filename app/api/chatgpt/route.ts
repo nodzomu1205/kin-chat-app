@@ -422,6 +422,8 @@ export async function POST(req: Request) {
         sources,
         usage: extractUsage(data),
         searchUsed: useSearch,
+        searchQuery: searchQuery || "",
+        searchEvidence: searchText,
       });
     }
 

@@ -1,4 +1,8 @@
-import type { FileUploadKind, ImageDetail, IngestMode } from "@/components/panels/gpt/gptPanelTypes";
+import type {
+  FileUploadKind,
+  ImageDetail,
+  IngestMode,
+} from "@/components/panels/gpt/gptPanelTypes";
 
 export function getExtension(filename: string) {
   return filename.split(".").pop()?.toLowerCase() || "";
@@ -116,14 +120,22 @@ export function buildPrepInputFromIngestResult(data: any, fileName: string) {
       : fileName;
 
   const rawText = typeof result?.rawText === "string" ? result.rawText.trim() : "";
-  const summaryLines = Array.isArray(result?.kinCompact) ? result.kinCompact.join("\n") : "";
-  const detailedLines = Array.isArray(result?.kinDetailed) ? result.kinDetailed.join("\n") : "";
+  const summaryLines = Array.isArray(result?.kinCompact)
+    ? result.kinCompact.join("\n")
+    : "";
+  const detailedLines = Array.isArray(result?.kinDetailed)
+    ? result.kinDetailed.join("\n")
+    : "";
 
   return [
     `ファイル名: ${fileName}`,
     `タイトル: ${title}`,
     summaryLines ? `要点:\n${summaryLines}` : "",
-    detailedLines ? `詳細情報:\n${detailedLines}` : rawText ? `本文:\n${rawText}` : "",
+    detailedLines
+      ? `詳細情報:\n${detailedLines}`
+      : rawText
+        ? `本文:\n${rawText}`
+        : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -136,6 +148,29 @@ type TaskCallArgs = {
   inputSummary: string;
   constraints: string[];
 };
+
+export type BuildTaskStructuredInputArgs = {
+  title?: string;
+  userInstruction?: string;
+  body?: string;
+  searchRawText?: string;
+};
+
+export function buildTaskStructuredInput({
+  title,
+  userInstruction,
+  body,
+  searchRawText,
+}: BuildTaskStructuredInputArgs) {
+  return [
+    `タスクタイトル: ${title?.trim() || "未設定"}`,
+    `ユーザー追加指示: ${userInstruction?.trim() || "なし"}`,
+    body?.trim() ? `入力本文:\n${body.trim()}` : "",
+    searchRawText?.trim() ? `検索素材:\n${searchRawText.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
 
 export async function runFormatTaskForKin(
   inputText: string,
@@ -189,16 +224,19 @@ async function callTaskApi(args: TaskCallArgs) {
 export async function runAutoPrepTask(inputText: string, label = "ingest-result") {
   return callTaskApi({
     type: "PREP_TASK",
-    goal: "与えられた抽出結果を整理し、重要点・不足情報・次の提案を明確化する",
+    goal:
+      "与えられたタイトル・追加指示・本文・検索素材をもとに、必要十分な範囲でタスク本文を整理する",
     inputRef: label,
     inputSummary: inputText,
     constraints: [
+      "タイトルが与えられている場合はその主題を優先する",
+      "ユーザー追加指示を最優先で反映する",
+      "不要な網羅は避ける",
       "与えられた入力に明示された内容のみを使う",
       "入力にない事実を補わない",
       "不明な点は不明と書く",
       "推測が必要な場合は推測ではなく入力不足として扱う",
-      "重要点優先",
-      "簡潔",
+      "簡潔かつ実務的に整理する",
       "日本語で整理",
     ],
   });
@@ -212,6 +250,7 @@ export async function runAutoDeepenTask(inputText: string, label = "prep-result"
     inputSummary: inputText,
     constraints: [
       "与えられた入力に含まれる内容を基準に整理する",
+      "ユーザー追加指示があればその意図を優先する",
       "新しい事実を捏造しない",
       "不足している情報は不足情報として明示する",
       "必要であれば、追加で集めるべき情報を具体化する",
@@ -229,16 +268,27 @@ export type InjectFileOptions = {
 export function buildMergedTaskInput(
   currentTaskText: string,
   newSourceLabel: string,
-  newSourceContent: string
+  newSourceContent: string,
+  options?: {
+    title?: string;
+    userInstruction?: string;
+    searchRawText?: string;
+  }
 ) {
   return [
+    `タスクタイトル: ${options?.title?.trim() || "未設定"}`,
+    `ユーザー追加指示: ${options?.userInstruction?.trim() || "なし"}`,
     "【現在のタスク整理】",
     currentTaskText,
     "",
     `【追加情報: ${newSourceLabel}】`,
     newSourceContent,
     "",
+    options?.searchRawText?.trim() ? `【検索素材】\n${options.searchRawText.trim()}\n` : "",
     "上記を統合し、現在タスクを更新してください。",
     "出力では、重複を整理し、不足情報・次アクションも必要に応じて更新してください。",
-  ].join("\n");
+    "不要な網羅は避けてください。",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

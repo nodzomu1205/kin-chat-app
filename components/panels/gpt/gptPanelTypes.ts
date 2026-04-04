@@ -108,6 +108,9 @@ export type GptPanelProps = {
   onSwitchPanel?: () => void;
   isMobile?: boolean;
   currentTaskDraft: TaskDraft;
+  onChangeTaskTitle: (value: string) => void;
+  onChangeTaskUserInstruction: (value: string) => void;
+  onChangeTaskBody: (value: string) => void;
 };
 
 export type LocalMemorySettingsInput = {

@@ -37,10 +37,11 @@ export default function GptTaskStatusDrawer({ taskDraft }: Props) {
       ? taskDraft.sources[taskDraft.sources.length - 1]
       : null;
 
-  const taskName = taskDraft.taskName || taskDraft.title || "未設定";
+  const taskName = taskDraft.title || taskDraft.taskName || "未設定";
   const latestLabel = latestSource?.label || "-";
   const latestType = latestSource?.type || "-";
   const hasTask =
+    !!taskDraft.body.trim() ||
     !!taskDraft.prepText.trim() ||
     !!taskDraft.deepenText.trim() ||
     !!taskDraft.mergedText.trim() ||
@@ -98,6 +99,12 @@ export default function GptTaskStatusDrawer({ taskDraft }: Props) {
           <div style={{ fontWeight: 800, color: "#334155" }}>タスク名</div>
           <div>{taskName}</div>
 
+          <div style={{ fontWeight: 800, color: "#334155" }}>追加指示</div>
+          <div>{taskDraft.userInstruction || "-"}</div>
+
+          <div style={{ fontWeight: 800, color: "#334155" }}>検索素材</div>
+          <div>{taskDraft.searchContext?.query || "-"}</div>
+
           <div style={{ fontWeight: 800, color: "#334155" }}>ソース数</div>
           <div>{taskDraft.sources.length}件</div>
 
@@ -119,7 +126,7 @@ export default function GptTaskStatusDrawer({ taskDraft }: Props) {
         <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>補足</div>
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
           {hasTask
-            ? "現状は単独タスク運用ですが、表示は“アクティブな1件”として扱う構造にしてあるため、将来の複数タスク化へ拡張しやすい状態です。"
+            ? "現在は「タイトル / 追加指示 / AI整理本文」の3層で運用しています。検索を伴う場合は検索素材も保持され、検索統合ボタンで再利用できます。"
             : "まだタスクは作成されていません。新規ボタンまたはファイル注入後処理から開始できます。"}
         </div>
       </div>

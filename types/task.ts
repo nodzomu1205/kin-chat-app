@@ -62,6 +62,16 @@ export type TaskSource = {
   createdAt: string;
 };
 
+export type SearchContext = {
+  query: string;
+  rawText: string;
+  sources: {
+    title: string;
+    link: string;
+  }[];
+  createdAt: string;
+};
+
 export type TaskDraftStatus =
   | "idle"
   | "prepared"
@@ -71,13 +81,21 @@ export type TaskDraftStatus =
 export type TaskDraft = {
   id: string;
   taskId: string;
+
+  // 新構造
   title: string;
+  userInstruction: string;
+  body: string;
+  searchContext: SearchContext | null;
+
+  // 旧構造（互換維持）
   taskName: string;
   objective: string;
   prepText: string;
   deepenText: string;
   mergedText: string;
   kinTaskText: string;
+
   status: TaskDraftStatus;
   sources: TaskSource[];
   updatedAt: string;
@@ -102,7 +120,12 @@ export function createEmptyTaskDraft(): TaskDraft {
   return {
     id: taskId,
     taskId,
+
     title: taskName,
+    userInstruction: "",
+    body: "",
+    searchContext: null,
+
     taskName,
     objective: "",
     prepText: "",

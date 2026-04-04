@@ -15,6 +15,7 @@ const MOBILE_BREAKPOINT = 1180;
 export default function TestTaskPage() {
   const [gptMessages, setGptMessages] = useState<Message[]>([]);
   const [gptInput, setGptInput] = useState("");
+  const [taskDraft, setTaskDraft] = useState(createEmptyTaskDraft());
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
   const gptBottomRef = useRef<HTMLDivElement>(null);
@@ -112,7 +113,27 @@ export default function TestTaskPage() {
             pendingInjectionTotalParts={0}
             onSwitchPanel={noop}
             isMobile={isMobile}
-            currentTaskDraft={createEmptyTaskDraft()}
+            currentTaskDraft={taskDraft}
+            onChangeTaskTitle={(value) =>
+              setTaskDraft((prev) => ({
+                ...prev,
+                title: value,
+                taskName: value.trim() || prev.taskName,
+              }))
+            }
+            onChangeTaskUserInstruction={(value) =>
+              setTaskDraft((prev) => ({
+                ...prev,
+                userInstruction: value,
+              }))
+            }
+            onChangeTaskBody={(value) =>
+              setTaskDraft((prev) => ({
+                ...prev,
+                body: value,
+                mergedText: value,
+              }))
+            }
           />
         </div>
       </div>
