@@ -26,8 +26,13 @@ import type {
   GptInstructionMode,
   PostIngestAction,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { TaskDraft, TaskSource } from "@/types/task";
+import type { TaskDraft } from "@/types/task";
 import { createEmptyTaskDraft } from "@/types/task";
+import {
+  createTaskSource,
+  resolveTaskName,
+  resetTaskDraft,
+} from "@/lib/app/taskDraftHelpers";
 
 type MobileTab = "kin" | "gpt";
 
@@ -143,20 +148,8 @@ export default function ChatApp() {
     setPendingKinInjectionIndex(0);
   };
 
-  const createTaskSource = (
-    type: TaskSource["type"],
-    label: string,
-    content: string
-  ): TaskSource => ({
-    id: generateId(),
-    type,
-    label,
-    content,
-    createdAt: new Date().toISOString(),
-  });
-
   const resetCurrentTaskDraft = () => {
-    setCurrentTaskDraft(createEmptyTaskDraft());
+    setCurrentTaskDraft(resetTaskDraft());
   };
 
   const getTaskBaseText = () => {
@@ -383,7 +376,8 @@ export default function ChatApp() {
 
       setCurrentTaskDraft((prev) => ({
         ...prev,
-        title: prev.title || "GPT会話から作成したタスク",
+        taskName: resolveTaskName(prev, "GPT会話から作成したタスク"),
+        title: resolveTaskName(prev, "GPT会話から作成したタスク"),
         objective: text.slice(0, 120),
         prepText: taskText,
         deepenText: "",
@@ -1072,7 +1066,8 @@ export default function ChatApp() {
 
             setCurrentTaskDraft((prev) => ({
               ...prev,
-              title: prev.title || title || file.name,
+              taskName: resolveTaskName(prev, title || file.name),
+              title: resolveTaskName(prev, title || file.name),
               objective: prev.objective || `ファイル ${file.name} を統合したタスク`,
               deepenText: "",
               mergedText: mergedTaskText,
@@ -1100,6 +1095,7 @@ export default function ChatApp() {
       if (options.action === "inject_and_prep" && prepTaskText) {
         setCurrentTaskDraft((prev) => ({
           ...prev,
+          taskName: title || file.name,
           title: title || file.name,
           objective: `ファイル ${file.name} の整理`,
           prepText: prepTaskText,
@@ -1117,6 +1113,7 @@ export default function ChatApp() {
         if (finalText) {
           setCurrentTaskDraft((prev) => ({
             ...prev,
+            taskName: title || file.name,
             title: title || file.name,
             objective: `ファイル ${file.name} の整理`,
             prepText: prepTaskText,

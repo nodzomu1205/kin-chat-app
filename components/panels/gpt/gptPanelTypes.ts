@@ -21,8 +21,18 @@ export type PostIngestAction =
   | "inject_prep_deepen"
   | "attach_to_current_task";
 
-export type GptBottomTab = "chat" | "task";
-export type GptTopDrawerTab = "memory" | "token" | "settings" | null;
+export type GptBottomTab =
+  | "chat"
+  | "task_primary"
+  | "task_secondary"
+  | "file";
+
+export type GptTopDrawerTab =
+  | "memory"
+  | "token"
+  | "task_status"
+  | "settings"
+  | null;
 
 export type TokenStats = {
   lastChatUsage: TokenUsage | null;

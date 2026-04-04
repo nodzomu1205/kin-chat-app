@@ -11,6 +11,7 @@ import type {
 import GptHeader from "./GptHeader";
 import GptMetaDrawer from "./GptMetaDrawer";
 import GptSettingsDrawer from "./GptSettingsDrawer";
+import GptTaskStatusDrawer from "./GptTaskStatusDrawer";
 import GptToolbar from "./GptToolbar";
 import GptComposer from "./GptComposer";
 import {
@@ -30,12 +31,12 @@ const topEarRailStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "flex",
   justifyContent: "flex-end",
   alignItems: "flex-start",
-  gap: 6,
+  gap: 4,
   paddingLeft: isMobile ? 8 : 12,
   paddingRight: isMobile ? 8 : 12,
-  height: isMobile ? 28 : 20,
+  height: isMobile ? 24 : 18,
   marginTop: 0,
-  marginBottom: isMobile ? -10 : -2,
+  marginBottom: isMobile ? -8 : -2,
   position: "relative",
   zIndex: 30,
   pointerEvents: "none",
@@ -45,15 +46,15 @@ const topEarTabStyle = (
   active: boolean,
   isMobile: boolean
 ): React.CSSProperties => ({
-  height: isMobile ? 34 : 32,
-  borderRadius: "0 0 10px 10px",
+  height: isMobile ? 24 : 26,
+  borderRadius: "0 0 9px 9px",
   border: "1px solid #cbd5e1",
   borderTop: "none",
   background: active ? "#ffffff" : "#f8fafc",
   color: active ? "#0f766e" : "#475569",
-  fontSize: 12,
+  fontSize: isMobile ? 11 : 12,
   fontWeight: 800,
-  padding: isMobile ? "0 14px" : "0 12px",
+  padding: isMobile ? "0 10px" : "0 12px",
   boxShadow: active ? "0 4px 10px rgba(15,23,42,0.10)" : "none",
   cursor: "pointer",
   pointerEvents: "auto",
@@ -107,7 +108,6 @@ export default function GptPanel(props: GptPanelProps) {
   const [activeDrawerTab, setActiveDrawerTab] =
     useState<GptTopDrawerTab>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [showFileTools, setShowFileTools] = useState(false);
   const [showMemoryContent, setShowMemoryContent] = useState(false);
   const [activeBottomTab, setActiveBottomTab] =
     useState<GptBottomTab>("chat");
@@ -181,10 +181,14 @@ export default function GptPanel(props: GptPanelProps) {
 
   const handleChangeBottomTab = (tab: GptBottomTab) => {
     setActiveBottomTab(tab);
-    if (tab === "chat") {
-      setShowFileTools(false);
-    }
   };
+
+  const transferHandler =
+    activeBottomTab === "chat"
+      ? sendLastGptToKinDraft
+      : () => {
+          void sendTaskToKinDraft();
+        };
 
   return (
     <div
@@ -230,6 +234,18 @@ export default function GptPanel(props: GptPanelProps) {
         >
           トークン
         </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            setActiveDrawerTab((prev) =>
+              prev === "task_status" ? null : "task_status"
+            )
+          }
+          style={topEarTabStyle(activeDrawerTab === "task_status", isMobile)}
+        >
+          タスク状態
+        </button>
       </div>
 
       {activeDrawerTab && (
@@ -254,6 +270,8 @@ export default function GptPanel(props: GptPanelProps) {
               onChangeImageDetail={onChangeImageDetail}
               isMobile={isMobile}
             />
+          ) : activeDrawerTab === "task_status" ? (
+            <GptTaskStatusDrawer taskDraft={currentTaskDraft} />
           ) : (
             <GptMetaDrawer
               mode={activeDrawerTab}
@@ -274,7 +292,6 @@ export default function GptPanel(props: GptPanelProps) {
                 setShowMemoryContent((prev) => !prev)
               }
               isMobile={isMobile}
-              currentTaskDraft={currentTaskDraft}
             />
           )}
         </div>
@@ -302,7 +319,7 @@ export default function GptPanel(props: GptPanelProps) {
         onDrop={(event) => {
           if (isMobile) return;
           event.preventDefault();
-          handleDroppedFiles(event.dataTransfer.files);
+          void handleDroppedFiles(event.dataTransfer.files);
         }}
       >
         <ChatMessages messages={gptMessages} bottomRef={gptBottomRef} />
@@ -369,15 +386,7 @@ export default function GptPanel(props: GptPanelProps) {
           onAttachSearchResult={() => {
             void runAttachSearchResultToTask();
           }}
-          onToggleFileTools={() => setShowFileTools((prev) => !prev)}
-          showFileTools={showFileTools}
-          onTransfer={
-            activeBottomTab === "chat"
-              ? sendLastGptToKinDraft
-              : () => {
-                  void sendTaskToKinDraft();
-                }
-          }
+          onTransfer={transferHandler}
           onReset={resetGptForCurrentKin}
         />
 
@@ -397,7 +406,7 @@ export default function GptPanel(props: GptPanelProps) {
           onChangeIngestMode={onChangeIngestMode}
           onChangeImageDetail={onChangeImageDetail}
           onChangePostIngestAction={onChangePostIngestAction}
-          showFileTools={activeBottomTab === "task" && showFileTools}
+          showFileTools={activeBottomTab === "file"}
           isMobile={isMobile}
         />
       </div>

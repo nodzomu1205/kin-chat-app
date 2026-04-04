@@ -1,7 +1,6 @@
 import React from "react";
 import type { KinMemoryState } from "@/types/chat";
 import type { TokenUsage } from "@/hooks/useGptMemory";
-import type { TaskDraft } from "@/types/task";
 import type { GptTopDrawerTab, TokenStats } from "./gptPanelTypes";
 import {
   longValueStyle,
@@ -28,7 +27,7 @@ const ZERO_USAGE: TokenUsage = {
 };
 
 type Props = {
-  mode: Exclude<GptTopDrawerTab, "settings" | null>;
+  mode: Exclude<GptTopDrawerTab, "settings" | "task_status" | null>;
   gptState: KinMemoryState;
   tokenStats: TokenStats;
   recent5Chat: TokenUsage;
@@ -44,7 +43,6 @@ type Props = {
   showMemoryContent: boolean;
   onToggleMemoryContent: () => void;
   isMobile?: boolean;
-  currentTaskDraft: TaskDraft;
 };
 
 export default function GptMetaDrawer({
@@ -64,7 +62,6 @@ export default function GptMetaDrawer({
   showMemoryContent,
   onToggleMemoryContent,
   isMobile = false,
-  currentTaskDraft,
 }: Props) {
   const searchTotal = tokenStats.threadSearchTotal;
   const taskTotal = tokenStats.threadTaskTotal;
@@ -169,29 +166,6 @@ export default function GptMetaDrawer({
             </pre>
           )}
         </div>
-
-        <div
-          style={{
-            marginTop: 10,
-            border: "1px solid #cbd5e1",
-            borderRadius: 12,
-            padding: "10px 12px",
-            background: "#f8fafc",
-          }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#334155" }}>
-            現在タスク
-          </div>
-          <div style={{ fontSize: 12, color: "#475569", marginTop: 6 }}>
-            状態: {currentTaskDraft.status}
-          </div>
-          <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-            ソース数: {currentTaskDraft.sources.length}
-          </div>
-          <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-            タイトル: {currentTaskDraft.title || "未設定"}
-          </div>
-        </div>
       </div>
     );
   }
@@ -208,10 +182,7 @@ export default function GptMetaDrawer({
       <div style={{ ...tokenLineStyle, padding: "0 2px" }}>
         総トークン消費{" "}
         <UsageTriple
-          usage={mergeUsage(
-            totalUsage,
-            mergeUsage(searchTotal, taskTotal)
-          )}
+          usage={mergeUsage(totalUsage, mergeUsage(searchTotal, taskTotal))}
         />
       </div>
 
@@ -235,8 +206,7 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-          直近1往復{" "}
-          <UsageTriple usage={tokenStats.lastChatUsage || ZERO_USAGE} />
+          直近1往復 <UsageTriple usage={tokenStats.lastChatUsage || ZERO_USAGE} />
           <br />
           直近5往復 <UsageTriple usage={recent5Chat} />
         </div>
@@ -261,16 +231,12 @@ export default function GptMetaDrawer({
           累積 <UsageTriple usage={otherTrackedTotal} />
         </div>
 
-        <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.9 }}>
-          圧縮メモリトークン{" "}
-          <UsageTriple usage={summaryTotal} />
-          {"  "}（計 {tokenStats.summaryRunCount} 回）
+        <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
+          要約 {tokenStats.summaryRunCount}回 / <UsageTriple usage={summaryTotal} />
           <br />
-          検索関連トークン <UsageTriple usage={searchTotal} />
-          {"  "}（計 {tokenStats.searchRunCount} 回）
+          検索 {tokenStats.searchRunCount}回 / <UsageTriple usage={searchTotal} />
           <br />
-          タスク関連トークン <UsageTriple usage={taskTotal} />
-          {"  "}（計 {tokenStats.taskRunCount} 回）
+          タスク {tokenStats.taskRunCount}回 / <UsageTriple usage={taskTotal} />
         </div>
       </div>
     </div>

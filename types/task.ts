@@ -70,7 +70,9 @@ export type TaskDraftStatus =
 
 export type TaskDraft = {
   id: string;
+  taskId: string;
   title: string;
+  taskName: string;
   objective: string;
   prepText: string;
   deepenText: string;
@@ -81,10 +83,27 @@ export type TaskDraft = {
   updatedAt: string;
 };
 
+let taskDraftSequence = 1;
+
+export function createTaskDraftId(): string {
+  return `task-draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createDefaultTaskName(): string {
+  const label = `タスク ${String(taskDraftSequence).padStart(3, "0")}`;
+  taskDraftSequence += 1;
+  return label;
+}
+
 export function createEmptyTaskDraft(): TaskDraft {
+  const taskId = createTaskDraftId();
+  const taskName = createDefaultTaskName();
+
   return {
-    id: `task-draft-${Date.now()}`,
-    title: "",
+    id: taskId,
+    taskId,
+    title: taskName,
+    taskName,
     objective: "",
     prepText: "",
     deepenText: "",
