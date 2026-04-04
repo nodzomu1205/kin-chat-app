@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ChatTextarea from "@/components/ChatTextarea";
 import type {
   FileUploadKind,
@@ -83,7 +83,16 @@ const verticalButtonStyle: React.CSSProperties = {
   lineHeight: 1.1,
   letterSpacing: "0.08em",
   transition: "opacity 180ms ease",
+  position: "relative",
+  overflow: "hidden",
 };
+
+function getAcceptByKind(kind: FileUploadKind): string {
+  if (kind === "visual") {
+    return ".pdf,image/*";
+  }
+  return ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
+}
 
 export default function GptComposer({
   value,
@@ -119,6 +128,10 @@ export default function GptComposer({
     return () => window.clearInterval(id);
   }, [loading, ingestLoading]);
 
+  const injectDisabled = loading || ingestLoading || !canInjectFile;
+  const sendDisabled = loading || ingestLoading;
+  const accept = useMemo(() => getAcceptByKind(uploadKind), [uploadKind]);
+
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -133,9 +146,6 @@ export default function GptComposer({
       action: postIngestAction,
     });
   };
-
-  const injectDisabled = loading || ingestLoading || !canInjectFile;
-  const sendDisabled = loading || ingestLoading;
 
   return (
     <div
@@ -237,27 +247,35 @@ export default function GptComposer({
             </div>
           </div>
 
-          <div
-            style={{
-              ...verticalButtonStyle,
-              position: "relative",
-              cursor: injectDisabled ? "default" : "pointer",
-              opacity: injectDisabled ? (blink ? 0.55 : 0.8) : 1,
-            }}
-            title={
-              canInjectFile
-                ? "ファイルを読み込んでKin用の情報ブロックを作成"
-                : "先にKinを接続してください"
-            }
-            aria-disabled={injectDisabled}
-          >
-            {ingestLoading ? "変換中" : "注入"}
+          {injectDisabled ? (
+            <div
+              style={{
+                ...verticalButtonStyle,
+                cursor: "default",
+                opacity: blink ? 0.55 : 0.8,
+              }}
+              title={
+                canInjectFile ? "変換中です" : "先にKinを接続してください"
+              }
+              aria-disabled="true"
+            >
+              {ingestLoading ? "変換中" : "注入"}
+            </div>
+          ) : (
+            <label
+              style={{
+                ...verticalButtonStyle,
+                cursor: "pointer",
+                opacity: 1,
+              }}
+              title="ファイルを選択"
+            >
+              {ingestLoading ? "変換中" : "注入"}
 
-            {!injectDisabled && (
               <input
                 type="file"
+                accept={accept}
                 onChange={handleFileChange}
-                accept=".pdf,.txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql"
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -266,10 +284,9 @@ export default function GptComposer({
                   opacity: 0,
                   cursor: "pointer",
                 }}
-                title=""
               />
-            )}
-          </div>
+            </label>
+          )}
         </div>
       )}
 
