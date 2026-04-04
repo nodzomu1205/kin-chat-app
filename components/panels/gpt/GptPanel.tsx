@@ -76,14 +76,14 @@ function formatBarUpdatedAt(value?: string) {
 const taskStatusBarStyle = (isMobile: boolean): React.CSSProperties => ({
   marginLeft: isMobile ? 8 : 12,
   marginRight: isMobile ? 8 : 12,
-  marginTop: isMobile ? 10 : 6,
+  marginTop: isMobile ? 8 : 6,
   marginBottom: isMobile ? 8 : 8,
   border: "1px solid #dbeafe",
   background: "#f8fbff",
   borderRadius: 12,
   padding: isMobile ? "8px 10px" : "8px 12px",
   display: "grid",
-  gap: 6,
+  gap: isMobile ? 0 : 6,
   cursor: "pointer",
   boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
 });
@@ -91,31 +91,12 @@ const taskStatusBarStyle = (isMobile: boolean): React.CSSProperties => ({
 const taskStatusTopRowStyle = (
   isMobile: boolean
 ): React.CSSProperties => ({
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: isMobile ? "1fr auto auto" : "1fr auto",
   alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
-  flexWrap: "wrap",
+  gap: isMobile ? 8 : 10,
   fontSize: isMobile ? 11 : 12,
 });
-
-const taskStatusChipRowStyle: React.CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-};
-
-const taskStatusChipStyle: React.CSSProperties = {
-  border: "1px solid #cbd5e1",
-  background: "#ffffff",
-  borderRadius: 999,
-  padding: "2px 8px",
-  fontSize: 11,
-  fontWeight: 700,
-  color: "#475569",
-  lineHeight: 1.5,
-  whiteSpace: "nowrap",
-};
 
 export default function GptPanel(props: GptPanelProps) {
   const {
@@ -335,12 +316,15 @@ export default function GptPanel(props: GptPanelProps) {
         <div style={taskStatusTopRowStyle(isMobile)}>
           <div
             style={{
-              fontSize: isMobile ? 12 : 13,
+              fontSize: isMobile ? 13 : 13,
               fontWeight: 800,
               color: "#0f172a",
-              lineHeight: 1.4,
+              lineHeight: 1.35,
               textAlign: "left",
-              wordBreak: "break-word",
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {taskName}
@@ -350,26 +334,83 @@ export default function GptPanel(props: GptPanelProps) {
             style={{
               fontSize: 11,
               fontWeight: 700,
-              color: activeDrawerTab === "task_status" ? "#0f766e" : "#64748b",
+              color: "#64748b",
               whiteSpace: "nowrap",
             }}
           >
-            {activeDrawerTab === "task_status" ? "▲ 詳細を閉じる" : "▼ 詳細を開く"}
+            更新: {formatBarUpdatedAt(currentTaskDraft.updatedAt)}
           </div>
+
+          {isMobile && (
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color:
+                  activeDrawerTab === "task_status" ? "#0f766e" : "#64748b",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {activeDrawerTab === "task_status" ? "▲" : "▼"}
+            </div>
+          )}
         </div>
 
-        <div style={taskStatusChipRowStyle}>
-          <span style={taskStatusChipStyle}>指示: {instructionPreview}</span>
-          <span style={taskStatusChipStyle}>
-            検索: {hasSearchContext ? "あり" : "なし"}
-          </span>
-          <span style={taskStatusChipStyle}>
-            ソース: {currentTaskDraft.sources.length}件
-          </span>
-          <span style={taskStatusChipStyle}>
-            更新: {formatBarUpdatedAt(currentTaskDraft.updatedAt)}
-          </span>
-        </div>
+        {!isMobile && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+            }}
+          >
+            <span
+              style={{
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                borderRadius: 999,
+                padding: "2px 8px",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#475569",
+                lineHeight: 1.5,
+                whiteSpace: "nowrap",
+              }}
+            >
+              指示: {instructionPreview}
+            </span>
+            <span
+              style={{
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                borderRadius: 999,
+                padding: "2px 8px",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#475569",
+                lineHeight: 1.5,
+                whiteSpace: "nowrap",
+              }}
+            >
+              検索: {hasSearchContext ? "あり" : "なし"}
+            </span>
+            <span
+              style={{
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                borderRadius: 999,
+                padding: "2px 8px",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#475569",
+                lineHeight: 1.5,
+                whiteSpace: "nowrap",
+              }}
+            >
+              ソース: {currentTaskDraft.sources.length}件
+            </span>
+          </div>
+        )}
       </button>
 
       {activeDrawerTab && (
