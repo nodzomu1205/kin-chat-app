@@ -254,10 +254,7 @@ export default function GptComposer({
                 cursor: "default",
                 opacity: blink ? 0.55 : 0.8,
               }}
-              title={
-                canInjectFile ? "変換中です" : "先にKinを接続してください"
-              }
-              aria-disabled="true"
+              title="ファイルを読み込んでタスク整理用の情報を作成"
             >
               {ingestLoading ? "変換中" : "注入"}
             </div>

@@ -858,18 +858,6 @@ export default function ChatApp() {
   ) => {
     if (ingestLoading) return;
 
-    if (!currentKin) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 先にKinを接続してから注入してください。",
-        },
-      ]);
-      return;
-    }
-
     const resolvedKind = resolveUploadKindFromFile(file, options.kind);
     setIngestLoading(true);
 
@@ -1216,7 +1204,7 @@ export default function ChatApp() {
       sendLastGptToKinDraft={sendLastGptToKinDraft}
       sendTaskToKinDraft={sendTaskToKinDraft}
       injectFileToKinDraft={injectFileToKinDraft}
-      canInjectFile={!!currentKin}
+      canInjectFile={!gptLoading && !ingestLoading}
       loading={gptLoading}
       ingestLoading={ingestLoading}
       gptBottomRef={gptBottomRef}
