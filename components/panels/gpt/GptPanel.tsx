@@ -61,6 +61,62 @@ const topEarTabStyle = (
   whiteSpace: "nowrap",
 });
 
+function formatBarUpdatedAt(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const taskStatusBarStyle = (isMobile: boolean): React.CSSProperties => ({
+  marginLeft: isMobile ? 8 : 12,
+  marginRight: isMobile ? 8 : 12,
+  marginTop: isMobile ? 10 : 6,
+  marginBottom: isMobile ? 8 : 8,
+  border: "1px solid #dbeafe",
+  background: "#f8fbff",
+  borderRadius: 12,
+  padding: isMobile ? "8px 10px" : "8px 12px",
+  display: "grid",
+  gap: 6,
+  cursor: "pointer",
+  boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+});
+
+const taskStatusTopRowStyle = (
+  isMobile: boolean
+): React.CSSProperties => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 8,
+  flexWrap: "wrap",
+  fontSize: isMobile ? 11 : 12,
+});
+
+const taskStatusChipRowStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 6,
+};
+
+const taskStatusChipStyle: React.CSSProperties = {
+  border: "1px solid #cbd5e1",
+  background: "#ffffff",
+  borderRadius: 999,
+  padding: "2px 8px",
+  fontSize: 11,
+  fontWeight: 700,
+  color: "#475569",
+  lineHeight: 1.5,
+  whiteSpace: "nowrap",
+};
+
 export default function GptPanel(props: GptPanelProps) {
   const {
     currentKinLabel,
@@ -196,6 +252,19 @@ export default function GptPanel(props: GptPanelProps) {
           void sendTaskToKinDraft();
         };
 
+  const taskName =
+    currentTaskDraft.title?.trim() ||
+    currentTaskDraft.taskName?.trim() ||
+    "未設定";
+
+  const instructionPreview = useMemo(() => {
+    const text = currentTaskDraft.userInstruction?.trim() || "";
+    if (!text) return "追加指示なし";
+    return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+  }, [currentTaskDraft.userInstruction]);
+
+  const hasSearchContext = !!currentTaskDraft.searchContext?.query?.trim();
+
   return (
     <div
       style={{
@@ -253,6 +322,55 @@ export default function GptPanel(props: GptPanelProps) {
           タスク状態
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={() =>
+          setActiveDrawerTab((prev) =>
+            prev === "task_status" ? null : "task_status"
+          )
+        }
+        style={taskStatusBarStyle(isMobile)}
+      >
+        <div style={taskStatusTopRowStyle(isMobile)}>
+          <div
+            style={{
+              fontSize: isMobile ? 12 : 13,
+              fontWeight: 800,
+              color: "#0f172a",
+              lineHeight: 1.4,
+              textAlign: "left",
+              wordBreak: "break-word",
+            }}
+          >
+            {taskName}
+          </div>
+
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: activeDrawerTab === "task_status" ? "#0f766e" : "#64748b",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {activeDrawerTab === "task_status" ? "▲ 詳細を閉じる" : "▼ 詳細を開く"}
+          </div>
+        </div>
+
+        <div style={taskStatusChipRowStyle}>
+          <span style={taskStatusChipStyle}>指示: {instructionPreview}</span>
+          <span style={taskStatusChipStyle}>
+            検索: {hasSearchContext ? "あり" : "なし"}
+          </span>
+          <span style={taskStatusChipStyle}>
+            ソース: {currentTaskDraft.sources.length}件
+          </span>
+          <span style={taskStatusChipStyle}>
+            更新: {formatBarUpdatedAt(currentTaskDraft.updatedAt)}
+          </span>
+        </div>
+      </button>
 
       {activeDrawerTab && (
         <div
