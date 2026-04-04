@@ -76,7 +76,7 @@ function formatContextUpdatedAt(value?: string) {
 const contextLineWrapStyle = (isMobile: boolean): React.CSSProperties => ({
   marginLeft: isMobile ? 10 : 12,
   marginRight: isMobile ? 10 : 12,
-  marginTop: isMobile ? 10 : 8,
+  marginTop: isMobile ? 12 : 10,
   marginBottom: isMobile ? 6 : 6,
   minHeight: isMobile ? 18 : 20,
   display: "flex",

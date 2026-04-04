@@ -313,10 +313,14 @@ export default function ChatApp() {
       return;
     }
 
-    const requestText =
-      hasSearch && !parsedInput.freeText
-        ? `検索：${parsedInput.searchQuery}`
-        : chatText;
+  const requestText = [
+    parsedInput.searchQuery ? `検索：${parsedInput.searchQuery}` : "",
+    parsedInput.freeText || "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const finalRequestText = requestText || rawText;
 
     const userMsg: Message = {
       id: generateId(),
@@ -326,7 +330,7 @@ export default function ChatApp() {
 
     const baseRecent = gptStateRef.current.recentMessages || [];
     const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-    const provisionalMemory = getProvisionalMemory(requestText);
+    const provisionalMemory = getProvisionalMemory(finalRequestText);
 
     setGptMessages((prev) => [...prev, userMsg]);
     setGptInput("");
@@ -347,7 +351,7 @@ export default function ChatApp() {
           mode: "chat",
           memory: provisionalMemory,
           recentMessages: newRecent,
-          input: requestText,
+          input: finalRequestText,
           instructionMode,
           reasoningMode: responseMode,
         }),
@@ -380,7 +384,7 @@ export default function ChatApp() {
           query:
             (typeof data?.searchQuery === "string" && data.searchQuery.trim()) ||
             parsedInput.searchQuery ||
-            requestText,
+            finalRequestText,
           rawText:
             typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
           sources: Array.isArray(data?.sources) ? data.sources : [],
