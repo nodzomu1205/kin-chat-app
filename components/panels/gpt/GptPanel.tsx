@@ -88,6 +88,8 @@ export default function GptPanel(props: GptPanelProps) {
     runUpdateTaskFromInput,
     runUpdateTaskFromLastGptMessage,
     runAttachSearchResultToTask,
+    importLastKinInstructionToTask,
+    sendSysInfoToKinDraft,
     resetGptForCurrentKin,
     sendLastGptToKinDraft,
     sendTaskToKinDraft,
@@ -455,6 +457,8 @@ export default function GptPanel(props: GptPanelProps) {
           onAttachSearchResult={() => {
             void runAttachSearchResultToTask();
           }}
+          onImportKinInstruction={importLastKinInstructionToTask}
+          onSendSysInfo={sendSysInfoToKinDraft}
           onTransfer={transferHandler}
           onReset={resetGptForCurrentKin}
         />

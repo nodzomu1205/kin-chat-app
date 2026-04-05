@@ -84,6 +84,8 @@ export default function TestTaskPage() {
             runUpdateTaskFromInput={noopAsync}
             runUpdateTaskFromLastGptMessage={noopAsync}
             runAttachSearchResultToTask={noopAsync}
+            importLastKinInstructionToTask={noop}
+            sendSysInfoToKinDraft={noop}
             resetGptForCurrentKin={resetGptForCurrentKin}
             sendLastGptToKinDraft={noop}
             sendTaskToKinDraft={noopAsync}

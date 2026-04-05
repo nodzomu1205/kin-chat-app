@@ -24,6 +24,8 @@ type Props = {
   onRunTaskUpdate: () => void;
   onImportLastResponse: () => void;
   onAttachSearchResult: () => void;
+  onImportKinInstruction: () => void;
+  onSendSysInfo: () => void;
   onTransfer: () => void;
   onReset: () => void;
 };
@@ -62,6 +64,8 @@ function BottomActions({
   onRunTaskUpdate,
   onImportLastResponse,
   onAttachSearchResult,
+  onImportKinInstruction,
+  onSendSysInfo,
   onTransfer,
   onReset,
 }: Omit<Props, "isMobile" | "onSwitchPanel" | "onChangeTab">) {
@@ -166,6 +170,22 @@ function BottomActions({
 
         <button
           type="button"
+          style={restoredButton(buttonTask)}
+          onClick={onImportKinInstruction}
+        >
+          Kin指示
+        </button>
+
+        <button
+          type="button"
+          style={restoredButton(buttonTransfer)}
+          onClick={onSendSysInfo}
+        >
+          SYS_INFO
+        </button>
+
+        <button
+          type="button"
           style={restoredButton(buttonTransfer)}
           onClick={onTransfer}
         >
@@ -205,6 +225,8 @@ export default function GptToolbar({
   onRunTaskUpdate,
   onImportLastResponse,
   onAttachSearchResult,
+  onImportKinInstruction,
+  onSendSysInfo,
   onTransfer,
   onReset,
 }: Props) {
@@ -265,6 +287,8 @@ export default function GptToolbar({
           onRunTaskUpdate={onRunTaskUpdate}
           onImportLastResponse={onImportLastResponse}
           onAttachSearchResult={onAttachSearchResult}
+          onImportKinInstruction={onImportKinInstruction}
+          onSendSysInfo={onSendSysInfo}
           onTransfer={onTransfer}
           onReset={onReset}
         />

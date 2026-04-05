@@ -8,7 +8,7 @@ export type SourceItem = {
 export type MessageMeta = {
   kind?: "normal" | "task_prep" | "task_deepen" | "task_format" | "task_info";
   taskDraftId?: string;
-  sourceType?: "gpt_input" | "file_ingest" | "search" | "manual";
+  sourceType?: "gpt_input" | "file_ingest" | "search" | "manual" | "kin_message" | "gpt_chat";
 };
 
 export type Message = {

@@ -159,6 +159,8 @@ export default function ChatApp() {
     runAttachSearchResultToTask,
     runDeepenTaskFromLast,
     sendTaskToKinDraft,
+    importLastKinInstructionToTask,
+    sendSysInfoToKinDraft,
     getTaskBaseText,
   } = useGptActions({
     gptInput,
@@ -167,6 +169,7 @@ export default function ChatApp() {
     setGptLoading,
     gptMessages,
     setGptMessages,
+    kinMessages,
     gptStateRef,
     setGptState,
     getProvisionalMemory,
@@ -383,6 +386,8 @@ export default function ChatApp() {
       runUpdateTaskFromInput={runUpdateTaskFromInput}
       runUpdateTaskFromLastGptMessage={runUpdateTaskFromLastGptMessage}
       runAttachSearchResultToTask={runAttachSearchResultToTask}
+      importLastKinInstructionToTask={importLastKinInstructionToTask}
+      sendSysInfoToKinDraft={sendSysInfoToKinDraft}
       resetGptForCurrentKin={handleResetGpt}
       sendLastGptToKinDraft={sendLastGptToKinDraft}
       sendTaskToKinDraft={sendTaskToKinDraft}

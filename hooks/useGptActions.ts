@@ -24,6 +24,7 @@ import {
   suggestTopicLabel,
 } from "@/lib/app/contextNaming";
 import { routeTaskInput } from "@/lib/app/taskRouting";
+import { buildKinSysInfoFromTask, parseKinInstructionMessage } from "@/lib/app/kinStructuredProtocol";
 import type { TokenUsage } from "@/hooks/useGptMemory";
 import { normalizeUsage } from "@/lib/tokenStats";
 
@@ -36,6 +37,7 @@ type UseGptActionsArgs = {
   setGptLoading: Dispatch<SetStateAction<boolean>>;
   gptMessages: Message[];
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
+  kinMessages: Message[];
   gptStateRef: MutableRefObject<KinMemoryState>;
   setGptState: Dispatch<SetStateAction<KinMemoryState>>;
   getProvisionalMemory: (input: string) => KinMemoryState["memory"];
@@ -63,6 +65,7 @@ export function useGptActions(args: UseGptActionsArgs) {
     setGptLoading,
     gptMessages,
     setGptMessages,
+    kinMessages,
     gptStateRef,
     setGptState,
     getProvisionalMemory,
@@ -829,6 +832,97 @@ export function useGptActions(args: UseGptActionsArgs) {
     setKinInput,
   ]);
 
+
+  const importLastKinInstructionToTask = useCallback(() => {
+    const lastKin = [...kinMessages].reverse().find((m) => m.role === "kin");
+    if (!lastKin?.text?.trim()) {
+      appendGptSystemMessage("⚠️ 取込対象のKin返答が見つかりません");
+      return;
+    }
+
+    const parsed = parseKinInstructionMessage(lastKin.text);
+    const suggestedTitle = suggestTaskTitle({
+      explicitTitle: currentTaskDraft.title,
+      freeText: parsed.request || parsed.suggestedTitle,
+      fallback: parsed.suggestedTitle,
+    });
+
+    setCurrentTaskDraft((prev) => ({
+      ...prev,
+      title: suggestedTitle,
+      taskName: suggestedTitle,
+      userInstruction: parsed.userInstruction || prev.userInstruction,
+      body: parsed.body,
+      mergedText: parsed.body,
+      status: "prepared",
+      sources: [
+        createTaskSource("kin_message", "Kin instruction", parsed.rawBlock),
+        ...prev.sources,
+      ].slice(0, 12),
+      updatedAt: new Date().toISOString(),
+    }));
+
+    setGptState((prev) => ({
+      ...prev,
+      memory: {
+        ...prev.memory,
+        context: {
+          ...prev.memory.context,
+          currentTopic: suggestedTitle,
+        },
+      },
+    }));
+
+    appendGptSystemMessage(
+      "✅ 最新のKin返答を <<KIN_INSTRUCTION>> 系素材としてタスク状態へ取り込みました。",
+      { kind: "task_info", sourceType: "kin_message" }
+    );
+  }, [
+    appendGptSystemMessage,
+    currentTaskDraft.title,
+    kinMessages,
+    setCurrentTaskDraft,
+    setGptState,
+  ]);
+
+  const sendSysInfoToKinDraft = useCallback(() => {
+    const lastGpt = [...gptMessages].reverse().find((m) => m.role === "gpt");
+    const block = buildKinSysInfoFromTask({
+      title:
+        currentTaskDraft.title?.trim() ||
+        currentTaskDraft.taskName?.trim() ||
+        "GPT整理結果",
+      taskBody: getTaskBaseText(),
+      taskUserInstruction: currentTaskDraft.userInstruction,
+      fallbackText: lastGpt?.text,
+    });
+
+    if (!block.trim()) {
+      appendGptSystemMessage("⚠️ <<SYS_INFO>> 化する対象テキストが見つかりません");
+      return;
+    }
+
+    setKinInput(block);
+    appendGptSystemMessage(
+      "✅ 現在タスク / 最新GPT結果を <<SYS_INFO>> 形式に整え、Kin入力欄にセットしました。",
+      { kind: "task_info", sourceType: "gpt_chat" }
+    );
+
+    if (isMobile) {
+      onSwitchToKin?.();
+    }
+  }, [
+    appendGptSystemMessage,
+    currentTaskDraft.taskName,
+    currentTaskDraft.title,
+    currentTaskDraft.userInstruction,
+    getTaskBaseText,
+    gptMessages,
+    isMobile,
+    onSwitchToKin,
+    setKinInput,
+  ]);
+
   const suggestCurrentTaskTitle = useCallback((text: string) => {
     return suggestTaskTitle({
       explicitTitle: currentTaskDraft.title,
@@ -846,6 +940,8 @@ export function useGptActions(args: UseGptActionsArgs) {
     runAttachSearchResultToTask,
     runDeepenTaskFromLast,
     sendTaskToKinDraft,
+    importLastKinInstructionToTask,
+    sendSysInfoToKinDraft,
     getTaskBaseText,
     patchTaskDraft,
     suggestCurrentTaskTitle,
