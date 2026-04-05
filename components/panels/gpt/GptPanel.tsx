@@ -26,6 +26,7 @@ import {
   normalizeLocalSettings,
   sumUsages,
 } from "./gptPanelUtils";
+import { resolveContextLine } from "@/lib/app/contextLabel";
 
 const topEarRailStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "flex",
@@ -60,18 +61,6 @@ const topEarTabStyle = (
   pointerEvents: "auto",
   whiteSpace: "nowrap",
 });
-
-function formatContextUpdatedAt(value?: string) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("ja-JP", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 const contextLineWrapStyle = (isMobile: boolean): React.CSSProperties => ({
   marginLeft: isMobile ? 10 : 12,
@@ -220,48 +209,13 @@ export default function GptPanel(props: GptPanelProps) {
           void sendTaskToKinDraft();
         };
 
-  const taskName =
-    currentTaskDraft.title?.trim() ||
-    currentTaskDraft.taskName?.trim() ||
-    "";
-
-  const currentTopic =
-    gptState.memory.context.currentTopic?.trim() || "";
-
-  const hasTask =
-    !!currentTaskDraft.body.trim() ||
-    !!currentTaskDraft.prepText.trim() ||
-    !!currentTaskDraft.deepenText.trim() ||
-    !!currentTaskDraft.mergedText.trim() ||
-    currentTaskDraft.sources.length > 0;
-
-  const taskFocused =
-    activeDrawerTab === "task_status" ||
-    activeBottomTab === "task_primary" ||
-    activeBottomTab === "task_secondary";
-
-  const contextKind: "task" | "chat" | null =
-    taskFocused && taskName && hasTask
-      ? "task"
-      : currentTopic
-        ? "chat"
-        : taskName && hasTask
-          ? "task"
-          : null;
-
-  const contextLabel =
-    contextKind === "task"
-      ? taskName
-      : contextKind === "chat"
-        ? currentTopic
-        : "";
-
-  const contextUpdatedAt =
-    contextKind === "task"
-      ? formatContextUpdatedAt(currentTaskDraft.updatedAt)
-      : "";
-
-  const showContextLine = !!contextLabel;
+  const { contextKind, contextLabel, contextUpdatedAt, showContextLine } =
+    resolveContextLine({
+      activeDrawerTab,
+      activeBottomTab,
+      currentTopic: gptState.memory.context.currentTopic,
+      currentTaskDraft,
+    });
 
   return (
     <div
