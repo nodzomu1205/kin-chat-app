@@ -26,6 +26,7 @@ export type GptBottomTab =
   | "chat"
   | "task_primary"
   | "task_secondary"
+  | "kin"
   | "file";
 
 export type GptTopDrawerTab =
@@ -69,11 +70,11 @@ export type GptPanelProps = {
   runUpdateTaskFromInput: () => Promise<void>;
   runUpdateTaskFromLastGptMessage: () => Promise<void>;
   runAttachSearchResultToTask: () => Promise<void>;
-  importLastKinInstructionToTask: () => void;
-  sendSysInfoToKinDraft: () => void;
+  sendLatestGptContentToKin: () => void;
+  sendCurrentTaskContentToKin: () => void;
+  receiveLastKinResponseToGptInput: () => void;
   resetGptForCurrentKin: () => void;
   sendLastGptToKinDraft: () => void;
-  sendTaskToKinDraft: () => Promise<void>;
   injectFileToKinDraft: (
     file: File,
     options: {

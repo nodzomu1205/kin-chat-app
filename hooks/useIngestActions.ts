@@ -5,6 +5,7 @@ import type {
   ImageDetail,
   IngestMode,
   PostIngestAction,
+  ResponseMode,
 } from '@/components/panels/gpt/gptPanelTypes';
 import {
   buildMergedTaskInput,
@@ -18,6 +19,18 @@ import {
   createTaskSource,
   resolveTaskName,
 } from '@/lib/app/taskDraftHelpers';
+import {
+  buildKinSysInfoBlock,
+  buildKinSysTaskBlock,
+} from '@/lib/app/kinStructuredProtocol';
+import {
+  buildKinDirectiveLines,
+  buildTaskExecutionInstruction,
+  parseTransformIntent,
+  shouldTransformContent,
+  splitTextIntoKinChunks,
+  transformTextWithIntent,
+} from '@/lib/app/transformIntent';
 import type { Message } from '@/types/chat';
 import type { TaskDraft } from '@/types/task';
 import { generateId } from '@/lib/uuid';
@@ -54,6 +67,9 @@ type UseIngestActionsArgs = {
   isMobile: boolean;
   onSwitchToKin: () => void;
   getTaskBaseText: () => string;
+  directiveInput?: string;
+  setDirectiveInput?: (value: string) => void;
+  responseMode?: ResponseMode;
 };
 
 function resolveReadPolicyLabel(policy: FileReadPolicy): string {
@@ -67,6 +83,88 @@ function resolveActionLabel(action: PostIngestAction): string {
   if (action === 'inject_and_prep') return '注入＋タスク整理';
   if (action === 'inject_prep_deepen') return '注入＋タスク整理＋深掘り';
   return '現在タスクに追加';
+}
+
+function readDirectiveInputFallback(): string {
+  if (typeof document === "undefined") return "";
+
+  const candidates = Array.from(document.querySelectorAll("textarea"));
+  const last = candidates.at(-1);
+  return last instanceof HTMLTextAreaElement ? last.value.trim() : "";
+}
+
+function buildBlocksFromText(args: {
+  mode: 'sys_info' | 'sys_task';
+  taskSlot?: number;
+  title: string;
+  sourceLabel?: string;
+  content: string;
+  directiveLines: string[];
+}): string[] {
+  if (args.mode === 'sys_task') {
+    return [
+      buildKinSysTaskBlock({
+        taskSlot: args.taskSlot,
+        title: args.title,
+        content: args.content,
+        directiveLines: args.directiveLines,
+      }),
+    ];
+  }
+
+  const chunks = splitTextIntoKinChunks(args.content, 2200);
+  const total = chunks.length;
+
+  return chunks.map((chunk, index) =>
+    buildKinSysInfoBlock({
+      taskSlot: args.taskSlot,
+      title: args.title,
+      sourceLabel: args.sourceLabel || 'file_ingest',
+      content: chunk,
+      directiveLines: args.directiveLines,
+      partIndex: index + 1,
+      partTotal: total,
+    })
+  );
+}
+
+
+function buildPlannerWrappedInput(text: string, directiveText: string, defaultMode: 'sys_info' | 'sys_task' = 'sys_info') {
+  const intent = parseTransformIntent(directiveText, defaultMode);
+  const executionInstruction = buildTaskExecutionInstruction("", intent);
+
+  if (!executionInstruction.trim()) {
+    return text;
+  }
+
+  return [
+    `ユーザー追加指示:`,
+    executionInstruction,
+    "",
+    text,
+  ].join("\n");
+}
+
+async function maybeTransformDisplayText(args: {
+  text: string;
+  intentInput: string;
+  responseMode?: ResponseMode;
+}) {
+  const intent = parseTransformIntent(args.intentInput, "sys_info");
+  if (!shouldTransformContent(intent)) {
+    return { text: args.text, usage: null as UsageInput | null };
+  }
+
+  const transformed = await transformTextWithIntent({
+    text: args.text,
+    intent,
+    responseMode: args.responseMode,
+  });
+
+  return {
+    text: transformed.text.trim() || args.text,
+    usage: transformed.usage as UsageInput | null,
+  };
 }
 
 export function useIngestActions({
@@ -84,6 +182,9 @@ export function useIngestActions({
   isMobile,
   onSwitchToKin,
   getTaskBaseText,
+  directiveInput,
+  setDirectiveInput,
+  responseMode,
 }: UseIngestActionsArgs) {
   const injectFileToKinDraft = async (file: File, options: IngestOptions) => {
     if (ingestLoading) return;
@@ -127,7 +228,58 @@ export function useIngestActions({
 
       applyIngestUsage(data?.usage);
 
-      const blocks: string[] = Array.isArray(data?.kinBlocks) ? data.kinBlocks : [];
+      const title =
+        typeof data?.result?.title === 'string' && data.result.title.trim()
+          ? data.result.title
+          : file.name;
+
+      const liveDirectiveInput = (directiveInput || '').trim() || readDirectiveInputFallback();
+      const intent = parseTransformIntent(liveDirectiveInput, 'sys_info');
+      let prepInput = buildPrepInputFromIngestResult(data, file.name);
+      let effectiveContent = prepInput;
+
+      if (shouldTransformContent(intent)) {
+        try {
+          const transformed = await transformTextWithIntent({
+            text: prepInput,
+            intent,
+            responseMode,
+          });
+          effectiveContent = transformed.text.trim() || prepInput;
+          prepInput = effectiveContent;
+          applyTaskUsage(transformed.usage);
+        } catch (error) {
+          console.error('file transform failed', error);
+          setGptMessages((prev) => [
+            ...prev,
+            {
+              id: generateId(),
+              role: 'gpt',
+              text: '⚠️ ファイル方向性指示の反映に失敗したため、元の取込内容で続行しました。',
+              meta: {
+                kind: 'task_info',
+                sourceType: 'file_ingest',
+              },
+            },
+          ]);
+        }
+      }
+
+      const directiveLines = buildKinDirectiveLines(intent);
+      const blocks: string[] =
+        shouldTransformContent(intent) || directiveLines.length > 0
+          ? buildBlocksFromText({
+              mode: intent.mode,
+              taskSlot: 1,
+              title: title || file.name,
+              sourceLabel: 'file_ingest',
+              content: effectiveContent,
+              directiveLines,
+            })
+          : Array.isArray(data?.kinBlocks)
+            ? data.kinBlocks
+            : [];
+
       if (blocks.length === 0) {
         setGptMessages((prev) => [
           ...prev,
@@ -144,8 +296,8 @@ export function useIngestActions({
       setPendingKinInjectionIndex(0);
       setKinInput(blocks[0]);
       setUploadKind(resolvedKind);
+      setDirectiveInput?.('');
 
-      const prepInput = buildPrepInputFromIngestResult(data, file.name);
       let prepTaskText = '';
       let deepenTaskText = '';
 
@@ -154,9 +306,20 @@ export function useIngestActions({
         options.action === 'inject_prep_deepen'
       ) {
         try {
-          const prepData = await runAutoPrepTask(prepInput, `ingest-${file.name}`);
+          const prepData = await runAutoPrepTask(
+            buildPlannerWrappedInput(prepInput, liveDirectiveInput, intent.mode),
+            `ingest-${file.name}`
+          );
           prepTaskText = formatTaskResultText(prepData?.parsed, prepData?.raw);
           applyTaskUsage(prepData?.usage);
+
+          const transformedPrep = await maybeTransformDisplayText({
+            text: prepTaskText,
+            intentInput: liveDirectiveInput,
+            responseMode,
+          });
+          prepTaskText = transformedPrep.text;
+          applyTaskUsage(transformedPrep.usage);
 
           if (options.action === 'inject_prep_deepen') {
             try {
@@ -169,6 +332,14 @@ export function useIngestActions({
                 deepenData?.raw
               );
               applyTaskUsage(deepenData?.usage);
+
+              const transformedDeepen = await maybeTransformDisplayText({
+                text: deepenTaskText,
+                intentInput: liveDirectiveInput,
+                responseMode,
+              });
+              deepenTaskText = transformedDeepen.text;
+              applyTaskUsage(transformedDeepen.usage);
             } catch (error) {
               console.error('auto deepen task failed', error);
               deepenTaskText = '⚠️ 自動深掘りに失敗しました';
@@ -179,11 +350,6 @@ export function useIngestActions({
           prepTaskText = '⚠️ 抽出後の自動タスク整理に失敗しました';
         }
       }
-
-      const title =
-        typeof data?.result?.title === 'string' && data.result.title.trim()
-          ? data.result.title
-          : file.name;
 
       const modeLine =
         resolvedKind === 'text'
@@ -198,9 +364,12 @@ export function useIngestActions({
         modeLine,
         `注入後処理: ${resolveActionLabel(options.action)}`,
         `分割数: ${blocks.length}`,
+        directiveLines.length > 0
+          ? `方向性指示: ${directiveLines.join(' / ')}`
+          : '',
         '',
         `Kin入力欄に 1/${blocks.length} をセットしました。送信後は次パートが自動で下書きに入ります。`,
-      ];
+      ].filter(Boolean);
 
       if (options.action === 'inject_only') {
         messageParts.push('', '--------------------', '【取込内容】', prepInput);
@@ -247,22 +416,33 @@ export function useIngestActions({
             prepInput,
             {
               title: currentTaskDraft.title || title || file.name,
-              userInstruction: currentTaskDraft.userInstruction,
+              userInstruction: buildTaskExecutionInstruction(
+                currentTaskDraft.userInstruction,
+                intent
+              ),
               searchRawText: currentTaskDraft.searchContext?.rawText || '',
             }
           );
 
           try {
             const mergeData = await runAutoPrepTask(
-              mergedInput,
+              buildPlannerWrappedInput(mergedInput, liveDirectiveInput, intent.mode),
               `attach-${file.name}`
             );
-            const mergedTaskText = formatTaskResultText(
+            let mergedTaskText = formatTaskResultText(
               mergeData?.parsed,
               mergeData?.raw
             );
 
             applyTaskUsage(mergeData?.usage);
+
+            const transformedMerged = await maybeTransformDisplayText({
+              text: mergedTaskText,
+              intentInput: liveDirectiveInput,
+              responseMode,
+            });
+            mergedTaskText = transformedMerged.text;
+            applyTaskUsage(transformedMerged.usage);
 
             setGptMessages((prev) => [
               ...prev,

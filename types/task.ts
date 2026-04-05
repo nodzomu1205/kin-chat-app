@@ -81,6 +81,7 @@ export type TaskDraftStatus =
 export type TaskDraft = {
   id: string;
   taskId: string;
+  slot: number;
 
   // 新構造
   title: string;
@@ -120,6 +121,8 @@ export function createEmptyTaskDraft(): TaskDraft {
   return {
     id: taskId,
     taskId,
+
+    slot: 1,
 
     title: taskName,
     userInstruction: "",

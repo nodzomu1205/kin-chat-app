@@ -13,11 +13,35 @@ import { createSession, getSessions } from "@/lib/storage";
 import type { MemorySettings } from "@/lib/memory";
 import type { Message } from "@/types/chat";
 import { generateId } from "@/lib/uuid";
+import {
+  buildPrepInputFromIngestResult,
+  buildMergedTaskInput,
+  buildTaskStructuredInput,
+  buildTaskInput,
+  formatTaskResultText,
+  resolveUploadKindFromFile,
+  runAutoDeepenTask,
+  runAutoPrepTask,
+} from "@/lib/app/gptTaskClient";
+import type {
+  GptInstructionMode,
+  PostIngestAction,
+} from "@/components/panels/gpt/gptPanelTypes";
 import type { SearchContext, TaskDraft } from "@/types/task";
 import { createEmptyTaskDraft } from "@/types/task";
-import { resetTaskDraft } from "@/lib/app/taskDraftHelpers";
-import { useGptActions } from "@/hooks/useGptActions";
-import { useIngestActions } from "@/hooks/useIngestActions";
+import {
+  createTaskSource,
+  resolveTaskName,
+  resetTaskDraft,
+} from "@/lib/app/taskDraftHelpers";
+import { parseTaskInput } from "@/lib/taskInputParser";
+import {
+  buildKinSysInfoBlock,
+  buildKinSysTaskBlock,
+  extractPreferredKinTransferText,
+  formatTaskSlot,
+  resolveKinBlockModeAndDirective,
+} from "@/lib/app/kinStructuredProtocol";
 
 type MobileTab = "kin" | "gpt";
 
@@ -151,65 +175,33 @@ export default function ChatApp() {
     }));
   };
 
-  const {
-    sendToGpt,
-    runPrepTaskFromInput,
-    runUpdateTaskFromInput,
-    runUpdateTaskFromLastGptMessage,
-    runAttachSearchResultToTask,
-    runDeepenTaskFromLast,
-    sendTaskToKinDraft,
-    importLastKinInstructionToTask,
-    sendSysInfoToKinDraft,
-    getTaskBaseText,
-  } = useGptActions({
-    gptInput,
-    setGptInput,
-    gptLoading,
-    setGptLoading,
-    gptMessages,
-    setGptMessages,
-    kinMessages,
-    gptStateRef,
-    setGptState,
-    getProvisionalMemory,
-    handleGptMemory,
-    chatRecentLimit,
-    responseMode,
-    currentTaskDraft,
-    setCurrentTaskDraft,
-    lastSearchContext,
-    setLastSearchContext,
-    applyChatUsage,
-    applySummaryUsage,
-    applySearchUsage,
-    applyTaskUsage,
-    setKinInput,
-    isMobile,
-    onSwitchToKin: () => setActiveTab("kin"),
-  });
+  const applyPrefixedTaskFieldsFromText = (text: string) => {
+    const parsed = parseTaskInput(text);
 
-  const { injectFileToKinDraft } = useIngestActions({
-    ingestLoading,
-    setIngestLoading,
-    uploadKind,
-    setUploadKind,
-    ingestMode,
-    imageDetail,
-    fileReadPolicy,
-    currentTaskDraft,
-    setCurrentTaskDraft,
-    gptMessages,
-    setGptMessages,
-    applyIngestUsage,
-    applyTaskUsage,
-    setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex,
-    setKinInput,
-    isMobile,
-    onSwitchToKin: () => setActiveTab("kin"),
-    getTaskBaseText,
-  });
+    if (parsed.title || parsed.userInstruction) {
+      setCurrentTaskDraft((prev) => ({
+        ...prev,
+        title: parsed.title || prev.title,
+        taskName: parsed.title?.trim() ? parsed.title.trim() : prev.taskName,
+        userInstruction: parsed.userInstruction || prev.userInstruction,
+        updatedAt: new Date().toISOString(),
+      }));
+    }
+
+    return parsed;
+  };
+
+  const getTaskSlotLabel = () => formatTaskSlot(currentTaskDraft.slot);
+
+  const getTaskBaseText = () => {
+    if (currentTaskDraft.body.trim()) return currentTaskDraft.body.trim();
+    if (currentTaskDraft.mergedText.trim()) return currentTaskDraft.mergedText.trim();
+    if (currentTaskDraft.deepenText.trim()) return currentTaskDraft.deepenText.trim();
+    if (currentTaskDraft.prepText.trim()) return currentTaskDraft.prepText.trim();
+
+    const last = [...gptMessages].reverse().find((m) => m.role === "gpt");
+    return last?.text?.trim() || "";
+  };
 
   const resetBothPanels = () => {
     setKinMessages([]);
@@ -302,11 +294,640 @@ export default function ChatApp() {
     }
   };
 
+  const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
+    if (!gptInput.trim() || gptLoading) return;
+
+    const rawText = gptInput.trim();
+    const parsedInput = applyPrefixedTaskFieldsFromText(rawText);
+
+    const hasSearch = !!parsedInput.searchQuery;
+    const hasTaskDirectives = !!(parsedInput.title || parsedInput.userInstruction);
+    const chatText = parsedInput.freeText || rawText;
+
+    if (hasTaskDirectives && !hasSearch && !parsedInput.freeText) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "✅ タスクのタイトル / 追加指示を更新しました。",
+          meta: {
+            kind: "task_info",
+            sourceType: "manual",
+          },
+        },
+      ]);
+      setGptInput("");
+      return;
+    }
+
+  const requestText = [
+    parsedInput.searchQuery ? `検索：${parsedInput.searchQuery}` : "",
+    parsedInput.freeText || "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const finalRequestText = requestText || rawText;
+
+    const userMsg: Message = {
+      id: generateId(),
+      role: "user",
+      text: rawText,
+    };
+
+    const baseRecent = gptStateRef.current.recentMessages || [];
+    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
+    const provisionalMemory = getProvisionalMemory(finalRequestText);
+
+    setGptMessages((prev) => [...prev, userMsg]);
+    setGptInput("");
+    setGptLoading(true);
+
+    setGptState((prev) => ({
+      ...prev,
+      memory: provisionalMemory,
+    }));
+
+    try {
+      const res = await fetch("/api/chatgpt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode: "chat",
+          memory: provisionalMemory,
+          recentMessages: newRecent,
+          input: finalRequestText,
+          instructionMode,
+          reasoningMode: responseMode,
+        }),
+      });
+
+      const data = await res.json();
+
+      const assistantMsg: Message = {
+        id: generateId(),
+        role: "gpt",
+        text:
+          typeof data.reply === "string" && data.reply.trim()
+            ? data.reply
+            : "⚠️ GPTの返答取得に失敗しました",
+        sources: Array.isArray(data.sources) ? data.sources : [],
+        meta: {
+          kind: "normal",
+          sourceType: data?.searchUsed ? "search" : "gpt_input",
+        },
+      };
+
+      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
+
+      setGptMessages((prev) => [...prev, assistantMsg]);
+
+      if (data?.searchUsed) {
+        applySearchUsage(data.usage);
+
+        setLastSearchContext({
+          query:
+            (typeof data?.searchQuery === "string" && data.searchQuery.trim()) ||
+            parsedInput.searchQuery ||
+            finalRequestText,
+          rawText:
+            typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
+          sources: Array.isArray(data?.sources) ? data.sources : [],
+          createdAt: new Date().toISOString(),
+        });
+      } else {
+        applyChatUsage(data.usage);
+      }
+
+      const memoryResult = await handleGptMemory(updatedRecent);
+      applySummaryUsage(memoryResult.summaryUsage);
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ GPT通信でエラーが発生しました",
+        },
+      ]);
+    } finally {
+      setGptLoading(false);
+    }
+  };
+
+  const runPrepTaskFromInput = async () => {
+    if (!gptInput.trim() || gptLoading) return;
+
+    const text = gptInput.trim();
+    const parsedInput = applyPrefixedTaskFieldsFromText(text);
+
+    const taskBodySource = parsedInput.freeText || text;
+    const prepInput = buildTaskStructuredInput({
+      title:
+        parsedInput.title ||
+        currentTaskDraft.title ||
+        resolveTaskName(currentTaskDraft, "GPT会話から作成したタスク"),
+      userInstruction:
+        parsedInput.userInstruction || currentTaskDraft.userInstruction,
+      body: taskBodySource,
+      searchRawText: currentTaskDraft.searchContext?.rawText || "",
+    });
+
+    const userMsg: Message = {
+      id: generateId(),
+      role: "user",
+      text: `[タスク整理依頼]\n${text}`,
+    };
+
+    const baseRecent = gptStateRef.current.recentMessages || [];
+    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
+
+    setGptMessages((prev) => [...prev, userMsg]);
+    setGptInput("");
+    setGptLoading(true);
+
+    try {
+      const data = await runAutoPrepTask(prepInput, "gpt-input");
+      const taskText = formatTaskResultText(data?.parsed, data?.raw);
+
+      const assistantMsg: Message = {
+        id: generateId(),
+        role: "gpt",
+        text: taskText,
+        meta: {
+          kind: "task_prep",
+          sourceType: "gpt_input",
+        },
+      };
+
+      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
+
+      setGptMessages((prev) => [...prev, assistantMsg]);
+      setGptState((prev) => ({
+        ...prev,
+        recentMessages: updatedRecent,
+      }));
+
+      const source = createTaskSource("gpt_chat", "GPT手入力タスク", text);
+
+      setCurrentTaskDraft((prev) => {
+        const resolvedTitle =
+          parsedInput.title.trim() ||
+          prev.title ||
+          resolveTaskName(prev, "GPT会話から作成したタスク");
+
+        return {
+          ...prev,
+          taskName: resolvedTitle,
+          title: resolvedTitle,
+          userInstruction: parsedInput.userInstruction || prev.userInstruction,
+          body: taskText,
+          searchContext: currentTaskDraft.searchContext ?? prev.searchContext,
+          objective: (parsedInput.freeText || text).slice(0, 120),
+          prepText: taskText,
+          deepenText: "",
+          mergedText: taskText,
+          kinTaskText: "",
+          status: "prepared",
+          sources: [...prev.sources, source],
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      applyTaskUsage(data?.usage);
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ タスク実行中にエラーが発生しました",
+        },
+      ]);
+    } finally {
+      setGptLoading(false);
+    }
+  };
+
+  const runUpdateTaskFromInput = async () => {
+    if (!gptInput.trim() || gptLoading) return;
+
+    const currentTaskText = getTaskBaseText();
+
+    if (!currentTaskText) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 更新対象の現在タスクが見つかりません。先にタスク整理を実行してください。",
+        },
+      ]);
+      return;
+    }
+
+    const additionalText = gptInput.trim();
+    const parsedInput = applyPrefixedTaskFieldsFromText(additionalText);
+
+    const mergedInput = buildMergedTaskInput(
+      currentTaskText,
+      "GPT手入力補足",
+      parsedInput.freeText || additionalText,
+      {
+        title: parsedInput.title || currentTaskDraft.title,
+        userInstruction:
+          parsedInput.userInstruction || currentTaskDraft.userInstruction,
+        searchRawText: currentTaskDraft.searchContext?.rawText || "",
+      }
+    );
+
+    const userMsg: Message = {
+      id: generateId(),
+      role: "user",
+      text: `[タスク更新]\n${additionalText}`,
+      meta: {
+        kind: "task_info",
+        sourceType: "manual",
+      },
+    };
+
+    const baseRecent = gptStateRef.current.recentMessages || [];
+    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
+
+    setGptMessages((prev) => [...prev, userMsg]);
+    setGptInput("");
+    setGptLoading(true);
+
+    try {
+      const data = await runAutoPrepTask(mergedInput, "task-update");
+      const taskText = formatTaskResultText(data?.parsed, data?.raw);
+
+      const assistantMsg: Message = {
+        id: generateId(),
+        role: "gpt",
+        text: taskText,
+        meta: {
+          kind: "task_prep",
+          sourceType: "manual",
+        },
+      };
+
+      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
+
+      setGptMessages((prev) => [...prev, assistantMsg]);
+      setGptState((prev) => ({
+        ...prev,
+        recentMessages: updatedRecent,
+      }));
+
+      const source = createTaskSource(
+        "manual_note",
+        "GPT手入力補足",
+        parsedInput.freeText || additionalText
+      );
+
+      setCurrentTaskDraft((prev) => ({
+        ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
+        body: taskText,
+        prepText: prev.prepText || prev.mergedText,
+        deepenText: "",
+        mergedText: taskText,
+        kinTaskText: "",
+        status: "prepared",
+        sources: [...prev.sources, source],
+        updatedAt: new Date().toISOString(),
+      }));
+
+      applyTaskUsage(data?.usage);
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ タスク更新中にエラーが発生しました",
+        },
+      ]);
+    } finally {
+      setGptLoading(false);
+    }
+  };
+
+  const runUpdateTaskFromLastGptMessage = async () => {
+    if (gptLoading) return;
+
+    const currentTaskText = getTaskBaseText();
+
+    if (!currentTaskText) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 更新対象の現在タスクが見つかりません。先にタスク整理を実行してください。",
+        },
+      ]);
+      return;
+    }
+
+    const lastGptMessage = [...gptMessages]
+      .reverse()
+      .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
+
+    if (!lastGptMessage) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 取込対象の最新GPTメッセージが見つかりません。",
+        },
+      ]);
+      return;
+    }
+
+    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
+
+    const taskInput = buildTaskInput({
+      title: parsedInput.title || currentTaskDraft.title,
+      userInstruction:
+        parsedInput.userInstruction || currentTaskDraft.userInstruction,
+      actionInstruction: parsedInput.freeText || gptInput.trim(),
+      body: currentTaskText,
+      material: lastGptMessage.text.trim(),
+    });
+
+    setGptInput("");
+    setGptLoading(true);
+
+    try {
+      const data = await runAutoPrepTask(taskInput, "task-update-last-gpt");
+      const taskText = formatTaskResultText(data?.parsed, data?.raw);
+
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: ["【最新レス取込によるタスク更新結果】", taskText].join("\n\n"),
+          meta: {
+            kind: "task_prep",
+            sourceType: "gpt_input",
+          },
+        },
+      ]);
+
+      const source = createTaskSource(
+        "manual_note",
+        "GPT最新レス",
+        lastGptMessage.text.trim()
+      );
+
+      setCurrentTaskDraft((prev) => ({
+        ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
+        body: taskText,
+        deepenText: "",
+        mergedText: taskText,
+        kinTaskText: "",
+        status: "prepared",
+        sources: [...prev.sources, source],
+        updatedAt: new Date().toISOString(),
+      }));
+
+      applyTaskUsage(data?.usage);
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 最新レス取込によるタスク更新に失敗しました",
+        },
+      ]);
+    } finally {
+      setGptLoading(false);
+    }
+  };
+
+  const runAttachSearchResultToTask = async () => {
+    if (gptLoading) return;
+
+    const currentTaskText = getTaskBaseText();
+
+    if (!currentTaskText) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 統合対象の現在タスクが見つかりません。先にタスク整理を実行してください。",
+        },
+      ]);
+      return;
+    }
+
+    const searchRaw = lastSearchContext?.rawText?.trim();
+
+    if (!searchRaw) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 統合対象の検索結果が見つかりません。先に検索を実行してください。",
+        },
+      ]);
+      return;
+    }
+
+    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
+
+    const taskInput = buildTaskInput({
+      title: parsedInput.title || currentTaskDraft.title,
+      userInstruction:
+        parsedInput.userInstruction || currentTaskDraft.userInstruction,
+      actionInstruction: parsedInput.freeText || gptInput.trim(),
+      body: currentTaskText,
+      material: searchRaw,
+    });
+
+    setGptInput("");
+    setGptLoading(true);
+
+    try {
+      const data = await runAutoPrepTask(taskInput, "attach-search-result");
+      const taskText = formatTaskResultText(data?.parsed, data?.raw);
+
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: ["【検索結果を統合したタスク更新結果】", taskText].join("\n\n"),
+          meta: {
+            kind: "task_prep",
+            sourceType: "search",
+          },
+        },
+      ]);
+
+      const source = createTaskSource(
+        "web_search",
+        `検索結果: ${lastSearchContext?.query || "未設定"}`,
+        searchRaw
+      );
+
+      setCurrentTaskDraft((prev) => ({
+        ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
+        body: taskText,
+        searchContext: lastSearchContext ?? prev.searchContext,
+        deepenText: "",
+        mergedText: taskText,
+        kinTaskText: "",
+        status: "prepared",
+        sources: [...prev.sources, source],
+        updatedAt: new Date().toISOString(),
+      }));
+
+      applyTaskUsage(data?.usage);
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 検索結果の現在タスクへの統合に失敗しました",
+        },
+      ]);
+    } finally {
+      setGptLoading(false);
+    }
+  };
+
+  const runDeepenTaskFromLast = async () => {
+    if (gptLoading) return;
+
+    const text = getTaskBaseText();
+
+    if (!text) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 深掘り対象のタスク内容が見つかりません",
+        },
+      ]);
+      return;
+    }
+
+    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
+
+    const taskInput = buildTaskInput({
+      title: parsedInput.title || currentTaskDraft.title,
+      userInstruction:
+        parsedInput.userInstruction || currentTaskDraft.userInstruction,
+      actionInstruction: parsedInput.freeText || gptInput.trim(),
+      body: text,
+      material: text,
+    });
+
+    const userMsg: Message = {
+      id: generateId(),
+      role: "user",
+      text: `[深掘り依頼]\n${parsedInput.freeText || "（追加指示なし）"}`,
+      meta: {
+        kind: "task_info",
+      },
+    };
+
+    const baseRecent = gptStateRef.current.recentMessages || [];
+    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
+
+    setGptMessages((prev) => [...prev, userMsg]);
+    setGptInput("");
+    setGptLoading(true);
+
+    try {
+      const data = await runAutoDeepenTask(taskInput, "current-task");
+      const taskText = formatTaskResultText(data?.parsed, data?.raw);
+
+      const assistantMsg: Message = {
+        id: generateId(),
+        role: "gpt",
+        text: taskText,
+        meta: {
+          kind: "task_deepen",
+        },
+      };
+
+      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
+
+      setGptMessages((prev) => [...prev, assistantMsg]);
+      setGptState((prev) => ({
+        ...prev,
+        recentMessages: updatedRecent,
+      }));
+
+      setCurrentTaskDraft((prev) => ({
+        ...prev,
+        title: parsedInput.title || prev.title,
+        taskName: parsedInput.title?.trim()
+          ? parsedInput.title.trim()
+          : prev.taskName,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
+        body: taskText,
+        deepenText: taskText,
+        mergedText: taskText,
+        kinTaskText: "",
+        status: "deepened",
+        updatedAt: new Date().toISOString(),
+      }));
+
+      applyTaskUsage(data?.usage);
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 深掘りタスク実行中にエラーが発生しました",
+        },
+      ]);
+    } finally {
+      setGptLoading(false);
+    }
+  };
+
   const sendLastKinToGptDraft = () => {
     const last = [...kinMessages].reverse().find((m) => m.role === "kin");
     if (!last) return;
 
-    setGptInput(last.text);
+    setGptInput(extractPreferredKinTransferText(last.text));
     if (isMobile) setActiveTab("gpt");
   };
 
@@ -316,6 +937,449 @@ export default function ChatApp() {
 
     setKinInput(last.text);
     if (isMobile) setActiveTab("kin");
+  };
+
+  const sendLatestGptContentToKin = () => {
+    const last = [...gptMessages]
+      .reverse()
+      .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
+
+    if (!last) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ Kinへ送る対象の最新GPTレスが見つかりません",
+        },
+      ]);
+      return;
+    }
+
+    const resolved = resolveKinBlockModeAndDirective(gptInput, "sys_info");
+    const block =
+      resolved.mode === "sys_task"
+        ? buildKinSysTaskBlock({
+            taskSlot: currentTaskDraft.slot,
+            title: currentTaskDraft.title || "GPT最新レス",
+            content: last.text.trim(),
+            directive: resolved.directive,
+          })
+        : buildKinSysInfoBlock({
+            taskSlot: currentTaskDraft.slot,
+            title: currentTaskDraft.title || "GPT最新レス",
+            sourceLabel: "gpt_latest_response",
+            content: last.text.trim(),
+            directive: resolved.directive,
+          });
+
+    setKinInput(block);
+
+    setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: `✅ 最新GPTレスを ${resolved.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}` ,
+        meta: {
+          kind: "task_info",
+          sourceType: "gpt_chat",
+        },
+      },
+    ]);
+
+    if (isMobile) setActiveTab("kin");
+  };
+
+  const sendCurrentTaskContentToKin = () => {
+    const sourceText = getTaskBaseText();
+
+    if (!sourceText) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ Kinへ送る対象の現在タスクが見つかりません",
+        },
+      ]);
+      return;
+    }
+
+    const resolved = resolveKinBlockModeAndDirective(gptInput, "sys_task");
+    const block =
+      resolved.mode === "sys_info"
+        ? buildKinSysInfoBlock({
+            taskSlot: currentTaskDraft.slot,
+            title: currentTaskDraft.title || "現在タスク",
+            sourceLabel: "current_task",
+            content: sourceText,
+            directive: resolved.directive,
+          })
+        : buildKinSysTaskBlock({
+            taskSlot: currentTaskDraft.slot,
+            title: currentTaskDraft.title || "現在タスク",
+            content: sourceText,
+            directive: resolved.directive,
+          });
+
+    setKinInput(block);
+
+    setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: `✅ 現在タスクを ${resolved.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}`,
+        meta: {
+          kind: "task_info",
+          sourceType: "manual",
+        },
+      },
+    ]);
+
+    if (isMobile) setActiveTab("kin");
+  };
+
+  const receiveLastKinResponseToGptInput = () => {
+    const last = [...kinMessages]
+      .reverse()
+      .find((m) => m.role === "kin" && typeof m.text === "string" && m.text.trim());
+
+    if (!last) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ 取込対象のKin最新レスが見つかりません",
+        },
+      ]);
+      return;
+    }
+
+    setGptInput(extractPreferredKinTransferText(last.text));
+
+    setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: "✅ Kin最新レスをGPT入力欄に取り込みました。必要に応じて編集してから送信してください。",
+        meta: {
+          kind: "task_info",
+          sourceType: "kin_message",
+        },
+      },
+    ]);
+
+    if (isMobile) setActiveTab("gpt");
+  };
+
+  const injectFileToKinDraft = async (
+    file: File,
+    options: {
+      kind: typeof uploadKind;
+      mode: typeof ingestMode;
+      detail: typeof imageDetail;
+      action: PostIngestAction;
+      readPolicy: typeof fileReadPolicy;
+    }
+  ) => {
+    if (ingestLoading) return;
+
+    const resolvedKind = resolveUploadKindFromFile(file, options.kind);
+    setIngestLoading(true);
+
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("kind", resolvedKind);
+      form.append("mode", options.mode);
+      form.append("detail", options.detail);
+      form.append("readPolicy", options.readPolicy);
+
+      const res = await fetch("/api/ingest", {
+        method: "POST",
+        body: form,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const errorText =
+          typeof data?.error === "string"
+            ? data.error
+            : "⚠️ ファイル変換に失敗しました";
+
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text:
+              `${errorText}\n\n` +
+              "必要なら /api/ingest のレスポンス詳細を確認してください。",
+          },
+        ]);
+        return;
+      }
+
+      applyIngestUsage(data?.usage);
+
+      const blocks: string[] = Array.isArray(data?.kinBlocks) ? data.kinBlocks : [];
+      if (blocks.length === 0) {
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text: "⚠️ Kin注入用ブロックを生成できませんでした",
+          },
+        ]);
+        return;
+      }
+
+      setPendingKinInjectionBlocks(blocks);
+      setPendingKinInjectionIndex(0);
+      setKinInput(blocks[0]);
+      setUploadKind(resolvedKind);
+
+      const prepInput = buildPrepInputFromIngestResult(data, file.name);
+      let prepTaskText = "";
+      let deepenTaskText = "";
+
+      if (
+        options.action === "inject_and_prep" ||
+        options.action === "inject_prep_deepen"
+      ) {
+        try {
+          const prepData = await runAutoPrepTask(prepInput, `ingest-${file.name}`);
+          prepTaskText = formatTaskResultText(prepData?.parsed, prepData?.raw);
+          applyTaskUsage(prepData?.usage);
+
+          if (options.action === "inject_prep_deepen") {
+            try {
+              const deepenData = await runAutoDeepenTask(
+                prepTaskText,
+                `prep-${file.name}`
+              );
+              deepenTaskText = formatTaskResultText(
+                deepenData?.parsed,
+                deepenData?.raw
+              );
+              applyTaskUsage(deepenData?.usage);
+            } catch (error) {
+              console.error("auto deepen task failed", error);
+              deepenTaskText = "⚠️ 自動深掘りに失敗しました";
+            }
+          }
+        } catch (error) {
+          console.error("auto prep task failed", error);
+          prepTaskText = "⚠️ 抽出後の自動タスク整理に失敗しました";
+        }
+      }
+
+      const title =
+        typeof data?.result?.title === "string" && data.result.title.trim()
+          ? data.result.title
+          : file.name;
+
+      const modeLine =
+        resolvedKind === "text"
+          ? `テキスト注入: ${options.mode}`
+          : `画像詳細度: ${options.detail}`;
+
+      const readPolicyLabel =
+        options.readPolicy === "text_first"
+          ? "文字優先"
+          : options.readPolicy === "visual_first"
+            ? "視覚優先"
+            : "統合";
+
+      const actionLabel =
+        options.action === "inject_only"
+          ? "注入のみ"
+          : options.action === "inject_and_prep"
+            ? "注入＋タスク整理"
+            : options.action === "inject_prep_deepen"
+              ? "注入＋タスク整理＋深掘り"
+              : "現在タスクに追加";
+
+      const messageParts = [
+        "ファイルをKin注入用テキストに変換しました。",
+        `タイトル: ${title}`,
+        `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}`,
+        `読込方針: ${readPolicyLabel}`,
+        modeLine,
+        `注入後処理: ${actionLabel}`,
+        `分割数: ${blocks.length}`,
+        "",
+        `Kin入力欄に 1/${blocks.length} をセットしました。送信後は次パートが自動で下書きに入ります。`,
+      ];
+
+      if (options.action === "inject_only") {
+        messageParts.push("", "--------------------", "【取込内容】", prepInput);
+      }
+
+      if (options.action !== "inject_only" && prepTaskText) {
+        messageParts.push("", "--------------------", prepTaskText);
+      }
+
+      if (options.action === "inject_prep_deepen" && deepenTaskText) {
+        messageParts.push("", "====================", "【自動深掘り結果】", deepenTaskText);
+      }
+
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: messageParts.join("\n"),
+          meta: {
+            kind: "task_info",
+            sourceType: "file_ingest",
+          },
+        },
+      ]);
+
+      if (options.action === "attach_to_current_task") {
+        const currentTaskText = getTaskBaseText();
+
+        if (!currentTaskText) {
+          setGptMessages((prev) => [
+            ...prev,
+            {
+              id: generateId(),
+              role: "gpt",
+              text: "⚠️ 現在タスクが未作成のため、ファイルを追加統合できません。先にタスク整理を行ってください。",
+            },
+          ]);
+        } else {
+          const mergedInput = buildMergedTaskInput(
+            currentTaskText,
+            `FILE: ${file.name}`,
+            prepInput,
+            {
+              title: currentTaskDraft.title || title || file.name,
+              userInstruction: currentTaskDraft.userInstruction,
+              searchRawText: currentTaskDraft.searchContext?.rawText || "",
+            }
+          );
+
+          try {
+            const mergeData = await runAutoPrepTask(
+              mergedInput,
+              `attach-${file.name}`
+            );
+            const mergedTaskText = formatTaskResultText(
+              mergeData?.parsed,
+              mergeData?.raw
+            );
+
+            applyTaskUsage(mergeData?.usage);
+
+            setGptMessages((prev) => [
+              ...prev,
+              {
+                id: generateId(),
+                role: "gpt",
+                text: ["【現在タスク更新結果】", mergedTaskText].join("\n\n"),
+                meta: {
+                  kind: "task_prep",
+                  sourceType: "file_ingest",
+                },
+              },
+            ]);
+
+            const source = createTaskSource(
+              "file_ingest",
+              `FILE: ${file.name}`,
+              prepInput
+            );
+
+            setCurrentTaskDraft((prev) => ({
+              ...prev,
+              taskName: resolveTaskName(prev, title || file.name),
+              title: resolveTaskName(prev, title || file.name),
+              body: mergedTaskText,
+              objective: prev.objective || `ファイル ${file.name} を統合したタスク`,
+              deepenText: "",
+              mergedText: mergedTaskText,
+              kinTaskText: "",
+              status: "prepared",
+              sources: [...prev.sources, source],
+              updatedAt: new Date().toISOString(),
+            }));
+          } catch (error) {
+            console.error("attach current task failed", error);
+            setGptMessages((prev) => [
+              ...prev,
+              {
+                id: generateId(),
+                role: "gpt",
+                text: "⚠️ ファイル内容の現在タスクへの統合に失敗しました",
+              },
+            ]);
+          }
+        }
+      }
+
+      const source = createTaskSource("file_ingest", `FILE: ${file.name}`, prepInput);
+
+      if (options.action === "inject_and_prep" && prepTaskText) {
+        setCurrentTaskDraft((prev) => ({
+          ...prev,
+          taskName: title || file.name,
+          title: title || file.name,
+          body: prepTaskText,
+          objective: `ファイル ${file.name} の整理`,
+          prepText: prepTaskText,
+          deepenText: "",
+          mergedText: prepTaskText,
+          kinTaskText: "",
+          status: "prepared",
+          sources: [...prev.sources, source],
+          updatedAt: new Date().toISOString(),
+        }));
+      }
+
+      if (options.action === "inject_prep_deepen") {
+        const finalText = deepenTaskText || prepTaskText;
+        if (finalText) {
+          setCurrentTaskDraft((prev) => ({
+            ...prev,
+            taskName: title || file.name,
+            title: title || file.name,
+            body: finalText,
+            objective: `ファイル ${file.name} の整理`,
+            prepText: prepTaskText,
+            deepenText: deepenTaskText,
+            mergedText: finalText,
+            kinTaskText: "",
+            status: deepenTaskText ? "deepened" : "prepared",
+            sources: [...prev.sources, source],
+            updatedAt: new Date().toISOString(),
+          }));
+        }
+      }
+
+      if (isMobile) {
+        setActiveTab("kin");
+      }
+    } catch (error) {
+      console.error(error);
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "⚠️ ファイル変換中にエラーが発生しました",
+        },
+      ]);
+    } finally {
+      setIngestLoading(false);
+    }
   };
 
   const resetKinMessages = () => {
@@ -386,11 +1450,11 @@ export default function ChatApp() {
       runUpdateTaskFromInput={runUpdateTaskFromInput}
       runUpdateTaskFromLastGptMessage={runUpdateTaskFromLastGptMessage}
       runAttachSearchResultToTask={runAttachSearchResultToTask}
-      importLastKinInstructionToTask={importLastKinInstructionToTask}
-      sendSysInfoToKinDraft={sendSysInfoToKinDraft}
+      sendLatestGptContentToKin={sendLatestGptContentToKin}
+      sendCurrentTaskContentToKin={sendCurrentTaskContentToKin}
+      receiveLastKinResponseToGptInput={receiveLastKinResponseToGptInput}
       resetGptForCurrentKin={handleResetGpt}
       sendLastGptToKinDraft={sendLastGptToKinDraft}
-      sendTaskToKinDraft={sendTaskToKinDraft}
       injectFileToKinDraft={injectFileToKinDraft}
       canInjectFile={!gptLoading && !ingestLoading}
       loading={gptLoading}

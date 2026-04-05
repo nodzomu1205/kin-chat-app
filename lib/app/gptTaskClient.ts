@@ -221,6 +221,14 @@ async function callTaskApi(args: TaskCallArgs) {
   return res.json();
 }
 
+const COMMON_EVIDENCE_RULES = [
+  "リスト順や番号をランキングと解釈してはいけない",
+  "順位や重要度は明示されていない限り決めてはいけない",
+  "根拠が不足している場合は確定せず候補として扱う",
+  "新しい情報が来た場合は過去の結論を上書きする",
+  "以前の選定結果は固定ではない",
+];
+
 export async function runAutoPrepTask(inputText: string, label = "ingest-result") {
   return callTaskApi({
     type: "PREP_TASK",
@@ -237,7 +245,8 @@ export async function runAutoPrepTask(inputText: string, label = "ingest-result"
       "不明な点は不明と書く",
       "推測が必要な場合は推測ではなく入力不足として扱う",
       "簡潔かつ実務的に整理する",
-      "日本語で整理",
+      "原則として日本語で整理。ただし入力やユーザー追加指示に明示的な言語指定がある場合はその言語を優先する",
+      ...COMMON_EVIDENCE_RULES,
     ],
   });
 }
@@ -254,7 +263,8 @@ export async function runAutoDeepenTask(inputText: string, label = "prep-result"
       "新しい事実を捏造しない",
       "不足している情報は不足情報として明示する",
       "必要であれば、追加で集めるべき情報を具体化する",
-      "日本語で整理",
+      "原則として日本語で整理。ただし入力やユーザー追加指示に明示的な言語指定がある場合はその言語を優先する",
+      ...COMMON_EVIDENCE_RULES,
     ],
   });
 }

@@ -24,8 +24,9 @@ type Props = {
   onRunTaskUpdate: () => void;
   onImportLastResponse: () => void;
   onAttachSearchResult: () => void;
-  onImportKinInstruction: () => void;
-  onSendSysInfo: () => void;
+  onSendLatestResponseToKin: () => void;
+  onSendCurrentTaskToKin: () => void;
+  onReceiveKinResponse: () => void;
   onTransfer: () => void;
   onReset: () => void;
 };
@@ -64,8 +65,9 @@ function BottomActions({
   onRunTaskUpdate,
   onImportLastResponse,
   onAttachSearchResult,
-  onImportKinInstruction,
-  onSendSysInfo,
+  onSendLatestResponseToKin,
+  onSendCurrentTaskToKin,
+  onReceiveKinResponse,
   onTransfer,
   onReset,
 }: Omit<Props, "isMobile" | "onSwitchPanel" | "onChangeTab">) {
@@ -120,26 +122,10 @@ function BottomActions({
 
         <button
           type="button"
-          style={restoredButton(buttonDeepen)}
-          onClick={onRunDeepen}
-        >
-          深堀り
-        </button>
-
-        <button
-          type="button"
           style={restoredButton(buttonTask)}
           onClick={onRunTaskUpdate}
         >
           更新
-        </button>
-
-        <button
-          type="button"
-          style={restoredButton(buttonTransfer)}
-          onClick={onTransfer}
-        >
-          Kinタスク
         </button>
 
         <button type="button" style={restoredButton(buttonReset)} onClick={onReset}>
@@ -152,6 +138,14 @@ function BottomActions({
   if (activeTab === "task_secondary") {
     return (
       <>
+        <button
+          type="button"
+          style={restoredButton(buttonDeepen)}
+          onClick={onRunDeepen}
+        >
+          深堀り
+        </button>
+
         <button
           type="button"
           style={restoredButton(buttonTask)}
@@ -168,28 +162,38 @@ function BottomActions({
           検索統合
         </button>
 
+        <button type="button" style={restoredButton(buttonReset)} onClick={onReset}>
+          ↺
+        </button>
+      </>
+    );
+  }
+
+  if (activeTab === "kin") {
+    return (
+      <>
+        <button
+          type="button"
+          style={restoredButton(buttonTransfer)}
+          onClick={onSendLatestResponseToKin}
+        >
+          レス内容
+        </button>
+
+        <button
+          type="button"
+          style={restoredButton(buttonTransfer)}
+          onClick={onSendCurrentTaskToKin}
+        >
+          タスク内容
+        </button>
+
         <button
           type="button"
           style={restoredButton(buttonTask)}
-          onClick={onImportKinInstruction}
+          onClick={onReceiveKinResponse}
         >
-          Kin指示
-        </button>
-
-        <button
-          type="button"
-          style={restoredButton(buttonTransfer)}
-          onClick={onSendSysInfo}
-        >
-          SYS_INFO
-        </button>
-
-        <button
-          type="button"
-          style={restoredButton(buttonTransfer)}
-          onClick={onTransfer}
-        >
-          Kinタスク
+          レス受領
         </button>
 
         <button type="button" style={restoredButton(buttonReset)} onClick={onReset}>
@@ -225,8 +229,9 @@ export default function GptToolbar({
   onRunTaskUpdate,
   onImportLastResponse,
   onAttachSearchResult,
-  onImportKinInstruction,
-  onSendSysInfo,
+  onSendLatestResponseToKin,
+  onSendCurrentTaskToKin,
+  onReceiveKinResponse,
   onTransfer,
   onReset,
 }: Props) {
@@ -258,6 +263,9 @@ export default function GptToolbar({
         <button type="button" onClick={() => onChangeTab("task_secondary")} style={tabButtonStyle(activeTab === "task_secondary", isMobile)}>
           タスク②
         </button>
+        <button type="button" onClick={() => onChangeTab("kin")} style={tabButtonStyle(activeTab === "kin", isMobile)}>
+          Kin
+        </button>
         <button type="button" onClick={() => onChangeTab("file")} style={tabButtonStyle(activeTab === "file", isMobile)}>
           ファイル
         </button>
@@ -287,8 +295,9 @@ export default function GptToolbar({
           onRunTaskUpdate={onRunTaskUpdate}
           onImportLastResponse={onImportLastResponse}
           onAttachSearchResult={onAttachSearchResult}
-          onImportKinInstruction={onImportKinInstruction}
-          onSendSysInfo={onSendSysInfo}
+          onSendLatestResponseToKin={onSendLatestResponseToKin}
+          onSendCurrentTaskToKin={onSendCurrentTaskToKin}
+          onReceiveKinResponse={onReceiveKinResponse}
           onTransfer={onTransfer}
           onReset={onReset}
         />

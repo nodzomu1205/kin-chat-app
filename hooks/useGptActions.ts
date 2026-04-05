@@ -11,7 +11,6 @@ import {
   formatTaskResultText,
   runAutoDeepenTask,
   runAutoPrepTask,
-  runFormatTaskForKin,
 } from "@/lib/app/gptTaskClient";
 import {
   createTaskSource,
@@ -24,9 +23,74 @@ import {
   suggestTopicLabel,
 } from "@/lib/app/contextNaming";
 import { routeTaskInput } from "@/lib/app/taskRouting";
-import { buildKinSysInfoFromTask, parseKinInstructionMessage } from "@/lib/app/kinStructuredProtocol";
+import {
+  buildKinSysInfoBlock,
+  buildKinSysTaskBlock,
+  extractPreferredKinTransferText,
+} from "@/lib/app/kinStructuredProtocol";
+import {
+  buildKinDirectiveLines,
+  buildTaskExecutionInstruction,
+  parseTransformIntent,
+  shouldTransformContent,
+  transformTextWithIntent,
+} from "@/lib/app/transformIntent";
 import type { TokenUsage } from "@/hooks/useGptMemory";
 import { normalizeUsage } from "@/lib/tokenStats";
+
+async function runTransformPipeline(
+  text: string,
+  intent: any
+): Promise<string> {
+  let result = text;
+
+  if (!text.trim()) return text;
+
+  const instructions: string[] = [];
+
+  if (intent.transform?.translateTo === "en") {
+    instructions.push("Translate the text into natural English.");
+  }
+
+  if (intent.transform?.translateTo === "ja") {
+    instructions.push("Translate the text into natural Japanese.");
+  }
+
+  if (intent.transform?.summarize) {
+    instructions.push("Summarize concisely while preserving key facts.");
+  }
+
+  if (intent.transform?.bulletize) {
+    instructions.push("Convert into clear bullet points.");
+  }
+
+  if (instructions.length === 0) return text;
+
+  const prompt = `
+Rewrite the following text according to these instructions:
+
+${instructions.join("\n")}
+
+Text:
+${text}
+`;
+
+  try {
+    const res = await fetch("/api/chatgpt", {
+      method: "POST",
+      body: JSON.stringify({
+        mode: "chat",
+        message: prompt,
+      }),
+    });
+
+    const data = await res.json();
+    return data.text || text;
+  } catch (e) {
+    console.error(e);
+    return text;
+  }
+}
 
 type UsageInput = Parameters<typeof normalizeUsage>[0];
 
@@ -37,7 +101,7 @@ type UseGptActionsArgs = {
   setGptLoading: Dispatch<SetStateAction<boolean>>;
   gptMessages: Message[];
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
-  kinMessages: Message[];
+  kinMessages?: Message[];
   gptStateRef: MutableRefObject<KinMemoryState>;
   setGptState: Dispatch<SetStateAction<KinMemoryState>>;
   getProvisionalMemory: (input: string) => KinMemoryState["memory"];
@@ -119,8 +183,10 @@ export function useGptActions(args: UseGptActionsArgs) {
         taskName:
           routed.parsed.title?.trim() ||
           currentTaskDraft.taskName,
-        userInstruction:
+        userInstruction: buildEffectiveTaskInstruction(
           routed.parsed.userInstruction || currentTaskDraft.userInstruction,
+          gptInput.trim()
+        ),
       });
     }
 
@@ -136,6 +202,15 @@ export function useGptActions(args: UseGptActionsArgs) {
     const last = [...gptMessages].reverse().find((m) => m.role === "gpt");
     return last?.text?.trim() || "";
   }, [currentTaskDraft, gptMessages]);
+
+
+const buildEffectiveTaskInstruction = useCallback(
+  (baseInstruction: string, directiveText: string) => {
+    const intent = parseTransformIntent(directiveText, "sys_task");
+    return buildTaskExecutionInstruction(baseInstruction, intent);
+  },
+  []
+);
 
   const syncTopicFromRoute = useCallback((routed: ReturnType<typeof routeTaskInput>) => {
     if (!routed.shouldAutoUpdateTopic) return;
@@ -304,8 +379,10 @@ export function useGptActions(args: UseGptActionsArgs) {
 
     const prepInput = buildTaskStructuredInput({
       title: resolvedTitle,
-      userInstruction:
+      userInstruction: buildEffectiveTaskInstruction(
         routed.parsed.userInstruction || currentTaskDraft.userInstruction,
+        gptInput.trim()
+      ),
       body: taskBodySource,
       searchRawText: currentTaskDraft.searchContext?.rawText || "",
     });
@@ -364,7 +441,10 @@ export function useGptActions(args: UseGptActionsArgs) {
         ...prev,
         taskName: resolvedTitle,
         title: resolvedTitle,
-        userInstruction: routed.parsed.userInstruction || prev.userInstruction,
+        userInstruction: buildEffectiveTaskInstruction(
+          routed.parsed.userInstruction || prev.userInstruction,
+          gptInput.trim()
+        ),
         body: taskText,
         searchContext: currentTaskDraft.searchContext ?? prev.searchContext,
         objective: taskBodySource.slice(0, 120),
@@ -387,6 +467,7 @@ export function useGptActions(args: UseGptActionsArgs) {
   }, [
     appendGptSystemMessage,
     applyTaskUsage,
+    buildEffectiveTaskInstruction,
     chatRecentLimit,
     currentTaskDraft,
     gptInput,
@@ -420,8 +501,10 @@ export function useGptActions(args: UseGptActionsArgs) {
           searchQuery: routed.parsed.searchQuery,
           freeText: routed.parsed.freeText || routed.rawText,
         }),
-        userInstruction:
+        userInstruction: buildEffectiveTaskInstruction(
           routed.parsed.userInstruction || currentTaskDraft.userInstruction,
+          gptInput.trim()
+        ),
         searchRawText: currentTaskDraft.searchContext?.rawText || "",
       }
     );
@@ -478,7 +561,10 @@ export function useGptActions(args: UseGptActionsArgs) {
         ...prev,
         title: resolvedTitle,
         taskName: resolvedTitle,
-        userInstruction: routed.parsed.userInstruction || prev.userInstruction,
+        userInstruction: buildEffectiveTaskInstruction(
+          routed.parsed.userInstruction || prev.userInstruction,
+          gptInput.trim()
+        ),
         body: taskText,
         prepText: prev.prepText || prev.mergedText,
         deepenText: "",
@@ -499,6 +585,7 @@ export function useGptActions(args: UseGptActionsArgs) {
   }, [
     appendGptSystemMessage,
     applyTaskUsage,
+    buildEffectiveTaskInstruction,
     chatRecentLimit,
     currentTaskDraft,
     getTaskBaseText,
@@ -540,9 +627,14 @@ export function useGptActions(args: UseGptActionsArgs) {
 
     const taskInput = buildTaskInput({
       title: resolvedTitle,
-      userInstruction:
+      userInstruction: buildEffectiveTaskInstruction(
         routed.parsed.userInstruction || currentTaskDraft.userInstruction,
-      actionInstruction: routed.parsed.freeText || gptInput.trim(),
+        gptInput.trim()
+      ),
+      actionInstruction: buildEffectiveTaskInstruction(
+        routed.parsed.freeText || gptInput.trim(),
+        gptInput.trim()
+      ),
       body: currentTaskText,
       material: lastGptMessage.text.trim(),
     });
@@ -565,7 +657,10 @@ export function useGptActions(args: UseGptActionsArgs) {
         ...prev,
         title: resolvedTitle,
         taskName: resolvedTitle,
-        userInstruction: routed.parsed.userInstruction || prev.userInstruction,
+        userInstruction: buildEffectiveTaskInstruction(
+          routed.parsed.userInstruction || prev.userInstruction,
+          gptInput.trim()
+        ),
         body: taskText,
         deepenText: "",
         mergedText: taskText,
@@ -585,6 +680,7 @@ export function useGptActions(args: UseGptActionsArgs) {
   }, [
     appendGptSystemMessage,
     applyTaskUsage,
+    buildEffectiveTaskInstruction,
     currentTaskDraft,
     getTaskBaseText,
     gptInput,
@@ -620,9 +716,14 @@ export function useGptActions(args: UseGptActionsArgs) {
 
     const taskInput = buildTaskInput({
       title: resolvedTitle,
-      userInstruction:
+      userInstruction: buildEffectiveTaskInstruction(
         routed.parsed.userInstruction || currentTaskDraft.userInstruction,
-      actionInstruction: routed.parsed.freeText || gptInput.trim(),
+        gptInput.trim()
+      ),
+      actionInstruction: buildEffectiveTaskInstruction(
+        routed.parsed.freeText || gptInput.trim(),
+        gptInput.trim()
+      ),
       body: currentTaskText,
       material: searchRaw,
     });
@@ -649,7 +750,10 @@ export function useGptActions(args: UseGptActionsArgs) {
         ...prev,
         title: resolvedTitle,
         taskName: resolvedTitle,
-        userInstruction: routed.parsed.userInstruction || prev.userInstruction,
+        userInstruction: buildEffectiveTaskInstruction(
+          routed.parsed.userInstruction || prev.userInstruction,
+          gptInput.trim()
+        ),
         body: taskText,
         searchContext: lastSearchContext ?? prev.searchContext,
         deepenText: "",
@@ -670,6 +774,7 @@ export function useGptActions(args: UseGptActionsArgs) {
   }, [
     appendGptSystemMessage,
     applyTaskUsage,
+    buildEffectiveTaskInstruction,
     currentTaskDraft,
     getTaskBaseText,
     gptInput,
@@ -700,9 +805,14 @@ export function useGptActions(args: UseGptActionsArgs) {
 
     const taskInput = buildTaskInput({
       title: resolvedTitle,
-      userInstruction:
+      userInstruction: buildEffectiveTaskInstruction(
         routed.parsed.userInstruction || currentTaskDraft.userInstruction,
-      actionInstruction: routed.parsed.freeText || gptInput.trim(),
+        gptInput.trim()
+      ),
+      actionInstruction: buildEffectiveTaskInstruction(
+        routed.parsed.freeText || gptInput.trim(),
+        gptInput.trim()
+      ),
       body: text,
       material: text,
     });
@@ -746,7 +856,10 @@ export function useGptActions(args: UseGptActionsArgs) {
         ...prev,
         title: resolvedTitle,
         taskName: resolvedTitle,
-        userInstruction: routed.parsed.userInstruction || prev.userInstruction,
+        userInstruction: buildEffectiveTaskInstruction(
+          routed.parsed.userInstruction || prev.userInstruction,
+          gptInput.trim()
+        ),
         body: taskText,
         deepenText: taskText,
         mergedText: taskText,
@@ -765,6 +878,7 @@ export function useGptActions(args: UseGptActionsArgs) {
   }, [
     appendGptSystemMessage,
     applyTaskUsage,
+    buildEffectiveTaskInstruction,
     chatRecentLimit,
     currentTaskDraft,
     getTaskBaseText,
@@ -782,86 +896,113 @@ export function useGptActions(args: UseGptActionsArgs) {
   const sendTaskToKinDraft = useCallback(async () => {
     if (gptLoading) return;
 
-    const sourceText = getTaskBaseText();
+    const sourceText = getTaskBaseText().trim();
     if (!sourceText) {
-      appendGptSystemMessage("⚠️ Kinタスク化する対象のタスク内容が見つかりません");
+      appendGptSystemMessage("⚠️ Kin送信用のタスク内容が見つかりません");
       return;
     }
 
-    setGptLoading(true);
-    try {
-      const data = await runFormatTaskForKin(sourceText, "current-task");
-      const kinTaskText =
-        typeof data?.raw === "string" && data.raw.trim()
-          ? data.raw.trim()
-          : "⚠️ Kinタスク化に失敗しました";
+    const intent = parseTransformIntent(gptInput, "sys_task");
+    const title =
+      currentTaskDraft.title?.trim() ||
+      currentTaskDraft.taskName?.trim() ||
+      "GPTタスク";
 
-      setKinInput(kinTaskText);
-      applyTaskUsage(data?.usage);
+    let content = sourceText;
 
-      setCurrentTaskDraft((prev) => ({
-        ...prev,
-        kinTaskText,
-        status: "formatted",
-        updatedAt: new Date().toISOString(),
-      }));
-
-      appendGptSystemMessage(
-        "✅ 現在タスクを英語メタ構造の <<TASK>> 形式に変換し、Kin入力欄にセットしました。",
-        { kind: "task_format" }
-      );
-
-      if (isMobile) {
-        onSwitchToKin?.();
+    if (shouldTransformContent(intent)) {
+      setGptLoading(true);
+      try {
+        const transformed = await transformTextWithIntent({
+          text: sourceText,
+          intent,
+          responseMode,
+        });
+        content = transformed.text.trim() || sourceText;
+        applyTaskUsage(transformed.usage);
+      } catch (error) {
+        console.error(error);
+        appendGptSystemMessage("⚠️ Kin送信用のタスク整形に失敗したため、元の本文で続行します");
+      } finally {
+        setGptLoading(false);
       }
-    } catch (error) {
-      console.error(error);
-      appendGptSystemMessage("⚠️ Kinタスク変換中にエラーが発生しました");
-    } finally {
-      setGptLoading(false);
+    }
+
+    const directiveLines = buildKinDirectiveLines(intent);
+    const block =
+      intent.mode === "sys_info"
+        ? buildKinSysInfoBlock({
+            taskSlot: 1,
+            title,
+            sourceLabel: "task_draft",
+            content,
+            directiveLines,
+          })
+        : buildKinSysTaskBlock({
+            taskSlot: 1,
+            title,
+            content,
+            directiveLines,
+          });
+
+    setKinInput(block);
+    setGptInput("");
+
+    appendGptSystemMessage(
+      `✅ 現在タスクを <<${intent.mode === "sys_info" ? "SYS_INFO" : "SYS_TASK"}>> 形式でKin入力欄にセットしました。TASK_ID: #01`,
+      { kind: "task_format", sourceType: "gpt_chat" }
+    );
+
+    if (isMobile) {
+      onSwitchToKin?.();
     }
   }, [
     appendGptSystemMessage,
     applyTaskUsage,
+    buildEffectiveTaskInstruction,
+    currentTaskDraft.taskName,
+    currentTaskDraft.title,
     getTaskBaseText,
+    gptInput,
     gptLoading,
     isMobile,
     onSwitchToKin,
-    setCurrentTaskDraft,
+    responseMode,
+    setGptInput,
     setGptLoading,
     setKinInput,
   ]);
 
 
   const importLastKinInstructionToTask = useCallback(() => {
-    const lastKin = [...kinMessages].reverse().find((m) => m.role === "kin");
+    const lastKin = [...(kinMessages ?? [])].reverse().find((m) => m.role === "kin");
     if (!lastKin?.text?.trim()) {
       appendGptSystemMessage("⚠️ 取込対象のKin返答が見つかりません");
       return;
     }
 
-    const parsed = parseKinInstructionMessage(lastKin.text);
+    const preferredText = extractPreferredKinTransferText(lastKin.text).trim();
     const suggestedTitle = suggestTaskTitle({
       explicitTitle: currentTaskDraft.title,
-      freeText: parsed.request || parsed.suggestedTitle,
-      fallback: parsed.suggestedTitle,
+      freeText: preferredText,
+      fallback: currentTaskDraft.taskName || "Kin受領タスク",
     });
 
     setCurrentTaskDraft((prev) => ({
       ...prev,
       title: suggestedTitle,
       taskName: suggestedTitle,
-      userInstruction: parsed.userInstruction || prev.userInstruction,
-      body: parsed.body,
-      mergedText: parsed.body,
+      freeText: preferredText,
+      mergedText: preferredText,
       status: "prepared",
       sources: [
-        createTaskSource("kin_message", "Kin instruction", parsed.rawBlock),
+        createTaskSource("kin_message", "Kin response", preferredText),
         ...prev.sources,
       ].slice(0, 12),
       updatedAt: new Date().toISOString(),
     }));
 
+    setGptInput(preferredText);
     setGptState((prev) => ({
       ...prev,
       memory: {
@@ -874,37 +1015,77 @@ export function useGptActions(args: UseGptActionsArgs) {
     }));
 
     appendGptSystemMessage(
-      "✅ 最新のKin返答を <<KIN_INSTRUCTION>> 系素材としてタスク状態へ取り込みました。",
+      "✅ Kin最新レスをGPT入力欄に取り込みました。必要に応じて編集してから送信してください。",
       { kind: "task_info", sourceType: "kin_message" }
     );
   }, [
     appendGptSystemMessage,
+    currentTaskDraft.taskName,
     currentTaskDraft.title,
     kinMessages,
     setCurrentTaskDraft,
+    setGptInput,
     setGptState,
   ]);
 
-  const sendSysInfoToKinDraft = useCallback(() => {
+  const sendSysInfoToKinDraft = useCallback(async () => {
     const lastGpt = [...gptMessages].reverse().find((m) => m.role === "gpt");
-    const block = buildKinSysInfoFromTask({
-      title:
-        currentTaskDraft.title?.trim() ||
-        currentTaskDraft.taskName?.trim() ||
-        "GPT整理結果",
-      taskBody: getTaskBaseText(),
-      taskUserInstruction: currentTaskDraft.userInstruction,
-      fallbackText: lastGpt?.text,
-    });
+    const sourceText =
+      lastGpt?.text?.trim() ||
+      getTaskBaseText().trim();
 
-    if (!block.trim()) {
-      appendGptSystemMessage("⚠️ <<SYS_INFO>> 化する対象テキストが見つかりません");
+    if (!sourceText) {
+      appendGptSystemMessage("⚠️ Kin共有用の最新GPTレスが見つかりません");
       return;
     }
 
+    const intent = parseTransformIntent(gptInput, "sys_info");
+    const title =
+      currentTaskDraft.title?.trim() ||
+      currentTaskDraft.taskName?.trim() ||
+      "GPT整理結果";
+
+    let content = sourceText;
+
+    if (shouldTransformContent(intent)) {
+      setGptLoading(true);
+      try {
+        const transformed = await transformTextWithIntent({
+          text: sourceText,
+          intent,
+          responseMode,
+        });
+        content = transformed.text.trim() || sourceText;
+        applyTaskUsage(transformed.usage);
+      } catch (error) {
+        console.error(error);
+        appendGptSystemMessage("⚠️ Kin共有用の整形に失敗したため、元の本文で続行します");
+      } finally {
+        setGptLoading(false);
+      }
+    }
+
+    const directiveLines = buildKinDirectiveLines(intent);
+    const block =
+      intent.mode === "sys_task"
+        ? buildKinSysTaskBlock({
+            taskSlot: 1,
+            title,
+            content,
+            directiveLines,
+          })
+        : buildKinSysInfoBlock({
+            taskSlot: 1,
+            title,
+            sourceLabel: "gpt_chat",
+            content,
+            directiveLines,
+          });
+
     setKinInput(block);
+    setGptInput("");
     appendGptSystemMessage(
-      "✅ 現在タスク / 最新GPT結果を <<SYS_INFO>> 形式に整え、Kin入力欄にセットしました。",
+      `✅ 最新GPTレスを <<${intent.mode === "sys_task" ? "SYS_TASK" : "SYS_INFO"}>> 形式でKin入力欄にセットしました。TASK_ID: #01`,
       { kind: "task_info", sourceType: "gpt_chat" }
     );
 
@@ -913,13 +1094,18 @@ export function useGptActions(args: UseGptActionsArgs) {
     }
   }, [
     appendGptSystemMessage,
+    applyTaskUsage,
+    buildEffectiveTaskInstruction,
     currentTaskDraft.taskName,
     currentTaskDraft.title,
-    currentTaskDraft.userInstruction,
     getTaskBaseText,
+    gptInput,
     gptMessages,
     isMobile,
     onSwitchToKin,
+    responseMode,
+    setGptInput,
+    setGptLoading,
     setKinInput,
   ]);
 

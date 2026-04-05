@@ -88,7 +88,9 @@ export default function GptTaskStatusDrawer({
       ? taskDraft.sources[taskDraft.sources.length - 1]
       : null;
 
+  const taskIdLabel = `#${String(taskDraft.slot && taskDraft.slot > 0 ? taskDraft.slot : 1).padStart(2, "0")}`;
   const taskName = taskDraft.title || taskDraft.taskName || "未設定";
+  const displayTaskName = `${taskIdLabel} ${taskName}`;
   const latestLabel = latestSource?.label || "-";
   const latestType = latestSource?.type || "-";
 
@@ -154,7 +156,7 @@ export default function GptTaskStatusDrawer({
             wordBreak: "break-word",
           }}
         >
-          {taskName}
+          {displayTaskName}
         </div>
 
         <div
@@ -169,6 +171,9 @@ export default function GptTaskStatusDrawer({
         >
           <div style={{ fontWeight: 800, color: "#334155" }}>状態</div>
           <div>{statusLabelMap[taskDraft.status]}</div>
+
+          <div style={{ fontWeight: 800, color: "#334155" }}>TASK_ID</div>
+          <div>{taskIdLabel}</div>
 
           <div style={{ fontWeight: 800, color: "#334155" }}>タスク名</div>
           <div>{taskName}</div>

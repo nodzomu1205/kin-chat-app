@@ -84,11 +84,11 @@ export default function TestTaskPage() {
             runUpdateTaskFromInput={noopAsync}
             runUpdateTaskFromLastGptMessage={noopAsync}
             runAttachSearchResultToTask={noopAsync}
-            importLastKinInstructionToTask={noop}
-            sendSysInfoToKinDraft={noop}
+            sendLatestGptContentToKin={noop}
+            sendCurrentTaskContentToKin={noop}
+            receiveLastKinResponseToGptInput={noop}
             resetGptForCurrentKin={resetGptForCurrentKin}
             sendLastGptToKinDraft={noop}
-            sendTaskToKinDraft={noopAsync}
             injectFileToKinDraft={noopAsync}
             canInjectFile={false}
             loading={false}
