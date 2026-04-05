@@ -14,6 +14,8 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  submitOnEnter?: boolean;
+  placeholder?: string;
   onInjectFile: (
     file: File,
     options: {
@@ -101,6 +103,8 @@ export default function GptComposer({
   value,
   onChange,
   onSubmit,
+  submitOnEnter = true,
+  placeholder,
   onInjectFile,
   loading,
   ingestLoading,
@@ -327,12 +331,13 @@ export default function GptComposer({
             </button>
           )}
 
-          <ChatTextarea
-            value={value}
-            onChange={onChange}
-            onSubmit={onSubmit}
-            submitOnEnter={!isMobile}
-          />
+        <ChatTextarea
+          value={value}
+          onChange={onChange}
+          onSubmit={onSubmit}
+          submitOnEnter={submitOnEnter}
+          placeholder={placeholder}
+        />
         </div>
 
         <button

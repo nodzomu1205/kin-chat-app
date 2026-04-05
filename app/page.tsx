@@ -40,8 +40,14 @@ import {
   buildKinSysTaskBlock,
   extractPreferredKinTransferText,
   formatTaskSlot,
-  resolveKinBlockModeAndDirective,
 } from "@/lib/app/kinStructuredProtocol";
+import {
+  buildKinDirectiveLines,
+  resolveTransformIntent,
+  shouldTransformContent,
+  splitTextIntoKinChunks,
+  transformTextWithIntent,
+} from "@/lib/app/transformIntent";
 
 type MobileTab = "kin" | "gpt";
 
@@ -302,7 +308,6 @@ export default function ChatApp() {
 
     const hasSearch = !!parsedInput.searchQuery;
     const hasTaskDirectives = !!(parsedInput.title || parsedInput.userInstruction);
-    const chatText = parsedInput.freeText || rawText;
 
     if (hasTaskDirectives && !hasSearch && !parsedInput.freeText) {
       setGptMessages((prev) => [
@@ -321,14 +326,14 @@ export default function ChatApp() {
       return;
     }
 
-  const requestText = [
-    parsedInput.searchQuery ? `検索：${parsedInput.searchQuery}` : "",
-    parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    const requestText = [
+      parsedInput.searchQuery ? `検索：${parsedInput.searchQuery}` : "",
+      parsedInput.freeText || "",
+    ]
+      .filter(Boolean)
+      .join("\n");
 
-  const finalRequestText = requestText || rawText;
+    const finalRequestText = requestText || rawText;
 
     const userMsg: Message = {
       id: generateId(),
@@ -939,7 +944,7 @@ export default function ChatApp() {
     if (isMobile) setActiveTab("kin");
   };
 
-  const sendLatestGptContentToKin = () => {
+  const sendLatestGptContentToKin = async () => {
     const last = [...gptMessages]
       .reverse()
       .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
@@ -956,31 +961,67 @@ export default function ChatApp() {
       return;
     }
 
-    const resolved = resolveKinBlockModeAndDirective(gptInput, "sys_info");
+    const directiveText = gptInput.trim();
+    const { intent, usage } = await resolveTransformIntent({
+      input: directiveText,
+      defaultMode: "sys_info",
+      responseMode,
+    });
+    applyTaskUsage(usage);
+
+    let content = last.text.trim();
+
+    if (shouldTransformContent(intent)) {
+      setGptLoading(true);
+      try {
+        const transformed = await transformTextWithIntent({
+          text: content,
+          intent,
+          responseMode,
+        });
+        content = transformed.text.trim() || content;
+        applyTaskUsage(transformed.usage);
+      } catch (error) {
+        console.error(error);
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text: "⚠️ Kin送信用の変換に失敗したため、元の本文で続行しました。",
+          },
+        ]);
+      } finally {
+        setGptLoading(false);
+      }
+    }
+
+    const directiveLines = buildKinDirectiveLines(intent);
     const block =
-      resolved.mode === "sys_task"
+      intent.mode === "sys_task"
         ? buildKinSysTaskBlock({
             taskSlot: currentTaskDraft.slot,
             title: currentTaskDraft.title || "GPT最新レス",
-            content: last.text.trim(),
-            directive: resolved.directive,
+            content,
+            directiveLines,
           })
         : buildKinSysInfoBlock({
             taskSlot: currentTaskDraft.slot,
             title: currentTaskDraft.title || "GPT最新レス",
             sourceLabel: "gpt_latest_response",
-            content: last.text.trim(),
-            directive: resolved.directive,
+            content,
+            directiveLines,
           });
 
     setKinInput(block);
+    setGptInput("");
 
     setGptMessages((prev) => [
       ...prev,
       {
         id: generateId(),
         role: "gpt",
-        text: `✅ 最新GPTレスを ${resolved.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}` ,
+        text: `✅ 最新GPTレスを ${intent.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}`,
         meta: {
           kind: "task_info",
           sourceType: "gpt_chat",
@@ -991,7 +1032,7 @@ export default function ChatApp() {
     if (isMobile) setActiveTab("kin");
   };
 
-  const sendCurrentTaskContentToKin = () => {
+  const sendCurrentTaskContentToKin = async () => {
     const sourceText = getTaskBaseText();
 
     if (!sourceText) {
@@ -1006,31 +1047,67 @@ export default function ChatApp() {
       return;
     }
 
-    const resolved = resolveKinBlockModeAndDirective(gptInput, "sys_task");
+    const directiveText = gptInput.trim();
+    const { intent, usage } = await resolveTransformIntent({
+      input: directiveText,
+      defaultMode: "sys_task",
+      responseMode,
+    });
+    applyTaskUsage(usage);
+
+    let content = sourceText.trim();
+
+    if (shouldTransformContent(intent)) {
+      setGptLoading(true);
+      try {
+        const transformed = await transformTextWithIntent({
+          text: content,
+          intent,
+          responseMode,
+        });
+        content = transformed.text.trim() || content;
+        applyTaskUsage(transformed.usage);
+      } catch (error) {
+        console.error(error);
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text: "⚠️ 現在タスクの変換に失敗したため、元の本文で続行しました。",
+          },
+        ]);
+      } finally {
+        setGptLoading(false);
+      }
+    }
+
+    const directiveLines = buildKinDirectiveLines(intent);
     const block =
-      resolved.mode === "sys_info"
+      intent.mode === "sys_info"
         ? buildKinSysInfoBlock({
             taskSlot: currentTaskDraft.slot,
             title: currentTaskDraft.title || "現在タスク",
             sourceLabel: "current_task",
-            content: sourceText,
-            directive: resolved.directive,
+            content,
+            directiveLines,
           })
         : buildKinSysTaskBlock({
             taskSlot: currentTaskDraft.slot,
             title: currentTaskDraft.title || "現在タスク",
-            content: sourceText,
-            directive: resolved.directive,
+            content,
+            directiveLines,
           });
 
     setKinInput(block);
+    setGptInput("");
 
     setGptMessages((prev) => [
       ...prev,
       {
         id: generateId(),
         role: "gpt",
-        text: `✅ 現在タスクを ${resolved.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}`,
+        text: `✅ 現在タスクを ${intent.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}`,
         meta: {
           kind: "task_info",
           sourceType: "manual",
@@ -1125,9 +1202,71 @@ export default function ChatApp() {
         return;
       }
 
+      const fileTitle =
+        typeof data?.result?.title === "string" && data.result.title.trim()
+          ? data.result.title.trim()
+          : file.name;
+
       applyIngestUsage(data?.usage);
 
-      const blocks: string[] = Array.isArray(data?.kinBlocks) ? data.kinBlocks : [];
+      const prepInputBase = buildPrepInputFromIngestResult(data, file.name);
+      let prepInput = prepInputBase;
+
+      const directiveText = gptInput.trim();
+      const { intent, usage } = await resolveTransformIntent({
+        input: directiveText,
+        defaultMode: "sys_info",
+        responseMode,
+      });
+      applyTaskUsage(usage);
+
+      if (shouldTransformContent(intent)) {
+        try {
+          const transformed = await transformTextWithIntent({
+            text: prepInputBase,
+            intent,
+            responseMode,
+          });
+          prepInput = transformed.text.trim() || prepInputBase;
+          applyTaskUsage(transformed.usage);
+        } catch (error) {
+          console.error("file transform failed", error);
+          setGptMessages((prev) => [
+            ...prev,
+            {
+              id: generateId(),
+              role: "gpt",
+              text: "⚠️ ファイル追加指示の反映に失敗したため、元の取込内容で続行しました。",
+              meta: {
+                kind: "task_info",
+                sourceType: "file_ingest",
+              },
+            },
+          ]);
+        }
+      }
+
+      const directiveLines = buildKinDirectiveLines(intent);
+      const chunks = splitTextIntoKinChunks(prepInput, 3400, 260);
+      const blocks: string[] = chunks.map((chunk, index) =>
+        intent.mode === "sys_task"
+          ? buildKinSysTaskBlock({
+              taskSlot: currentTaskDraft.slot,
+              title: fileTitle,
+              content: chunk,
+              directiveLines,
+            })
+          : buildKinSysInfoBlock({
+              taskSlot: currentTaskDraft.slot,
+              title: fileTitle,
+              sourceLabel: "file_ingest",
+              content: chunk,
+              directiveLines,
+              partIndex: index + 1,
+              partTotal: chunks.length,
+            })
+      );
+
       if (blocks.length === 0) {
         setGptMessages((prev) => [
           ...prev,
@@ -1144,8 +1283,8 @@ export default function ChatApp() {
       setPendingKinInjectionIndex(0);
       setKinInput(blocks[0]);
       setUploadKind(resolvedKind);
+      setGptInput("");
 
-      const prepInput = buildPrepInputFromIngestResult(data, file.name);
       let prepTaskText = "";
       let deepenTaskText = "";
 
@@ -1180,11 +1319,6 @@ export default function ChatApp() {
         }
       }
 
-      const title =
-        typeof data?.result?.title === "string" && data.result.title.trim()
-          ? data.result.title
-          : file.name;
-
       const modeLine =
         resolvedKind === "text"
           ? `テキスト注入: ${options.mode}`
@@ -1208,7 +1342,7 @@ export default function ChatApp() {
 
       const messageParts = [
         "ファイルをKin注入用テキストに変換しました。",
-        `タイトル: ${title}`,
+        `タイトル: ${fileTitle}`,
         `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}`,
         `読込方針: ${readPolicyLabel}`,
         modeLine,
@@ -1261,7 +1395,7 @@ export default function ChatApp() {
             `FILE: ${file.name}`,
             prepInput,
             {
-              title: currentTaskDraft.title || title || file.name,
+              title: currentTaskDraft.title || fileTitle || file.name,
               userInstruction: currentTaskDraft.userInstruction,
               searchRawText: currentTaskDraft.searchContext?.rawText || "",
             }
@@ -1300,8 +1434,8 @@ export default function ChatApp() {
 
             setCurrentTaskDraft((prev) => ({
               ...prev,
-              taskName: resolveTaskName(prev, title || file.name),
-              title: resolveTaskName(prev, title || file.name),
+              taskName: resolveTaskName(prev, fileTitle || file.name),
+              title: resolveTaskName(prev, fileTitle || file.name),
               body: mergedTaskText,
               objective: prev.objective || `ファイル ${file.name} を統合したタスク`,
               deepenText: "",
@@ -1330,8 +1464,8 @@ export default function ChatApp() {
       if (options.action === "inject_and_prep" && prepTaskText) {
         setCurrentTaskDraft((prev) => ({
           ...prev,
-          taskName: title || file.name,
-          title: title || file.name,
+          taskName: fileTitle || file.name,
+          title: fileTitle || file.name,
           body: prepTaskText,
           objective: `ファイル ${file.name} の整理`,
           prepText: prepTaskText,
@@ -1349,8 +1483,8 @@ export default function ChatApp() {
         if (finalText) {
           setCurrentTaskDraft((prev) => ({
             ...prev,
-            taskName: title || file.name,
-            title: title || file.name,
+            taskName: fileTitle || file.name,
+            title: fileTitle || file.name,
             body: finalText,
             objective: `ファイル ${file.name} の整理`,
             prepText: prepTaskText,

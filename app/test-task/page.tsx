@@ -15,6 +15,8 @@ const MOBILE_BREAKPOINT = 1180;
 export default function TestTaskPage() {
   const [gptMessages, setGptMessages] = useState<Message[]>([]);
   const [gptInput, setGptInput] = useState("");
+  const [kinDirectiveInput, setKinDirectiveInput] = useState("");
+  const [fileDirectiveInput, setFileDirectiveInput] = useState("");
   const [taskDraft, setTaskDraft] = useState(createEmptyTaskDraft());
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);

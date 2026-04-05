@@ -70,7 +70,7 @@ export default function GptTaskEditor({
       </div>
 
       <div>
-        <div style={labelStyle}>ユーザー追加指示</div>
+        <div style={labelStyle}>タスク追加指示</div>
         <textarea
           value={taskDraft.userInstruction}
           onChange={(event) => onChangeUserInstruction(event.target.value)}

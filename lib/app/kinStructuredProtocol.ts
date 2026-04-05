@@ -10,12 +10,11 @@ function sanitizeLine(line: string): string {
     .trim();
 }
 
-function splitContentLines(text: string, limit = 28): string[] {
+function splitContentLines(text: string): string[] {
   return text
     .split(/\r?\n/)
     .map((line) => sanitizeLine(line))
-    .filter(Boolean)
-    .slice(0, limit);
+    .filter(Boolean);
 }
 
 function extractTaggedBlock(text: string, startTag: string, endTag: string): string | null {

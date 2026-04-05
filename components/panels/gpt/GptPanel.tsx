@@ -265,6 +265,21 @@ export default function GptPanel(props: GptPanelProps) {
 
   const showContextLine = !!contextLabel;
 
+  const composerPlaceholder = useMemo(() => {
+    switch (activeBottomTab) {
+      case "kin":
+        return "例: 英語にして / 箇条書き / SYS_TASK: 英語で簡潔に";
+      case "file":
+        return "例: 英語にして / 日本人旅行者向けに簡潔に / 箇条書き";
+      case "task_primary":
+      case "task_secondary":
+        return "例: 深掘り観点を追加 / この観点で再整理 / 検索結果を統合";
+      case "chat":
+      default:
+        return "メッセージを入力";
+    }
+  }, [activeBottomTab]);
+
   return (
     <div
       style={{
@@ -528,6 +543,7 @@ export default function GptPanel(props: GptPanelProps) {
           onChangeImageDetail={onChangeImageDetail}
           onChangePostIngestAction={onChangePostIngestAction}
           showFileTools={activeBottomTab === "file"}
+          placeholder={composerPlaceholder}
           isMobile={isMobile}
         />
       </div>
