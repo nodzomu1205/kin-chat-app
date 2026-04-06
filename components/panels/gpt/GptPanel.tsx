@@ -19,11 +19,19 @@ import {
   pillButton,
   statusDotStyle,
 } from "@/components/panels/gpt/gptPanelStyles";
+import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
 
 
 type TopTabKey = "memory" | "tokens" | "task_draft" | "task_progress";
 type DrawerMode = TopTabKey | "settings" | null;
 type BottomTabKey = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
+type FloatingLabel = {
+  kind: string;
+  value: string;
+  updatedAt: string;
+  accent: string;
+  chipBg: string;
+};
 
 type LocalMemorySettingsInput = {
   maxFacts: string;
@@ -80,19 +88,20 @@ function countText(
 
 function topTabStyle(active: boolean, isMobile: boolean): React.CSSProperties {
   return {
-    height: isMobile ? 24 : 28,
+    height: isMobile ? 22 : 24,
     borderRadius: "0 0 9px 9px",
     border: "1px solid #cbd5e1",
     borderTop: active ? "none" : "1px solid #cbd5e1",
     background: active ? "#ffffff" : "#f8fafc",
     color: active ? "#0f766e" : "#475569",
-    fontSize: isMobile ? 11 : 12,
+    fontSize: isMobile ? 10 : 11,
     fontWeight: 800,
-    padding: isMobile ? "0 7px" : "0 10px",
+    padding: isMobile ? "0 7px" : "0 8px",
     boxShadow: active ? "0 4px 10px rgba(15,23,42,0.08)" : "none",
     cursor: "pointer",
     whiteSpace: "nowrap",
     flexShrink: 0,
+    boxSizing: "border-box",
   };
 }
 
@@ -124,14 +133,14 @@ function DrawerTabs({
       <div
         style={{
           position: "absolute",
-          right: 10,
+          right: 0,
           bottom: 0,
           transform: "translateY(calc(100% - 1px))",
           zIndex: 30,
           display: "flex",
           alignItems: "flex-start",
           gap: 3,
-          maxWidth: "calc(100% - 24px)",
+          maxWidth: "100%",
           overflowX: "auto",
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
@@ -157,7 +166,14 @@ function DrawerTabs({
 function TaskProgressPanel({
   taskProgressView,
   onAnswerTaskRequest,
-}: Pick<GptPanelProps, "taskProgressView" | "onAnswerTaskRequest">) {
+  onPrepareTaskRequestAck,
+  onPrepareTaskSync,
+}: Pick<
+  GptPanelProps,
+  "taskProgressView" | "onAnswerTaskRequest" | "onPrepareTaskRequestAck" | "onPrepareTaskSync"
+>) {
+  const [syncNote, setSyncNote] = useState("");
+
   if (!taskProgressView) {
     return (
       <div
@@ -197,9 +213,28 @@ function TaskProgressPanel({
           {taskProgressView.taskId ? `#${taskProgressView.taskId} ` : ""}
           {taskProgressView.taskTitle || "未設定"}
         </div>
+        <div
+          style={{
+            marginTop: 8,
+            display: "inline-flex",
+            alignItems: "center",
+            borderRadius: 999,
+            padding: "4px 10px",
+            background: "#ecfeff",
+            color: "#0f766e",
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        >
+          STATUS: {taskProgressView.taskStatus}
+        </div>
         <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>ゴール</div>
         <div style={{ marginTop: 4, whiteSpace: "pre-wrap", color: "#334155", lineHeight: 1.65 }}>
           {taskProgressView.goal || "-"}
+        </div>
+        <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>現在の要約</div>
+        <div style={{ marginTop: 4, whiteSpace: "pre-wrap", color: "#334155", lineHeight: 1.65 }}>
+          {taskProgressView.latestSummary || "-"}
         </div>
       </section>
 
@@ -264,6 +299,7 @@ function TaskProgressPanel({
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#64748b" }}>
                   <span>{req.required ? "必須" : "任意"}</span>
+                  <span>ACTION: {req.actionId}</span>
                   {onAnswerTaskRequest ? (
                     <button
                       type="button"
@@ -282,12 +318,73 @@ function TaskProgressPanel({
                       この依頼に回答
                     </button>
                   ) : null}
+                  {onPrepareTaskRequestAck ? (
+                    <button
+                      type="button"
+                      onClick={() => onPrepareTaskRequestAck(req.requestId)}
+                      style={{
+                        border: "1px solid #bae6fd",
+                        background: "#f0f9ff",
+                        borderRadius: 8,
+                        padding: "5px 8px",
+                        cursor: "pointer",
+                        color: "#0f766e",
+                        fontWeight: 700,
+                        fontSize: 12,
+                      }}
+                    >
+                      待機応答を作成
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ))
           )}
         </div>
       </section>
+
+      {onPrepareTaskSync ? (
+        <section style={sectionStyle}>
+          <div style={{ fontWeight: 700, color: "#0f172a" }}>再同期</div>
+          <div style={{ marginTop: 8, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+            状態がずれたときは補足メモ付きで現在ステータスを Kin に再送できます。
+          </div>
+          <textarea
+            value={syncNote}
+            onChange={(event) => setSyncNote(event.target.value)}
+            placeholder="例: ask_gpt は2/3、ACTION A001 は回答待ち、ここから再開してください。"
+            style={{
+              width: "100%",
+              minHeight: 88,
+              marginTop: 10,
+              border: "1px solid #dbe4e8",
+              borderRadius: 12,
+              padding: 10,
+              resize: "vertical",
+              fontSize: 13,
+              color: "#334155",
+              background: "#fff",
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => onPrepareTaskSync(syncNote)}
+            style={{
+              marginTop: 10,
+              border: "1px solid #d1d5db",
+              background: "#fff",
+              borderRadius: 8,
+              padding: "7px 10px",
+              cursor: "pointer",
+              color: "#334155",
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+          >
+            Kinに再同期メッセージを作成
+          </button>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -313,8 +410,12 @@ export default function GptPanel(props: GptPanelProps) {
     (props.memorySettings.maxFacts ?? 0) +
     (props.memorySettings.maxPreferences ?? 0);
 
-  const floatingLabel = useMemo(() => {
-    const taskName = props.currentTaskDraft.title?.trim() || props.currentTaskDraft.taskName?.trim() || props.gptState.memory?.context?.currentTask?.trim() || "";
+  const floatingLabel = useMemo<FloatingLabel>(() => {
+    const taskName =
+      props.currentTaskDraft.title?.trim() ||
+      props.currentTaskDraft.taskName?.trim() ||
+      props.gptState.memory?.context?.currentTask?.trim() ||
+      "";
     const topic = props.gptState.memory?.context?.currentTopic?.trim() || "";
     const taskFocused =
       bottomTab === "task_primary" ||
@@ -323,22 +424,52 @@ export default function GptPanel(props: GptPanelProps) {
       activeDrawer === "task_progress";
 
     if (taskFocused && taskName) {
-      return { kind: "タスク", value: taskName, updatedAt: props.currentTaskDraft.updatedAt || "" };
+      return {
+        kind: "タスク",
+        value: taskName,
+        updatedAt: props.currentTaskDraft.updatedAt || "",
+        accent: "#b45309",
+        chipBg: "#fff7ed",
+      };
     }
 
     if (bottomTab === "chat" && topic) {
-      return { kind: "トピック", value: topic, updatedAt: "" };
+      return {
+        kind: "トピック",
+        value: topic,
+        updatedAt: "",
+        accent: "#0f766e",
+        chipBg: "#ecfeff",
+      };
     }
 
     if (topic) {
-      return { kind: "トピック", value: topic, updatedAt: "" };
+      return {
+        kind: "トピック",
+        value: topic,
+        updatedAt: "",
+        accent: "#0f766e",
+        chipBg: "#ecfeff",
+      };
     }
 
     if (taskName) {
-      return { kind: "タスク", value: taskName, updatedAt: props.currentTaskDraft.updatedAt || "" };
+      return {
+        kind: "タスク",
+        value: taskName,
+        updatedAt: props.currentTaskDraft.updatedAt || "",
+        accent: "#b45309",
+        chipBg: "#fff7ed",
+      };
     }
 
-    return { kind: "", value: "", updatedAt: "" };
+    return {
+      kind: "",
+      value: "",
+      updatedAt: "",
+      accent: "#111827",
+      chipBg: "transparent",
+    };
   }, [
     activeDrawer,
     bottomTab,
@@ -354,16 +485,15 @@ export default function GptPanel(props: GptPanelProps) {
     toPositiveInt(localSettings.maxFacts, props.memorySettings.maxFacts ?? 0) +
     toPositiveInt(localSettings.maxPreferences, props.memorySettings.maxPreferences ?? 0);
 
-  const latestUsage = {
-    inputTokens: props.tokenStats.latestInput ?? 0,
-    outputTokens: props.tokenStats.latestOutput ?? 0,
-    totalTokens: props.tokenStats.latestTotal ?? 0,
-  };
-  const rolling5Usage = {
-    inputTokens: props.tokenStats.rolling5Input ?? 0,
-    outputTokens: props.tokenStats.rolling5Output ?? 0,
-    totalTokens: props.tokenStats.rolling5Total ?? 0,
-  };
+  const rolling5Usage = sumUsages(
+    Array.isArray((props.tokenStats as { recentChatUsages?: unknown }).recentChatUsages)
+      ? (((props.tokenStats as { recentChatUsages?: unknown }).recentChatUsages as Array<{
+          inputTokens: number;
+          outputTokens: number;
+          totalTokens: number;
+        }>) ?? [])
+      : []
+  );
   const totalUsage = {
     inputTokens: props.tokenStats.cumulativeInput ?? 0,
     outputTokens: props.tokenStats.cumulativeOutput ?? 0,
@@ -434,6 +564,8 @@ export default function GptPanel(props: GptPanelProps) {
         <TaskProgressPanel
           taskProgressView={props.taskProgressView}
           onAnswerTaskRequest={props.onAnswerTaskRequest}
+          onPrepareTaskRequestAck={props.onPrepareTaskRequestAck}
+          onPrepareTaskSync={props.onPrepareTaskSync}
         />
       );
     }
@@ -598,7 +730,7 @@ export default function GptPanel(props: GptPanelProps) {
         <div
           style={{
             minHeight: 30,
-            padding: activeDrawer ? "18px 12px 0 12px" : "22px 12px 0 12px",
+            padding: activeDrawer ? "18px 12px 8px 12px" : "22px 12px 10px 12px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -611,16 +743,47 @@ export default function GptPanel(props: GptPanelProps) {
           <div
             style={{
               minWidth: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
               overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              fontWeight: 800,
-              color: "#111827",
-              fontSize: props.isMobile ? 12.5 : 14,
             }}
             title={floatingLabel.value || undefined}
           >
-            {floatingLabel.value ? `${floatingLabel.kind}: ${floatingLabel.value}` : ""}
+            {floatingLabel.value ? (
+              <>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    borderRadius: 999,
+                    padding: "3px 8px",
+                    fontSize: props.isMobile ? 10.5 : 11,
+                    fontWeight: 800,
+                    color: floatingLabel.accent,
+                    background: floatingLabel.chipBg,
+                    border: `1px solid ${floatingLabel.accent}22`,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {floatingLabel.kind}
+                </span>
+                <span
+                  style={{
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    fontWeight: 800,
+                    color: "#111827",
+                    fontSize: props.isMobile ? 12.5 : 14,
+                  }}
+                >
+                  {floatingLabel.value}
+                </span>
+              </>
+            ) : (
+              ""
+            )}
           </div>
           <div style={{ flexShrink: 0, whiteSpace: "nowrap", color: "#374151", fontSize: props.isMobile ? 11.5 : 12.5, fontWeight: 700 }}>
             {formatUpdatedAt(floatingLabel.updatedAt)}
@@ -654,7 +817,7 @@ export default function GptPanel(props: GptPanelProps) {
           </div>
         )}
 
-        <div style={{ position: "relative", paddingTop: props.isMobile ? 14 : 16, marginTop: 0 }}>
+        <div style={{ position: "relative", paddingTop: 0, marginTop: 0 }}>
           <GptToolbar
             activeTab={bottomTab}
             isMobile={props.isMobile}

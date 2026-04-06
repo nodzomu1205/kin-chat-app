@@ -15,7 +15,7 @@ export function shouldInjectTaskContext(params: {
 export function buildTaskChatBridgeContext(runtime: TaskRuntimeState) {
   const pendingSummary = runtime.pendingRequests
     .filter((r) => r.status === "pending")
-    .map((r) => `- [${r.target}] ${r.body}`)
+    .map((r) => `- [${r.target}] ${r.actionId}: ${r.body}`)
     .join("\n");
 
   return [
@@ -23,6 +23,8 @@ export function buildTaskChatBridgeContext(runtime: TaskRuntimeState) {
     `Task ID: ${runtime.currentTaskId ?? ""}`,
     `Title: ${runtime.currentTaskTitle ?? ""}`,
     `Goal: ${runtime.currentTaskIntent?.goal ?? ""}`,
+    `Status: ${runtime.taskStatus ?? ""}`,
+    runtime.latestSummary ? `Latest Summary: ${runtime.latestSummary}` : "",
     pendingSummary ? `Pending:\n${pendingSummary}` : "",
     "[/Current Task Context]",
   ]

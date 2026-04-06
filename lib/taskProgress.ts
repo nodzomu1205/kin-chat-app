@@ -77,6 +77,7 @@ export function toUserFacingRequests(
   return pendingRequests.map((r) => ({
     requestId: r.id,
     taskId: r.taskId,
+    actionId: r.actionId,
     kind: r.kind,
     body: r.body,
     required: r.required,

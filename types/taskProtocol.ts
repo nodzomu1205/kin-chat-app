@@ -36,6 +36,7 @@ export type TaskIntent = {
 export type PendingExternalRequest = {
   id: string;
   taskId: string;
+  actionId: string;
   target: "user" | "material";
   kind: "question" | "request_material";
   body: string;
@@ -64,6 +65,7 @@ export type TaskRequirementProgress = {
 export type UserFacingTaskRequest = {
   requestId: string;
   taskId: string;
+  actionId: string;
   kind: "question" | "request_material";
   body: string;
   required: boolean;
@@ -73,11 +75,39 @@ export type UserFacingTaskRequest = {
   answerText?: string;
 };
 
+export type TaskExecutionStatus =
+  | "idle"
+  | "running"
+  | "waiting_user"
+  | "waiting_material"
+  | "ready_to_resume"
+  | "completed";
+
+export type TaskProtocolEventType =
+  | "task_progress"
+  | "ask_gpt"
+  | "user_question"
+  | "material_request"
+  | "task_done"
+  | "task_confirm";
+
+export type TaskProtocolEvent = {
+  type: TaskProtocolEventType;
+  taskId?: string;
+  actionId?: string;
+  status?: string;
+  body: string;
+  required?: boolean;
+  summary?: string;
+};
+
 export type TaskRuntimeState = {
   currentTaskId: string | null;
   currentTaskTitle: string;
   currentTaskIntent: TaskIntent | null;
   compiledTaskPrompt: string;
+  taskStatus: TaskExecutionStatus;
+  latestSummary: string;
   requirementProgress: TaskRequirementProgress[];
   pendingRequests: PendingExternalRequest[];
   userFacingRequests: UserFacingTaskRequest[];

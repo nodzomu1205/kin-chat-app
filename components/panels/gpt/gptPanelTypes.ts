@@ -4,6 +4,7 @@ import type { Message } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 import type {
   TaskRequirementProgress,
+  TaskExecutionStatus,
   UserFacingTaskRequest,
 } from "@/types/taskProtocol";
 
@@ -64,6 +65,8 @@ export type TaskProgressView = {
   taskId: string | null;
   taskTitle: string;
   goal: string;
+  taskStatus: TaskExecutionStatus;
+  latestSummary: string;
   requirementProgress: TaskRequirementProgress[];
   userFacingRequests: UserFacingTaskRequest[];
 };
@@ -95,6 +98,8 @@ export type GptPanelProps = {
       detail: ImageDetail;
       action: PostIngestAction;
       readPolicy: FileReadPolicy;
+      compactCharLimit: number;
+      simpleImageCharLimit: number;
     }
   ) => void | Promise<void>;
   canInjectFile: boolean;
@@ -132,5 +137,7 @@ export type GptPanelProps = {
   onChangeTaskBody: (value: string) => void;
   taskProgressView?: TaskProgressView;
   onAnswerTaskRequest?: (requestId: string) => void;
+  onPrepareTaskRequestAck?: (requestId: string) => void;
+  onPrepareTaskSync?: (note: string) => void;
   onStartKinTask?: () => void | Promise<void>;
 };

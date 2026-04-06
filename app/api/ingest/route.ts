@@ -142,8 +142,22 @@ function splitRawTextIntoLines(text: string, maxLen = 360) {
 
     let rest = line;
     while (rest.length > maxLen) {
-      result.push(rest.slice(0, maxLen));
-      rest = rest.slice(maxLen);
+      const candidate = rest.slice(0, maxLen);
+      const naturalCut = Math.max(
+        candidate.lastIndexOf("。"),
+        candidate.lastIndexOf("、"),
+        candidate.lastIndexOf(". "),
+        candidate.lastIndexOf(" "),
+        candidate.lastIndexOf(")"),
+        candidate.lastIndexOf("）"),
+        candidate.lastIndexOf(":"),
+        candidate.lastIndexOf("：")
+      );
+      const splitAt =
+        naturalCut >= Math.floor(maxLen * 0.6) ? naturalCut + 1 : maxLen;
+
+      result.push(rest.slice(0, splitAt).trimEnd());
+      rest = rest.slice(splitAt).trimStart();
     }
     if (rest) result.push(rest);
   }
@@ -169,19 +183,123 @@ function normalizePositiveLimit(value: unknown, fallback = 500) {
   return Math.max(100, Math.min(10000, Math.floor(n)));
 }
 
-function clampLinesToCharLimit(lines: string[], limit: number) {
-  const joined = lines.filter(Boolean).join("\n").trim();
-  if (!joined) return [];
-  if (joined.length <= limit) return joined.split("\n");
+function clipLineNaturally(line: string, limit: number) {
+  const trimmed = line.trim();
+  if (!trimmed) return "";
+  if (trimmed.length <= limit) return trimmed;
 
-  const clipped = joined.slice(0, Math.max(0, limit - 1)).trimEnd() + "…";
-  return clipped.split("\n");
+  const hardLimit = Math.max(1, limit - 1);
+  const candidate = trimmed.slice(0, hardLimit);
+  const naturalCut = Math.max(
+    candidate.lastIndexOf("。"),
+    candidate.lastIndexOf("、"),
+    candidate.lastIndexOf(". "),
+    candidate.lastIndexOf(" "),
+    candidate.lastIndexOf("\n")
+  );
+
+  const clipped =
+    naturalCut >= Math.floor(hardLimit * 0.55)
+      ? candidate.slice(0, naturalCut + 1).trimEnd()
+      : candidate.trimEnd();
+
+  return `${clipped}…`;
+}
+
+function clampLinesToCharLimit(lines: string[], limit: number) {
+  const normalized = lines.map((line) => line.trim()).filter(Boolean);
+  if (normalized.length === 0) return [];
+
+  const result: string[] = [];
+  let used = 0;
+
+  for (const line of normalized) {
+    const separator = result.length > 0 ? 1 : 0;
+    const nextLen = used + separator + line.length;
+
+    if (nextLen <= limit) {
+      result.push(line);
+      used = nextLen;
+      continue;
+    }
+
+    const remaining = limit - used - separator;
+    if (remaining <= 1) break;
+
+    result.push(clipLineNaturally(line, remaining));
+    break;
+  }
+
+  return result;
 }
 
 function chooseLinesWithinBudget(lines: string[], fallbacks: string[], limit: number) {
   const primary = lines.filter(Boolean);
   if (primary.length > 0) return clampLinesToCharLimit(primary, limit);
   return clampLinesToCharLimit(fallbacks.filter(Boolean), limit);
+}
+
+function chooseDetailedLinesWithinBudget(
+  lines: string[],
+  fallbacks: string[],
+  limit: number
+) {
+  const primary = lines.filter(Boolean);
+  if (primary.length === 0) {
+    return chooseWholeLinesWithinBudget(fallbacks.filter(Boolean), limit);
+  }
+  return chooseWholeLinesWithinBudget(primary, limit);
+}
+
+function chooseWholeLinesWithinBudget(lines: string[], limit: number) {
+  const normalized = lines.map((line) => line.trim()).filter(Boolean);
+  if (normalized.length === 0) return [];
+
+  const result: string[] = [];
+  let used = 0;
+
+  for (const line of normalized) {
+    const separator = result.length > 0 ? 1 : 0;
+    const nextLen = used + separator + line.length;
+    if (nextLen > limit) break;
+    result.push(line);
+    used = nextLen;
+  }
+
+  return result;
+}
+
+function estimateIntermediateBudget(
+  lines: string[],
+  fallbacks: string[],
+  options: {
+    ratio: number;
+    min: number;
+    max: number;
+  }
+) {
+  const primary = lines.filter(Boolean);
+  const source = primary.length > 0 ? primary : fallbacks.filter(Boolean);
+  const joined = source.join("\n").trim();
+  if (!joined) return options.min;
+  if (joined.length <= options.min) return joined.length;
+  return Math.max(
+    options.min,
+    Math.min(options.max, Math.floor(joined.length * options.ratio))
+  );
+}
+
+function chooseIntermediateLines(
+  lines: string[],
+  fallbacks: string[],
+  options: {
+    ratio: number;
+    min: number;
+    max: number;
+  }
+) {
+  const budget = estimateIntermediateBudget(lines, fallbacks, options);
+  return chooseDetailedLinesWithinBudget(lines, fallbacks, budget);
 }
 
 function normalizeUploadKind(value: unknown): FileUploadKind {
@@ -191,6 +309,7 @@ function normalizeUploadKind(value: unknown): FileUploadKind {
 function normalizeFileReadPolicy(value: unknown): FileReadPolicy {
   if (value === "text_first") return "text_first";
   if (value === "visual_first") return "visual_first";
+  if (value === "text_and_layout") return "hybrid";
   return "hybrid";
 }
 
@@ -491,25 +610,63 @@ export async function POST(req: Request) {
 
     if (uploadKind === "visual") {
       if (readPolicy === "text_first") {
-        selectedLines = detail === "simple"
-          ? chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, simpleImageCharLimit)
-          : normalized.kinDetailed.length > 0
-            ? normalized.kinDetailed
-            : normalized.kinCompact;
-        summaryLevel = "visual_text_first";
+        selectedLines =
+          detail === "max"
+            ? normalized.kinDetailed.length > 0
+              ? normalized.kinDetailed
+              : normalized.kinCompact
+            : detail === "detailed"
+              ? chooseIntermediateLines(
+                  normalized.kinDetailed,
+                  normalized.kinCompact,
+                  {
+                    ratio: 0.6,
+                    min: Math.max(700, simpleImageCharLimit + 180),
+                    max: 2200,
+                  }
+                )
+              : chooseLinesWithinBudget(
+                  normalized.kinCompact,
+                  normalized.structuredSummary,
+                  simpleImageCharLimit
+                );
+        summaryLevel = detail === "max" ? "visual_text_first_max" : "visual_text_first";
       } else if (readPolicy === "hybrid") {
-        selectedLines = detail === "simple"
-          ? chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, simpleImageCharLimit)
-          : normalized.kinDetailed.length > 0
-            ? normalized.kinDetailed
-            : normalized.kinCompact;
-        summaryLevel = "visual_hybrid";
+        selectedLines =
+          detail === "max"
+            ? normalized.kinDetailed.length > 0
+              ? normalized.kinDetailed
+              : normalized.kinCompact
+            : detail === "detailed"
+              ? chooseIntermediateLines(
+                  normalized.kinDetailed,
+                  normalized.kinCompact,
+                  {
+                    ratio: 0.62,
+                    min: Math.max(720, simpleImageCharLimit + 220),
+                    max: 2400,
+                  }
+                )
+              : chooseLinesWithinBudget(
+                  normalized.kinCompact,
+                  normalized.structuredSummary,
+                  simpleImageCharLimit
+                );
+        summaryLevel = detail === "max" ? "visual_hybrid_max" : "visual_hybrid";
       } else {
         selectedLines =
           detail === "simple"
             ? chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, simpleImageCharLimit)
             : detail === "detailed"
-              ? chooseLinesWithinBudget(normalized.kinDetailed, normalized.kinCompact, 1400)
+              ? chooseIntermediateLines(
+                  normalized.kinDetailed,
+                  normalized.kinCompact,
+                  {
+                    ratio: 0.65,
+                    min: Math.max(760, simpleImageCharLimit + 260),
+                    max: 2600,
+                  }
+                )
               : normalized.kinDetailed.length > 0
                 ? normalized.kinDetailed
                 : normalized.kinCompact;
@@ -528,7 +685,15 @@ export async function POST(req: Request) {
             ? normalized.kinDetailed
             : normalized.kinCompact
           : mode === "detailed"
-            ? chooseLinesWithinBudget(normalized.kinDetailed, normalized.kinCompact, 1400)
+            ? chooseIntermediateLines(
+                normalized.kinDetailed,
+                normalized.kinCompact,
+                {
+                  ratio: 0.58,
+                  min: Math.max(800, compactCharLimit + 240),
+                  max: 2600,
+                }
+              )
             : chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, compactCharLimit);
 
       summaryLevel = mode === "max" ? "full_text" : mode === "detailed" ? "detailed_text" : "compact_text";

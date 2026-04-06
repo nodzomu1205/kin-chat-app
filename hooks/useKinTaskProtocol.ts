@@ -3,15 +3,22 @@
 import { useMemo, useState } from "react";
 import type {
   PendingExternalRequest,
+  TaskExecutionStatus,
   TaskIntent,
+  TaskProtocolEvent,
   TaskRuntimeState,
 } from "@/types/taskProtocol";
 import { generateTaskTitle } from "@/lib/taskTitle";
 import { compileKinTaskPrompt } from "@/lib/taskCompiler";
 import {
   buildInitialRequirementProgress,
+  markRequirementProgress,
   toUserFacingRequests,
 } from "@/lib/taskProgress";
+import {
+  buildTaskConfirmBlock,
+  buildWaitingAckBlock,
+} from "@/lib/taskRuntimeProtocol";
 
 function createTaskId() {
   return String(Date.now()).slice(-6);
@@ -23,12 +30,37 @@ export function useKinTaskProtocol() {
     currentTaskTitle: "",
     currentTaskIntent: null,
     compiledTaskPrompt: "",
+    taskStatus: "idle",
+    latestSummary: "",
     requirementProgress: [],
     pendingRequests: [],
     userFacingRequests: [],
     completedSearches: [],
     protocolLog: [],
   });
+
+  function createActionId() {
+    return `A${String(Date.now()).slice(-6)}`;
+  }
+
+  function resolveStatusFromEvent(
+    current: TaskExecutionStatus,
+    event: TaskProtocolEvent
+  ): TaskExecutionStatus {
+    if (event.type === "task_done") return "completed";
+    if (event.type === "material_request") return "waiting_material";
+    if (event.type === "user_question") return "waiting_user";
+    if (event.type === "task_confirm") {
+      const normalized = (event.status || "").toLowerCase();
+      if (normalized.includes("waiting_user")) return "waiting_user";
+      if (normalized.includes("waiting_material")) return "waiting_material";
+      if (normalized.includes("ready")) return "ready_to_resume";
+      if (normalized.includes("complete") || normalized.includes("done")) return "completed";
+      if (normalized.includes("run") || normalized.includes("progress")) return "running";
+    }
+    if (event.type === "task_progress" || event.type === "ask_gpt") return "running";
+    return current;
+  }
 
   function startTask(params: {
     originalInstruction: string;
@@ -56,6 +88,8 @@ export function useKinTaskProtocol() {
       currentTaskTitle: title,
       currentTaskIntent: params.intent,
       compiledTaskPrompt: compiled,
+      taskStatus: "running",
+      latestSummary: params.intent.goal,
       requirementProgress,
       pendingRequests: [],
       userFacingRequests: [],
@@ -109,10 +143,136 @@ export function useKinTaskProtocol() {
 
       return {
         ...prev,
+        taskStatus: "ready_to_resume",
         pendingRequests: nextPending,
         userFacingRequests: toUserFacingRequests(nextPending),
       };
     });
+  }
+
+  function ingestProtocolEvents(params: {
+    text: string;
+    direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system";
+    events: TaskProtocolEvent[];
+  }) {
+    if (params.events.length === 0) return;
+
+    setRuntime((prev) => {
+      let next = { ...prev };
+
+      for (const event of params.events) {
+        const resolvedTaskId =
+          event.taskId || next.currentTaskId || prev.currentTaskId || "";
+        const actionId = event.actionId || createActionId();
+
+        next = {
+          ...next,
+          currentTaskId: next.currentTaskId ?? resolvedTaskId,
+          latestSummary: event.summary || event.body || next.latestSummary,
+          taskStatus: resolveStatusFromEvent(next.taskStatus, event),
+          protocolLog: [
+            ...next.protocolLog,
+            {
+              taskId: resolvedTaskId,
+              direction: params.direction,
+              type: event.type,
+              body: event.body || event.summary || "",
+              createdAt: Date.now(),
+            },
+          ],
+        };
+
+        if (event.type === "ask_gpt") {
+          next.requirementProgress = markRequirementProgress(
+            next.requirementProgress,
+            "ask_gpt"
+          );
+          continue;
+        }
+
+        if (event.type === "user_question" || event.type === "material_request") {
+          const kind =
+            event.type === "material_request" ? "request_material" : "question";
+          const target = event.type === "material_request" ? "material" : "user";
+          const existingIndex = next.pendingRequests.findIndex(
+            (request) => request.actionId === actionId
+          );
+
+          const pending: PendingExternalRequest = {
+            id: event.actionId || actionId,
+            actionId,
+            taskId: resolvedTaskId,
+            target,
+            kind,
+            body: event.body || event.summary || "",
+            status: "pending",
+            createdAt: Date.now(),
+            required: event.required ?? false,
+          };
+
+          if (existingIndex >= 0) {
+            const copied = [...next.pendingRequests];
+            copied[existingIndex] = {
+              ...copied[existingIndex],
+              ...pending,
+              createdAt: copied[existingIndex].createdAt,
+            };
+            next.pendingRequests = copied;
+          } else {
+            next.pendingRequests = [...next.pendingRequests, pending];
+          }
+
+          next.requirementProgress = markRequirementProgress(
+            next.requirementProgress,
+            event.type === "material_request" ? "request_material" : "ask_user"
+          );
+          next.userFacingRequests = toUserFacingRequests(next.pendingRequests);
+          continue;
+        }
+
+        if (event.type === "task_done") {
+          next.requirementProgress = next.requirementProgress.map((item) =>
+            item.kind === "finalize"
+              ? {
+                  ...item,
+                  completedCount: item.targetCount ?? 1,
+                  status: "done",
+                }
+              : item
+          );
+        }
+
+        if (event.type === "task_confirm" && event.actionId) {
+          const normalizedStatus = (event.status || "").toLowerCase();
+          next.pendingRequests = next.pendingRequests.map((request) =>
+            request.actionId !== event.actionId
+              ? request
+              : {
+                  ...request,
+                  status: normalizedStatus.includes("cancel")
+                    ? "cancelled"
+                    : normalizedStatus.includes("answer") ||
+                        normalizedStatus.includes("resolved")
+                      ? "answered"
+                      : request.status,
+                }
+          );
+        }
+      }
+
+      next.userFacingRequests = toUserFacingRequests(next.pendingRequests);
+      return next;
+    });
+  }
+
+  function prepareTaskSyncMessage(note?: string) {
+    return buildTaskConfirmBlock(runtime, note);
+  }
+
+  function prepareWaitingAckMessage(requestId: string) {
+    const request = runtime.pendingRequests.find((item) => item.id === requestId);
+    if (!request) return null;
+    return buildWaitingAckBlock(request);
   }
 
   const progressView = useMemo(() => {
@@ -120,6 +280,8 @@ export function useKinTaskProtocol() {
       taskId: runtime.currentTaskId,
       taskTitle: runtime.currentTaskTitle,
       goal: runtime.currentTaskIntent?.goal ?? "",
+      taskStatus: runtime.taskStatus,
+      latestSummary: runtime.latestSummary,
       requirementProgress: runtime.requirementProgress,
       userFacingRequests: runtime.userFacingRequests,
     };
@@ -131,5 +293,8 @@ export function useKinTaskProtocol() {
     startTask,
     addPendingRequest,
     answerPendingRequest,
+    ingestProtocolEvents,
+    prepareTaskSyncMessage,
+    prepareWaitingAckMessage,
   };
 }
