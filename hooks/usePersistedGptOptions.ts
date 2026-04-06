@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type {
   FileReadPolicy,
-  FileUploadKind,
+  UploadKind,
   ImageDetail,
   IngestMode,
   PostIngestAction,
@@ -16,47 +16,68 @@ const INGEST_MODE_KEY = "gpt_ingest_mode";
 const IMAGE_DETAIL_KEY = "gpt_image_detail";
 const POST_INGEST_ACTION_KEY = "gpt_post_ingest_action";
 const FILE_READ_POLICY_KEY = "gpt_file_read_policy";
+const COMPACT_CHAR_LIMIT_KEY = "gpt_compact_char_limit";
+const SIMPLE_IMAGE_CHAR_LIMIT_KEY = "gpt_simple_image_char_limit";
 
 export function usePersistedGptOptions() {
   const [responseMode, setResponseMode] = useState<ResponseMode>("strict");
-  const [uploadKind, setUploadKind] = useState<FileUploadKind>("text");
-  const [ingestMode, setIngestMode] = useState<IngestMode>("compact");
-  const [imageDetail, setImageDetail] = useState<ImageDetail>("basic");
+  const [uploadKind, setUploadKind] = useState<UploadKind>("text");
+  const [ingestMode, setIngestMode] = useState<IngestMode>("detailed");
+  const [imageDetail, setImageDetail] = useState<ImageDetail>("detailed");
+  const [compactCharLimit, setCompactCharLimit] = useState(500);
+  const [simpleImageCharLimit, setSimpleImageCharLimit] = useState(500);
   const [postIngestAction, setPostIngestAction] =
     useState<PostIngestAction>("inject_only");
   const [fileReadPolicy, setFileReadPolicy] =
-    useState<FileReadPolicy>("hybrid");
+    useState<FileReadPolicy>("text_and_layout");
 
   useEffect(() => {
     const savedMode = localStorage.getItem(RESPONSE_MODE_KEY);
-    if (savedMode === "creative") {
-      setResponseMode("creative");
+    if (
+      savedMode === "strict" ||
+      savedMode === "balanced" ||
+      savedMode === "creative"
+    ) {
+      setResponseMode(savedMode);
     }
 
     const savedUploadKind = localStorage.getItem(UPLOAD_KIND_KEY);
-    if (savedUploadKind === "visual") {
-      setUploadKind("visual");
+    if (
+      savedUploadKind === "auto" ||
+      savedUploadKind === "text" ||
+      savedUploadKind === "image" ||
+      savedUploadKind === "pdf" ||
+      savedUploadKind === "mixed"
+    ) {
+      setUploadKind(savedUploadKind);
     }
 
     const savedIngestMode = localStorage.getItem(INGEST_MODE_KEY);
-    if (savedIngestMode === "full") {
-      setIngestMode("full");
+    if (savedIngestMode === "compact" || savedIngestMode === "detailed" || savedIngestMode === "max") {
+      setIngestMode(savedIngestMode);
+    } else if (savedIngestMode === "strict") {
+      setIngestMode("compact");
+    } else if (savedIngestMode === "creative" || savedIngestMode === "full") {
+      setIngestMode("detailed");
     }
 
     const savedImageDetail = localStorage.getItem(IMAGE_DETAIL_KEY);
-    if (
-      savedImageDetail === "basic" ||
-      savedImageDetail === "detailed" ||
-      savedImageDetail === "max"
-    ) {
+    if (savedImageDetail === "simple" || savedImageDetail === "detailed" || savedImageDetail === "max") {
       setImageDetail(savedImageDetail);
+    } else if (savedImageDetail === "low") {
+      setImageDetail("simple");
+    } else if (savedImageDetail === "auto") {
+      setImageDetail("detailed");
+    } else if (savedImageDetail === "high") {
+      setImageDetail("max");
     }
 
     const savedPostIngestAction = localStorage.getItem(POST_INGEST_ACTION_KEY);
     if (
       savedPostIngestAction === "inject_only" ||
       savedPostIngestAction === "inject_and_prep" ||
-      savedPostIngestAction === "inject_prep_deepen"
+      savedPostIngestAction === "inject_prep_deepen" ||
+      savedPostIngestAction === "attach_to_current_task"
     ) {
       setPostIngestAction(savedPostIngestAction);
     }
@@ -65,9 +86,19 @@ export function usePersistedGptOptions() {
     if (
       savedFileReadPolicy === "text_first" ||
       savedFileReadPolicy === "visual_first" ||
-      savedFileReadPolicy === "hybrid"
+      savedFileReadPolicy === "text_and_layout"
     ) {
       setFileReadPolicy(savedFileReadPolicy);
+    }
+
+    const savedCompactCharLimit = Number(localStorage.getItem(COMPACT_CHAR_LIMIT_KEY));
+    if (Number.isFinite(savedCompactCharLimit) && savedCompactCharLimit >= 100) {
+      setCompactCharLimit(Math.floor(savedCompactCharLimit));
+    }
+
+    const savedSimpleImageCharLimit = Number(localStorage.getItem(SIMPLE_IMAGE_CHAR_LIMIT_KEY));
+    if (Number.isFinite(savedSimpleImageCharLimit) && savedSimpleImageCharLimit >= 100) {
+      setSimpleImageCharLimit(Math.floor(savedSimpleImageCharLimit));
     }
   }, []);
 
@@ -88,6 +119,14 @@ export function usePersistedGptOptions() {
   }, [imageDetail]);
 
   useEffect(() => {
+    localStorage.setItem(COMPACT_CHAR_LIMIT_KEY, String(compactCharLimit));
+  }, [compactCharLimit]);
+
+  useEffect(() => {
+    localStorage.setItem(SIMPLE_IMAGE_CHAR_LIMIT_KEY, String(simpleImageCharLimit));
+  }, [simpleImageCharLimit]);
+
+  useEffect(() => {
     localStorage.setItem(POST_INGEST_ACTION_KEY, postIngestAction);
   }, [postIngestAction]);
 
@@ -104,6 +143,10 @@ export function usePersistedGptOptions() {
     setIngestMode,
     imageDetail,
     setImageDetail,
+    compactCharLimit,
+    setCompactCharLimit,
+    simpleImageCharLimit,
+    setSimpleImageCharLimit,
     postIngestAction,
     setPostIngestAction,
     fileReadPolicy,

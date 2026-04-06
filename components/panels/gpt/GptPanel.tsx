@@ -1,322 +1,156 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import ChatMessages from "@/components/ChatMessages";
+import GptComposer from "@/components/panels/gpt/GptComposer";
+import GptMetaDrawer from "@/components/panels/gpt/GptMetaDrawer";
+import GptSettingsDrawer from "@/components/panels/gpt/GptSettingsDrawer";
+import GptTaskStatusDrawer from "@/components/panels/gpt/GptTaskStatusDrawer";
+import GptToolbar from "@/components/panels/gpt/GptToolbar";
 import type {
   GptInstructionMode,
   GptPanelProps,
-  TokenStats,
 } from "@/components/panels/gpt/gptPanelTypes";
+import {
+  chatBodyStyle,
+  drawerWrapStyle,
+  footerStyle,
+  panelShellStyle,
+  pillButton,
+  statusDotStyle,
+} from "@/components/panels/gpt/gptPanelStyles";
 
 
 type TopTabKey = "memory" | "tokens" | "task_draft" | "task_progress";
-type BottomTabKey = "chat" | "task_1" | "task_2";
+type DrawerMode = TopTabKey | "settings" | null;
+type BottomTabKey = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
 
-function metricRow(label: string, input: number, output: number, total: number) {
-  return { label, input, output, total };
+type LocalMemorySettingsInput = {
+  maxFacts: string;
+  maxPreferences: string;
+  chatRecentLimit: string;
+  summarizeThreshold: string;
+  recentKeep: string;
+};
+
+function toLocalSettings(props: GptPanelProps): LocalMemorySettingsInput {
+  return {
+    maxFacts: String(props.memorySettings.maxFacts ?? props.defaultMemorySettings.maxFacts ?? 0),
+    maxPreferences: String(
+      props.memorySettings.maxPreferences ?? props.defaultMemorySettings.maxPreferences ?? 0
+    ),
+    chatRecentLimit: String(
+      props.memorySettings.chatRecentLimit ?? props.defaultMemorySettings.chatRecentLimit ?? 0
+    ),
+    summarizeThreshold: String(
+      props.memorySettings.summarizeThreshold ?? props.defaultMemorySettings.summarizeThreshold ?? 0
+    ),
+    recentKeep: String(props.memorySettings.recentKeep ?? props.defaultMemorySettings.recentKeep ?? 0),
+  };
 }
 
-function formatNumber(value: number | undefined) {
-  return Intl.NumberFormat("ja-JP").format(value ?? 0);
+function toPositiveInt(value: string, fallback: number) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 0) return fallback;
+  return parsed;
 }
 
-function countText(done?: number, target?: number, fallback?: string) {
-  if (typeof target === "number") return `${done ?? 0}/${target}`;
-  return fallback ?? "-";
+function formatUpdatedAt(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function TopTabButton(props: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
+function countText(
+  completedCount?: number,
+  targetCount?: number,
+  status?: string
+) {
+  if (typeof completedCount === "number" && typeof targetCount === "number") {
+    return `${completedCount}/${targetCount}`;
+  }
+  return status || "-";
+}
+
+function topTabStyle(active: boolean, isMobile: boolean): React.CSSProperties {
+  return {
+    height: isMobile ? 24 : 28,
+    borderRadius: "0 0 9px 9px",
+    border: "1px solid #cbd5e1",
+    borderTop: active ? "none" : "1px solid #cbd5e1",
+    background: active ? "#ffffff" : "#f8fafc",
+    color: active ? "#0f766e" : "#475569",
+    fontSize: isMobile ? 11 : 12,
+    fontWeight: 800,
+    padding: isMobile ? "0 7px" : "0 10px",
+    boxShadow: active ? "0 4px 10px rgba(15,23,42,0.08)" : "none",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+  };
+}
+
+function DrawerTabs({
+  activeDrawer,
+  isMobile,
+  onChange,
+}: {
+  activeDrawer: DrawerMode;
+  isMobile: boolean;
+  onChange: (next: DrawerMode) => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={props.onClick}
-      className={`rounded-t-2xl border border-b-0 px-3 py-1.5 text-xs sm:text-sm ${
-        props.active
-          ? "bg-white text-slate-800 shadow-sm"
-          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-      }`}
-    >
-      {props.label}
-    </button>
-  );
-}
+  const toggle = (key: TopTabKey) => onChange(activeDrawer === key ? null : key);
 
-function BottomTabButton(props: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
   return (
-    <button
-      type="button"
-      onClick={props.onClick}
-      className={`rounded-t-2xl border border-b-0 px-3 py-1.5 text-xs sm:text-sm ${
-        props.active
-          ? "bg-white text-slate-800 shadow-sm"
-          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-      }`}
-    >
-      {props.label}
-    </button>
-  );
-}
+    <>
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 0,
+          borderTop: "1px solid rgba(255,255,255,0.36)",
+          pointerEvents: "none",
+        }}
+      />
 
-function ChatMessageList({
-  gptMessages,
-  gptBottomRef,
-}: Pick<GptPanelProps, "gptMessages" | "gptBottomRef">) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3">
-      <div className="space-y-3">
-        {gptMessages.map((msg) => {
-          const isUser = msg.role === "user";
-          return (
-            <div
-              key={msg.id}
-              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[88%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap ${
-                  isUser
-                    ? "bg-sky-600 text-white"
-                    : msg.role === "gpt"
-                    ? "bg-slate-100 text-slate-800"
-                    : "bg-violet-100 text-slate-800"
-                }`}
-              >
-                {msg.text}
-                {Array.isArray(msg.sources) && msg.sources.length > 0 ? (
-                  <div className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500">
-                    🔗 参考リンク {msg.sources.length}件
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+      <div
+        style={{
+          position: "absolute",
+          right: 10,
+          bottom: 0,
+          transform: "translateY(calc(100% - 1px))",
+          zIndex: 30,
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 3,
+          maxWidth: "calc(100% - 24px)",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+      <button type="button" onClick={() => toggle("memory")} style={topTabStyle(activeDrawer === "memory", isMobile)}>
+        メモリ
+      </button>
+      <button type="button" onClick={() => toggle("tokens")} style={topTabStyle(activeDrawer === "tokens", isMobile)}>
+        トークン
+      </button>
+      <button type="button" onClick={() => toggle("task_draft")} style={topTabStyle(activeDrawer === "task_draft", isMobile)}>
+        タスク整理
+      </button>
+      <button type="button" onClick={() => toggle("task_progress")} style={topTabStyle(activeDrawer === "task_progress", isMobile)}>
+        タスク進捗
+      </button>
       </div>
-      <div ref={gptBottomRef} />
-    </div>
-  );
-}
-
-function MemoryPanel({
-  gptState,
-  memorySettings,
-  defaultMemorySettings,
-  onSaveMemorySettings,
-  onResetMemorySettings,
-}: Pick<
-  GptPanelProps,
-  "gptState" | "memorySettings" | "defaultMemorySettings" | "onSaveMemorySettings" | "onResetMemorySettings"
->) {
-  const facts = gptState.memory?.facts ?? [];
-  const preferences = gptState.memory?.preferences ?? [];
-  const recentCount = gptState.recentMessages?.length ?? 0;
-  const totalLimit =
-    (memorySettings.chatRecentLimit ?? 0) +
-    (memorySettings.maxFacts ?? 0) +
-    (memorySettings.maxPreferences ?? 0);
-  const totalUsed = recentCount + facts.length + preferences.length;
-
-  return (
-    <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 text-sm">
-      <div className="rounded-xl border border-slate-100 p-3">
-        <div className="text-xs text-slate-500">メモリ占有</div>
-        <div className="mt-1 font-semibold text-slate-800">
-          合計 {totalUsed}/{totalLimit}
-        </div>
-        <div className="mt-2 text-xs text-slate-500">
-          直近チャット {recentCount}/{memorySettings.chatRecentLimit} ・ ファクト {facts.length}/
-          {memorySettings.maxFacts} ・ お気に入り {preferences.length}/{memorySettings.maxPreferences}
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="rounded-xl border border-slate-100 p-3">
-          <div className="text-xs text-slate-500">Chat recent limit</div>
-          <input
-            type="number"
-            value={memorySettings.chatRecentLimit}
-            onChange={(e) =>
-              onSaveMemorySettings({
-                ...memorySettings,
-                chatRecentLimit: Number(e.target.value || 0),
-              })
-            }
-            className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2"
-          />
-        </label>
-
-        <label className="rounded-xl border border-slate-100 p-3">
-          <div className="text-xs text-slate-500">Summarize threshold</div>
-          <input
-            type="number"
-            value={memorySettings.summarizeThreshold}
-            onChange={(e) =>
-              onSaveMemorySettings({
-                ...memorySettings,
-                summarizeThreshold: Number(e.target.value || 0),
-              })
-            }
-            className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2"
-          />
-        </label>
-
-        <label className="rounded-xl border border-slate-100 p-3">
-          <div className="text-xs text-slate-500">Recent keep</div>
-          <input
-            type="number"
-            value={memorySettings.recentKeep}
-            onChange={(e) =>
-              onSaveMemorySettings({
-                ...memorySettings,
-                recentKeep: Number(e.target.value || 0),
-              })
-            }
-            className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2"
-          />
-        </label>
-
-        <label className="rounded-xl border border-slate-100 p-3">
-          <div className="text-xs text-slate-500">Max facts</div>
-          <input
-            type="number"
-            value={memorySettings.maxFacts}
-            onChange={(e) =>
-              onSaveMemorySettings({
-                ...memorySettings,
-                maxFacts: Number(e.target.value || 0),
-              })
-            }
-            className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2"
-          />
-        </label>
-
-        <label className="rounded-xl border border-slate-100 p-3 md:col-span-2">
-          <div className="text-xs text-slate-500">Max preferences</div>
-          <input
-            type="number"
-            value={memorySettings.maxPreferences}
-            onChange={(e) =>
-              onSaveMemorySettings({
-                ...memorySettings,
-                maxPreferences: Number(e.target.value || 0),
-              })
-            }
-            className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2"
-          />
-        </label>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onSaveMemorySettings(defaultMemorySettings)}
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-        >
-          初期値を反映
-        </button>
-        <button
-          type="button"
-          onClick={onResetMemorySettings}
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-        >
-          リセット
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TokenPanel({ tokenStats }: { tokenStats: TokenStats }) {
-  const latestInput = tokenStats.latestInput ?? tokenStats.latest?.input ?? 0;
-  const latestOutput = tokenStats.latestOutput ?? tokenStats.latest?.output ?? 0;
-  const latestTotal = tokenStats.latestTotal ?? tokenStats.latest?.total ?? 0;
-  const rolling5Input = tokenStats.rolling5Input ?? tokenStats.rolling5?.input ?? 0;
-  const rolling5Output = tokenStats.rolling5Output ?? tokenStats.rolling5?.output ?? 0;
-  const rolling5Total = tokenStats.rolling5Total ?? tokenStats.rolling5?.total ?? 0;
-  const cumulativeInput = tokenStats.cumulativeInput ?? tokenStats.cumulative?.input ?? 0;
-  const cumulativeOutput = tokenStats.cumulativeOutput ?? tokenStats.cumulative?.output ?? 0;
-  const cumulativeTotal = tokenStats.cumulativeTotal ?? tokenStats.cumulative?.total ?? 0;
-
-  const rows = [
-    metricRow("直近1回", latestInput, latestOutput, latestTotal),
-    metricRow("直近5回", rolling5Input, rolling5Output, rolling5Total),
-    metricRow("累計", cumulativeInput, cumulativeOutput, cumulativeTotal),
-  ];
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-slate-500">
-              <th className="px-2 py-2 font-medium">区分</th>
-              <th className="px-2 py-2 font-medium">Input</th>
-              <th className="px-2 py-2 font-medium">Output</th>
-              <th className="px-2 py-2 font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.label} className="border-t border-slate-100 text-slate-700">
-                <td className="px-2 py-2">{row.label}</td>
-                <td className="px-2 py-2">{formatNumber(row.input)}</td>
-                <td className="px-2 py-2">{formatNumber(row.output)}</td>
-                <td className="px-2 py-2 font-medium">{formatNumber(row.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function TaskDraftPanel(props: Pick<
-  GptPanelProps,
-  | "currentTaskDraft"
-  | "onChangeTaskTitle"
-  | "onChangeTaskUserInstruction"
-  | "onChangeTaskBody"
->) {
-  const { currentTaskDraft, onChangeTaskTitle, onChangeTaskUserInstruction, onChangeTaskBody } = props;
-
-  return (
-    <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3">
-      <label className="block">
-        <div className="text-xs text-slate-500">タイトル</div>
-        <input
-          value={currentTaskDraft.title ?? ""}
-          onChange={(e) => onChangeTaskTitle(e.target.value)}
-          className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        />
-      </label>
-
-      <label className="block">
-        <div className="text-xs text-slate-500">追加指示</div>
-        <textarea
-          value={currentTaskDraft.userInstruction ?? ""}
-          onChange={(e) => onChangeTaskUserInstruction(e.target.value)}
-          rows={4}
-          className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        />
-      </label>
-
-      <label className="block">
-        <div className="text-xs text-slate-500">タスク本文</div>
-        <textarea
-          value={currentTaskDraft.body ?? ""}
-          onChange={(e) => onChangeTaskBody(e.target.value)}
-          rows={10}
-          className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm whitespace-pre-wrap"
-        />
-      </label>
-    </div>
+    </>
   );
 }
 
@@ -326,85 +160,124 @@ function TaskProgressPanel({
 }: Pick<GptPanelProps, "taskProgressView" | "onAnswerTaskRequest">) {
   if (!taskProgressView) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+      <div
+        style={{
+          border: "1px solid #dbe4e8",
+          borderRadius: 18,
+          background: "rgba(255,255,255,0.92)",
+          padding: 16,
+          fontSize: 13,
+          color: "#64748b",
+        }}
+      >
         まだ進行中のKinタスクはありません。
       </div>
     );
   }
 
-  const requiredItems = taskProgressView.requirementProgress.filter((x) => x.category === "required");
-  const optionalItems = taskProgressView.requirementProgress.filter((x) => x.category === "optional");
+  const requiredItems = taskProgressView.requirementProgress.filter(
+    (x) => x.category === "required"
+  );
+  const optionalItems = taskProgressView.requirementProgress.filter(
+    (x) => x.category === "optional"
+  );
+
+  const sectionStyle: React.CSSProperties = {
+    border: "1px solid #dbe4e8",
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.92)",
+    padding: 14,
+  };
 
   return (
-    <div className="space-y-3 text-sm">
-      <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="text-xs text-slate-500">現在タスク</div>
-        <div className="mt-1 font-semibold text-slate-800">
+    <div style={{ display: "grid", gap: 12 }}>
+      <section style={sectionStyle}>
+        <div style={{ fontSize: 12, color: "#64748b" }}>現在タスク</div>
+        <div style={{ marginTop: 4, fontWeight: 700, color: "#0f172a" }}>
           {taskProgressView.taskId ? `#${taskProgressView.taskId} ` : ""}
           {taskProgressView.taskTitle || "未設定"}
         </div>
-        <div className="mt-2 text-xs text-slate-500">ゴール</div>
-        <div className="mt-1 whitespace-pre-wrap text-slate-700">{taskProgressView.goal || "-"}</div>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="font-semibold text-slate-800">必須要件</div>
-        <div className="mt-2 space-y-2">
-          {requiredItems.length === 0 ? (
-            <div className="text-slate-500">なし</div>
-          ) : (
-            requiredItems.map((item) => (
-              <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2">
-                <div className="text-slate-700">{item.label}</div>
-                <div className="shrink-0 text-xs text-slate-500">
-                  {countText(item.completedCount, item.targetCount, item.status)}
-                </div>
-              </div>
-            ))
-          )}
+        <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>ゴール</div>
+        <div style={{ marginTop: 4, whiteSpace: "pre-wrap", color: "#334155", lineHeight: 1.65 }}>
+          {taskProgressView.goal || "-"}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="font-semibold text-slate-800">可能要件</div>
-        <div className="mt-2 space-y-2">
-          {optionalItems.length === 0 ? (
-            <div className="text-slate-500">なし</div>
-          ) : (
-            optionalItems.map((item) => (
-              <div key={item.id} className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 px-3 py-2">
-                <div className="text-slate-700">{item.label}</div>
-                <div className="shrink-0 text-xs text-slate-500">
-                  {countText(item.completedCount, item.targetCount, item.status)}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
+      {[{ title: "必須要件", items: requiredItems }, { title: "可能要件", items: optionalItems }].map(
+        (group) => (
+          <section key={group.title} style={sectionStyle}>
+            <div style={{ fontWeight: 700, color: "#0f172a" }}>{group.title}</div>
+            <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+              {group.items.length === 0 ? (
+                <div style={{ color: "#64748b", fontSize: 13 }}>なし</div>
+              ) : (
+                group.items.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      border: "1px solid #eef2f7",
+                      borderRadius: 14,
+                      padding: "10px 12px",
+                      background: "#fff",
+                    }}
+                  >
+                    <div style={{ color: "#334155", lineHeight: 1.55 }}>{item.label}</div>
+                    <div style={{ flexShrink: 0, fontSize: 12, color: "#64748b", fontWeight: 700 }}>
+                      {countText(item.completedCount, item.targetCount, item.status)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        )
+      )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="font-semibold text-slate-800">ユーザーへの依頼</div>
-        <div className="mt-2 space-y-2">
+      <section style={sectionStyle}>
+        <div style={{ fontWeight: 700, color: "#0f172a" }}>ユーザーへの依頼</div>
+        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
           {taskProgressView.userFacingRequests.length === 0 ? (
-            <div className="text-slate-500">現在はありません。</div>
+            <div style={{ color: "#64748b", fontSize: 13 }}>現在はありません。</div>
           ) : (
             taskProgressView.userFacingRequests.map((req) => (
-              <div key={req.requestId} className="rounded-xl border border-slate-100 px-3 py-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="font-medium text-slate-700">
+              <div
+                key={req.requestId}
+                style={{
+                  border: "1px solid #eef2f7",
+                  borderRadius: 14,
+                  padding: "10px 12px",
+                  background: "#fff",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontWeight: 700, color: "#334155" }}>
                     [{req.requestId}] {req.kind === "question" ? "確認" : "資料要求"}
                   </div>
-                  <div className="text-xs text-slate-500">{req.status}</div>
+                  <div style={{ fontSize: 12, color: "#64748b" }}>{req.status}</div>
                 </div>
-                <div className="mt-1 whitespace-pre-wrap text-slate-700">{req.body}</div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                <div style={{ marginTop: 6, whiteSpace: "pre-wrap", color: "#334155", lineHeight: 1.6 }}>
+                  {req.body}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#64748b" }}>
                   <span>{req.required ? "必須" : "任意"}</span>
                   {onAnswerTaskRequest ? (
                     <button
                       type="button"
-                      className="rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-50"
                       onClick={() => onAnswerTaskRequest(req.requestId)}
+                      style={{
+                        border: "1px solid #d1d5db",
+                        background: "#fff",
+                        borderRadius: 8,
+                        padding: "5px 8px",
+                        cursor: "pointer",
+                        color: "#334155",
+                        fontWeight: 700,
+                        fontSize: 12,
+                      }}
                     >
                       この依頼に回答
                     </button>
@@ -419,234 +292,422 @@ function TaskProgressPanel({
   );
 }
 
-function SelectRow<T extends string>(props: {
-  label: string;
-  value: T;
-  options: T[];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <label className="block">
-      <div className="text-xs text-slate-500">{props.label}</div>
-      <select
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value as T)}
-        className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-      >
-        {props.options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function TaskActionBar(props: Pick<
-  GptPanelProps,
-  | "runPrepTaskFromInput"
-  | "runDeepenTaskFromLast"
-  | "runUpdateTaskFromInput"
-  | "runUpdateTaskFromLastGptMessage"
-  | "runAttachSearchResultToTask"
-  | "sendCurrentTaskContentToKin"
-  | "receiveLastKinResponseToGptInput"
-  | "loading"
->) {
-  const disabled = props.loading;
-  const btn = "rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50";
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button type="button" className={btn} disabled={disabled} onClick={props.receiveLastKinResponseToGptInput}>レス取込</button>
-      <button type="button" className={btn} disabled={disabled} onClick={props.runPrepTaskFromInput}>新規</button>
-      <button type="button" className={btn} disabled={disabled} onClick={props.runDeepenTaskFromLast}>深堀り</button>
-      <button type="button" className={btn} disabled={disabled} onClick={props.runUpdateTaskFromInput}>更新</button>
-      <button type="button" className={btn} disabled={disabled} onClick={props.runUpdateTaskFromLastGptMessage}>レス内容</button>
-      <button type="button" className={btn} disabled={disabled} onClick={props.runAttachSearchResultToTask}>検索統合</button>
-      <button type="button" className={btn} disabled={disabled} onClick={props.sendCurrentTaskContentToKin}>Kinタスク</button>
-    </div>
-  );
-}
-
 export default function GptPanel(props: GptPanelProps) {
-  const [topTab, setTopTab] = useState<TopTabKey>("task_draft");
+  const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
   const [bottomTab, setBottomTab] = useState<BottomTabKey>("chat");
+  const [showMemoryContent, setShowMemoryContent] = useState(false);
+  const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(() =>
+    toLocalSettings(props)
+  );
 
-  const kinLabel = props.currentKinLabel || "未接続";
-  const statusDot = props.kinStatus === "connected" ? "bg-emerald-500" : props.kinStatus === "error" ? "bg-rose-500" : "bg-slate-300";
+  useEffect(() => {
+    setLocalSettings(toLocalSettings(props));
+  }, [props.memorySettings, props.defaultMemorySettings, props.currentKin]);
 
-  const taskSummary = useMemo(() => {
-    return props.currentTaskDraft.taskName || props.currentTaskDraft.title || "タスク未設定";
-  }, [props.currentTaskDraft.taskName, props.currentTaskDraft.title]);
+  const recentCount = props.gptState.recentMessages?.length ?? 0;
+  const factCount = props.gptState.memory?.facts?.length ?? 0;
+  const preferenceCount = props.gptState.memory?.preferences?.length ?? 0;
+  const memoryUsed = recentCount + factCount + preferenceCount;
+  const memoryCapacity =
+    (props.memorySettings.chatRecentLimit ?? 0) +
+    (props.memorySettings.maxFacts ?? 0) +
+    (props.memorySettings.maxPreferences ?? 0);
 
-  const sendMode = (mode: GptInstructionMode) => {
+  const floatingLabel = useMemo(() => {
+    const taskName = props.currentTaskDraft.title?.trim() || props.currentTaskDraft.taskName?.trim() || props.gptState.memory?.context?.currentTask?.trim() || "";
+    const topic = props.gptState.memory?.context?.currentTopic?.trim() || "";
+    const taskFocused =
+      bottomTab === "task_primary" ||
+      bottomTab === "task_secondary" ||
+      activeDrawer === "task_draft" ||
+      activeDrawer === "task_progress";
+
+    if (taskFocused && taskName) {
+      return { kind: "タスク", value: taskName, updatedAt: props.currentTaskDraft.updatedAt || "" };
+    }
+
+    if (bottomTab === "chat" && topic) {
+      return { kind: "トピック", value: topic, updatedAt: "" };
+    }
+
+    if (topic) {
+      return { kind: "トピック", value: topic, updatedAt: "" };
+    }
+
+    if (taskName) {
+      return { kind: "タスク", value: taskName, updatedAt: props.currentTaskDraft.updatedAt || "" };
+    }
+
+    return { kind: "", value: "", updatedAt: "" };
+  }, [
+    activeDrawer,
+    bottomTab,
+    props.currentTaskDraft.taskName,
+    props.currentTaskDraft.title,
+    props.currentTaskDraft.updatedAt,
+    props.gptState.memory?.context?.currentTopic,
+    props.gptState.memory?.context?.currentTask,
+  ]);
+
+  const memoryCapacityPreview =
+    toPositiveInt(localSettings.chatRecentLimit, props.memorySettings.chatRecentLimit ?? 0) +
+    toPositiveInt(localSettings.maxFacts, props.memorySettings.maxFacts ?? 0) +
+    toPositiveInt(localSettings.maxPreferences, props.memorySettings.maxPreferences ?? 0);
+
+  const latestUsage = {
+    inputTokens: props.tokenStats.latestInput ?? 0,
+    outputTokens: props.tokenStats.latestOutput ?? 0,
+    totalTokens: props.tokenStats.latestTotal ?? 0,
+  };
+  const rolling5Usage = {
+    inputTokens: props.tokenStats.rolling5Input ?? 0,
+    outputTokens: props.tokenStats.rolling5Output ?? 0,
+    totalTokens: props.tokenStats.rolling5Total ?? 0,
+  };
+  const totalUsage = {
+    inputTokens: props.tokenStats.cumulativeInput ?? 0,
+    outputTokens: props.tokenStats.cumulativeOutput ?? 0,
+    totalTokens: props.tokenStats.cumulativeTotal ?? 0,
+  };
+
+  const renderDrawerContent = () => {
+    if (activeDrawer === "memory") {
+      return (
+        <GptMetaDrawer
+          mode="memory"
+          gptState={props.gptState as never}
+          tokenStats={props.tokenStats as never}
+          recent5Chat={rolling5Usage}
+          totalUsage={totalUsage}
+          memoryUsed={memoryUsed}
+          memoryCapacity={memoryCapacity}
+          recentCount={recentCount}
+          factCount={factCount}
+          preferenceCount={preferenceCount}
+          chatRecentLimit={props.memorySettings.chatRecentLimit}
+          maxFacts={props.memorySettings.maxFacts}
+          maxPreferences={props.memorySettings.maxPreferences}
+          showMemoryContent={showMemoryContent}
+          onToggleMemoryContent={() => setShowMemoryContent((prev) => !prev)}
+          isMobile={props.isMobile}
+        />
+      );
+    }
+
+    if (activeDrawer === "tokens") {
+      return (
+        <GptMetaDrawer
+          mode="tokens"
+          gptState={props.gptState as never}
+          tokenStats={props.tokenStats as never}
+          recent5Chat={rolling5Usage}
+          totalUsage={totalUsage}
+          memoryUsed={memoryUsed}
+          memoryCapacity={memoryCapacity}
+          recentCount={recentCount}
+          factCount={factCount}
+          preferenceCount={preferenceCount}
+          chatRecentLimit={props.memorySettings.chatRecentLimit}
+          maxFacts={props.memorySettings.maxFacts}
+          maxPreferences={props.memorySettings.maxPreferences}
+          showMemoryContent={showMemoryContent}
+          onToggleMemoryContent={() => setShowMemoryContent((prev) => !prev)}
+          isMobile={props.isMobile}
+        />
+      );
+    }
+
+    if (activeDrawer === "task_draft") {
+      return (
+        <GptTaskStatusDrawer
+          taskDraft={props.currentTaskDraft}
+          onChangeTaskTitle={props.onChangeTaskTitle}
+          onChangeTaskUserInstruction={props.onChangeTaskUserInstruction}
+          onChangeTaskBody={props.onChangeTaskBody}
+          isMobile={props.isMobile}
+        />
+      );
+    }
+
+    if (activeDrawer === "task_progress") {
+      return (
+        <TaskProgressPanel
+          taskProgressView={props.taskProgressView}
+          onAnswerTaskRequest={props.onAnswerTaskRequest}
+        />
+      );
+    }
+
+    if (activeDrawer === "settings") {
+      return (
+        <GptSettingsDrawer
+          localSettings={localSettings}
+          onFieldChange={(key, value) =>
+            setLocalSettings((prev) => ({
+              ...prev,
+              [key]: value,
+            }))
+          }
+          onReset={() => {
+            props.onResetMemorySettings();
+            setLocalSettings({
+              maxFacts: String(props.defaultMemorySettings.maxFacts ?? 0),
+              maxPreferences: String(props.defaultMemorySettings.maxPreferences ?? 0),
+              chatRecentLimit: String(props.defaultMemorySettings.chatRecentLimit ?? 0),
+              summarizeThreshold: String(props.defaultMemorySettings.summarizeThreshold ?? 0),
+              recentKeep: String(props.defaultMemorySettings.recentKeep ?? 0),
+            });
+          }}
+          onSave={() => {
+            props.onSaveMemorySettings({
+              maxFacts: toPositiveInt(localSettings.maxFacts, props.memorySettings.maxFacts ?? 0),
+              maxPreferences: toPositiveInt(
+                localSettings.maxPreferences,
+                props.memorySettings.maxPreferences ?? 0
+              ),
+              chatRecentLimit: toPositiveInt(
+                localSettings.chatRecentLimit,
+                props.memorySettings.chatRecentLimit ?? 0
+              ),
+              summarizeThreshold: toPositiveInt(
+                localSettings.summarizeThreshold,
+                props.memorySettings.summarizeThreshold ?? 0
+              ),
+              recentKeep: toPositiveInt(localSettings.recentKeep, props.memorySettings.recentKeep ?? 0),
+            });
+          }}
+          memoryCapacityPreview={memoryCapacityPreview}
+          responseMode={props.responseMode}
+          onChangeResponseMode={props.onChangeResponseMode}
+          ingestMode={props.ingestMode}
+          onChangeIngestMode={props.onChangeIngestMode}
+          imageDetail={props.imageDetail}
+          onChangeImageDetail={props.onChangeImageDetail}
+          compactCharLimit={props.compactCharLimit}
+          simpleImageCharLimit={props.simpleImageCharLimit}
+          onChangeCompactCharLimit={props.onChangeCompactCharLimit}
+          onChangeSimpleImageCharLimit={props.onChangeSimpleImageCharLimit}
+          fileReadPolicy={props.fileReadPolicy}
+          onChangeFileReadPolicy={props.onChangeFileReadPolicy}
+          isMobile={props.isMobile}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const handleToolbarAction = (mode: GptInstructionMode) => {
     void props.sendToGpt(mode);
   };
 
-  const handlePickFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = "";
-    if (!file) return;
-
-    await props.injectFileToKinDraft(file, {
-      kind: props.uploadKind,
-      mode: props.ingestMode,
-      detail: props.imageDetail,
-      action: props.postIngestAction,
-      readPolicy: props.fileReadPolicy,
-    });
-  };
-
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-[24px] border border-slate-200 bg-slate-50">
-      <div className="border-b border-slate-200 bg-violet-600 px-3 py-2 text-white">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="font-semibold">ChatGPT</div>
-            <div className={`h-2.5 w-2.5 rounded-full ${statusDot}`} />
-            <div className="truncate text-sm text-violet-100">{kinLabel}</div>
+    <div
+      style={{
+        ...panelShellStyle(props.isMobile),
+        height: "100%",
+        minHeight: 0,
+        overflow: "visible",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          zIndex: 20,
+          background: "#10a37f",
+          color: "#fff",
+          padding: props.isMobile ? "9px 12px" : "10px 14px",
+          flexShrink: 0,
+          minHeight: 46,
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            minWidth: 0,
+          }}
+        >
+          <div
+            style={{
+              fontSize: props.isMobile ? 17 : 16,
+              fontWeight: 800,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            ChatGPT
           </div>
-          <div className="flex items-center gap-2">
-            {props.isMobile ? (
-              <button
-                type="button"
-                onClick={props.onSwitchPanel}
-                className="rounded-xl bg-white/15 px-3 py-1.5 text-xs hover:bg-white/20"
-              >
-                Kinへ
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={props.resetGptForCurrentKin}
-              className="rounded-xl bg-white/15 px-3 py-1.5 text-xs hover:bg-white/20"
-            >
-              リセット
-            </button>
+
+          <div
+            style={{
+              minWidth: 0,
+              flexShrink: 1,
+              fontSize: 14,
+              fontWeight: 800,
+              color: "#fff",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+            title={props.currentKinLabel || "Kin未選択"}
+          >
+            {props.currentKinLabel || "Kin未選択"}
+          </div>
+
+          <span style={statusDotStyle(props.kinStatus as "idle" | "connected" | "error")} aria-label={props.kinStatus} />
+
+          <div style={{ flex: 1 }} />
+
+          <button
+            type="button"
+            style={{
+              ...pillButton,
+              background:
+                activeDrawer === "settings"
+                  ? "rgba(255,255,255,0.22)"
+                  : (pillButton.background as string),
+            }}
+            onClick={() => setActiveDrawer((prev) => (prev === "settings" ? null : "settings"))}
+          >
+            設定
+          </button>
+        </div>
+
+        <DrawerTabs activeDrawer={activeDrawer} isMobile={props.isMobile} onChange={setActiveDrawer} />
+      </div>
+
+      {activeDrawer ? (
+        <div style={drawerWrapStyle(props.isMobile)}>
+          {renderDrawerContent()}
+        </div>
+      ) : null}
+
+      <div
+        style={{
+          ...chatBodyStyle(props.isMobile),
+          position: "relative",
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            minHeight: 30,
+            padding: activeDrawer ? "18px 12px 0 12px" : "22px 12px 0 12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            fontSize: 11,
+            color: "#64748b",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontWeight: 800,
+              color: "#111827",
+              fontSize: props.isMobile ? 12.5 : 14,
+            }}
+            title={floatingLabel.value || undefined}
+          >
+            {floatingLabel.value ? `${floatingLabel.kind}: ${floatingLabel.value}` : ""}
+          </div>
+          <div style={{ flexShrink: 0, whiteSpace: "nowrap", color: "#374151", fontSize: props.isMobile ? 11.5 : 12.5, fontWeight: 700 }}>
+            {formatUpdatedAt(floatingLabel.updatedAt)}
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-violet-100">
-          <span>タスク: {taskSummary}</span>
-          <span>注入: {props.pendingInjectionCurrentPart}/{props.pendingInjectionTotalParts || 0}</span>
-          <span>Tokens ({formatNumber(props.tokenStats.latestTotal ?? props.tokenStats.latest?.total)})</span>
+        <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <ChatMessages
+            messages={props.gptMessages}
+            bottomRef={props.gptBottomRef}
+            loadingText={props.loading ? "ChatGPTが応答中…" : null}
+          />
         </div>
       </div>
 
-      <div className="flex gap-1 px-3 pt-2">
-        <TopTabButton active={topTab === "memory"} label="メモリ" onClick={() => setTopTab("memory")} />
-        <TopTabButton active={topTab === "tokens"} label="トークン" onClick={() => setTopTab("tokens")} />
-        <TopTabButton active={topTab === "task_draft"} label="タスク整理" onClick={() => setTopTab("task_draft")} />
-        <TopTabButton active={topTab === "task_progress"} label="タスク進捗" onClick={() => setTopTab("task_progress")} />
-      </div>
-
-      <div className="min-h-0 flex-1 px-3 pb-3">
-        <div className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white p-3">
-          <div className="mb-3 min-h-[160px] shrink-0 overflow-y-auto">
-            {topTab === "memory" ? (
-              <MemoryPanel
-                gptState={props.gptState}
-                memorySettings={props.memorySettings}
-                defaultMemorySettings={props.defaultMemorySettings}
-                onSaveMemorySettings={props.onSaveMemorySettings}
-                onResetMemorySettings={props.onResetMemorySettings}
-              />
-            ) : topTab === "tokens" ? (
-              <TokenPanel tokenStats={props.tokenStats} />
-            ) : topTab === "task_draft" ? (
-              <TaskDraftPanel
-                currentTaskDraft={props.currentTaskDraft}
-                onChangeTaskTitle={props.onChangeTaskTitle}
-                onChangeTaskUserInstruction={props.onChangeTaskUserInstruction}
-                onChangeTaskBody={props.onChangeTaskBody}
-              />
-            ) : (
-              <TaskProgressPanel
-                taskProgressView={props.taskProgressView}
-                onAnswerTaskRequest={props.onAnswerTaskRequest}
-              />
-            )}
+      <div style={footerStyle(props.isMobile)}>
+        {props.pendingInjectionTotalParts > 0 && (
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#0f766e",
+              background: "#ecfdf5",
+              border: "1px solid #a7f3d0",
+              borderRadius: 10,
+              padding: "8px 10px",
+              marginBottom: 0,
+            }}
+          >
+            📦 注入送信中 {props.pendingInjectionCurrentPart}/{props.pendingInjectionTotalParts}
           </div>
+        )}
 
-          <div className="mt-auto flex gap-1">
-            <BottomTabButton active={bottomTab === "chat"} label="チャット" onClick={() => setBottomTab("chat")} />
-            <BottomTabButton active={bottomTab === "task_1"} label="タスク①" onClick={() => setBottomTab("task_1")} />
-            <BottomTabButton active={bottomTab === "task_2"} label="タスク②" onClick={() => setBottomTab("task_2")} />
-          </div>
-
-          <div className="mt-0 flex min-h-0 flex-1 flex-col rounded-b-2xl border border-slate-200 bg-slate-50 p-3">
-            <ChatMessageList
-              gptMessages={props.gptMessages}
-              gptBottomRef={props.gptBottomRef}
-            />
-
-            <div className="mt-3 space-y-3">
-              {bottomTab === "task_1" ? (
-                <TaskActionBar
-                  runPrepTaskFromInput={props.runPrepTaskFromInput}
-                  runDeepenTaskFromLast={props.runDeepenTaskFromLast}
-                  runUpdateTaskFromInput={props.runUpdateTaskFromInput}
-                  runUpdateTaskFromLastGptMessage={props.runUpdateTaskFromLastGptMessage}
-                  runAttachSearchResultToTask={props.runAttachSearchResultToTask}
-                  sendCurrentTaskContentToKin={props.sendCurrentTaskContentToKin}
-                  receiveLastKinResponseToGptInput={props.receiveLastKinResponseToGptInput}
-                  loading={props.loading}
-                />
-              ) : bottomTab === "task_2" ? (
-                <div className="flex flex-wrap gap-2">
-                  {props.onStartKinTask ? (
-                    <button type="button" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50" onClick={props.onStartKinTask} disabled={props.loading}>
-                      Kinタスク開始
-                    </button>
-                  ) : null}
-                  <button type="button" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50" onClick={props.sendLatestGptContentToKin} disabled={props.loading}>Kinに戻す</button>
-                  <button type="button" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50" onClick={props.sendLastGptToKinDraft} disabled={props.loading}>戻し下書き</button>
-                  <label className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 cursor-pointer disabled:opacity-50">
-                    ファイル取込
-                    <input type="file" className="hidden" onChange={handlePickFile} disabled={!props.canInjectFile} />
-                  </label>
-                </div>
-              ) : null}
-
-              <div className="grid gap-3 md:grid-cols-5">
-                <SelectRow label="応答" value={props.responseMode} options={["strict", "balanced", "creative"]} onChange={props.onChangeResponseMode} />
-                <SelectRow label="Upload" value={props.uploadKind} options={["auto", "text", "image", "pdf", "mixed"]} onChange={props.onChangeUploadKind} />
-                <SelectRow label="Ingest" value={props.ingestMode} options={["strict", "creative", "max"]} onChange={props.onChangeIngestMode} />
-                <SelectRow label="Image detail" value={props.imageDetail} options={["low", "high", "auto"]} onChange={props.onChangeImageDetail} />
-                <SelectRow
-                  label="読込粒度"
-                  value={props.fileReadPolicy}
-                  options={["text_first", "visual_first", "text_and_layout"]}
-                  onChange={props.onChangeFileReadPolicy}
-                />
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <SelectRow label="Post ingest" value={props.postIngestAction} options={["inject_only", "inject_and_prep", "inject_prep_deepen", "attach_to_current_task"]} onChange={props.onChangePostIngestAction} />
-                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
-                  取込状態: {props.ingestLoading ? "読込中" : "待機中"}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => sendMode("translate_explain")} disabled={props.loading} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">翻訳・解説</button>
-                <button type="button" onClick={() => sendMode("reply_only")} disabled={props.loading} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">返信案</button>
-                <button type="button" onClick={() => sendMode("polish")} disabled={props.loading} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">添削</button>
-                <button type="button" onClick={() => sendMode("normal")} disabled={props.loading} className="rounded-xl bg-slate-900 px-4 py-2 text-xs sm:text-sm text-white hover:bg-slate-800 disabled:opacity-50">送信</button>
-              </div>
-
-              <textarea
-                value={props.gptInput}
-                onChange={(e) => props.setGptInput(e.target.value)}
-                rows={props.isMobile ? 5 : 4}
-                placeholder="ここに入力。TASK: で始めるとKinタスクとして扱いやすいです。"
-                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400"
-              />
-            </div>
-          </div>
+        <div style={{ position: "relative", paddingTop: props.isMobile ? 14 : 16, marginTop: 0 }}>
+          <GptToolbar
+            activeTab={bottomTab}
+            isMobile={props.isMobile}
+            onSwitchPanel={props.onSwitchPanel}
+            onChangeTab={setBottomTab}
+            onAction={handleToolbarAction}
+            onRunTask={() => void props.runPrepTaskFromInput()}
+            onRunDeepen={() => void props.runDeepenTaskFromLast()}
+            onRunTaskUpdate={() => void props.runUpdateTaskFromInput()}
+            onImportLastResponse={() => void props.runUpdateTaskFromLastGptMessage()}
+            onAttachSearchResult={() => void props.runAttachSearchResultToTask()}
+            onSendLatestResponseToKin={() => void props.sendLatestGptContentToKin()}
+            onSendCurrentTaskToKin={() => void props.sendCurrentTaskContentToKin()}
+            onReceiveKinResponse={() => void props.receiveLastKinResponseToGptInput()}
+            onTransfer={() => void props.sendLatestGptContentToKin()}
+            onReset={props.resetGptForCurrentKin}
+          />
         </div>
+
+        <GptComposer
+          value={props.gptInput}
+          onChange={(value) => props.setGptInput(value)}
+          onSubmit={() => void props.sendToGpt("normal")}
+          submitOnEnter={!props.isMobile}
+          placeholder={
+            bottomTab === "chat"
+              ? "メッセージを入力"
+              : bottomTab === "task_primary"
+                ? "送信以外のボタン使用時は、新規又は更新タスク内容を入力"
+                : bottomTab === "task_secondary"
+                  ? "送信以外のボタン使用時は、タスク整理に関する指示や方向性を入力"
+                  : bottomTab === "kin"
+                    ? "送信以外のボタン使用時は、Kinへの指示内容や条件を入力"
+                    : "注入ボタン使用時は、ファイル取込時の指示を入力"
+          }
+          onInjectFile={props.injectFileToKinDraft}
+          loading={props.loading}
+          ingestLoading={props.ingestLoading}
+          canInjectFile={props.canInjectFile}
+          uploadKind={props.uploadKind}
+          ingestMode={props.ingestMode}
+          imageDetail={props.imageDetail}
+          postIngestAction={props.postIngestAction}
+          fileReadPolicy={props.fileReadPolicy}
+          compactCharLimit={props.compactCharLimit}
+          simpleImageCharLimit={props.simpleImageCharLimit}
+          onChangeUploadKind={props.onChangeUploadKind}
+          onChangeIngestMode={props.onChangeIngestMode}
+          onChangeImageDetail={props.onChangeImageDetail}
+          onChangePostIngestAction={props.onChangePostIngestAction}
+          showFileTools={bottomTab === "file"}
+          isMobile={props.isMobile}
+        />
       </div>
     </div>
   );

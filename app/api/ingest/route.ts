@@ -9,8 +9,8 @@ export const runtime = "nodejs";
 const OPENAI_API_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
-type IngestMode = "compact" | "full";
-type ImageDetail = "basic" | "detailed" | "max";
+type IngestMode = "compact" | "detailed" | "max";
+type ImageDetail = "simple" | "detailed" | "max";
 type FileUploadKind = "text" | "visual";
 type FileReadPolicy = "text_first" | "visual_first" | "hybrid";
 
@@ -152,13 +152,36 @@ function splitRawTextIntoLines(text: string, maxLen = 360) {
 }
 
 function normalizeIngestMode(value: unknown): IngestMode {
-  return value === "full" ? "full" : "compact";
+  if (value === "detailed") return "detailed";
+  if (value === "max") return "max";
+  return "compact";
 }
 
 function normalizeImageDetail(value: unknown): ImageDetail {
   if (value === "detailed") return "detailed";
   if (value === "max") return "max";
-  return "basic";
+  return "simple";
+}
+
+function normalizePositiveLimit(value: unknown, fallback = 500) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(100, Math.min(10000, Math.floor(n)));
+}
+
+function clampLinesToCharLimit(lines: string[], limit: number) {
+  const joined = lines.filter(Boolean).join("\n").trim();
+  if (!joined) return [];
+  if (joined.length <= limit) return joined.split("\n");
+
+  const clipped = joined.slice(0, Math.max(0, limit - 1)).trimEnd() + "…";
+  return clipped.split("\n");
+}
+
+function chooseLinesWithinBudget(lines: string[], fallbacks: string[], limit: number) {
+  const primary = lines.filter(Boolean);
+  if (primary.length > 0) return clampLinesToCharLimit(primary, limit);
+  return clampLinesToCharLimit(fallbacks.filter(Boolean), limit);
 }
 
 function normalizeUploadKind(value: unknown): FileUploadKind {
@@ -192,8 +215,8 @@ function buildPrompt(params: {
       detail === "max"
         ? "Use very high granularity when describing layouts, figures, images, and visible text."
         : detail === "detailed"
-          ? "Describe layouts, figures, images, and visible text carefully."
-          : "Describe only the main structure, major visuals, and the most important visible text.";
+          ? "Describe layouts, figures, images, and visible text carefully with a moderate amount of detail."
+          : "Describe only the minimum details needed to preserve meaning, aiming for a compact result.";
 
     const policyInstruction =
       readPolicy === "text_first"
@@ -264,13 +287,19 @@ Constraints:
   }
 
   const fullModeInstruction =
-    mode === "full"
+    mode === "max"
       ? `
-Additionally produce kinDetailed with more preserved information.
+Additionally produce kinDetailed with as much preserved information as possible.
 - For text-rich files, keep wording and order as much as possible.
 - Preserve structure and flow where possible.
       `.trim()
-      : "kinDetailed may be a richer version of kinCompact if useful.";
+      : mode === "detailed"
+        ? `
+Additionally produce kinDetailed as a medium-detail version that preserves the main structure and important wording without trying to keep everything.
+        `.trim()
+        : `
+Keep kinCompact highly compressed. If the source text is already short and clear, do not over-compress it.
+        `.trim();
 
   return `
 You are an ingestion engine for a Kin + GPT application.
@@ -328,6 +357,8 @@ export async function POST(req: Request) {
     const mode = normalizeIngestMode(form.get("mode"));
     const detail = normalizeImageDetail(form.get("detail"));
     const readPolicy = normalizeFileReadPolicy(form.get("readPolicy"));
+    const compactCharLimit = normalizePositiveLimit(form.get("compactCharLimit"), 500);
+    const simpleImageCharLimit = normalizePositiveLimit(form.get("simpleImageCharLimit"), 500);
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "file is required" }, { status: 400 });
@@ -344,7 +375,7 @@ export async function POST(req: Request) {
     const mimeType = inferMimeType(file);
     const uploadKind = resolveUploadKind(file, requestedKind);
 
-    if (uploadKind === "text" && mode === "full" && isTextLikeFile(file)) {
+    if (uploadKind === "text" && mode === "max" && isTextLikeFile(file)) {
       const rawText = await tryReadUtf8(file);
 
       if (rawText) {
@@ -460,24 +491,28 @@ export async function POST(req: Request) {
 
     if (uploadKind === "visual") {
       if (readPolicy === "text_first") {
-        selectedLines =
-          normalized.kinDetailed.length > 0
+        selectedLines = detail === "simple"
+          ? chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, simpleImageCharLimit)
+          : normalized.kinDetailed.length > 0
             ? normalized.kinDetailed
             : normalized.kinCompact;
         summaryLevel = "visual_text_first";
       } else if (readPolicy === "hybrid") {
-        selectedLines =
-          normalized.kinDetailed.length > 0
+        selectedLines = detail === "simple"
+          ? chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, simpleImageCharLimit)
+          : normalized.kinDetailed.length > 0
             ? normalized.kinDetailed
             : normalized.kinCompact;
         summaryLevel = "visual_hybrid";
       } else {
         selectedLines =
-          detail === "basic"
-            ? normalized.kinCompact
-            : normalized.kinDetailed.length > 0
-              ? normalized.kinDetailed
-              : normalized.kinCompact;
+          detail === "simple"
+            ? chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, simpleImageCharLimit)
+            : detail === "detailed"
+              ? chooseLinesWithinBudget(normalized.kinDetailed, normalized.kinCompact, 1400)
+              : normalized.kinDetailed.length > 0
+                ? normalized.kinDetailed
+                : normalized.kinCompact;
 
         summaryLevel =
           detail === "max"
@@ -488,13 +523,15 @@ export async function POST(req: Request) {
       }
     } else {
       selectedLines =
-        mode === "full"
+        mode === "max"
           ? normalized.kinDetailed.length > 0
             ? normalized.kinDetailed
             : normalized.kinCompact
-          : normalized.kinCompact;
+          : mode === "detailed"
+            ? chooseLinesWithinBudget(normalized.kinDetailed, normalized.kinCompact, 1400)
+            : chooseLinesWithinBudget(normalized.kinCompact, normalized.structuredSummary, compactCharLimit);
 
-      summaryLevel = mode === "full" ? "full_text" : "compact_text";
+      summaryLevel = mode === "max" ? "full_text" : mode === "detailed" ? "detailed_text" : "compact_text";
     }
 
     const kinBlocks = buildKinSysInfoBlocks({
@@ -508,7 +545,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       resolvedKind: uploadKind,
-      result: normalized,
+      result: { ...normalized, selectedLines },
       kinBlocks,
       kinBlock: kinBlocks[0] ?? "",
       usage: extractUsage(data),

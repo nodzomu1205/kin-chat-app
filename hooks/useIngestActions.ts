@@ -43,6 +43,8 @@ type IngestOptions = {
   detail: ImageDetail;
   action: PostIngestAction;
   readPolicy: FileReadPolicy;
+  compactCharLimit: number;
+  simpleImageCharLimit: number;
 };
 
 type UsageInput = Parameters<typeof normalizeUsage>[0];
@@ -207,6 +209,8 @@ export function useIngestActions({
       form.append('mode', options.mode);
       form.append('detail', options.detail);
       form.append('readPolicy', options.readPolicy);
+      form.append('compactCharLimit', String(options.compactCharLimit));
+      form.append('simpleImageCharLimit', String(options.simpleImageCharLimit));
 
       const res = await fetch('/api/ingest', {
         method: 'POST',

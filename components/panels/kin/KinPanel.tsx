@@ -107,7 +107,11 @@ export default function KinPanel(props: KinPanelProps) {
           minHeight: 0,
         }}
       >
-        <ChatMessages messages={kinMessages} bottomRef={kinBottomRef} />
+        <ChatMessages
+            messages={kinMessages}
+            bottomRef={kinBottomRef}
+            loadingText={loading ? "Kindroidが応答中…" : null}
+          />
       </div>
 
       <div style={footerStyle(isMobile)}>

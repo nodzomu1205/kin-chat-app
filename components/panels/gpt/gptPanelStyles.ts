@@ -347,7 +347,7 @@ export const footerStyle = (isMobile: boolean): React.CSSProperties => ({
   paddingBottom: isMobile
     ? "calc(env(safe-area-inset-bottom, 0px) + 8px)"
     : 10,
-  borderTop: "1px solid rgba(148,163,184,0.22)",
+  borderTop: "none",
   background:
     "linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(236,253,245,0.96) 100%)",
   flexShrink: 0,

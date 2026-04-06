@@ -83,13 +83,11 @@ export type TaskDraft = {
   taskId: string;
   slot: number;
 
-  // 新構造
   title: string;
   userInstruction: string;
   body: string;
   searchContext: SearchContext | null;
 
-  // 旧構造（互換維持）
   taskName: string;
   objective: string;
   prepText: string;
@@ -102,34 +100,26 @@ export type TaskDraft = {
   updatedAt: string;
 };
 
-let taskDraftSequence = 1;
-
 export function createTaskDraftId(): string {
-  return `task-draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return "";
 }
 
 export function createDefaultTaskName(): string {
-  const label = `タスク ${String(taskDraftSequence).padStart(3, "0")}`;
-  taskDraftSequence += 1;
-  return label;
+  return "";
 }
 
 export function createEmptyTaskDraft(): TaskDraft {
-  const taskId = createTaskDraftId();
-  const taskName = createDefaultTaskName();
-
   return {
-    id: taskId,
-    taskId,
-
+    id: "",
+    taskId: "",
     slot: 1,
 
-    title: taskName,
+    title: "",
     userInstruction: "",
     body: "",
     searchContext: null,
 
-    taskName,
+    taskName: "",
     objective: "",
     prepText: "",
     deepenText: "",
@@ -137,6 +127,6 @@ export function createEmptyTaskDraft(): TaskDraft {
     kinTaskText: "",
     status: "idle",
     sources: [],
-    updatedAt: new Date().toISOString(),
+    updatedAt: "",
   };
 }

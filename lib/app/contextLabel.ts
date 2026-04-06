@@ -1,5 +1,7 @@
-import type { GptBottomTab, GptTopDrawerTab } from "@/components/panels/gpt/gptPanelTypes";
 import type { TaskDraft } from "@/types/task";
+
+type GptTopDrawerTab = "memory" | "tokens" | "settings" | "task_status" | null;
+type GptBottomTab = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
 
 function formatContextUpdatedAt(value?: string) {
   if (!value) return "";

@@ -104,6 +104,10 @@ export default function ChatApp() {
     setIngestMode,
     imageDetail,
     setImageDetail,
+    compactCharLimit,
+    setCompactCharLimit,
+    simpleImageCharLimit,
+    setSimpleImageCharLimit,
     postIngestAction,
     setPostIngestAction,
     fileReadPolicy,
@@ -1699,11 +1703,15 @@ ${finalRequestText}`;
       uploadKind={uploadKind}
       ingestMode={ingestMode}
       imageDetail={imageDetail}
+      compactCharLimit={compactCharLimit}
+      simpleImageCharLimit={simpleImageCharLimit}
       postIngestAction={postIngestAction}
       fileReadPolicy={fileReadPolicy}
       onChangeUploadKind={setUploadKind}
       onChangeIngestMode={setIngestMode}
       onChangeImageDetail={setImageDetail}
+      onChangeCompactCharLimit={setCompactCharLimit}
+      onChangeSimpleImageCharLimit={setSimpleImageCharLimit}
       onChangePostIngestAction={setPostIngestAction}
       onChangeFileReadPolicy={setFileReadPolicy}
       pendingInjectionCurrentPart={

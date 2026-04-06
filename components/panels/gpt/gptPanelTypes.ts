@@ -15,8 +15,8 @@ export type GptInstructionMode =
 
 export type ResponseMode = "strict" | "balanced" | "creative";
 export type UploadKind = "auto" | "text" | "image" | "pdf" | "mixed";
-export type IngestMode = "strict" | "creative" | "max";
-export type ImageDetail = "low" | "high" | "auto";
+export type IngestMode = "compact" | "detailed" | "max";
+export type ImageDetail = "simple" | "detailed" | "max";
 export type PostIngestAction =
   | "inject_only"
   | "inject_and_prep"
@@ -116,6 +116,10 @@ export type GptPanelProps = {
   onChangeUploadKind: (value: UploadKind) => void;
   onChangeIngestMode: (value: IngestMode) => void;
   onChangeImageDetail: (value: ImageDetail) => void;
+  compactCharLimit: number;
+  simpleImageCharLimit: number;
+  onChangeCompactCharLimit: (value: number) => void;
+  onChangeSimpleImageCharLimit: (value: number) => void;
   onChangePostIngestAction: (value: PostIngestAction) => void;
   onChangeFileReadPolicy: (value: FileReadPolicy) => void;
   pendingInjectionCurrentPart: number;

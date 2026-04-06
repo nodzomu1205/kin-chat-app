@@ -24,8 +24,10 @@ type Props = {
       detail: ImageDetail;
       action: PostIngestAction;
       readPolicy: FileReadPolicy;
+      compactCharLimit: number;
+      simpleImageCharLimit: number;
     }
-  ) => Promise<void>;
+  ) => void | Promise<void>;
   loading: boolean;
   ingestLoading: boolean;
   canInjectFile: boolean;
@@ -34,6 +36,8 @@ type Props = {
   imageDetail: ImageDetail;
   postIngestAction: PostIngestAction;
   fileReadPolicy: FileReadPolicy;
+  compactCharLimit: number;
+  simpleImageCharLimit: number;
   onChangeUploadKind: (kind: UploadKind) => void;
   onChangeIngestMode: (mode: IngestMode) => void;
   onChangeImageDetail: (detail: ImageDetail) => void;
@@ -119,9 +123,12 @@ export default function GptComposer({
   onChangePostIngestAction,
   showFileTools,
   fileReadPolicy,
+  compactCharLimit,
+  simpleImageCharLimit,
   isMobile = false,
 }: Props) {
   const [blink, setBlink] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     if (!loading && !ingestLoading) {
@@ -140,21 +147,30 @@ export default function GptComposer({
   const sendDisabled = loading || ingestLoading;
   const accept = useMemo(() => getAcceptByKind(uploadKind), [uploadKind]);
 
+  const buildInjectOptions = () => ({
+    kind: uploadKind,
+    mode: ingestMode,
+    detail: imageDetail,
+    action: postIngestAction,
+    readPolicy: fileReadPolicy,
+    compactCharLimit,
+    simpleImageCharLimit,
+  });
+
+  const handleInject = async (file?: File | null) => {
+    if (!file) return;
+    await onInjectFile(file, buildInjectOptions());
+  };
+
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     event.currentTarget.value = "";
-    if (!file) return;
-
-    await onInjectFile(file, {
-      kind: uploadKind,
-      mode: ingestMode,
-      detail: imageDetail,
-      action: postIngestAction,
-      readPolicy: fileReadPolicy,
-    });
+    await handleInject(file);
   };
+
+  const canAcceptDrop = showFileTools && !injectDisabled;
 
   return (
     <div
@@ -163,6 +179,32 @@ export default function GptComposer({
         flexDirection: "column",
         gap: 8,
         minHeight: 0,
+        position: "relative",
+      }}
+      onDragEnter={(e) => {
+        if (!canAcceptDrop) return;
+        e.preventDefault();
+        setDragActive(true);
+      }}
+      onDragOver={(e) => {
+        if (!canAcceptDrop) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        setDragActive(true);
+      }}
+      onDragLeave={(e) => {
+        if (!canAcceptDrop) return;
+        const currentTarget = e.currentTarget;
+        const related = e.relatedTarget as Node | null;
+        if (related && currentTarget.contains(related)) return;
+        setDragActive(false);
+      }}
+      onDrop={async (e) => {
+        if (!canAcceptDrop) return;
+        e.preventDefault();
+        setDragActive(false);
+        const file = e.dataTransfer.files?.[0];
+        await handleInject(file);
       }}
     >
       {showFileTools && (
@@ -171,11 +213,14 @@ export default function GptComposer({
             display: "flex",
             alignItems: "stretch",
             gap: 10,
-            border: "1px solid #cbd5e1",
+            border: dragActive ? "1px solid #22c55e" : "1px solid #cbd5e1",
             borderRadius: 14,
-            background: "#f8fafc",
+            background: dragActive ? "#f0fdf4" : "#f8fafc",
             padding: 12,
-            boxShadow: "0 8px 20px rgba(15,23,42,0.08)",
+            boxShadow: dragActive
+              ? "0 0 0 3px rgba(34,197,94,0.12)"
+              : "0 8px 20px rgba(15,23,42,0.08)",
+            transition: "all 160ms ease",
           }}
         >
           <div
@@ -187,64 +232,17 @@ export default function GptComposer({
               gap: 10,
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: "#475569",
-                }}
-              >
-                対象:
-              </span>
-
-              <button
-                type="button"
-                style={choiceButton(uploadKind === "text")}
-                onClick={() => onChangeUploadKind("text")}
-              >
-                テキスト
-              </button>
-
-              <button
-                type="button"
-                style={choiceButton(uploadKind === "image" || uploadKind === "pdf" || uploadKind === "mixed")}
-                onClick={() => onChangeUploadKind("image")}
-              >
-                画像 / PDF
-              </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>対象:</span>
+              <button type="button" style={choiceButton(uploadKind === "text")} onClick={() => onChangeUploadKind("text")}>テキスト</button>
+              <button type="button" style={choiceButton(uploadKind === "image" || uploadKind === "pdf" || uploadKind === "mixed")} onClick={() => onChangeUploadKind("image")}>画像 / PDF</button>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 800,
-                  color: "#475569",
-                }}
-              >
-                注入後処理:
-              </span>
-
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>注入後処理:</span>
               <select
                 value={postIngestAction}
-                onChange={(e) =>
-                  onChangePostIngestAction(e.target.value as PostIngestAction)
-                }
+                onChange={(e) => onChangePostIngestAction(e.target.value as PostIngestAction)}
                 style={selectStyle}
                 title="注入後にどこまで自動処理するか"
               >
@@ -254,56 +252,31 @@ export default function GptComposer({
                 <option value="attach_to_current_task">現在タスクに追加</option>
               </select>
             </div>
+
+            <div style={{ fontSize: 12, color: dragActive ? "#166534" : "#64748b", fontWeight: 700 }}>
+              {dragActive ? "ここにドロップして取込" : "クリック選択またはドラッグ＆ドロップで取込"}
+            </div>
           </div>
 
           {injectDisabled ? (
-            <div
-              style={{
-                ...verticalButtonStyle,
-                cursor: "default",
-                opacity: blink ? 0.55 : 0.8,
-              }}
-              title="ファイルを読み込んでタスク整理用の情報を作成"
-            >
+            <div style={{ ...verticalButtonStyle, cursor: "default", opacity: blink ? 0.55 : 0.8 }} title="ファイルを読み込んでタスク整理用の情報を作成">
               {ingestLoading ? "変換中" : "注入"}
             </div>
           ) : (
-            <label
-              style={{
-                ...verticalButtonStyle,
-                cursor: "pointer",
-                opacity: 1,
-              }}
-              title="ファイルを選択"
-            >
+            <label style={{ ...verticalButtonStyle, cursor: "pointer", opacity: 1 }} title="ファイルを選択">
               {ingestLoading ? "変換中" : "注入"}
-
               <input
                 type="file"
                 accept={accept}
                 onChange={handleFileChange}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  opacity: 0,
-                  cursor: "pointer",
-                }}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
               />
             </label>
           )}
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          gap: 8,
-          minHeight: 0,
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "stretch", gap: 8, minHeight: 0 }}>
         <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
           {value.trim().length > 0 && (
             <button
@@ -331,13 +304,13 @@ export default function GptComposer({
             </button>
           )}
 
-        <ChatTextarea
-          value={value}
-          onChange={onChange}
-          onSubmit={onSubmit}
-          submitOnEnter={submitOnEnter}
-          placeholder={placeholder}
-        />
+          <ChatTextarea
+            value={value}
+            onChange={onChange}
+            onSubmit={onSubmit}
+            submitOnEnter={submitOnEnter}
+            placeholder={placeholder}
+          />
         </div>
 
         <button
