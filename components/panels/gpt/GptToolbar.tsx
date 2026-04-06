@@ -251,7 +251,7 @@ export default function GptToolbar(props: Props) {
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
           minHeight: 32,
-          paddingTop: isMobile ? 2 : 4,
+          paddingTop: isMobile ? 0 : 4,
           paddingBottom: isMobile ? 2 : 0,
           paddingLeft: 0,
           paddingRight: 0,

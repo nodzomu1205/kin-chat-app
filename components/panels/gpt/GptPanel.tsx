@@ -817,7 +817,7 @@ export default function GptPanel(props: GptPanelProps) {
           </div>
         )}
 
-        <div style={{ position: "relative", paddingTop: 0, marginTop: 0 }}>
+        <div style={{ position: "relative", paddingTop: props.isMobile ? 0 : 0, marginTop: 0 }}>
           <GptToolbar
             activeTab={bottomTab}
             isMobile={props.isMobile}
