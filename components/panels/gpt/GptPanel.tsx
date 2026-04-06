@@ -22,7 +22,7 @@ import {
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
 
 
-type TopTabKey = "memory" | "tokens" | "task_draft" | "task_progress";
+type TopTabKey = "memory" | "tokens" | "task_draft" | "task_progress" | "protocol";
 type DrawerMode = TopTabKey | "settings" | null;
 type BottomTabKey = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
 type FloatingLabel = {
@@ -157,6 +157,9 @@ function DrawerTabs({
       </button>
       <button type="button" onClick={() => toggle("task_progress")} style={topTabStyle(activeDrawer === "task_progress", isMobile)}>
         タスク進捗
+      </button>
+      <button type="button" onClick={() => toggle("protocol")} style={topTabStyle(activeDrawer === "protocol", isMobile)}>
+        Protocol
       </button>
       </div>
     </>
@@ -389,6 +392,104 @@ function TaskProgressPanel({
   );
 }
 
+function ProtocolDrawer({
+  protocolPrompt,
+  protocolRulebook,
+  onChangeProtocolPrompt,
+  onChangeProtocolRulebook,
+  onResetProtocolDefaults,
+  onSetProtocolRulebookToKinDraft,
+  onSendProtocolRulebookToKin,
+}: Pick<
+  GptPanelProps,
+  | "protocolPrompt"
+  | "protocolRulebook"
+  | "onChangeProtocolPrompt"
+  | "onChangeProtocolRulebook"
+  | "onResetProtocolDefaults"
+  | "onSetProtocolRulebookToKinDraft"
+  | "onSendProtocolRulebookToKin"
+>) {
+  const sectionStyle: React.CSSProperties = {
+    border: "1px solid #dbe4e8",
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.92)",
+    padding: 14,
+  };
+
+  const textAreaStyle: React.CSSProperties = {
+    width: "100%",
+    border: "1px solid #d1d5db",
+    borderRadius: 12,
+    padding: "10px 12px",
+    fontSize: 13,
+    lineHeight: 1.6,
+    color: "#0f172a",
+    resize: "vertical",
+    background: "#fff",
+    boxSizing: "border-box",
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    borderRadius: 10,
+    padding: "8px 12px",
+    cursor: "pointer",
+    color: "#334155",
+    fontWeight: 700,
+    fontSize: 12,
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <section style={sectionStyle}>
+        <div style={{ fontSize: 12, color: "#64748b" }}>常設 Prompt</div>
+        <div style={{ marginTop: 6, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+          Kindroid の prompt 欄に入れる短い固定ルールです。ここで編集して保持できます。
+        </div>
+        <textarea
+          value={protocolPrompt}
+          onChange={(event) => onChangeProtocolPrompt(event.target.value)}
+          style={{ ...textAreaStyle, minHeight: 180, marginTop: 10 }}
+        />
+      </section>
+
+      <section style={sectionStyle}>
+        <div style={{ fontSize: 12, color: "#64748b" }}>詳細ルールブック</div>
+        <div style={{ marginTop: 6, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+          `SYS_INFO` として Kin に送る詳細運用ルールです。下書き化も即送信もできます。
+        </div>
+        <textarea
+          value={protocolRulebook}
+          onChange={(event) => onChangeProtocolRulebook(event.target.value)}
+          style={{ ...textAreaStyle, minHeight: 220, marginTop: 10 }}
+        />
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+          <button type="button" style={buttonStyle} onClick={onResetProtocolDefaults}>
+            既定値に戻す
+          </button>
+          <button type="button" style={buttonStyle} onClick={onSetProtocolRulebookToKinDraft}>
+            Kin送信欄にセット
+          </button>
+          <button
+            type="button"
+            style={{
+              ...buttonStyle,
+              border: "1px solid #99f6e4",
+              background: "#ecfeff",
+              color: "#0f766e",
+            }}
+            onClick={onSendProtocolRulebookToKin}
+          >
+            SYS_INFO として Kin に送る
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function GptPanel(props: GptPanelProps) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
   const [bottomTab, setBottomTab] = useState<BottomTabKey>("chat");
@@ -566,6 +667,20 @@ export default function GptPanel(props: GptPanelProps) {
           onAnswerTaskRequest={props.onAnswerTaskRequest}
           onPrepareTaskRequestAck={props.onPrepareTaskRequestAck}
           onPrepareTaskSync={props.onPrepareTaskSync}
+        />
+      );
+    }
+
+    if (activeDrawer === "protocol") {
+      return (
+        <ProtocolDrawer
+          protocolPrompt={props.protocolPrompt}
+          protocolRulebook={props.protocolRulebook}
+          onChangeProtocolPrompt={props.onChangeProtocolPrompt}
+          onChangeProtocolRulebook={props.onChangeProtocolRulebook}
+          onResetProtocolDefaults={props.onResetProtocolDefaults}
+          onSetProtocolRulebookToKinDraft={props.onSetProtocolRulebookToKinDraft}
+          onSendProtocolRulebookToKin={props.onSendProtocolRulebookToKin}
         />
       );
     }

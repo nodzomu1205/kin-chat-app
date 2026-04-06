@@ -30,57 +30,60 @@ function detectLanguage(text: string): string {
   return "ja";
 }
 
-function detectAskGptCount(text: string): number {
-  const patterns: Array<[RegExp, number]> = [
-    [/GPTに3回質問/i, 3],
-    [/GPTに2回質問/i, 2],
-    [/GPTに1回質問/i, 1],
-    [/3回GPTに質問/i, 3],
-    [/2回GPTに質問/i, 2],
-    [/1回GPTに質問/i, 1],
-    [/3回質問して/i, 3],
-    [/2回質問して/i, 2],
-    [/1回質問して/i, 1],
-  ];
+function pickLargestCount(text: string, patterns: RegExp[]) {
+  let max = 0;
 
-  for (const [re, count] of patterns) {
-    if (re.test(text)) return count;
+  for (const pattern of patterns) {
+    const globalPattern = pattern.global
+      ? pattern
+      : new RegExp(pattern.source, `${pattern.flags}g`);
+
+    for (const match of text.matchAll(globalPattern)) {
+      const n = Number(match[1]);
+      if (Number.isFinite(n)) {
+        max = Math.max(max, n);
+      }
+    }
   }
 
-  return 0;
+  return max;
+}
+
+function detectAskGptCount(text: string): number {
+  return pickLargestCount(text, [
+    /GPTに\s*(\d+)回\s*質問/i,
+    /(\d+)回[^。\n]{0,12}GPTに質問/i,
+    /GPT[^。\n]{0,12}(\d+)回[^。\n]{0,12}質問/i,
+  ]);
 }
 
 function detectAskUserCount(text: string): number {
-  const patterns: Array<[RegExp, number]> = [
-    [/(Noz|ユーザー).{0,10}3回.*(聞|確認)/i, 3],
-    [/(Noz|ユーザー).{0,10}2回.*(聞|確認)/i, 2],
-    [/(Noz|ユーザー).{0,10}1回.*(聞|確認)/i, 1],
-    [/必要なら.*(Noz|ユーザー).*(聞|確認)/i, 1],
-    [/(Noz|ユーザー).*(聞|確認).*して/i, 1],
-  ];
-
-  for (const [re, count] of patterns) {
-    if (re.test(text)) return count;
-  }
-
-  return 0;
+  return pickLargestCount(text, [
+    /ユーザー(?:に|に対しては)?[^。\n]{0,12}(\d+)回[^。\n]{0,12}質問/i,
+    /(\d+)回[^。\n]{0,12}ユーザー[^。\n]{0,12}質問/i,
+  ]);
 }
 
 function detectAllowMaterialRequest(text: string): boolean {
-  return /資料|追加資料|注入|document|pdf|zip|メモ/.test(text);
+  return (
+    /資料要求/.test(text) ||
+    /ユーザー(?:に|に対しては)?[^。\n]{0,16}(?:要求|依頼)/.test(text) ||
+    /追加資料/.test(text) ||
+    /document|pdf|zip/i.test(text)
+  );
 }
 
 function detectAllowSearchRequest(text: string): boolean {
-  return /検索|Google検索|SerpAPI|調べて|search/i.test(text);
+  return /検索|Google検索|search/i.test(text);
 }
 
 function detectFinalizationPolicy(
   text: string
 ): "auto_when_ready" | "wait_for_user_confirm" | "wait_for_required_materials" {
-  if (/ユーザー.*待って.*最終|確認.*してから最終|wait_for_user/i.test(text)) {
+  if (/ユーザー確認後|確認してから最終|wait_for_user/i.test(text)) {
     return "wait_for_user_confirm";
   }
-  if (/資料.*待って.*最終|資料.*ないと.*最終|wait_for_required_materials/i.test(text)) {
+  if (/資料待ち|資料が揃うまで|wait_for_required_materials/i.test(text)) {
     return "wait_for_required_materials";
   }
   return "auto_when_ready";
@@ -94,8 +97,8 @@ function detectTone(text: string): string | undefined {
 }
 
 function detectLength(text: string): "short" | "medium" | "long" | undefined {
-  if (/短く|短め|簡潔|short/i.test(text)) return "short";
-  if (/長く|詳しく|詳細|long/i.test(text)) return "long";
+  if (/短め|short/i.test(text)) return "short";
+  if (/長め|詳しく|long/i.test(text)) return "long";
   return "medium";
 }
 
@@ -104,11 +107,11 @@ function detectEntities(text: string): string[] {
     "ナポレオン",
     "マッセナ",
     "ダヴー",
-    "スールト",
+    "ベルティエ",
     "ランヌ",
     "ネイ",
-    "Johannesburg",
-    "ヨハネスブルグ",
+    "グルーシー",
+    "ベルナドット",
   ];
 
   return candidates.filter((x) => text.includes(x));
@@ -117,10 +120,10 @@ function detectEntities(text: string): string[] {
 function detectConstraints(text: string): string[] {
   const constraints: string[] = [];
 
-  if (/同じ言語/.test(text)) constraints.push("同じ言語で出力");
-  if (/箇条書き/.test(text)) constraints.push("箇条書き");
-  if (/簡潔/.test(text)) constraints.push("簡潔");
-  if (/日本人旅行者向け/.test(text)) constraints.push("日本人旅行者向け");
+  if (/英語/.test(text)) constraints.push("英語で出力");
+  if (/箇条書き/.test(text)) constraints.push("箇条書きで出力");
+  if (/短め/.test(text)) constraints.push("短めにまとめる");
+  if (/日本語/.test(text)) constraints.push("日本語で出力");
 
   return constraints;
 }
@@ -158,6 +161,13 @@ export function looksLikeTaskInstruction(input: string): boolean {
     /^タスク:/i.test(text) ||
     /Kinに/.test(text) ||
     /最終回答/.test(text) ||
-    /質問して/.test(text)
+    /質問して/.test(text) ||
+    /最終成果物/.test(text) ||
+    /GPTに質問/.test(text) ||
+    /ユーザーに.*質問/.test(text) ||
+    /ユーザーに.*要求/.test(text) ||
+    /文章を作って/.test(text) ||
+    /プレゼン/.test(text) ||
+    /魅力について/.test(text)
   );
 }

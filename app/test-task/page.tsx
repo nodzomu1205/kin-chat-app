@@ -18,6 +18,8 @@ export default function TestTaskPage() {
   const [kinDirectiveInput, setKinDirectiveInput] = useState("");
   const [fileDirectiveInput, setFileDirectiveInput] = useState("");
   const [taskDraft, setTaskDraft] = useState(createEmptyTaskDraft());
+  const [protocolPrompt, setProtocolPrompt] = useState("");
+  const [protocolRulebook, setProtocolRulebook] = useState("");
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
   const gptBottomRef = useRef<HTMLDivElement>(null);
@@ -146,6 +148,13 @@ export default function TestTaskPage() {
                 mergedText: value,
               }))
             }
+            protocolPrompt={protocolPrompt}
+            protocolRulebook={protocolRulebook}
+            onChangeProtocolPrompt={setProtocolPrompt}
+            onChangeProtocolRulebook={setProtocolRulebook}
+            onResetProtocolDefaults={noop}
+            onSetProtocolRulebookToKinDraft={noop}
+            onSendProtocolRulebookToKin={noopAsync}
           />
         </div>
       </div>

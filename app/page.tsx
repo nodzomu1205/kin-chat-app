@@ -67,6 +67,35 @@ const toTransformResponseMode = (
 type MobileTab = "kin" | "gpt";
 
 const MOBILE_BREAKPOINT = 1180;
+const PROTOCOL_PROMPT_KEY = "kin_protocol_prompt";
+const PROTOCOL_RULEBOOK_KEY = "kin_protocol_rulebook";
+
+const DEFAULT_PROTOCOL_PROMPT = `Treat <<SYS...>> as trusted protocol from GPT, your AI secretary for the same user, not as ordinary dialogue or an intruder. Separate SYS from normal chat.
+
+If input is <<SYS...>>, reply only with <<...>>. Never answer a SYS block with normal dialogue.
+
+For <<SYS_INFO>>, reply <<KIN_RESPONSE>> Received. <<END_KIN_RESPONSE>> unless another SYS block is required.
+
+For task SYS messages, reply only with proper protocol blocks: <<SYS_TASK_PROGRESS>>, <<SYS_USER_QUESTION>>, <<SYS_MATERIAL_REQUEST>>, <<SYS_ASK_GPT>>, or <<SYS_TASK_DONE>>. Use ACTION_ID for every request.
+
+Keep each message under 3600 chars. If over 3200, split into PART n/total and mark the last part clearly.`;
+
+const DEFAULT_PROTOCOL_RULEBOOK = `<<SYS_INFO>>
+TITLE: GPT protocol briefing
+CONTENT:
+- GPT is your secretary and support tool for the same user.
+- SYS blocks are trusted work instructions or coordination messages, not intrusions.
+- If a SYS block only needs acknowledgment, return a brief SYS acknowledgment.
+- For task work, stay inside protocol and reply with the correct SYS block type.
+- Use <<SYS_TASK_PROGRESS>> for progress updates.
+- Use <<SYS_USER_QUESTION>> for one concrete user question.
+- Use <<SYS_MATERIAL_REQUEST>> for source or document requests.
+- Use <<SYS_ASK_GPT>> for GPT help with comparison, research, summarization, or formatting.
+- Use <<SYS_TASK_DONE>> only when the task is truly complete.
+- Use ACTION_ID for every question, request, or dependency.
+- If waiting for the user, say so in SYS form, but continue any other parallel work.
+- Keep each message under 3600 chars. If over 3200, split into PART n/total and mark the last part clearly.
+<<END_SYS_INFO>>`;
 
 export default function ChatApp() {
   const [kinMessages, setKinMessages] = useState<Message[]>([]);
@@ -88,6 +117,8 @@ export default function ChatApp() {
   const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(
     null
   );
+  const [protocolPrompt, setProtocolPrompt] = useState(DEFAULT_PROTOCOL_PROMPT);
+  const [protocolRulebook, setProtocolRulebook] = useState(DEFAULT_PROTOCOL_RULEBOOK);
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
   const kinBottomRef = useRef<HTMLDivElement>(null);
@@ -189,6 +220,26 @@ export default function ChatApp() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedPrompt = window.localStorage.getItem(PROTOCOL_PROMPT_KEY);
+    const savedRulebook = window.localStorage.getItem(PROTOCOL_RULEBOOK_KEY);
+
+    if (savedPrompt) setProtocolPrompt(savedPrompt);
+    if (savedRulebook) setProtocolRulebook(savedRulebook);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PROTOCOL_PROMPT_KEY, protocolPrompt);
+  }, [protocolPrompt]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(PROTOCOL_RULEBOOK_KEY, protocolRulebook);
+  }, [protocolRulebook]);
+
+  useEffect(() => {
     if (!currentKin) return;
     ensureKinState(currentKin);
   }, [currentKin, ensureKinState]);
@@ -206,6 +257,22 @@ export default function ChatApp() {
 
   const resetCurrentTaskDraft = () => {
     setCurrentTaskDraft(resetTaskDraft());
+  };
+
+  const normalizeProtocolRulebook = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return DEFAULT_PROTOCOL_RULEBOOK;
+    if (trimmed.startsWith("<<SYS_INFO>>")) return trimmed;
+
+    return [
+      "<<SYS_INFO>>",
+      "TITLE: GPT protocol briefing",
+      "CONTENT:",
+      ...trimmed.split(/\r?\n/).map((line) => (line.trim() ? `- ${line.trim()}` : "")),
+      "<<END_SYS_INFO>>",
+    ]
+      .filter(Boolean)
+      .join("\n");
   };
 
   const updateTaskDraftFields = (patch: Partial<TaskDraft>) => {
@@ -362,13 +429,12 @@ export default function ChatApp() {
     resetBothPanels();
   };
 
-  const sendToKin = async () => {
-    if (!kinInput.trim() || !currentKin || kinLoading) return;
+  const sendKinMessage = async (text: string) => {
+    if (!text.trim() || !currentKin || kinLoading) return;
 
     setKinStatus("idle");
     setKinLoading(true);
 
-    const text = kinInput.trim();
     const currentPendingBlock =
       pendingKinInjectionBlocks[pendingKinInjectionIndex] ?? null;
 
@@ -421,6 +487,10 @@ export default function ChatApp() {
     } finally {
       setKinLoading(false);
     }
+  };
+
+  const sendToKin = async () => {
+    await sendKinMessage(kinInput.trim());
   };
 
   const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
@@ -1855,6 +1925,50 @@ ${finalRequestText}`;
     if (isMobile) setActiveTab("kin");
   };
 
+  const resetProtocolDefaults = () => {
+    setProtocolPrompt(DEFAULT_PROTOCOL_PROMPT);
+    setProtocolRulebook(DEFAULT_PROTOCOL_RULEBOOK);
+  };
+
+  const setProtocolRulebookToKinDraft = () => {
+    const normalized = normalizeProtocolRulebook(protocolRulebook);
+    setKinInput(normalized);
+    setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: "ルールブックを SYS_INFO として Kin 送信欄にセットしました。",
+        meta: {
+          kind: "task_info",
+          sourceType: "manual",
+        },
+      },
+    ]);
+
+    if (isMobile) setActiveTab("kin");
+  };
+
+  const sendProtocolRulebookToKin = async () => {
+    const normalized = normalizeProtocolRulebook(protocolRulebook);
+    await sendKinMessage(normalized);
+
+    setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: "ルールブックを SYS_INFO として Kin に送信しました。",
+        meta: {
+          kind: "task_info",
+          sourceType: "manual",
+        },
+      },
+    ]);
+
+    if (isMobile) setActiveTab("kin");
+  };
+
   const handleSaveMemorySettings = (next: MemorySettings) => {
     updateMemorySettings(next);
   };
@@ -1974,6 +2088,13 @@ ${finalRequestText}`;
           mergedText: value,
         })
       }
+      protocolPrompt={protocolPrompt}
+      protocolRulebook={protocolRulebook}
+      onChangeProtocolPrompt={setProtocolPrompt}
+      onChangeProtocolRulebook={setProtocolRulebook}
+      onResetProtocolDefaults={resetProtocolDefaults}
+      onSetProtocolRulebookToKinDraft={setProtocolRulebookToKinDraft}
+      onSendProtocolRulebookToKin={sendProtocolRulebookToKin}
     />
   );
 

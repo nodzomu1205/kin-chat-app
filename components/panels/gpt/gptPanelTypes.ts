@@ -135,6 +135,13 @@ export type GptPanelProps = {
   onChangeTaskTitle: (value: string) => void;
   onChangeTaskUserInstruction: (value: string) => void;
   onChangeTaskBody: (value: string) => void;
+  protocolPrompt: string;
+  protocolRulebook: string;
+  onChangeProtocolPrompt: (value: string) => void;
+  onChangeProtocolRulebook: (value: string) => void;
+  onResetProtocolDefaults: () => void;
+  onSetProtocolRulebookToKinDraft: () => void | Promise<void>;
+  onSendProtocolRulebookToKin: () => void | Promise<void>;
   taskProgressView?: TaskProgressView;
   onAnswerTaskRequest?: (requestId: string) => void;
   onPrepareTaskRequestAck?: (requestId: string) => void;
