@@ -245,12 +245,14 @@ export default function GptToolbar(props: Props) {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          flexWrap: "wrap",
+          gap: isMobile ? 6 : 8,
+          flexWrap: "nowrap",
           overflowX: "auto",
           scrollbarWidth: "none",
-          minHeight: isMobile ? 34 : 32,
-          paddingTop: isMobile ? 4 : 4,
+          WebkitOverflowScrolling: "touch",
+          minHeight: 32,
+          paddingTop: isMobile ? 2 : 4,
+          paddingBottom: isMobile ? 2 : 0,
           paddingLeft: 0,
           paddingRight: 0,
         }}
