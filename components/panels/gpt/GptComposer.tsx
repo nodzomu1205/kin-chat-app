@@ -309,7 +309,6 @@ export default function GptComposer({
             onChange={onChange}
             onSubmit={onSubmit}
             submitOnEnter={submitOnEnter}
-            minRows={isMobile ? 4 : 3}
             placeholder={placeholder}
           />
         </div>
