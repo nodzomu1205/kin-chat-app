@@ -204,14 +204,16 @@ export default function GptToolbar(props: Props) {
           position: "absolute",
           right: 0,
           top: 0,
-          transform: "translateY(calc(-100% - 5px))",
+          transform: isMobile
+            ? "translateY(calc(-100% - 3px))"
+            : "translateY(calc(-100% - 5px))",
           zIndex: 40,
           display: "flex",
           gap: 3,
           maxWidth: "100%",
           overflowX: "auto",
           scrollbarWidth: "none",
-          paddingBottom: 5,
+          paddingBottom: isMobile ? 3 : 5,
         }}
       >
         <button type="button" onClick={() => onChangeTab("chat")} style={tabButtonStyle(activeTab === "chat", isMobile)}>
@@ -247,8 +249,8 @@ export default function GptToolbar(props: Props) {
           flexWrap: "wrap",
           overflowX: "auto",
           scrollbarWidth: "none",
-          minHeight: 32,
-          paddingTop: isMobile ? 2 : 4,
+          minHeight: isMobile ? 34 : 32,
+          paddingTop: isMobile ? 4 : 4,
           paddingLeft: 0,
           paddingRight: 0,
         }}

@@ -341,11 +341,11 @@ export const chatBodyStyle = (isMobile: boolean): React.CSSProperties => ({
 });
 
 export const footerStyle = (isMobile: boolean): React.CSSProperties => ({
-  paddingTop: isMobile ? 8 : 10,
+  paddingTop: isMobile ? 10 : 10,
   paddingLeft: isMobile ? 8 : 10,
   paddingRight: isMobile ? 8 : 10,
   paddingBottom: isMobile
-    ? "calc(env(safe-area-inset-bottom, 0px) + 8px)"
+    ? "calc(env(safe-area-inset-bottom, 0px) + 10px)"
     : 10,
   borderTop: "1px solid rgba(148,163,184,0.22)",
   background:
@@ -354,6 +354,6 @@ export const footerStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "flex",
   flexDirection: "column",
   gap: 8,
-  minHeight: isMobile ? undefined : 110,
+  minHeight: isMobile ? 118 : 110,
   boxSizing: "border-box",
 });
