@@ -205,7 +205,7 @@ export default function GptToolbar(props: Props) {
           right: 0,
           top: 0,
           transform: isMobile
-            ? "translateY(calc(-100% - 3px))"
+            ? "translateY(calc(-100% - 4px))"
             : "translateY(calc(-100% - 5px))",
           zIndex: 40,
           display: "flex",
@@ -213,7 +213,7 @@ export default function GptToolbar(props: Props) {
           maxWidth: "100%",
           overflowX: "auto",
           scrollbarWidth: "none",
-          paddingBottom: isMobile ? 3 : 5,
+          paddingBottom: isMobile ? 4 : 5,
         }}
       >
         <button type="button" onClick={() => onChangeTab("chat")} style={tabButtonStyle(activeTab === "chat", isMobile)}>
