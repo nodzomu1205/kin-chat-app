@@ -48,6 +48,20 @@ import {
   splitTextIntoKinChunks,
   transformTextWithIntent,
 } from "@/lib/app/transformIntent";
+import { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
+import type { ChatBridgeSettings } from "@/types/taskProtocol";
+import { parseTaskIntentFromText, looksLikeTaskInstruction } from "@/lib/taskIntent";
+import {
+  buildTaskChatBridgeContext,
+  shouldInjectTaskContext,
+} from "@/lib/taskChatBridge";
+
+const toTransformResponseMode = (
+  mode: "strict" | "balanced" | "creative"
+): "strict" | "creative" => {
+  if (mode === "balanced") return "strict";
+  return mode;
+};
 
 type MobileTab = "kin" | "gpt";
 
@@ -138,6 +152,13 @@ export default function ChatApp() {
     defaultMemorySettings,
   } = useGptMemory(currentKin);
 
+  const taskProtocol = useKinTaskProtocol();
+
+  const [chatBridgeSettings] = useState<ChatBridgeSettings>({
+    injectTaskContextOnReference: true,
+    alwaysShowCurrentTaskInChatContext: false,
+  });
+
   const currentKinProfile = kinList.find((kin) => kin.id === currentKin) ?? null;
   const currentKinLabel = currentKinProfile?.label ?? null;
 
@@ -207,6 +228,61 @@ export default function ChatApp() {
 
     const last = [...gptMessages].reverse().find((m) => m.role === "gpt");
     return last?.text?.trim() || "";
+  };
+
+
+  const syncTaskDraftFromProtocol = (params: {
+    taskId: string;
+    title: string;
+    goal: string;
+    compiledTaskPrompt: string;
+  }) => {
+    setCurrentTaskDraft((prev) => ({
+      ...prev,
+      title: params.title,
+      taskName: params.title,
+      userInstruction: params.goal,
+      body: params.compiledTaskPrompt,
+      mergedText: params.compiledTaskPrompt,
+      kinTaskText: params.compiledTaskPrompt,
+      status: "formatted",
+      updatedAt: new Date().toISOString(),
+    }));
+  };
+
+  const runStartKinTaskFromInput = () => {
+    const raw = gptInput.trim();
+    if (!raw) return;
+
+    const intent = parseTaskIntentFromText(raw);
+    const started = taskProtocol.startTask({
+      originalInstruction: raw,
+      intent,
+    });
+
+    syncTaskDraftFromProtocol({
+      taskId: started.taskId,
+      title: started.title,
+      goal: intent.goal,
+      compiledTaskPrompt: started.compiledTaskPrompt,
+    });
+
+    setKinInput(started.compiledTaskPrompt);
+    setGptInput("");
+    setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: `✅ 新しいKinタスクを生成してKin入力欄にセットしました。TASK_ID: #${started.taskId}`,
+        meta: {
+          kind: "task_info",
+          sourceType: "manual",
+        },
+      },
+    ]);
+
+    if (isMobile) setActiveTab("kin");
   };
 
   const resetBothPanels = () => {
@@ -333,7 +409,19 @@ export default function ChatApp() {
       .filter(Boolean)
       .join("\n");
 
-    const finalRequestText = requestText || rawText;
+    let finalRequestText = requestText || rawText;
+
+    if (
+      shouldInjectTaskContext({
+        userInput: rawText,
+        settings: chatBridgeSettings,
+      })
+    ) {
+      const taskContext = buildTaskChatBridgeContext(taskProtocol.runtime);
+      finalRequestText = `${taskContext}
+
+${finalRequestText}`;
+    }
 
     const userMsg: Message = {
       id: generateId(),
@@ -965,7 +1053,7 @@ export default function ChatApp() {
     const { intent, usage } = await resolveTransformIntent({
       input: directiveText,
       defaultMode: "sys_info",
-      responseMode,
+      responseMode: toTransformResponseMode(responseMode),
     });
     applyTaskUsage(usage);
 
@@ -977,7 +1065,7 @@ export default function ChatApp() {
         const transformed = await transformTextWithIntent({
           text: content,
           intent,
-          responseMode,
+          responseMode: toTransformResponseMode(responseMode),
         });
         content = transformed.text.trim() || content;
         applyTaskUsage(transformed.usage);
@@ -1033,6 +1121,13 @@ export default function ChatApp() {
   };
 
   const sendCurrentTaskContentToKin = async () => {
+    const rawDirective = gptInput.trim();
+
+    if (rawDirective && looksLikeTaskInstruction(rawDirective)) {
+      runStartKinTaskFromInput();
+      return;
+    }
+
     const sourceText = getTaskBaseText();
 
     if (!sourceText) {
@@ -1051,7 +1146,7 @@ export default function ChatApp() {
     const { intent, usage } = await resolveTransformIntent({
       input: directiveText,
       defaultMode: "sys_task",
-      responseMode,
+      responseMode: toTransformResponseMode(responseMode),
     });
     applyTaskUsage(usage);
 
@@ -1063,7 +1158,7 @@ export default function ChatApp() {
         const transformed = await transformTextWithIntent({
           text: content,
           intent,
-          responseMode,
+          responseMode: toTransformResponseMode(responseMode),
         });
         content = transformed.text.trim() || content;
         applyTaskUsage(transformed.usage);
@@ -1216,7 +1311,7 @@ export default function ChatApp() {
       const { intent, usage } = await resolveTransformIntent({
         input: directiveText,
         defaultMode: "sys_info",
-        responseMode,
+        responseMode: toTransformResponseMode(responseMode),
       });
       applyTaskUsage(usage);
 
@@ -1225,7 +1320,7 @@ export default function ChatApp() {
           const transformed = await transformTextWithIntent({
             text: prepInputBase,
             intent,
-            responseMode,
+            responseMode: toTransformResponseMode(responseMode),
           });
           prepInput = transformed.text.trim() || prepInputBase;
           applyTaskUsage(transformed.usage);
@@ -1617,6 +1712,13 @@ export default function ChatApp() {
       pendingInjectionTotalParts={pendingKinInjectionBlocks.length}
       onSwitchPanel={() => setActiveTab("kin")}
       isMobile={isMobile}
+      taskProgressView={taskProtocol.progressView}
+      onAnswerTaskRequest={(requestId) => {
+        setGptInput(
+          `REQ ${requestId} への回答:\n\nこれを適切な SYS_ACTION USER_RESPONSE 形式に整えてください。`
+        );
+      }}
+      onStartKinTask={runStartKinTaskFromInput}
       currentTaskDraft={currentTaskDraft}
       onChangeTaskTitle={(value) =>
         updateTaskDraftFields({

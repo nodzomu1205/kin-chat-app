@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type {
   FileReadPolicy,
-  FileUploadKind,
+  UploadKind,
   ImageDetail,
   IngestMode,
   PostIngestAction,
@@ -38,7 +38,7 @@ import { normalizeUsage } from '@/lib/tokenStats';
 
 
 type IngestOptions = {
-  kind: FileUploadKind;
+  kind: UploadKind;
   mode: IngestMode;
   detail: ImageDetail;
   action: PostIngestAction;
@@ -50,8 +50,8 @@ type UsageInput = Parameters<typeof normalizeUsage>[0];
 type UseIngestActionsArgs = {
   ingestLoading: boolean;
   setIngestLoading: Dispatch<SetStateAction<boolean>>;
-  uploadKind: FileUploadKind;
-  setUploadKind: (kind: FileUploadKind) => void;
+  uploadKind: UploadKind;
+  setUploadKind: (kind: UploadKind) => void;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
   fileReadPolicy: FileReadPolicy;
@@ -83,6 +83,14 @@ function resolveActionLabel(action: PostIngestAction): string {
   if (action === 'inject_and_prep') return '注入＋タスク整理';
   if (action === 'inject_prep_deepen') return '注入＋タスク整理＋深掘り';
   return '現在タスクに追加';
+}
+
+function toTransformResponseMode(
+  mode?: ResponseMode
+): "strict" | "creative" | undefined {
+  if (!mode) return undefined;
+  if (mode === "balanced") return "strict";
+  return mode;
 }
 
 function readDirectiveInputFallback(): string {
@@ -156,10 +164,10 @@ async function maybeTransformDisplayText(args: {
   }
 
   const transformed = await transformTextWithIntent({
-    text: args.text,
-    intent,
-    responseMode: args.responseMode,
-  });
+  text: args.text,
+  intent,
+  responseMode: toTransformResponseMode(args.responseMode),
+});
 
   return {
     text: transformed.text.trim() || args.text,
@@ -243,7 +251,7 @@ export function useIngestActions({
           const transformed = await transformTextWithIntent({
             text: prepInput,
             intent,
-            responseMode,
+            responseMode: toTransformResponseMode(responseMode),
           });
           effectiveContent = transformed.text.trim() || prepInput;
           prepInput = effectiveContent;

@@ -1,7 +1,7 @@
 import React from "react";
-import type { GptTopDrawerTab } from "./gptPanelTypes";
 import { pillButton, statusDotStyle } from "./gptPanelStyles";
 
+type GptTopDrawerTab = "memory" | "tokens" | "settings" | null;
 type Props = {
   currentKinLabel: string | null;
   kinStatus: "idle" | "connected" | "error";

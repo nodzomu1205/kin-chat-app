@@ -1,7 +1,6 @@
 import React from "react";
 import type { KinMemoryState } from "@/types/chat";
-import type { TokenUsage } from "@/hooks/useGptMemory";
-import type { GptTopDrawerTab, TokenStats } from "./gptPanelTypes";
+import type { TokenStats } from "./gptPanelTypes";
 import {
   longValueStyle,
   tokenCardStyle,
@@ -11,6 +10,32 @@ import {
 } from "./gptPanelStyles";
 import { formatNumber, mergeUsage } from "./gptPanelUtils";
 
+type GptTopDrawerTab = "memory" | "tokens" | "settings" | null;
+
+type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+
+function toNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function toTokenUsage(value: unknown): TokenUsage {
+  if (!value || typeof value !== "object") {
+    return { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  }
+
+  const obj = value as Record<string, unknown>;
+
+  return {
+    inputTokens: toNumber(obj.inputTokens),
+    outputTokens: toNumber(obj.outputTokens),
+    totalTokens: toNumber(obj.totalTokens),
+  };
+}
+
 function UsageTriple({ usage }: { usage: TokenUsage }) {
   return (
     <>
@@ -19,12 +44,6 @@ function UsageTriple({ usage }: { usage: TokenUsage }) {
     </>
   );
 }
-
-const ZERO_USAGE: TokenUsage = {
-  inputTokens: 0,
-  outputTokens: 0,
-  totalTokens: 0,
-};
 
 function RunCount({ count }: { count: number }) {
   return (
@@ -40,7 +59,7 @@ function RunCount({ count }: { count: number }) {
 }
 
 type Props = {
-  mode: Exclude<GptTopDrawerTab, "settings" | "task_status" | null>;
+  mode: Exclude<GptTopDrawerTab, "settings" | null>;
   gptState: KinMemoryState;
   tokenStats: TokenStats;
   recent5Chat: TokenUsage;
@@ -76,15 +95,13 @@ export default function GptMetaDrawer({
   onToggleMemoryContent,
   isMobile = false,
 }: Props) {
-  const searchTotal = tokenStats.threadSearchTotal;
-  const taskTotal = tokenStats.threadTaskTotal;
-  const summaryTotal = tokenStats.threadSummaryTotal;
-  const ingestTotal = tokenStats.threadIngestTotal;
+  const searchTotal = toTokenUsage(tokenStats.threadSearchTotal);
+  const taskTotal = toTokenUsage(tokenStats.threadTaskTotal);
+  const summaryTotal = toTokenUsage(tokenStats.threadSummaryTotal);
+  const ingestTotal = toTokenUsage(tokenStats.threadIngestTotal);
+  const threadChatTotal = toTokenUsage(tokenStats.threadChatTotal);
 
-  const conversationTrackedTotal = mergeUsage(
-    tokenStats.threadChatTotal,
-    summaryTotal
-  );
+  const conversationTrackedTotal = mergeUsage(threadChatTotal, summaryTotal);
 
   const otherTrackedTotal = mergeUsage(
     searchTotal,
@@ -224,11 +241,11 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-          直近1往復 <UsageTriple usage={tokenStats.lastChatUsage || ZERO_USAGE} />
+          直近1往復 <UsageTriple usage={toTokenUsage(tokenStats.lastChatUsage)} />
           <br />
           直近5往復 <UsageTriple usage={recent5Chat} />
           <br />
-          要約 <RunCount count={tokenStats.summaryRunCount} />{" "}
+          要約 <RunCount count={toNumber(tokenStats.summaryRunCount)} />{" "}
           <UsageTriple usage={summaryTotal} />
         </div>
       </div>
@@ -253,13 +270,13 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-          検索 <RunCount count={tokenStats.searchRunCount} />{" "}
+          検索 <RunCount count={toNumber(tokenStats.searchRunCount)} />{" "}
           <UsageTriple usage={searchTotal} />
           <br />
-          注入 <RunCount count={tokenStats.ingestRunCount} />{" "}
+          注入 <RunCount count={toNumber(tokenStats.ingestRunCount)} />{" "}
           <UsageTriple usage={ingestTotal} />
           <br />
-          タスク <RunCount count={tokenStats.taskRunCount} />{" "}
+          タスク <RunCount count={toNumber(tokenStats.taskRunCount)} />{" "}
           <UsageTriple usage={taskTotal} />
         </div>
       </div>

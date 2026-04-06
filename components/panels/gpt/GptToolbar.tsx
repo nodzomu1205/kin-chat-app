@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { GptBottomTab, GptInstructionMode } from "./gptPanelTypes";
+import type { GptInstructionMode } from "./gptPanelTypes";
 import {
   buttonDeepen,
   buttonPolish,
@@ -12,6 +12,8 @@ import {
   buttonTransfer,
   buttonTranslate,
 } from "./gptPanelStyles";
+
+type GptBottomTab = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
 
 type Props = {
   activeTab: GptBottomTab;

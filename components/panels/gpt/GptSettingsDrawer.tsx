@@ -3,7 +3,6 @@ import type {
   FileReadPolicy,
   ImageDetail,
   IngestMode,
-  LocalMemorySettingsInput,
   ResponseMode,
 } from "./gptPanelTypes";
 import {
@@ -13,6 +12,14 @@ import {
   inputStyle,
   labelStyle,
 } from "./gptPanelStyles";
+
+type LocalMemorySettingsInput = {
+  maxFacts: string;
+  maxPreferences: string;
+  chatRecentLimit: string;
+  summarizeThreshold: string;
+  recentKeep: string;
+};
 
 type Props = {
   localSettings: LocalMemorySettingsInput;
@@ -134,8 +141,8 @@ export default function GptSettingsDrawer({
 
           <button
             type="button"
-            style={choiceButton(fileReadPolicy === "hybrid")}
-            onClick={() => onChangeFileReadPolicy("hybrid")}
+            style={choiceButton(fileReadPolicy === "text_and_layout")}
+            onClick={() => onChangeFileReadPolicy("text_and_layout")}
           >
             統合
           </button>
@@ -164,8 +171,9 @@ export default function GptSettingsDrawer({
               onChange={(e) => onChangeIngestMode(e.target.value as IngestMode)}
               style={selectStyle}
             >
-              <option value="compact">compact</option>
-              <option value="full">full</option>
+              <option value="strict">strict</option>
+              <option value="creative">creative</option>
+              <option value="max">max</option>
             </select>
             <div style={helpTextStyle}>txt / md / csv / code などの既定粒度</div>
           </div>
@@ -179,9 +187,9 @@ export default function GptSettingsDrawer({
               }
               style={selectStyle}
             >
-              <option value="basic">basic</option>
-              <option value="detailed">detailed</option>
-              <option value="max">max</option>
+              <option value="low">low</option>
+              <option value="high">high</option>
+              <option value="auto">auto</option>
             </select>
             <div style={helpTextStyle}>視覚記述の既定粒度</div>
           </div>
@@ -261,12 +269,12 @@ export default function GptSettingsDrawer({
 
         <div
           style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: 8,
-          marginTop: 12,
-          flexWrap: isMobile ? "wrap" : "nowrap",
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 12,
+            flexWrap: isMobile ? "wrap" : "nowrap",
           }}
         >
           <button

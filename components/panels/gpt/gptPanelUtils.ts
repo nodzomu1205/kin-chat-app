@@ -1,6 +1,13 @@
 import type { MemorySettings } from "@/lib/memory";
 import type { TokenUsage } from "@/hooks/useGptMemory";
-import type { LocalMemorySettingsInput } from "./gptPanelTypes";
+
+export type LocalMemorySettingsInput = {
+  maxFacts: string;
+  maxPreferences: string;
+  chatRecentLimit: string;
+  summarizeThreshold: string;
+  recentKeep: string;
+};
 
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("ja-JP").format(value);
@@ -41,7 +48,9 @@ export function memorySettingsToInput(
   };
 }
 
-export function normalizeLocalSettings(input: LocalMemorySettingsInput): MemorySettings {
+export function normalizeLocalSettings(
+  input: LocalMemorySettingsInput
+): MemorySettings {
   const raw = {
     maxFacts: Number(input.maxFacts || 0),
     maxPreferences: Number(input.maxPreferences || 0),

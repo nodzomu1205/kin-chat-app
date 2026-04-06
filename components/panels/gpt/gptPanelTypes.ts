@@ -1,8 +1,11 @@
-import type React from "react";
-import type { KinMemoryState, Message } from "@/types/chat";
+import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { MemorySettings } from "@/lib/memory";
-import type { TokenUsage } from "@/hooks/useGptMemory";
+import type { Message } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
+import type {
+  TaskRequirementProgress,
+  UserFacingTaskRequest,
+} from "@/types/taskProtocol";
 
 export type GptInstructionMode =
   | "normal"
@@ -10,116 +13,120 @@ export type GptInstructionMode =
   | "reply_only"
   | "polish";
 
-export type ResponseMode = "strict" | "creative";
-export type IngestMode = "compact" | "full";
-export type ImageDetail = "basic" | "detailed" | "max";
-export type FileUploadKind = "text" | "visual";
-export type FileReadPolicy = "text_first" | "visual_first" | "hybrid";
-
+export type ResponseMode = "strict" | "balanced" | "creative";
+export type UploadKind = "auto" | "text" | "image" | "pdf" | "mixed";
+export type IngestMode = "strict" | "creative" | "max";
+export type ImageDetail = "low" | "high" | "auto";
 export type PostIngestAction =
   | "inject_only"
   | "inject_and_prep"
   | "inject_prep_deepen"
   | "attach_to_current_task";
+export type FileReadPolicy = "text_first" | "visual_first" | "text_and_layout";
 
-export type GptBottomTab =
-  | "chat"
-  | "task_primary"
-  | "task_secondary"
-  | "kin"
-  | "file";
-
-export type GptTopDrawerTab =
-  | "memory"
-  | "token"
-  | "task_status"
-  | "settings"
-  | null;
+export type TokenTriplet = {
+  input?: number;
+  output?: number;
+  total?: number;
+};
 
 export type TokenStats = {
-  lastChatUsage: TokenUsage | null;
-  recentChatUsages: TokenUsage[];
-  threadChatTotal: TokenUsage;
-  lastSummaryUsage: TokenUsage | null;
-  threadSummaryTotal: TokenUsage;
-  summaryRunCount: number;
+  latestInput?: number;
+  latestOutput?: number;
+  latestTotal?: number;
+  rolling5Input?: number;
+  rolling5Output?: number;
+  rolling5Total?: number;
+  cumulativeInput?: number;
+  cumulativeOutput?: number;
+  cumulativeTotal?: number;
+  latest?: TokenTriplet;
+  rolling5?: TokenTriplet;
+  cumulative?: TokenTriplet;
+  [key: string]: unknown;
+};
 
-  lastSearchUsage: TokenUsage | null;
-  threadSearchTotal: TokenUsage;
-  searchRunCount: number;
+export type GptStateLike = {
+  memory?: {
+    facts?: string[];
+    preferences?: string[];
+    context?: {
+      currentTopic?: string;
+      currentTask?: string;
+      followUpRule?: string;
+      lastUserIntent?: string;
+    };
+  };
+  recentMessages?: Message[];
+};
 
-  lastTaskUsage: TokenUsage | null;
-  threadTaskTotal: TokenUsage;
-  taskRunCount: number;
-  lastIngestUsage: TokenUsage | null;
-  threadIngestTotal: TokenUsage;
-  ingestRunCount: number;
+export type TaskProgressView = {
+  taskId: string | null;
+  taskTitle: string;
+  goal: string;
+  requirementProgress: TaskRequirementProgress[];
+  userFacingRequests: UserFacingTaskRequest[];
 };
 
 export type GptPanelProps = {
   currentKin: string | null;
   currentKinLabel: string | null;
-  kinStatus: "idle" | "connected" | "error";
-  gptState: KinMemoryState;
+  kinStatus: string;
+  gptState: GptStateLike;
   gptMessages: Message[];
   gptInput: string;
-  setGptInput: (value: string) => void;
-  sendToGpt: (mode?: GptInstructionMode) => void;
-  runPrepTaskFromInput: () => void;
-  runDeepenTaskFromLast: () => void;
-  runUpdateTaskFromInput: () => Promise<void>;
-  runUpdateTaskFromLastGptMessage: () => Promise<void>;
-  runAttachSearchResultToTask: () => Promise<void>;
-  sendLatestGptContentToKin: () => void;
-  sendCurrentTaskContentToKin: () => void;
-  receiveLastKinResponseToGptInput: () => void;
+  setGptInput: Dispatch<SetStateAction<string>>;
+  sendToGpt: (instructionMode?: GptInstructionMode) => void | Promise<void>;
+  runPrepTaskFromInput: () => void | Promise<void>;
+  runDeepenTaskFromLast: () => void | Promise<void>;
+  runUpdateTaskFromInput: () => void | Promise<void>;
+  runUpdateTaskFromLastGptMessage: () => void | Promise<void>;
+  runAttachSearchResultToTask: () => void | Promise<void>;
+  sendLatestGptContentToKin: () => void | Promise<void>;
+  sendCurrentTaskContentToKin: () => void | Promise<void>;
+  receiveLastKinResponseToGptInput: () => void | Promise<void>;
   resetGptForCurrentKin: () => void;
-  sendLastGptToKinDraft: () => void;
+  sendLastGptToKinDraft: () => void | Promise<void>;
   injectFileToKinDraft: (
     file: File,
     options: {
-      kind: FileUploadKind;
+      kind: UploadKind;
       mode: IngestMode;
       detail: ImageDetail;
       action: PostIngestAction;
       readPolicy: FileReadPolicy;
     }
-  ) => Promise<void>;
+  ) => void | Promise<void>;
   canInjectFile: boolean;
   loading: boolean;
   ingestLoading: boolean;
-  gptBottomRef: React.RefObject<HTMLDivElement | null>;
+  gptBottomRef: RefObject<HTMLDivElement | null>;
   memorySettings: MemorySettings;
   defaultMemorySettings: MemorySettings;
   onSaveMemorySettings: (next: MemorySettings) => void;
   onResetMemorySettings: () => void;
   tokenStats: TokenStats;
   responseMode: ResponseMode;
-  onChangeResponseMode: (mode: ResponseMode) => void;
-  uploadKind: FileUploadKind;
+  onChangeResponseMode: (value: ResponseMode) => void;
+  uploadKind: UploadKind;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
   postIngestAction: PostIngestAction;
   fileReadPolicy: FileReadPolicy;
-  onChangeUploadKind: (kind: FileUploadKind) => void;
-  onChangeIngestMode: (mode: IngestMode) => void;
-  onChangeImageDetail: (detail: ImageDetail) => void;
-  onChangePostIngestAction: (action: PostIngestAction) => void;
-  onChangeFileReadPolicy: (policy: FileReadPolicy) => void;
+  onChangeUploadKind: (value: UploadKind) => void;
+  onChangeIngestMode: (value: IngestMode) => void;
+  onChangeImageDetail: (value: ImageDetail) => void;
+  onChangePostIngestAction: (value: PostIngestAction) => void;
+  onChangeFileReadPolicy: (value: FileReadPolicy) => void;
   pendingInjectionCurrentPart: number;
   pendingInjectionTotalParts: number;
-  onSwitchPanel?: () => void;
-  isMobile?: boolean;
+  onSwitchPanel: () => void;
+  isMobile: boolean;
   currentTaskDraft: TaskDraft;
   onChangeTaskTitle: (value: string) => void;
   onChangeTaskUserInstruction: (value: string) => void;
   onChangeTaskBody: (value: string) => void;
-};
-
-export type LocalMemorySettingsInput = {
-  maxFacts: string;
-  maxPreferences: string;
-  chatRecentLimit: string;
-  summarizeThreshold: string;
-  recentKeep: string;
+  taskProgressView?: TaskProgressView;
+  onAnswerTaskRequest?: (requestId: string) => void;
+  onStartKinTask?: () => void | Promise<void>;
 };

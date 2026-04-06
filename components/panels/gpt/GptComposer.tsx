@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import ChatTextarea from "@/components/ChatTextarea";
 import type {
   FileReadPolicy,
-  FileUploadKind,
+  UploadKind,
   ImageDetail,
   IngestMode,
   PostIngestAction,
@@ -19,7 +19,7 @@ type Props = {
   onInjectFile: (
     file: File,
     options: {
-      kind: FileUploadKind;
+      kind: UploadKind;
       mode: IngestMode;
       detail: ImageDetail;
       action: PostIngestAction;
@@ -29,12 +29,12 @@ type Props = {
   loading: boolean;
   ingestLoading: boolean;
   canInjectFile: boolean;
-  uploadKind: FileUploadKind;
+  uploadKind: UploadKind;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
   postIngestAction: PostIngestAction;
   fileReadPolicy: FileReadPolicy;
-  onChangeUploadKind: (kind: FileUploadKind) => void;
+  onChangeUploadKind: (kind: UploadKind) => void;
   onChangeIngestMode: (mode: IngestMode) => void;
   onChangeImageDetail: (detail: ImageDetail) => void;
   onChangePostIngestAction: (action: PostIngestAction) => void;
@@ -92,8 +92,8 @@ const verticalButtonStyle: React.CSSProperties = {
   overflow: "hidden",
 };
 
-function getAcceptByKind(kind: FileUploadKind): string {
-  if (kind === "visual") {
+function getAcceptByKind(kind: UploadKind): string {
+  if (kind === "image" || kind === "pdf" || kind === "mixed") {
     return ".pdf,image/*";
   }
   return ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
@@ -215,8 +215,8 @@ export default function GptComposer({
 
               <button
                 type="button"
-                style={choiceButton(uploadKind === "visual")}
-                onClick={() => onChangeUploadKind("visual")}
+                style={choiceButton(uploadKind === "image" || uploadKind === "pdf" || uploadKind === "mixed")}
+                onClick={() => onChangeUploadKind("image")}
               >
                 画像 / PDF
               </button>
