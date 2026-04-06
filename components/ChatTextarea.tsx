@@ -35,11 +35,18 @@ export default function ChatTextarea({
     const minHeight = minRows * lineHeight;
     const maxHeight = maxRows * lineHeight;
 
+    // Keep empty composers visually identical even when placeholder text
+    // or mobile browser metrics would otherwise change scrollHeight.
+    if (!value.trim()) {
+      el.style.height = `${minHeight}px`;
+      return;
+    }
+
     el.style.height = `${Math.min(
       Math.max(el.scrollHeight, minHeight),
       maxHeight
     )}px`;
-  }, [minRows, maxRows]);
+  }, [maxRows, minRows, value]);
 
   React.useEffect(() => {
     resize();
