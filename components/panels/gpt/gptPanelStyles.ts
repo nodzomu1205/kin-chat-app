@@ -318,7 +318,7 @@ export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
 });
 
 export const drawerWrapStyle = (isMobile: boolean): React.CSSProperties => ({
-  padding: "10px",
+  padding: isMobile ? "18px 10px 10px 10px" : "10px",
   borderBottom: "1px solid #e5e7eb",
   background:
     "linear-gradient(180deg, rgba(248,255,252,0.96) 0%, rgba(243,251,248,0.94) 100%)",
