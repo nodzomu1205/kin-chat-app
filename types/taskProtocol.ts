@@ -8,6 +8,7 @@ export type TaskOutputType =
   | "comparison";
 
 export type SearchResultMode = "summary" | "raw" | "summary_plus_raw";
+export type TaskCountRule = "exact" | "at_least" | "up_to" | "around";
 
 export type TaskIntent = {
   mode: "task";
@@ -21,7 +22,11 @@ export type TaskIntent = {
   };
   workflow?: {
     askGptCount?: number;
+    askGptCountRule?: TaskCountRule;
     askUserCount?: number;
+    askUserCountRule?: TaskCountRule;
+    searchRequestCount?: number;
+    searchRequestCountRule?: TaskCountRule;
     allowMaterialRequest?: boolean;
     allowSearchRequest?: boolean;
     finalizationPolicy?:
@@ -86,6 +91,9 @@ export type TaskExecutionStatus =
 export type TaskProtocolEventType =
   | "task_progress"
   | "ask_gpt"
+  | "gpt_response"
+  | "search_request"
+  | "search_response"
   | "user_question"
   | "material_request"
   | "task_done"
@@ -99,6 +107,9 @@ export type TaskProtocolEvent = {
   body: string;
   required?: boolean;
   summary?: string;
+  query?: string;
+  outputMode?: SearchResultMode;
+  rawResultId?: string;
 };
 
 export type TaskRuntimeState = {
@@ -113,8 +124,10 @@ export type TaskRuntimeState = {
   userFacingRequests: UserFacingTaskRequest[];
   completedSearches: Array<{
     taskId: string;
+    actionId?: string;
     query: string;
     mode: SearchResultMode;
+    rawResultId?: string;
     resultText: string;
     createdAt: number;
   }>;

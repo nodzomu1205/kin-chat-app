@@ -34,3 +34,19 @@ export type KinProfile = {
   id: string;
   label: string;
 };
+
+export type MultipartAssembly = {
+  id: string;
+  taskId?: string;
+  status?: string;
+  summary?: string;
+  totalParts: number;
+  parts: Array<{
+    index: number;
+    text: string;
+  }>;
+  assembledText: string;
+  isComplete: boolean;
+  updatedAt: string;
+  filename: string;
+};

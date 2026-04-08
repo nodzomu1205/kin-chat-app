@@ -11,7 +11,7 @@ import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
 import { createSession, getSessions } from "@/lib/storage";
 import type { MemorySettings } from "@/lib/memory";
-import type { Message } from "@/types/chat";
+import type { Message, MultipartAssembly } from "@/types/chat";
 import { generateId } from "@/lib/uuid";
 import {
   buildPrepInputFromIngestResult,
@@ -26,6 +26,7 @@ import {
 import type {
   GptInstructionMode,
   PostIngestAction,
+  SearchReferenceMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 import type { SearchContext, TaskDraft } from "@/types/task";
 import { createEmptyTaskDraft } from "@/types/task";
@@ -50,12 +51,22 @@ import {
 } from "@/lib/app/transformIntent";
 import { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
-import { parseTaskIntentFromText, looksLikeTaskInstruction } from "@/lib/taskIntent";
+import {
+  looksLikeTaskInstruction,
+  parseTaskIntentFromText,
+  resolveTaskIntentWithFallback,
+  type ApprovedIntentPhrase,
+  type PendingIntentCandidate,
+} from "@/lib/taskIntent";
 import {
   buildTaskChatBridgeContext,
   shouldInjectTaskContext,
 } from "@/lib/taskChatBridge";
-import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
+import {
+  buildLimitExceededBlock,
+  buildUserResponseBlock,
+  extractTaskProtocolEvents,
+} from "@/lib/taskRuntimeProtocol";
 
 const toTransformResponseMode = (
   mode: "strict" | "balanced" | "creative"
@@ -69,33 +80,185 @@ type MobileTab = "kin" | "gpt";
 const MOBILE_BREAKPOINT = 1180;
 const PROTOCOL_PROMPT_KEY = "kin_protocol_prompt";
 const PROTOCOL_RULEBOOK_KEY = "kin_protocol_rulebook";
+const LAST_SEARCH_CONTEXT_KEY = "last_search_context";
+const SEARCH_HISTORY_KEY = "search_history";
+const SEARCH_HISTORY_LIMIT_KEY = "search_history_limit";
+const SEARCH_REFERENCE_COUNT_KEY = "search_reference_count";
+const SEARCH_AUTO_REFERENCE_ENABLED_KEY = "search_auto_reference_enabled";
+const SEARCH_REFERENCE_MODE_KEY = "search_reference_mode";
+const PENDING_INTENT_CANDIDATES_KEY = "pending_intent_candidates";
+const APPROVED_INTENT_PHRASES_KEY = "approved_intent_phrases";
+const REJECTED_INTENT_CANDIDATES_KEY = "rejected_intent_candidates";
+const MULTIPART_ASSEMBLIES_KEY = "multipart_assemblies";
+const DEFAULT_SEARCH_HISTORY_LIMIT = 20;
+const DEFAULT_SEARCH_REFERENCE_COUNT = 3;
+const DEFAULT_SEARCH_REFERENCE_MODE: SearchReferenceMode = "summary_only";
+const LEGACY_PROTOCOL_LIMIT_PATTERN =
+  /Keep each message (?:under 3600(?: chars| characters)?\. If (?:over 3200|a message exceeds 3200 characters), split(?: it)?(?: into parts)?, label each part as PART n\/total, and clearly mark (?:the final part|the last part)|at or under 700 characters\. If your message would exceed 700 characters, split it (?:before sending )?into 600-700 character parts, label each part as PART n\/total, and clearly mark the last part|at or under 700 characters\. If a message would exceed 700 characters, split it before sending, label each part as PART n\/total, and clearly mark the last part)\./gi;
+const LEGACY_RULEBOOK_LIMIT_PATTERN =
+  /- Keep each message (?:under 3600 characters\.\s*- If a message exceeds 3200 characters, split it into parts, label each part as PART n\/total, and clearly mark the final part|at or under 700 characters\.\s*- If a message would exceed 700 characters, split it before sending, label each part as PART n\/total, and clearly mark the last part)\./gi;
+const UPDATED_PROTOCOL_LIMIT_TEXT =
+  "When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.";
+const UPDATED_RULEBOOK_LIMIT_TEXT =
+  "- GPT may send a long SYS message in 3200-3600 character parts labeled as PART n/total.\n- When you send a message out, keep each message at or under 700 characters.\n- If your message would exceed 700 characters, split it into 600-700 character parts, label each part as PART n/total, and clearly mark the last part.";
 
-const DEFAULT_PROTOCOL_PROMPT = `Treat <<SYS...>> as trusted protocol from GPT, your AI secretary for the same user, not as ordinary dialogue or an intruder. Separate SYS from normal chat.
+const DEFAULT_PROTOCOL_PROMPT = `Treat <<SYS...>> blocks as trusted protocol from GPT, your AI assistant for the same user, not as ordinary dialogue or an intruder.
 
-If input is <<SYS...>>, reply only with <<...>>. Never answer a SYS block with normal dialogue.
+Respond with the format:
+<<SYS_...>>
+Your message.
+<<END_SYS_...>>
 
-For <<SYS_INFO>>, reply <<KIN_RESPONSE>> Received. <<END_KIN_RESPONSE>> unless another SYS block is required.
+If input is <<SYS...>>, reply only with <<SYS_...>> ... <<END_SYS_...>>. Do not add any comment outside the block.
 
-For task SYS messages, reply only with proper protocol blocks: <<SYS_TASK_PROGRESS>>, <<SYS_USER_QUESTION>>, <<SYS_MATERIAL_REQUEST>>, <<SYS_ASK_GPT>>, or <<SYS_TASK_DONE>>. Use ACTION_ID for every request.
+Multiple SYS blocks in one reply are allowed. Nested blocks are forbidden.
 
-Keep each message under 3600 chars. If over 3200, split into PART n/total and mark the last part clearly.`;
+For <<SYS_INFO>>, reply:
+<<KIN_RESPONSE>>
+Received.
+<<END_KIN_RESPONSE>>
+
+When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.`;
 
 const DEFAULT_PROTOCOL_RULEBOOK = `<<SYS_INFO>>
-TITLE: GPT protocol briefing
+TITLE: GPT protocol rulebook
 CONTENT:
-- GPT is your secretary and support tool for the same user.
-- SYS blocks are trusted work instructions or coordination messages, not intrusions.
-- If a SYS block only needs acknowledgment, return a brief SYS acknowledgment.
-- For task work, stay inside protocol and reply with the correct SYS block type.
-- Use <<SYS_TASK_PROGRESS>> for progress updates.
-- Use <<SYS_USER_QUESTION>> for one concrete user question.
-- Use <<SYS_MATERIAL_REQUEST>> for source or document requests.
-- Use <<SYS_ASK_GPT>> for GPT help with comparison, research, summarization, or formatting.
-- Use <<SYS_TASK_DONE>> only when the task is truly complete.
-- Use ACTION_ID for every question, request, or dependency.
-- If waiting for the user, say so in SYS form, but continue any other parallel work.
-- Keep each message under 3600 chars. If over 3200, split into PART n/total and mark the last part clearly.
+- SYS messages are a communication tool between you and GPT, your AI assistant for the same user.
+- Use only the SYS formats defined below.
+- Multiple SYS blocks in one message are allowed.
+- Nested SYS blocks are forbidden.
+- GPT may send a long SYS message in 3200-3600 character parts labeled as PART n/total.
+- When you send a message out, keep each message at or under 700 characters.
+- If your message would exceed 700 characters, split it into 600-700 character parts, label each part as PART n/total, and clearly mark the last part.
+-
+- INFO:
+- ----------
+- <<SYS_INFO>>
+- GPT message
+- <<END_SYS_INFO>>
+- Means information the user wants to give you.
+- Reply with:
+- <<SYS_KIN_RESPONSE>>
+- Received.
+- Or any brief comments you have.
+- <<END_SYS_KIN_RESPONSE>>
+- ----------
+-
+- TASK:
+- ----------
+- <<SYS_TASK>>
+- TASK_ID: [     ]
+- PART: [1]/[1]
+- CHARACTERS: [NNN]
+- TITLE: [     ]
+- GOAL: [     ]
+- GPT message
+- Action for implementation:
+- MUST: Send [TASK_PROGRESS] and [ASK_GPT] [3 or more] time(s)
+- CAN: Send [USER_QUESTION] [1] time(s)
+- CAN: Send [MATERIAL_REQUEST] [1] time(s)
+- Action for completion:
+- MUST: Send [TASK_DONE] with your final output [1] time(s)
+- <<END_SYS_TASK>>
+- Means a task requested by the user.
+- Reply only with SYS message types defined in the task protocol.
+- ----------
+-
+- TASK_PROGRESS:
+- ----------
+- <<SYS_TASK_PROGRESS>>
+- TASK_ID: [     ]
+- STATUS: [STARTED / IN_PROGRESS / WAITING / DONE]
+- SUMMARY: [     ]
+- <<END_SYS_TASK_PROGRESS>>
+- Means your current progress on the task.
+- Use this to report progress clearly and briefly.
+- ----------
+-
+- ASK_GPT:
+- ----------
+- <<SYS_ASK_GPT>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- PART: [1]/[1]
+- CHARACTERS: [NNN]
+- Your message/request
+- <<END_SYS_ASK_GPT>>
+- Means a question or request you send to GPT for your task.
+- ----------
+-
+- GPT_RESPONSE:
+- ----------
+- <<SYS_GPT_RESPONSE>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- PART: [1]/[1]
+- CHARACTERS: [NNN]
+- GPT response
+- <<END_SYS_GPT_RESPONSE>>
+- Means GPT's response to your ASK_GPT message.
+- Use the same TASK_ID and ACTION_ID as the related ASK_GPT block.
+- ----------
+-
+- USER_QUESTION:
+- ----------
+- <<SYS_USER_QUESTION>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- PART: [1]/[1]
+- CHARACTERS: [NNN]
+- Your question to the user
+- <<END_SYS_USER_QUESTION>>
+- Means a question you ask the user for the task.
+- ----------
+-
+- MATERIAL_REQUEST:
+- ----------
+- <<SYS_MATERIAL_REQUEST>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- PART: [1]/[1]
+- CHARACTERS: [NNN]
+- Your request for documents, sources, or missing materials
+- <<END_SYS_MATERIAL_REQUEST>>
+- Means a request for materials you need from the user.
+- ----------
+-
+- TASK_DONE:
+- ----------
+- <<SYS_TASK_DONE>>
+- TASK_ID: [     ]
+- STATUS: DONE
+- PART: [1]/[1]
+- CHARACTERS: [NNN]
+- Your final output
+- <<END_SYS_TASK_DONE>>
+- Means the task is complete.
+- Send this only when the required actions are finished and the final output is ready.
+- ----------
 <<END_SYS_INFO>>`;
+
+function migrateLegacyProtocolLimits(text: string) {
+  return text
+    .replace(LEGACY_PROTOCOL_LIMIT_PATTERN, UPDATED_PROTOCOL_LIMIT_TEXT)
+    .replace(LEGACY_RULEBOOK_LIMIT_PATTERN, UPDATED_RULEBOOK_LIMIT_TEXT);
+}
+
+function getIntentCandidateSignature(candidate: {
+  kind: string;
+  phrase: string;
+  count?: number;
+  rule?: string;
+  charLimit?: number;
+}) {
+  return [
+    candidate.kind,
+    candidate.phrase.trim(),
+    candidate.count ?? "",
+    candidate.rule ?? "",
+    candidate.charLimit ?? "",
+  ].join("|");
+}
 
 export default function ChatApp() {
   const [kinMessages, setKinMessages] = useState<Message[]>([]);
@@ -117,6 +280,25 @@ export default function ChatApp() {
   const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(
     null
   );
+  const [searchHistory, setSearchHistory] = useState<SearchContext[]>([]);
+  const [searchHistoryLimit, setSearchHistoryLimit] = useState(DEFAULT_SEARCH_HISTORY_LIMIT);
+  const [searchReferenceCount, setSearchReferenceCount] = useState(
+    DEFAULT_SEARCH_REFERENCE_COUNT
+  );
+  const [autoSearchReferenceEnabled, setAutoSearchReferenceEnabled] = useState(true);
+  const [searchReferenceMode, setSearchReferenceMode] = useState<SearchReferenceMode>(
+    DEFAULT_SEARCH_REFERENCE_MODE
+  );
+  const [pendingIntentCandidates, setPendingIntentCandidates] = useState<
+    PendingIntentCandidate[]
+  >([]);
+  const [approvedIntentPhrases, setApprovedIntentPhrases] = useState<
+    ApprovedIntentPhrase[]
+  >([]);
+  const [rejectedIntentCandidateSignatures, setRejectedIntentCandidateSignatures] = useState<
+    string[]
+  >([]);
+  const [multipartAssemblies, setMultipartAssemblies] = useState<MultipartAssembly[]>([]);
   const [protocolPrompt, setProtocolPrompt] = useState(DEFAULT_PROTOCOL_PROMPT);
   const [protocolRulebook, setProtocolRulebook] = useState(DEFAULT_PROTOCOL_RULEBOOK);
 
@@ -224,9 +406,90 @@ export default function ChatApp() {
 
     const savedPrompt = window.localStorage.getItem(PROTOCOL_PROMPT_KEY);
     const savedRulebook = window.localStorage.getItem(PROTOCOL_RULEBOOK_KEY);
+    const savedSearchContext = window.localStorage.getItem(LAST_SEARCH_CONTEXT_KEY);
+    const savedSearchHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+    const savedSearchHistoryLimit = window.localStorage.getItem(SEARCH_HISTORY_LIMIT_KEY);
+    const savedSearchReferenceCount = window.localStorage.getItem(SEARCH_REFERENCE_COUNT_KEY);
+    const savedAutoSearchReferenceEnabled = window.localStorage.getItem(
+      SEARCH_AUTO_REFERENCE_ENABLED_KEY
+    );
+    const savedSearchReferenceMode = window.localStorage.getItem(
+      SEARCH_REFERENCE_MODE_KEY
+    );
+    const savedPendingIntentCandidates = window.localStorage.getItem(
+      PENDING_INTENT_CANDIDATES_KEY
+    );
+    const savedApprovedIntentPhrases = window.localStorage.getItem(
+      APPROVED_INTENT_PHRASES_KEY
+    );
+    const savedRejectedIntentCandidates = window.localStorage.getItem(
+      REJECTED_INTENT_CANDIDATES_KEY
+    );
+    const savedMultipartAssemblies = window.localStorage.getItem(
+      MULTIPART_ASSEMBLIES_KEY
+    );
 
-    if (savedPrompt) setProtocolPrompt(savedPrompt);
-    if (savedRulebook) setProtocolRulebook(savedRulebook);
+    if (savedPrompt) setProtocolPrompt(migrateLegacyProtocolLimits(savedPrompt));
+    if (savedRulebook) setProtocolRulebook(migrateLegacyProtocolLimits(savedRulebook));
+    if (savedSearchHistoryLimit) {
+      const parsed = Number(savedSearchHistoryLimit);
+      if (Number.isFinite(parsed) && parsed > 0) setSearchHistoryLimit(parsed);
+    }
+    if (savedSearchReferenceCount) {
+      const parsed = Number(savedSearchReferenceCount);
+      if (Number.isFinite(parsed) && parsed > 0) setSearchReferenceCount(parsed);
+    }
+    if (savedAutoSearchReferenceEnabled) {
+      setAutoSearchReferenceEnabled(savedAutoSearchReferenceEnabled === "true");
+    }
+    if (
+      savedSearchReferenceMode === "summary_only" ||
+      savedSearchReferenceMode === "summary_with_raw_excerpt"
+    ) {
+      setSearchReferenceMode(savedSearchReferenceMode);
+    }
+    if (savedSearchContext) {
+      try {
+        const parsed = JSON.parse(savedSearchContext) as SearchContext;
+        if (parsed?.rawResultId && parsed?.query) setLastSearchContext(parsed);
+      } catch {}
+    }
+    if (savedSearchHistory) {
+      try {
+        const parsed = JSON.parse(savedSearchHistory) as SearchContext[];
+        if (Array.isArray(parsed)) {
+          setSearchHistory(
+            parsed
+              .filter((item) => item?.rawResultId && item?.query)
+              .slice(0, DEFAULT_SEARCH_HISTORY_LIMIT)
+          );
+        }
+      } catch {}
+    }
+    if (savedPendingIntentCandidates) {
+      try {
+        const parsed = JSON.parse(savedPendingIntentCandidates) as PendingIntentCandidate[];
+        if (Array.isArray(parsed)) setPendingIntentCandidates(parsed);
+      } catch {}
+    }
+    if (savedApprovedIntentPhrases) {
+      try {
+        const parsed = JSON.parse(savedApprovedIntentPhrases) as ApprovedIntentPhrase[];
+        if (Array.isArray(parsed)) setApprovedIntentPhrases(parsed);
+      } catch {}
+    }
+    if (savedRejectedIntentCandidates) {
+      try {
+        const parsed = JSON.parse(savedRejectedIntentCandidates) as string[];
+        if (Array.isArray(parsed)) setRejectedIntentCandidateSignatures(parsed);
+      } catch {}
+    }
+    if (savedMultipartAssemblies) {
+      try {
+        const parsed = JSON.parse(savedMultipartAssemblies) as MultipartAssembly[];
+        if (Array.isArray(parsed)) setMultipartAssemblies(parsed);
+      } catch {}
+    }
   }, []);
 
   useEffect(() => {
@@ -238,6 +501,95 @@ export default function ChatApp() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PROTOCOL_RULEBOOK_KEY, protocolRulebook);
   }, [protocolRulebook]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_HISTORY_LIMIT_KEY, String(searchHistoryLimit));
+  }, [searchHistoryLimit]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      SEARCH_REFERENCE_COUNT_KEY,
+      String(searchReferenceCount)
+    );
+  }, [searchReferenceCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      SEARCH_AUTO_REFERENCE_ENABLED_KEY,
+      String(autoSearchReferenceEnabled)
+    );
+  }, [autoSearchReferenceEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_REFERENCE_MODE_KEY, searchReferenceMode);
+  }, [searchReferenceMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      PENDING_INTENT_CANDIDATES_KEY,
+      JSON.stringify(pendingIntentCandidates)
+    );
+  }, [pendingIntentCandidates]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      APPROVED_INTENT_PHRASES_KEY,
+      JSON.stringify(approvedIntentPhrases)
+    );
+  }, [approvedIntentPhrases]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      REJECTED_INTENT_CANDIDATES_KEY,
+      JSON.stringify(rejectedIntentCandidateSignatures)
+    );
+  }, [rejectedIntentCandidateSignatures]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      MULTIPART_ASSEMBLIES_KEY,
+      JSON.stringify(multipartAssemblies)
+    );
+  }, [multipartAssemblies]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (lastSearchContext) {
+      window.localStorage.setItem(
+        LAST_SEARCH_CONTEXT_KEY,
+        JSON.stringify(lastSearchContext)
+      );
+      return;
+    }
+    window.localStorage.removeItem(LAST_SEARCH_CONTEXT_KEY);
+  }, [lastSearchContext]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
+  }, [searchHistory]);
+
+  useEffect(() => {
+    setSearchHistory((prev) => prev.slice(0, searchHistoryLimit));
+  }, [searchHistoryLimit]);
+
+  useEffect(() => {
+    if (!lastSearchContext) return;
+    setSearchHistory((prev) => {
+      if (prev.some((item) => item.rawResultId === lastSearchContext.rawResultId)) {
+        return prev;
+      }
+      return [lastSearchContext, ...prev].slice(0, searchHistoryLimit);
+    });
+  }, [lastSearchContext, searchHistoryLimit]);
 
   useEffect(() => {
     if (!currentKin) return;
@@ -254,6 +606,159 @@ export default function ChatApp() {
     setPendingKinInjectionBlocks([]);
     setPendingKinInjectionIndex(0);
   };
+
+  const buildRawResultId = (params: {
+    taskId?: string;
+    actionId?: string;
+    createdAt?: string;
+  }) => {
+    const taskId = (params.taskId || "no-task").replace(/[^\w-]/g, "") || "no-task";
+    const actionId = (params.actionId || "search").replace(/[^\w-]/g, "") || "search";
+    const stamp = (params.createdAt || new Date().toISOString()).replace(/\D/g, "").slice(0, 14);
+    return `RAW-${taskId}-${actionId}-${stamp || Date.now()}`;
+  };
+
+  const recordSearchContext = (context: Omit<SearchContext, "rawResultId" | "createdAt"> & {
+    rawResultId?: string;
+    createdAt?: string;
+  }) => {
+    const createdAt = context.createdAt || new Date().toISOString();
+    const nextContext: SearchContext = {
+      ...context,
+      rawResultId:
+        context.rawResultId ||
+        buildRawResultId({
+          taskId: context.taskId,
+          actionId: context.actionId,
+          createdAt,
+        }),
+      createdAt,
+    };
+
+    setLastSearchContext(nextContext);
+    setSearchHistory((prev) => {
+      const deduped = prev.filter(
+        (item) => item.rawResultId !== nextContext.rawResultId
+      );
+      return [nextContext, ...deduped].slice(0, searchHistoryLimit);
+    });
+
+    return nextContext;
+  };
+
+  const clearSearchHistory = () => {
+    setLastSearchContext(null);
+    setSearchHistory([]);
+  };
+
+  const searchHistoryStorageMB = (() => {
+    try {
+      const bytes = new TextEncoder().encode(JSON.stringify(searchHistory)).length;
+      return bytes / (1024 * 1024);
+    } catch {
+      return 0;
+    }
+  })();
+
+  const buildSearchReferenceContext = () => {
+    if (!autoSearchReferenceEnabled || searchReferenceCount <= 0) return "";
+    const historyPool =
+      searchHistory.length > 0
+        ? searchHistory
+        : lastSearchContext
+          ? [lastSearchContext]
+          : [];
+    const targets = historyPool.slice(0, searchReferenceCount);
+    if (targets.length === 0) return "";
+
+    const lines = [
+      "<<STORED_SEARCH_CONTEXT>>",
+      "Use the stored search context below as first-pass supporting evidence when the user's current message is related.",
+      "If the current message is clearly unrelated, ignore this block.",
+      "When related, prefer this stored search context before falling back to general knowledge.",
+      "Do not pretend the stored search context answers things it does not actually cover.",
+      "",
+    ];
+
+    targets.forEach((item, index) => {
+      lines.push(`[SEARCH ${index + 1}]`);
+      lines.push(`RAW_RESULT_ID: ${item.rawResultId}`);
+      lines.push(`QUERY: ${item.query}`);
+      if (item.summaryText?.trim()) {
+        lines.push(`SUMMARY: ${item.summaryText.trim()}`);
+      }
+      if (
+        searchReferenceMode === "summary_with_raw_excerpt" &&
+        item.rawText?.trim()
+      ) {
+        lines.push(`RAW_EXCERPT: ${item.rawText.trim().slice(0, 900)}`);
+      }
+      if (item.sources?.length) {
+        lines.push("SOURCES:");
+        item.sources.slice(0, 3).forEach((source) => {
+          lines.push(`- ${source.title}${source.link ? ` | ${source.link}` : ""}`);
+        });
+      }
+      lines.push("");
+    });
+
+    lines.push("<<END_STORED_SEARCH_CONTEXT>>");
+
+    return lines.join("\n").trim();
+  };
+
+  const estimateTokenCount = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return 0;
+    return Math.max(1, Math.ceil(trimmed.length / 4));
+  };
+
+  const estimateSearchReferenceTokens = () => {
+    const historyPool =
+      searchHistory.length > 0
+        ? searchHistory
+        : lastSearchContext
+          ? [lastSearchContext]
+          : [];
+
+    const targets = historyPool.slice(0, Math.max(1, searchReferenceCount));
+    if (targets.length === 0) return 0;
+
+    const text = targets
+      .map((item, index) => {
+        const parts = [
+          `[SEARCH ${index + 1}]`,
+          `RAW_RESULT_ID: ${item.rawResultId}`,
+          `QUERY: ${item.query}`,
+        ];
+
+        if (item.summaryText?.trim()) {
+          parts.push(`SUMMARY: ${item.summaryText.trim()}`);
+        }
+
+        if (
+          searchReferenceMode === "summary_with_raw_excerpt" &&
+          item.rawText?.trim()
+        ) {
+          parts.push(`RAW_EXCERPT: ${item.rawText.trim().slice(0, 900)}`);
+        }
+
+        if (item.sources?.length) {
+          parts.push(
+            ...item.sources
+              .slice(0, 3)
+              .map((source) => `SOURCE: ${source.title}${source.link ? ` | ${source.link}` : ""}`)
+          );
+        }
+
+        return parts.join("\n");
+      })
+      .join("\n\n");
+
+    return estimateTokenCount(text);
+  };
+
+  const searchReferenceEstimatedTokens = estimateSearchReferenceTokens();
 
   const resetCurrentTaskDraft = () => {
     setCurrentTaskDraft(resetTaskDraft());
@@ -360,11 +865,33 @@ export default function ChatApp() {
     }));
   };
 
-  const runStartKinTaskFromInput = () => {
+  const runStartKinTaskFromInput = async () => {
     const raw = gptInput.trim();
     if (!raw) return;
 
-    const intent = parseTaskIntentFromText(raw);
+    const resolved = await resolveTaskIntentWithFallback({
+      input: raw,
+      approvedPhrases: approvedIntentPhrases,
+      responseMode: responseMode === "creative" ? "creative" : "strict",
+    });
+    const intent = resolved.intent;
+    applyTaskUsage(resolved.usage);
+
+    if (resolved.pendingCandidates.length > 0) {
+      setPendingIntentCandidates((prev) => {
+        const rejected = new Set(rejectedIntentCandidateSignatures);
+        const existingKeys = new Set(
+          prev.map((item) => `${item.kind}:${item.phrase}:${item.count ?? ""}:${item.charLimit ?? ""}`)
+        );
+        const additions = resolved.pendingCandidates.filter((item) => {
+          const key = `${item.kind}:${item.phrase}:${item.count ?? ""}:${item.charLimit ?? ""}`;
+          const signature = getIntentCandidateSignature(item);
+          return !existingKeys.has(key) && !rejected.has(signature);
+        });
+        return additions.length > 0 ? [...additions, ...prev].slice(0, 50) : prev;
+      });
+    }
+
     const started = taskProtocol.startTask({
       originalInstruction: raw,
       intent,
@@ -401,7 +928,6 @@ export default function ChatApp() {
     resetTokenStats();
     clearPendingKinInjection();
     resetCurrentTaskDraft();
-    setLastSearchContext(null);
 
     if (isMobile) {
       setActiveTab("kin");
@@ -493,10 +1019,193 @@ export default function ChatApp() {
     await sendKinMessage(kinInput.trim());
   };
 
+  const parseWrappedSearchResponse = (text: string) => {
+    const event = extractTaskProtocolEvents(text).find(
+      (candidate) => candidate.type === "search_response"
+    );
+    if (!event) return null;
+
+    const rawExcerptMatch = text.match(
+      /RAW_EXCERPT:\s*([\s\S]*?)<<END_SYS_SEARCH_RESPONSE>>/
+    );
+
+    return {
+      query: event.query,
+      outputMode: event.outputMode,
+      summary: event.summary || event.body || "",
+      rawResultId: event.rawResultId,
+      rawExcerpt: rawExcerptMatch?.[1]?.trim() || "",
+    };
+  };
+
+  const parseTaskDonePart = (text: string) => {
+    const matches = [...text.matchAll(/<<SYS_TASK_DONE>>([\s\S]*?)<<END_SYS_TASK_DONE>>/g)];
+    const match = matches.at(-1);
+    if (!match?.[1]) return null;
+
+    const body = match[1].replace(/\r\n/g, "\n");
+    const lines = body.split("\n");
+    const getField = (name: string) =>
+      lines.find((line) => line.startsWith(`${name}:`))?.slice(name.length + 1).trim() || "";
+    const partText = getField("PART");
+    const partMatch = partText.match(/(\d+)\s*\/\s*(\d+)/);
+    if (!partMatch) return null;
+
+    const partIndex = Number(partMatch[1]);
+    const totalParts = Number(partMatch[2]);
+    const characters = Number(getField("CHARACTERS") || 0);
+    const contentStartIndex = lines.findIndex((line) => line.startsWith("CHARACTERS:"));
+    const content = lines.slice(contentStartIndex >= 0 ? contentStartIndex + 1 : 0).join("\n").trim();
+
+    return {
+      taskId: getField("TASK_ID") || undefined,
+      status: getField("STATUS") || undefined,
+      summary: getField("SUMMARY") || undefined,
+      partIndex,
+      totalParts,
+      characters,
+      content,
+    };
+  };
+
+  const buildMultipartAck = (params: {
+    taskId?: string;
+    partIndex: number;
+    totalParts: number;
+    isFinal: boolean;
+  }) =>
+    [
+      "<<SYS_GPT_RESPONSE>>",
+      `TASK_ID: ${params.taskId || taskProtocol.runtime.currentTaskId || ""}`,
+      `BODY: ${
+        params.isFinal
+          ? `PART ${params.partIndex}/${params.totalParts} received. All parts received successfully.`
+          : `PART ${params.partIndex}/${params.totalParts} received. Send PART ${params.partIndex + 1}/${params.totalParts}.`
+      }`,
+      "<<END_SYS_GPT_RESPONSE>>",
+    ].join("\n");
+
+  const upsertMultipartAssembly = (part: {
+    taskId?: string;
+    status?: string;
+    summary?: string;
+    partIndex: number;
+    totalParts: number;
+    content: string;
+  }): MultipartAssembly | null => {
+    let nextAssembly: MultipartAssembly | null = null;
+
+    setMultipartAssemblies((prev) => {
+      const id = `${part.taskId || "no-task"}-${part.status || "DONE"}`;
+      const existing =
+        prev.find((item) => item.id === id) || {
+          id,
+          taskId: part.taskId,
+          status: part.status,
+          summary: part.summary,
+          totalParts: part.totalParts,
+          parts: [],
+          assembledText: "",
+          isComplete: false,
+          updatedAt: new Date().toISOString(),
+          filename: `task-${part.taskId || "unknown"}-${(part.status || "done").toLowerCase()}.txt`,
+        };
+
+      const dedupedParts = existing.parts.filter((item) => item.index !== part.partIndex);
+      const parts = [...dedupedParts, { index: part.partIndex, text: part.content }].sort(
+        (a, b) => a.index - b.index
+      );
+      const isComplete = parts.length >= part.totalParts;
+      const assembledText = parts.map((item) => item.text.trim()).join("\n\n").trim();
+
+      nextAssembly = {
+        ...existing,
+        taskId: part.taskId || existing.taskId,
+        status: part.status || existing.status,
+        summary: part.summary || existing.summary,
+        totalParts: part.totalParts,
+        parts,
+        assembledText,
+        isComplete,
+        updatedAt: new Date().toISOString(),
+      };
+
+      return [nextAssembly, ...prev.filter((item) => item.id !== id)].slice(0, 30);
+    });
+
+    return nextAssembly;
+  };
+
+  const loadMultipartAssemblyToGptInput = (assemblyId: string) => {
+    const assembly = multipartAssemblies.find((item) => item.id === assemblyId);
+    if (!assembly) return;
+    setGptInput(assembly.assembledText);
+    if (isMobile) setActiveTab("gpt");
+  };
+
+  const downloadMultipartAssembly = (assemblyId: string) => {
+    const assembly = multipartAssemblies.find((item) => item.id === assemblyId);
+    if (!assembly || typeof window === "undefined") return;
+    const blob = new Blob([assembly.assembledText], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = assembly.filename;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const getProtocolLimitViolation = (event: {
+    type: "ask_gpt" | "search_request" | "user_question";
+    taskId?: string;
+    actionId?: string;
+  }) => {
+    const kind =
+      event.type === "ask_gpt"
+        ? "ask_gpt"
+        : event.type === "search_request"
+          ? "search_request"
+          : "ask_user";
+    const requirement = taskProtocol.runtime.requirementProgress.find(
+      (item) => item.kind === kind
+    );
+    if (!requirement || typeof requirement.targetCount !== "number") return null;
+    if ((requirement.completedCount ?? 0) < requirement.targetCount) return null;
+
+    const label =
+      kind === "ask_gpt"
+        ? "GPT request"
+        : kind === "search_request"
+          ? "web search request"
+          : "user question";
+
+    return buildLimitExceededBlock({
+      taskId: event.taskId || taskProtocol.runtime.currentTaskId || "",
+      actionId: event.actionId,
+      summary: `This ${label} exceeds the allowed limit for the current task, so do not continue with it.`,
+    });
+  };
+
   const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
     if (!gptInput.trim() || gptLoading) return;
 
     const rawText = gptInput.trim();
+    const protocolEvents = extractTaskProtocolEvents(rawText);
+    const askGptEvent = protocolEvents.find((event) => event.type === "ask_gpt");
+    const searchRequestEvent = protocolEvents.find(
+      (event) => event.type === "search_request"
+    );
+    const userQuestionEvent = protocolEvents.find(
+      (event) => event.type === "user_question"
+    );
+    const reqAnswerMatch = rawText.match(/^REQ\s+([A-Z]\d+)\s+への回答[:：]\s*([\s\S]*)$/i);
+    const requestAnswerId = reqAnswerMatch?.[1]?.trim() || "";
+    const requestAnswerBody = reqAnswerMatch?.[2]?.trim() || "";
+    const requestToAnswer = requestAnswerId
+      ? taskProtocol.runtime.pendingRequests.find(
+          (item) => item.id === requestAnswerId || item.actionId === requestAnswerId
+        ) || null
+      : null;
     const parsedInput = applyPrefixedTaskFieldsFromText(rawText);
 
     const hasSearch = !!parsedInput.searchQuery;
@@ -527,6 +1236,116 @@ export default function ChatApp() {
       .join("\n");
 
     let finalRequestText = requestText || rawText;
+    const searchReferenceContext = !parsedInput.searchQuery
+      ? buildSearchReferenceContext()
+      : "";
+    const userMsg: Message = {
+      id: generateId(),
+      role: "user",
+      text: rawText,
+    };
+
+    const limitViolation =
+      (askGptEvent &&
+        getProtocolLimitViolation({
+          type: "ask_gpt",
+          taskId: askGptEvent.taskId,
+          actionId: askGptEvent.actionId,
+        })) ||
+      (searchRequestEvent &&
+        getProtocolLimitViolation({
+          type: "search_request",
+          taskId: searchRequestEvent.taskId,
+          actionId: searchRequestEvent.actionId,
+        })) ||
+      (userQuestionEvent &&
+        getProtocolLimitViolation({
+          type: "user_question",
+          taskId: userQuestionEvent.taskId,
+          actionId: userQuestionEvent.actionId,
+        }));
+
+    if (limitViolation) {
+      setGptMessages((prev) => [
+        ...prev,
+        userMsg,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: limitViolation,
+          meta: {
+            kind: "task_info",
+            sourceType: "manual",
+          },
+        },
+      ]);
+      setGptInput("");
+      return;
+    }
+
+    if (askGptEvent) {
+      finalRequestText = [
+        "You are responding to a Kindroid SYS_ASK_GPT request.",
+        "Return only this exact block format and nothing outside it:",
+        "<<SYS_GPT_RESPONSE>>",
+        `TASK_ID: ${askGptEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
+        `ACTION_ID: ${askGptEvent.actionId || ""}`,
+        "BODY: <your answer>",
+        "<<END_SYS_GPT_RESPONSE>>",
+        "",
+        "Request:",
+        askGptEvent.body,
+      ].join("\n");
+    }
+
+    if (requestToAnswer && requestAnswerBody) {
+      finalRequestText = [
+        "You are converting a user's plain answer into a Kindroid protocol response.",
+        "Return only this exact block format and nothing outside it:",
+        "<<SYS_USER_RESPONSE>>",
+        `TASK_ID: ${requestToAnswer.taskId}`,
+        `ACTION_ID: ${requestToAnswer.actionId}`,
+        "BODY: <clean answer for Kindroid here>",
+        "<<END_SYS_USER_RESPONSE>>",
+        "",
+        "Original Kindroid question:",
+        requestToAnswer.body,
+        "",
+        "User answer:",
+        requestAnswerBody,
+      ].join("\n");
+    }
+
+    if (searchRequestEvent) {
+      const requestedMode = searchRequestEvent.outputMode || "summary";
+      const modeInstruction =
+        requestedMode === "raw"
+          ? "Prefer raw evidence excerpts and keep synthesis minimal."
+          : requestedMode === "summary_plus_raw"
+            ? "Return both a concise synthesis and a compact raw evidence excerpt."
+            : "Return a concise synthesis only.";
+      finalRequestText = [
+        "You are responding to a Kindroid SYS_SEARCH_REQUEST.",
+        "Use the provided search evidence seriously and return only this exact block format:",
+        "<<SYS_SEARCH_RESPONSE>>",
+        `TASK_ID: ${searchRequestEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
+        `ACTION_ID: ${searchRequestEvent.actionId || ""}`,
+        `QUERY: ${searchRequestEvent.query || searchRequestEvent.body || ""}`,
+        `OUTPUT_MODE: ${requestedMode}`,
+        "SUMMARY:",
+        "<search summary here>",
+        "SOURCES:",
+        "- <title> | <url>",
+        "RAW_RESULT_AVAILABLE: YES",
+        "RAW_RESULT_ID: <raw result id here>",
+        "<<END_SYS_SEARCH_RESPONSE>>",
+        "",
+        modeInstruction,
+        "",
+        "Search goal:",
+        searchRequestEvent.body || searchRequestEvent.summary || "Use the search query directly.",
+      ].join("\n");
+    }
 
     if (
       shouldInjectTaskContext({
@@ -539,12 +1358,6 @@ export default function ChatApp() {
 
 ${finalRequestText}`;
     }
-
-    const userMsg: Message = {
-      id: generateId(),
-      role: "user",
-      text: rawText,
-    };
 
     const baseRecent = gptStateRef.current.recentMessages || [];
     const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
@@ -570,49 +1383,162 @@ ${finalRequestText}`;
           memory: provisionalMemory,
           recentMessages: newRecent,
           input: finalRequestText,
+          storedSearchContext: searchReferenceContext,
+          forcedSearchQuery: searchRequestEvent?.query || undefined,
           instructionMode,
           reasoningMode: responseMode,
         }),
       });
 
       const data = await res.json();
+      let assistantText =
+        typeof data.reply === "string" && data.reply.trim()
+          ? data.reply.trim()
+          : "⚠️ GPTの返答取得に失敗しました";
+
+      if (askGptEvent && !assistantText.includes("<<SYS_GPT_RESPONSE>>")) {
+        assistantText = [
+          "<<SYS_GPT_RESPONSE>>",
+          `TASK_ID: ${askGptEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
+          `ACTION_ID: ${askGptEvent.actionId || ""}`,
+          `BODY: ${assistantText}`,
+          "<<END_SYS_GPT_RESPONSE>>",
+        ].join("\n");
+      }
+
+      if (requestToAnswer && requestAnswerBody && !assistantText.includes("<<SYS_USER_RESPONSE>>")) {
+        assistantText = buildUserResponseBlock({
+          taskId: requestToAnswer.taskId,
+          actionId: requestToAnswer.actionId,
+          body: assistantText,
+        });
+      }
+
+      if (searchRequestEvent) {
+        const requestedMode = searchRequestEvent.outputMode || "summary";
+        const wrappedSearchResponse =
+          typeof data?.reply === "string" && data.reply.includes("<<SYS_SEARCH_RESPONSE>>")
+            ? parseWrappedSearchResponse(data.reply)
+            : null;
+        const recordedSearch = data?.searchUsed
+          ? recordSearchContext({
+              taskId:
+                searchRequestEvent.taskId || taskProtocol.runtime.currentTaskId || undefined,
+              actionId: searchRequestEvent.actionId || undefined,
+              query:
+                searchRequestEvent.query ||
+                (typeof data?.searchQuery === "string" ? data.searchQuery : "") ||
+                "",
+              goal: searchRequestEvent.body || searchRequestEvent.summary || "",
+              outputMode:
+                requestedMode === "raw"
+                  ? "raw_and_summary"
+                  : requestedMode === "summary_plus_raw"
+                    ? "raw_and_summary"
+                    : "summary",
+              summaryText:
+                typeof data?.reply === "string" && data.reply.trim() ? data.reply.trim() : "",
+              rawText:
+                typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
+              sources: Array.isArray(data?.sources) ? data.sources : [],
+            })
+          : null;
+
+        const summaryText =
+          wrappedSearchResponse?.summary ||
+          (typeof data?.reply === "string" && data.reply.trim()
+            ? data.reply.trim()
+            : "Search completed, but no summary text was returned.");
+        const rawExcerpt =
+          wrappedSearchResponse?.rawExcerpt ||
+          (typeof data?.searchEvidence === "string" && data.searchEvidence.trim()
+            ? data.searchEvidence.trim().slice(
+                0,
+                requestedMode === "raw" ? 2400 : 1200
+              )
+            : "");
+        const sourceLines = Array.isArray(data?.sources)
+          ? data.sources
+              .slice(0, 5)
+              .map((source: { title?: string; link?: string }) =>
+                `- ${source.title || "Untitled"}${source.link ? ` | ${source.link}` : ""}`
+              )
+          : [];
+
+        const responseLines = [
+          "<<SYS_SEARCH_RESPONSE>>",
+          `TASK_ID: ${searchRequestEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
+          `ACTION_ID: ${searchRequestEvent.actionId || ""}`,
+          `QUERY: ${
+            wrappedSearchResponse?.query ||
+            searchRequestEvent.query ||
+            (typeof data?.searchQuery === "string" ? data.searchQuery : "") ||
+            ""
+          }`,
+          `OUTPUT_MODE: ${wrappedSearchResponse?.outputMode || requestedMode}`,
+          `RAW_RESULT_AVAILABLE: ${recordedSearch ? "YES" : "NO"}`,
+          ...(recordedSearch ? [`RAW_RESULT_ID: ${recordedSearch.rawResultId}`] : []),
+        ];
+
+        if (requestedMode !== "raw") {
+          responseLines.push("SUMMARY:", summaryText);
+        } else {
+          responseLines.push("SUMMARY:", "Raw-focused search response. See RAW_EXCERPT below.");
+        }
+
+        if (requestedMode !== "summary") {
+          responseLines.push("SOURCES:", ...(sourceLines.length > 0 ? sourceLines : ["- none"]));
+        }
+
+        if ((requestedMode === "raw" || requestedMode === "summary_plus_raw") && rawExcerpt) {
+          responseLines.push("RAW_EXCERPT:", rawExcerpt);
+        }
+
+        responseLines.push("<<END_SYS_SEARCH_RESPONSE>>");
+
+        assistantText = responseLines.join("\n");
+      }
 
       const assistantMsg: Message = {
         id: generateId(),
         role: "gpt",
-        text:
-          typeof data.reply === "string" && data.reply.trim()
-            ? data.reply
-            : "⚠️ GPTの返答取得に失敗しました",
+        text: assistantText,
         sources: Array.isArray(data.sources) ? data.sources : [],
         meta: {
           kind: "normal",
           sourceType: data?.searchUsed ? "search" : "gpt_input",
         },
       };
-      if (typeof data.reply === "string") {
-        ingestProtocolMessage(data.reply, "gpt_to_kin");
-      }
+      ingestProtocolMessage(assistantText, "gpt_to_kin");
 
       const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
 
       setGptMessages((prev) => [...prev, assistantMsg]);
 
-      if (data?.searchUsed) {
+      if (requestToAnswer && requestAnswerBody) {
+        taskProtocol.answerPendingRequest(requestToAnswer.id, requestAnswerBody);
+      }
+
+      if (data?.searchUsed && !searchRequestEvent) {
         applySearchUsage(data.usage);
 
-        setLastSearchContext({
+        recordSearchContext({
           query:
             (typeof data?.searchQuery === "string" && data.searchQuery.trim()) ||
             parsedInput.searchQuery ||
             finalRequestText,
+          summaryText:
+            typeof data?.reply === "string" && data.reply.trim() ? data.reply : "",
           rawText:
             typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
           sources: Array.isArray(data?.sources) ? data.sources : [],
-          createdAt: new Date().toISOString(),
         });
-      } else {
+      } else if (!searchRequestEvent) {
         applyChatUsage(data.usage);
+      }
+
+      if (searchRequestEvent) {
+        applySearchUsage(data.usage);
       }
 
       const memoryResult = await handleGptMemory(updatedRecent);
@@ -1364,6 +2290,49 @@ ${finalRequestText}`;
       return;
     }
 
+    const multipart = parseTaskDonePart(last.text);
+    if (multipart) {
+      const assembly = upsertMultipartAssembly(multipart);
+      const ack = buildMultipartAck({
+        taskId: multipart.taskId,
+        partIndex: multipart.partIndex,
+        totalParts: multipart.totalParts,
+        isFinal: multipart.partIndex >= multipart.totalParts,
+      });
+
+      setKinInput(ack);
+      if (assembly?.isComplete) {
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text: `Kin の分割メッセージを再統合しました。${assembly.filename} として保存可能です。`,
+            meta: {
+              kind: "task_info",
+              sourceType: "kin_message",
+            },
+          },
+        ]);
+      } else {
+        setGptMessages((prev) => [
+          ...prev,
+          {
+            id: generateId(),
+            role: "gpt",
+            text: `PART ${multipart.partIndex}/${multipart.totalParts} を受領しました。次パート要求を Kin 送信欄にセットしました。`,
+            meta: {
+              kind: "task_info",
+              sourceType: "kin_message",
+            },
+          },
+        ]);
+      }
+
+      if (isMobile) setActiveTab("kin");
+      return;
+    }
+
     setGptInput(extractPreferredKinTransferText(last.text));
 
     setGptMessages((prev) => [
@@ -1880,7 +2849,6 @@ ${finalRequestText}`;
     resetGptForCurrentKin();
     resetTokenStats();
     resetCurrentTaskDraft();
-    setLastSearchContext(null);
   };
 
   const prepareTaskRequestAck = (requestId: string) => {
@@ -1928,6 +2896,64 @@ ${finalRequestText}`;
   const resetProtocolDefaults = () => {
     setProtocolPrompt(DEFAULT_PROTOCOL_PROMPT);
     setProtocolRulebook(DEFAULT_PROTOCOL_RULEBOOK);
+  };
+
+  const approveIntentCandidate = (candidateId: string) => {
+    const candidate = pendingIntentCandidates.find((item) => item.id === candidateId);
+    if (!candidate) return;
+
+    setApprovedIntentPhrases((prev) => {
+      const exists = prev.some(
+        (item) =>
+          item.kind === candidate.kind &&
+          item.phrase === candidate.phrase &&
+          item.count === candidate.count &&
+          item.rule === candidate.rule &&
+          item.charLimit === candidate.charLimit
+      );
+      if (exists) return prev;
+      return [
+        {
+          id: `approved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          phrase: candidate.phrase,
+          kind: candidate.kind,
+          count: candidate.count,
+          rule: candidate.rule,
+          charLimit: candidate.charLimit,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ].slice(0, 100);
+    });
+
+    setPendingIntentCandidates((prev) => prev.filter((item) => item.id !== candidateId));
+  };
+
+  const updateIntentCandidate = (
+    candidateId: string,
+    patch: Partial<PendingIntentCandidate>
+  ) => {
+    setPendingIntentCandidates((prev) =>
+      prev.map((item) =>
+        item.id === candidateId
+          ? {
+              ...item,
+              ...patch,
+            }
+          : item
+      )
+    );
+  };
+
+  const rejectIntentCandidate = (candidateId: string) => {
+    const candidate = pendingIntentCandidates.find((item) => item.id === candidateId);
+    if (candidate) {
+      const signature = getIntentCandidateSignature(candidate);
+      setRejectedIntentCandidateSignatures((prev) =>
+        prev.includes(signature) ? prev : [signature, ...prev].slice(0, 200)
+      );
+    }
+    setPendingIntentCandidates((prev) => prev.filter((item) => item.id !== candidateId));
   };
 
   const setProtocolRulebookToKinDraft = () => {
@@ -2055,6 +3081,31 @@ ${finalRequestText}`;
       onChangeSimpleImageCharLimit={setSimpleImageCharLimit}
       onChangePostIngestAction={setPostIngestAction}
       onChangeFileReadPolicy={setFileReadPolicy}
+      autoSearchReferenceEnabled={autoSearchReferenceEnabled}
+      searchReferenceMode={searchReferenceMode}
+      searchReferenceCount={searchReferenceCount}
+      searchHistoryLimit={searchHistoryLimit}
+      searchHistoryStorageMB={searchHistoryStorageMB}
+      searchReferenceEstimatedTokens={searchReferenceEstimatedTokens}
+      onChangeAutoSearchReferenceEnabled={setAutoSearchReferenceEnabled}
+      onChangeSearchReferenceMode={setSearchReferenceMode}
+      onChangeSearchReferenceCount={(value) =>
+        setSearchReferenceCount(Math.max(1, Math.min(10, Number(value) || 1)))
+      }
+      onChangeSearchHistoryLimit={(value) =>
+        setSearchHistoryLimit(Math.max(1, Math.min(100, Number(value) || 1)))
+      }
+      onClearSearchHistory={clearSearchHistory}
+      pendingIntentCandidates={pendingIntentCandidates}
+      approvedIntentPhrases={approvedIntentPhrases}
+      multipartAssemblies={multipartAssemblies}
+      onLoadMultipartAssemblyToGptInput={loadMultipartAssemblyToGptInput}
+      onDownloadMultipartAssembly={downloadMultipartAssembly}
+      onUpdateIntentCandidate={updateIntentCandidate}
+      onApproveIntentCandidate={approveIntentCandidate}
+      onRejectIntentCandidate={rejectIntentCandidate}
+      lastSearchContext={lastSearchContext}
+      searchHistory={searchHistory}
       pendingInjectionCurrentPart={
         pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0
       }
@@ -2063,8 +3114,12 @@ ${finalRequestText}`;
       isMobile={isMobile}
       taskProgressView={taskProtocol.progressView}
       onAnswerTaskRequest={(requestId) => {
+        const request =
+          taskProtocol.runtime.pendingRequests.find(
+            (item) => item.id === requestId || item.actionId === requestId
+          ) || null;
         setGptInput(
-          `REQ ${requestId} への回答:\n\nこれを適切な SYS_ACTION USER_RESPONSE 形式に整えてください。`
+          `REQ ${requestId} への回答:\n${request ? `対象質問: ${request.body}\n` : ""}\nここに回答を記入してください。送信すると、GPT が <<SYS_USER_RESPONSE>> 形式へ整えます。`
         );
       }}
       onPrepareTaskRequestAck={prepareTaskRequestAck}

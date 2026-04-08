@@ -1,19 +1,37 @@
 import type {
+  PendingExternalRequest,
+  TaskCountRule,
   TaskIntent,
   TaskRequirementProgress,
-  PendingExternalRequest,
   UserFacingTaskRequest,
 } from "@/types/taskProtocol";
 
-export function buildInitialRequirementProgress(intent: TaskIntent): TaskRequirementProgress[] {
+function formatCountLabel(prefix: string, count: number, rule: TaskCountRule) {
+  switch (rule) {
+    case "at_least":
+      return `${prefix}を最低${count}回`;
+    case "up_to":
+      return `${prefix}を最大${count}回`;
+    case "around":
+      return `${prefix}を${count}回前後`;
+    case "exact":
+    default:
+      return `${prefix}を${count}回`;
+  }
+}
+
+export function buildInitialRequirementProgress(
+  intent: TaskIntent
+): TaskRequirementProgress[] {
   const items: TaskRequirementProgress[] = [];
 
   const askGptCount = intent.workflow?.askGptCount ?? 0;
   if (askGptCount > 0) {
     items.push({
       id: "ask_gpt",
-      label: `GPTに${askGptCount}回質問`,
-      category: "required",
+      label: formatCountLabel("GPTに質問", askGptCount, intent.workflow?.askGptCountRule ?? "exact"),
+      category:
+        intent.workflow?.askGptCountRule === "up_to" ? "optional" : "required",
       kind: "ask_gpt",
       targetCount: askGptCount,
       completedCount: 0,
@@ -25,7 +43,7 @@ export function buildInitialRequirementProgress(intent: TaskIntent): TaskRequire
   if (askUserCount > 0) {
     items.push({
       id: "ask_user",
-      label: `ユーザーに${askUserCount}回確認`,
+      label: formatCountLabel("ユーザーに質問", askUserCount, intent.workflow?.askUserCountRule ?? "exact"),
       category: "optional",
       kind: "ask_user",
       targetCount: askUserCount,
@@ -37,7 +55,7 @@ export function buildInitialRequirementProgress(intent: TaskIntent): TaskRequire
   if (intent.workflow?.allowMaterialRequest) {
     items.push({
       id: "request_material",
-      label: "追加資料を要求",
+      label: "資料を要求",
       category: "optional",
       kind: "request_material",
       targetCount: 1,
@@ -47,12 +65,14 @@ export function buildInitialRequirementProgress(intent: TaskIntent): TaskRequire
   }
 
   if (intent.workflow?.allowSearchRequest) {
+    const searchCount = intent.workflow?.searchRequestCount ?? 1;
+    const searchRule = intent.workflow?.searchRequestCountRule ?? "exact";
     items.push({
       id: "search_request",
-      label: "Google検索を要求",
-      category: "optional",
+      label: formatCountLabel("検索を要求", searchCount, searchRule),
+      category: searchRule === "up_to" ? "optional" : "required",
       kind: "search_request",
-      targetCount: 1,
+      targetCount: searchCount,
       completedCount: 0,
       status: "not_started",
     });
@@ -60,7 +80,7 @@ export function buildInitialRequirementProgress(intent: TaskIntent): TaskRequire
 
   items.push({
     id: "finalize",
-    label: "最終成果物を作成",
+    label: "最終成果物を提出",
     category: "required",
     kind: "finalize",
     targetCount: 1,
@@ -95,15 +115,12 @@ export function markRequirementProgress(
 ): TaskRequirementProgress[] {
   return progress.map((item) => {
     if (item.kind !== kind) return item;
-
     const nextCompleted = (item.completedCount ?? 0) + increment;
     const target = item.targetCount ?? 1;
-    const done = nextCompleted >= target;
-
     return {
       ...item,
       completedCount: nextCompleted,
-      status: done ? "done" : "in_progress",
+      status: nextCompleted >= target ? "done" : "in_progress",
     };
   });
 }

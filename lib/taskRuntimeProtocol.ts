@@ -5,6 +5,8 @@ import type {
 } from "@/types/taskProtocol";
 
 const BLOCK_REGEX = /<<SYS_([A-Z_]+)>>([\s\S]*?)<<END_SYS_\1>>/g;
+const TASK_BLOCK_REGEX = /<<SYS_TASK>>[\s\S]*?<<SYS_TASK_END>>/g;
+const INFO_BLOCK_REGEX = /<<SYS_INFO>>[\s\S]*?<<END_SYS_INFO>>/g;
 
 function normalizeEventType(raw: string): TaskProtocolEvent["type"] | null {
   switch (raw) {
@@ -12,6 +14,12 @@ function normalizeEventType(raw: string): TaskProtocolEvent["type"] | null {
       return "task_progress";
     case "ASK_GPT":
       return "ask_gpt";
+    case "GPT_RESPONSE":
+      return "gpt_response";
+    case "SEARCH_REQUEST":
+      return "search_request";
+    case "SEARCH_RESPONSE":
+      return "search_response";
     case "USER_QUESTION":
       return "user_question";
     case "MATERIAL_REQUEST":
@@ -51,17 +59,36 @@ function parseRequired(value: string | undefined) {
   return /^(yes|true|required|1)$/i.test(value.trim());
 }
 
+function parseSearchOutputMode(value: string | undefined) {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "summary") return "summary";
+  if (normalized === "raw") return "raw";
+  if (
+    normalized === "summary_plus_raw" ||
+    normalized === "raw_and_summary" ||
+    normalized === "summary_with_sources"
+  ) {
+    return "summary_plus_raw";
+  }
+  return undefined;
+}
+
 export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
   if (!text.trim()) return [];
 
   const events: TaskProtocolEvent[] = [];
+  const sanitized = text
+    .replace(TASK_BLOCK_REGEX, "")
+    .replace(INFO_BLOCK_REGEX, "");
 
-  for (const match of text.matchAll(BLOCK_REGEX)) {
+  for (const match of sanitized.matchAll(BLOCK_REGEX)) {
     const blockType = normalizeEventType(match[1]);
     if (!blockType) continue;
 
     const fields = parseBlockFields(match[2] ?? "");
-    const body = fields.BODY || fields.SUMMARY || "";
+    const body =
+      fields.BODY || fields.SEARCH_GOAL || fields.SUMMARY || "";
 
     events.push({
       type: blockType,
@@ -71,6 +98,9 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
       body,
       required: parseRequired(fields.REQUIRED),
       summary: fields.SUMMARY || undefined,
+      query: fields.QUERY || undefined,
+      outputMode: parseSearchOutputMode(fields.OUTPUT_MODE),
+      rawResultId: fields.RAW_RESULT_ID || undefined,
     });
   }
 
@@ -114,7 +144,36 @@ export function buildWaitingAckBlock(request: PendingExternalRequest): string {
     `TASK_ID: ${request.taskId}`,
     `ACTION_ID: ${request.actionId}`,
     "STATUS: WAITING_USER_RESPONSE",
-    `SUMMARY: ${request.id} を受領しました。ユーザー回答待ちです。ほかの進行可能な作業は継続してください。`,
+    `SUMMARY: ${request.id} was received. Waiting for the user's reply. Continue any other work that can proceed in parallel.`,
+    "<<END_SYS_TASK_CONFIRM>>",
+  ].join("\n");
+}
+
+export function buildUserResponseBlock(params: {
+  taskId: string;
+  actionId: string;
+  body: string;
+}) {
+  return [
+    "<<SYS_USER_RESPONSE>>",
+    `TASK_ID: ${params.taskId}`,
+    `ACTION_ID: ${params.actionId}`,
+    `BODY: ${params.body}`,
+    "<<END_SYS_USER_RESPONSE>>",
+  ].join("\n");
+}
+
+export function buildLimitExceededBlock(params: {
+  taskId: string;
+  actionId?: string;
+  summary: string;
+}) {
+  return [
+    "<<SYS_TASK_CONFIRM>>",
+    `TASK_ID: ${params.taskId}`,
+    ...(params.actionId ? [`ACTION_ID: ${params.actionId}`] : []),
+    "STATUS: REJECTED_LIMIT",
+    `SUMMARY: ${params.summary}`,
     "<<END_SYS_TASK_CONFIRM>>",
   ].join("\n");
 }

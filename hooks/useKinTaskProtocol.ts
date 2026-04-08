@@ -58,7 +58,14 @@ export function useKinTaskProtocol() {
       if (normalized.includes("complete") || normalized.includes("done")) return "completed";
       if (normalized.includes("run") || normalized.includes("progress")) return "running";
     }
-    if (event.type === "task_progress" || event.type === "ask_gpt") return "running";
+    if (
+      event.type === "task_progress" ||
+      event.type === "ask_gpt" ||
+      event.type === "search_request" ||
+      event.type === "search_response"
+    ) {
+      return "running";
+    }
     return current;
   }
 
@@ -164,6 +171,20 @@ export function useKinTaskProtocol() {
         const resolvedTaskId =
           event.taskId || next.currentTaskId || prev.currentTaskId || "";
         const actionId = event.actionId || createActionId();
+        const existingLog = next.protocolLog.find((entry) => {
+          if (entry.taskId !== resolvedTaskId || entry.type !== event.type) return false;
+          if (event.actionId) {
+            return entry.body.includes(event.actionId);
+          }
+          return entry.body === (event.body || event.summary || "");
+        });
+
+        if (existingLog) {
+          continue;
+        }
+        const logBodyParts = [event.actionId ? `ACTION_ID:${event.actionId}` : "", event.body || event.summary || ""]
+          .filter(Boolean)
+          .join("\n");
 
         next = {
           ...next,
@@ -176,13 +197,25 @@ export function useKinTaskProtocol() {
               taskId: resolvedTaskId,
               direction: params.direction,
               type: event.type,
-              body: event.body || event.summary || "",
+              body: logBodyParts,
               createdAt: Date.now(),
             },
           ],
         };
 
+        const getRequirement = (
+          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request"
+        ) => next.requirementProgress.find((item) => item.kind === kind);
+        const isOverLimit = (
+          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request"
+        ) => {
+          const requirement = getRequirement(kind);
+          if (!requirement || typeof requirement.targetCount !== "number") return false;
+          return (requirement.completedCount ?? 0) >= requirement.targetCount;
+        };
+
         if (event.type === "ask_gpt") {
+          if (isOverLimit("ask_gpt")) continue;
           next.requirementProgress = markRequirementProgress(
             next.requirementProgress,
             "ask_gpt"
@@ -190,7 +223,40 @@ export function useKinTaskProtocol() {
           continue;
         }
 
+        if (event.type === "gpt_response") {
+          continue;
+        }
+
+        if (event.type === "search_request") {
+          if (isOverLimit("search_request")) continue;
+          next.requirementProgress = markRequirementProgress(
+            next.requirementProgress,
+            "search_request"
+          );
+          continue;
+        }
+
+        if (event.type === "search_response") {
+          next.completedSearches = [
+            {
+              taskId: resolvedTaskId,
+              actionId,
+              query: event.query || "",
+              mode: event.outputMode || "summary",
+              rawResultId: event.rawResultId,
+              resultText: event.summary || event.body || "",
+              createdAt: Date.now(),
+            },
+            ...next.completedSearches,
+          ].slice(0, 20);
+          continue;
+        }
+
         if (event.type === "user_question" || event.type === "material_request") {
+          const targetKind =
+            event.type === "material_request" ? "request_material" : "ask_user";
+          if (isOverLimit(targetKind)) continue;
+
           const kind =
             event.type === "material_request" ? "request_material" : "question";
           const target = event.type === "material_request" ? "material" : "user";
@@ -224,7 +290,7 @@ export function useKinTaskProtocol() {
 
           next.requirementProgress = markRequirementProgress(
             next.requirementProgress,
-            event.type === "material_request" ? "request_material" : "ask_user"
+            targetKind
           );
           next.userFacingRequests = toUserFacingRequests(next.pendingRequests);
           continue;

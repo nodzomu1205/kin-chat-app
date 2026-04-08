@@ -324,10 +324,13 @@ const buildEffectiveTaskInstruction = useCallback(
         applySearchUsage(data.usage);
 
         setLastSearchContext({
+          rawResultId: `RAW-no-task-search-${Date.now()}`,
           query:
             (typeof data?.searchQuery === "string" && data.searchQuery.trim()) ||
             routed.parsed.searchQuery ||
             routed.finalRequestText,
+          summaryText:
+            typeof data?.reply === "string" && data.reply.trim() ? data.reply : "",
           rawText:
             typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
           sources: Array.isArray(data?.sources) ? data.sources : [],

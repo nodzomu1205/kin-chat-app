@@ -316,7 +316,15 @@ export async function POST(req: Request) {
     const { mode } = body;
 
     if (mode === "chat") {
-      const { memory, recentMessages, input, instructionMode, reasoningMode } =
+      const {
+        memory,
+        recentMessages,
+        input,
+        instructionMode,
+        reasoningMode,
+        storedSearchContext,
+        forcedSearchQuery,
+      } =
         body;
 
       if (!input || typeof input !== "string") {
@@ -340,7 +348,10 @@ export async function POST(req: Request) {
       const safeReasoningMode: ReasoningMode =
         reasoningMode === "strict" ? "strict" : "creative";
 
-      const searchQuery = parseSearchCommand(input);
+      const searchQuery =
+        typeof forcedSearchQuery === "string" && forcedSearchQuery.trim()
+          ? forcedSearchQuery.trim()
+          : parseSearchCommand(input);
       const useSearch = !!searchQuery;
 
       let searchText = "";
@@ -362,6 +373,16 @@ export async function POST(req: Request) {
           reasoningMode: safeReasoningMode,
         }),
       });
+
+      if (
+        typeof storedSearchContext === "string" &&
+        storedSearchContext.trim()
+      ) {
+        messages.push({
+          role: "system",
+          content: storedSearchContext.trim(),
+        });
+      }
 
       if (useSearch && searchQuery && searchText) {
         messages.push({

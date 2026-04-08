@@ -194,7 +194,7 @@ export default function GptTaskStatusDrawer({
           <div>{latestType}</div>
 
           <div style={{ fontWeight: 800, color: "#334155" }}>更新時刻</div>
-          <div>{formatUpdatedAt(taskDraft.updatedAt)}</div>
+          <div suppressHydrationWarning>{formatUpdatedAt(taskDraft.updatedAt)}</div>
 
           <div style={{ fontWeight: 800, color: "#334155" }}>Kin送信</div>
           <div>{taskDraft.kinTaskText.trim() ? "準備完了" : "未準備"}</div>

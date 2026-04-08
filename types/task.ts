@@ -63,7 +63,13 @@ export type TaskSource = {
 };
 
 export type SearchContext = {
+  rawResultId: string;
+  taskId?: string;
+  actionId?: string;
   query: string;
+  goal?: string;
+  outputMode?: "summary" | "summary_with_sources" | "raw_and_summary";
+  summaryText?: string;
   rawText: string;
   sources: {
     title: string;

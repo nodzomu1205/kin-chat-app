@@ -22,7 +22,14 @@ import {
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
 
 
-type TopTabKey = "memory" | "tokens" | "task_draft" | "task_progress" | "protocol";
+type TopTabKey =
+  | "memory"
+  | "tokens"
+  | "task_draft"
+  | "task_progress"
+  | "protocol"
+  | "received_docs"
+  | "search_raw";
 type DrawerMode = TopTabKey | "settings" | null;
 type BottomTabKey = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
 type FloatingLabel = {
@@ -161,8 +168,256 @@ function DrawerTabs({
       <button type="button" onClick={() => toggle("protocol")} style={topTabStyle(activeDrawer === "protocol", isMobile)}>
         Protocol
       </button>
+      <button type="button" onClick={() => toggle("received_docs")} style={topTabStyle(activeDrawer === "received_docs", isMobile)}>
+        受信
+      </button>
+      <button type="button" onClick={() => toggle("search_raw")} style={topTabStyle(activeDrawer === "search_raw", isMobile)}>
+        検索raw
+      </button>
       </div>
     </>
+  );
+}
+
+function SearchRawDrawer({
+  lastSearchContext,
+  searchHistory,
+}: Pick<GptPanelProps, "lastSearchContext" | "searchHistory">) {
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  useEffect(() => {
+    if (!selectedId && lastSearchContext?.rawResultId) {
+      setSelectedId(lastSearchContext.rawResultId);
+      return;
+    }
+    if (selectedId && !searchHistory.some((item) => item.rawResultId === selectedId)) {
+      setSelectedId(lastSearchContext?.rawResultId || searchHistory[0]?.rawResultId || "");
+    }
+  }, [lastSearchContext?.rawResultId, searchHistory, selectedId]);
+
+  const selected =
+    searchHistory.find((item) => item.rawResultId === selectedId) ||
+    lastSearchContext ||
+    null;
+
+  const sectionStyle: React.CSSProperties = {
+    border: "1px solid #dbe4e8",
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.92)",
+    padding: 14,
+  };
+
+  if (!selected && searchHistory.length === 0) {
+    return (
+      <div style={sectionStyle}>
+        <div style={{ fontSize: 13, color: "#64748b" }}>保存された検索 raw 結果はまだありません。</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <section style={sectionStyle}>
+        <div style={{ fontWeight: 700, color: "#0f172a" }}>保存済み検索履歴</div>
+        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+          {searchHistory.map((item) => (
+            <button
+              key={item.rawResultId}
+              type="button"
+              onClick={() => setSelectedId(item.rawResultId)}
+              style={{
+                textAlign: "left",
+                border: item.rawResultId === selected?.rawResultId ? "1px solid #99f6e4" : "1px solid #e2e8f0",
+                borderRadius: 12,
+                background: item.rawResultId === selected?.rawResultId ? "#ecfeff" : "#fff",
+                padding: "10px 12px",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "#0f766e", fontWeight: 700 }}>{item.rawResultId}</div>
+              <div style={{ marginTop: 4, color: "#334155", fontWeight: 700 }}>{item.query}</div>
+              <div
+                suppressHydrationWarning
+                style={{ marginTop: 4, fontSize: 12, color: "#64748b" }}
+              >
+                {formatUpdatedAt(item.createdAt)}
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {selected ? (
+        <section style={sectionStyle}>
+          <div style={{ fontWeight: 700, color: "#0f172a" }}>検索 raw 結果</div>
+          <div style={{ marginTop: 10, display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
+            <div><strong>ID:</strong> {selected.rawResultId}</div>
+            <div><strong>Query:</strong> {selected.query}</div>
+            {selected.summaryText ? <div><strong>Summary:</strong> {selected.summaryText}</div> : null}
+            <div suppressHydrationWarning>
+              <strong>Created:</strong> {formatUpdatedAt(selected.createdAt) || "-"}
+            </div>
+          </div>
+          {selected.sources?.length ? (
+            <div style={{ marginTop: 10, display: "grid", gap: 4, fontSize: 12, color: "#475569" }}>
+              {selected.sources.map((source, index) => (
+                <div key={`${selected.rawResultId}-${index}`}>
+                  {index + 1}. {source.title} {source.link ? `| ${source.link}` : ""}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <textarea
+            readOnly
+            value={selected.rawText || ""}
+            style={{
+              width: "100%",
+              minHeight: 260,
+              marginTop: 12,
+              border: "1px solid #dbe4e8",
+              borderRadius: 12,
+              padding: 12,
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: "#334155",
+              background: "#fff",
+              resize: "vertical",
+              boxSizing: "border-box",
+            }}
+          />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function ReceivedDocsDrawer({
+  multipartAssemblies,
+  onLoadMultipartAssemblyToGptInput,
+  onDownloadMultipartAssembly,
+}: Pick<
+  GptPanelProps,
+  "multipartAssemblies" | "onLoadMultipartAssemblyToGptInput" | "onDownloadMultipartAssembly"
+>) {
+  const [selectedId, setSelectedId] = useState("");
+
+  useEffect(() => {
+    if (!selectedId && multipartAssemblies[0]?.id) {
+      setSelectedId(multipartAssemblies[0].id);
+      return;
+    }
+    if (selectedId && !multipartAssemblies.some((item) => item.id === selectedId)) {
+      setSelectedId(multipartAssemblies[0]?.id || "");
+    }
+  }, [multipartAssemblies, selectedId]);
+
+  const selected =
+    multipartAssemblies.find((item) => item.id === selectedId) || multipartAssemblies[0] || null;
+
+  const sectionStyle: React.CSSProperties = {
+    border: "1px solid #dbe4e8",
+    borderRadius: 18,
+    background: "rgba(255,255,255,0.92)",
+    padding: 14,
+  };
+
+  if (multipartAssemblies.length === 0) {
+    return (
+      <div style={sectionStyle}>
+        <div style={{ fontSize: 13, color: "#64748b" }}>
+          まだ分割受信して再統合した文書はありません。
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <section style={sectionStyle}>
+        <div style={{ fontWeight: 700, color: "#0f172a" }}>受信文書一覧</div>
+        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+          {multipartAssemblies.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSelectedId(item.id)}
+              style={{
+                textAlign: "left",
+                border: item.id === selected?.id ? "1px solid #99f6e4" : "1px solid #e2e8f0",
+                borderRadius: 12,
+                background: item.id === selected?.id ? "#ecfeff" : "#fff",
+                padding: "10px 12px",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ fontSize: 12, color: "#0f766e", fontWeight: 700 }}>{item.filename}</div>
+              <div style={{ marginTop: 4, color: "#334155", fontWeight: 700 }}>
+                {item.taskId ? `TASK #${item.taskId}` : "TASK IDなし"} / {item.parts.length}/{item.totalParts}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12, color: "#64748b" }}>
+                {item.isComplete ? "complete" : "receiving"} / {formatUpdatedAt(item.updatedAt)}
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {selected ? (
+        <section style={sectionStyle}>
+          <div style={{ fontWeight: 700, color: "#0f172a" }}>再統合テキスト</div>
+          <div style={{ marginTop: 10, display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
+            <div><strong>File:</strong> {selected.filename}</div>
+            <div><strong>Status:</strong> {selected.isComplete ? "complete" : "receiving"}</div>
+            <div><strong>Parts:</strong> {selected.parts.length}/{selected.totalParts}</div>
+            {selected.summary ? <div><strong>Summary:</strong> {selected.summary}</div> : null}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={() => onLoadMultipartAssemblyToGptInput(selected.id)}
+              style={{
+                ...pillButton,
+                background: "#ffffff",
+                color: "#0f766e",
+                border: "1px solid #99f6e4",
+              }}
+            >
+              GPT入力にセット
+            </button>
+            <button
+              type="button"
+              onClick={() => onDownloadMultipartAssembly(selected.id)}
+              style={{
+                ...pillButton,
+                background: "#ffffff",
+                color: "#2563eb",
+                border: "1px solid #bfdbfe",
+              }}
+            >
+              ダウンロード
+            </button>
+          </div>
+          <textarea
+            readOnly
+            value={selected.assembledText}
+            style={{
+              width: "100%",
+              minHeight: 260,
+              marginTop: 12,
+              border: "1px solid #dbe4e8",
+              borderRadius: 12,
+              padding: 12,
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: "#334155",
+              background: "#fff",
+              resize: "vertical",
+              boxSizing: "border-box",
+            }}
+          />
+        </section>
+      ) : null}
+    </div>
   );
 }
 
@@ -685,6 +940,25 @@ export default function GptPanel(props: GptPanelProps) {
       );
     }
 
+    if (activeDrawer === "received_docs") {
+      return (
+        <ReceivedDocsDrawer
+          multipartAssemblies={props.multipartAssemblies}
+          onLoadMultipartAssemblyToGptInput={props.onLoadMultipartAssemblyToGptInput}
+          onDownloadMultipartAssembly={props.onDownloadMultipartAssembly}
+        />
+      );
+    }
+
+    if (activeDrawer === "search_raw") {
+      return (
+        <SearchRawDrawer
+          lastSearchContext={props.lastSearchContext}
+          searchHistory={props.searchHistory}
+        />
+      );
+    }
+
     if (activeDrawer === "settings") {
       return (
         <GptSettingsDrawer
@@ -736,6 +1010,22 @@ export default function GptPanel(props: GptPanelProps) {
           onChangeSimpleImageCharLimit={props.onChangeSimpleImageCharLimit}
           fileReadPolicy={props.fileReadPolicy}
           onChangeFileReadPolicy={props.onChangeFileReadPolicy}
+          autoSearchReferenceEnabled={props.autoSearchReferenceEnabled}
+          searchReferenceMode={props.searchReferenceMode}
+          searchReferenceCount={props.searchReferenceCount}
+          searchHistoryLimit={props.searchHistoryLimit}
+          searchHistoryStorageMB={props.searchHistoryStorageMB}
+          searchReferenceEstimatedTokens={props.searchReferenceEstimatedTokens}
+          onChangeAutoSearchReferenceEnabled={props.onChangeAutoSearchReferenceEnabled}
+          onChangeSearchReferenceMode={props.onChangeSearchReferenceMode}
+          onChangeSearchReferenceCount={props.onChangeSearchReferenceCount}
+          onChangeSearchHistoryLimit={props.onChangeSearchHistoryLimit}
+          onClearSearchHistory={props.onClearSearchHistory}
+          pendingIntentCandidates={props.pendingIntentCandidates}
+          approvedIntentPhrases={props.approvedIntentPhrases}
+          onUpdateIntentCandidate={props.onUpdateIntentCandidate}
+          onApproveIntentCandidate={props.onApproveIntentCandidate}
+          onRejectIntentCandidate={props.onRejectIntentCandidate}
           isMobile={props.isMobile}
         />
       );
@@ -900,7 +1190,10 @@ export default function GptPanel(props: GptPanelProps) {
               ""
             )}
           </div>
-          <div style={{ flexShrink: 0, whiteSpace: "nowrap", color: "#374151", fontSize: props.isMobile ? 11.5 : 12.5, fontWeight: 700 }}>
+          <div
+            suppressHydrationWarning
+            style={{ flexShrink: 0, whiteSpace: "nowrap", color: "#374151", fontSize: props.isMobile ? 11.5 : 12.5, fontWeight: 700 }}
+          >
             {formatUpdatedAt(floatingLabel.updatedAt)}
           </div>
         </div>
@@ -947,7 +1240,7 @@ export default function GptPanel(props: GptPanelProps) {
             onSendLatestResponseToKin={() => void props.sendLatestGptContentToKin()}
             onSendCurrentTaskToKin={() => void props.sendCurrentTaskContentToKin()}
             onReceiveKinResponse={() => void props.receiveLastKinResponseToGptInput()}
-            onTransfer={() => void props.sendLatestGptContentToKin()}
+            onTransfer={props.sendLastGptToKinDraft}
             onReset={props.resetGptForCurrentKin}
           />
         </div>

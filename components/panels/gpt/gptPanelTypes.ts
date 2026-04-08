@@ -1,7 +1,11 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { MemorySettings } from "@/lib/memory";
-import type { Message } from "@/types/chat";
-import type { TaskDraft } from "@/types/task";
+import type { Message, MultipartAssembly } from "@/types/chat";
+import type { SearchContext, TaskDraft } from "@/types/task";
+import type {
+  ApprovedIntentPhrase,
+  PendingIntentCandidate,
+} from "@/lib/taskIntent";
 import type {
   TaskRequirementProgress,
   TaskExecutionStatus,
@@ -18,6 +22,7 @@ export type ResponseMode = "strict" | "balanced" | "creative";
 export type UploadKind = "auto" | "text" | "image" | "pdf" | "mixed";
 export type IngestMode = "compact" | "detailed" | "max";
 export type ImageDetail = "simple" | "detailed" | "max";
+export type SearchReferenceMode = "summary_only" | "summary_with_raw_excerpt";
 export type PostIngestAction =
   | "inject_only"
   | "inject_and_prep"
@@ -127,6 +132,30 @@ export type GptPanelProps = {
   onChangeSimpleImageCharLimit: (value: number) => void;
   onChangePostIngestAction: (value: PostIngestAction) => void;
   onChangeFileReadPolicy: (value: FileReadPolicy) => void;
+  autoSearchReferenceEnabled: boolean;
+  searchReferenceMode: SearchReferenceMode;
+  searchReferenceCount: number;
+  searchHistoryLimit: number;
+  searchHistoryStorageMB: number;
+  searchReferenceEstimatedTokens: number;
+  onChangeAutoSearchReferenceEnabled: (value: boolean) => void;
+  onChangeSearchReferenceMode: (value: SearchReferenceMode) => void;
+  onChangeSearchReferenceCount: (value: number) => void;
+  onChangeSearchHistoryLimit: (value: number) => void;
+  onClearSearchHistory: () => void;
+  multipartAssemblies: MultipartAssembly[];
+  onLoadMultipartAssemblyToGptInput: (assemblyId: string) => void;
+  onDownloadMultipartAssembly: (assemblyId: string) => void;
+  pendingIntentCandidates: PendingIntentCandidate[];
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  onUpdateIntentCandidate: (
+    candidateId: string,
+    patch: Partial<PendingIntentCandidate>
+  ) => void;
+  onApproveIntentCandidate: (candidateId: string) => void;
+  onRejectIntentCandidate: (candidateId: string) => void;
+  lastSearchContext: SearchContext | null;
+  searchHistory: SearchContext[];
   pendingInjectionCurrentPart: number;
   pendingInjectionTotalParts: number;
   onSwitchPanel: () => void;
