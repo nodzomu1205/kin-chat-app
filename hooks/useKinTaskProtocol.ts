@@ -25,7 +25,7 @@ function createTaskId() {
 }
 
 export function useKinTaskProtocol() {
-  const [runtime, setRuntime] = useState<TaskRuntimeState>({
+  const createEmptyRuntime = (): TaskRuntimeState => ({
     currentTaskId: null,
     currentTaskTitle: "",
     currentTaskIntent: null,
@@ -38,6 +38,7 @@ export function useKinTaskProtocol() {
     completedSearches: [],
     protocolLog: [],
   });
+  const [runtime, setRuntime] = useState<TaskRuntimeState>(createEmptyRuntime);
 
   function createActionId() {
     return `A${String(Date.now()).slice(-6)}`;
@@ -157,6 +158,23 @@ export function useKinTaskProtocol() {
     });
   }
 
+  function setFinalizeReviewed(params: { accepted: boolean; summary?: string }) {
+    setRuntime((prev) => ({
+      ...prev,
+      latestSummary: params.summary || prev.latestSummary,
+      taskStatus: params.accepted ? "completed" : "running",
+      requirementProgress: prev.requirementProgress.map((item) =>
+        item.kind !== "finalize"
+          ? item
+          : {
+              ...item,
+              completedCount: params.accepted ? item.targetCount ?? 1 : 0,
+              status: params.accepted ? "done" : "in_progress",
+            }
+      ),
+    }));
+  }
+
   function ingestProtocolEvents(params: {
     text: string;
     direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system";
@@ -204,10 +222,10 @@ export function useKinTaskProtocol() {
         };
 
         const getRequirement = (
-          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request"
+          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request" | "library_reference"
         ) => next.requirementProgress.find((item) => item.kind === kind);
         const isOverLimit = (
-          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request"
+          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request" | "library_reference"
         ) => {
           const requirement = getRequirement(kind);
           if (!requirement || typeof requirement.targetCount !== "number") return false;
@@ -249,6 +267,25 @@ export function useKinTaskProtocol() {
             },
             ...next.completedSearches,
           ].slice(0, 20);
+          continue;
+        }
+
+        if (
+          event.type === "library_index_request" ||
+          event.type === "library_item_request"
+        ) {
+          if (isOverLimit("library_reference")) continue;
+          next.requirementProgress = markRequirementProgress(
+            next.requirementProgress,
+            "library_reference"
+          );
+          continue;
+        }
+
+        if (
+          event.type === "library_index_response" ||
+          event.type === "library_item_response"
+        ) {
           continue;
         }
 
@@ -297,6 +334,12 @@ export function useKinTaskProtocol() {
         }
 
         if (event.type === "task_done") {
+          if (
+            typeof event.partIndex === "number" &&
+            typeof event.totalParts === "number"
+          ) {
+            continue;
+          }
           next.requirementProgress = next.requirementProgress.map((item) =>
             item.kind === "finalize"
               ? {
@@ -341,6 +384,10 @@ export function useKinTaskProtocol() {
     return buildWaitingAckBlock(request);
   }
 
+  function resetRuntime() {
+    setRuntime(createEmptyRuntime());
+  }
+
   const progressView = useMemo(() => {
     return {
       taskId: runtime.currentTaskId,
@@ -359,8 +406,10 @@ export function useKinTaskProtocol() {
     startTask,
     addPendingRequest,
     answerPendingRequest,
+    setFinalizeReviewed,
     ingestProtocolEvents,
     prepareTaskSyncMessage,
     prepareWaitingAckMessage,
+    resetRuntime,
   };
 }

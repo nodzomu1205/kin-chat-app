@@ -31,6 +31,20 @@ function buildRuleLines(intent: TaskIntent): string[] {
     );
   }
 
+  if (intent.workflow?.allowLibraryReference) {
+    lines.push("- Use <<SYS_LIBRARY_INDEX_REQUEST>> when you want GPT to provide a compact library list.");
+    lines.push(
+      "- GPT should answer <<SYS_LIBRARY_INDEX_REQUEST>> with <<SYS_LIBRARY_INDEX_RESPONSE>> using the same TASK_ID and ACTION_ID."
+    );
+    lines.push("- Use <<SYS_LIBRARY_ITEM_REQUEST>> when you want GPT to provide one specific library item.");
+    lines.push(
+      "- GPT should answer <<SYS_LIBRARY_ITEM_REQUEST>> with <<SYS_LIBRARY_ITEM_RESPONSE>> using the same TASK_ID and ACTION_ID."
+    );
+    lines.push(
+      "- Both library index requests and library item requests consume the same library-reference allowance for the task."
+    );
+  }
+
   lines.push("- Use <<SYS_TASK_DONE>> only when completion criteria are satisfied.");
   lines.push(
     "- If waiting for a user reply, say so clearly, but continue any other parallelizable work."
@@ -119,6 +133,38 @@ RAW_RESULT_ID: RAW-${taskId}-S002-001
 <<END_SYS_SEARCH_RESPONSE>>`);
   }
 
+  if (intent.workflow?.allowLibraryReference) {
+    blocks.push(`<<SYS_LIBRARY_INDEX_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: L001
+BODY: Send a compact library list with ITEM_ID, TYPE, TITLE, and SHORT_SUMMARY.
+<<END_SYS_LIBRARY_INDEX_REQUEST>>`);
+
+    blocks.push(`<<SYS_LIBRARY_INDEX_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: L001
+BODY:
+- ITEM_ID: LIB-001 | TYPE: search | TITLE: Example search result | SHORT_SUMMARY: Short summary here.
+- ITEM_ID: LIB-002 | TYPE: kin_created | TITLE: Example Kin document | SHORT_SUMMARY: Short summary here.
+<<END_SYS_LIBRARY_INDEX_RESPONSE>>`);
+
+    blocks.push(`<<SYS_LIBRARY_ITEM_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: L002
+ITEM_ID: LIB-002
+BODY: Send the requested library item in the configured detail level.
+<<END_SYS_LIBRARY_ITEM_REQUEST>>`);
+
+    blocks.push(`<<SYS_LIBRARY_ITEM_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: L002
+ITEM_ID: LIB-002
+OUTPUT_MODE: summary | summary_plus_raw
+SUMMARY: Short item digest here.
+RAW_EXCERPT: Key item excerpt here.
+<<END_SYS_LIBRARY_ITEM_RESPONSE>>`);
+  }
+
   blocks.push(`<<SYS_TASK_DONE>>
 TASK_ID: ${taskId}
 STATUS: DONE
@@ -195,6 +241,19 @@ function buildRequiredWorkflow(intent: TaskIntent): string[] {
     }
   }
 
+  if ((intent.workflow?.libraryReferenceCount ?? 0) > 0) {
+    const libraryRule = intent.workflow?.libraryReferenceCountRule ?? "exact";
+    if (libraryRule !== "up_to") {
+      lines.push(
+        `- ${formatCountInstruction(
+          "Use library reference support",
+          intent.workflow!.libraryReferenceCount!,
+          libraryRule
+        )}`
+      );
+    }
+  }
+
   lines.push("- Report progress with <<SYS_TASK_PROGRESS>> when the task state changes.");
 
   return lines;
@@ -226,6 +285,18 @@ function buildOptionalWorkflow(intent: TaskIntent): string[] {
       lines.push(`- You may request web search support around ${count} time(s).`);
     } else if (count === 0) {
       lines.push("- You may request web search support if the task needs outside facts.");
+    }
+  }
+
+  if (intent.workflow?.allowLibraryReference) {
+    const count = intent.workflow?.libraryReferenceCount ?? 0;
+    const rule = intent.workflow?.libraryReferenceCountRule ?? "exact";
+    if (count > 0 && rule === "up_to") {
+      lines.push(`- You may use library reference support up to ${count} time(s).`);
+    } else if (count > 0 && rule === "around") {
+      lines.push(`- You may use library reference support around ${count} time(s).`);
+    } else if (count === 0) {
+      lines.push("- You may use library reference support when the task needs stored context.");
     }
   }
 

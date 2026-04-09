@@ -78,6 +78,20 @@ export function buildInitialRequirementProgress(
     });
   }
 
+  const libraryReferenceCount = intent.workflow?.libraryReferenceCount ?? 0;
+  if (intent.workflow?.allowLibraryReference || libraryReferenceCount > 0) {
+    const libraryRule = intent.workflow?.libraryReferenceCountRule ?? "exact";
+    items.push({
+      id: "library_reference",
+      label: formatCountLabel("ライブラリ参照", libraryReferenceCount || 1, libraryRule),
+      category: libraryRule === "up_to" ? "optional" : "required",
+      kind: "library_reference",
+      targetCount: libraryReferenceCount || 1,
+      completedCount: 0,
+      status: "not_started",
+    });
+  }
+
   items.push({
     id: "finalize",
     label: "最終成果物を提出",
@@ -94,7 +108,9 @@ export function buildInitialRequirementProgress(
 export function toUserFacingRequests(
   pendingRequests: PendingExternalRequest[]
 ): UserFacingTaskRequest[] {
-  return pendingRequests.map((r) => ({
+  return pendingRequests
+    .filter((r) => r.status === "pending")
+    .map((r) => ({
     requestId: r.id,
     taskId: r.taskId,
     actionId: r.actionId,

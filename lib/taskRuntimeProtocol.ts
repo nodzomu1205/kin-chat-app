@@ -20,6 +20,14 @@ function normalizeEventType(raw: string): TaskProtocolEvent["type"] | null {
       return "search_request";
     case "SEARCH_RESPONSE":
       return "search_response";
+    case "LIBRARY_INDEX_REQUEST":
+      return "library_index_request";
+    case "LIBRARY_INDEX_RESPONSE":
+      return "library_index_response";
+    case "LIBRARY_ITEM_REQUEST":
+      return "library_item_request";
+    case "LIBRARY_ITEM_RESPONSE":
+      return "library_item_response";
     case "USER_QUESTION":
       return "user_question";
     case "MATERIAL_REQUEST":
@@ -74,6 +82,16 @@ function parseSearchOutputMode(value: string | undefined) {
   return undefined;
 }
 
+function parsePart(value: string | undefined) {
+  if (!value) return {};
+  const match = value.match(/(\d+)\s*\/\s*(\d+)/);
+  if (!match) return {};
+  return {
+    partIndex: Number(match[1]),
+    totalParts: Number(match[2]),
+  };
+}
+
 export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
   if (!text.trim()) return [];
 
@@ -87,6 +105,7 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
     if (!blockType) continue;
 
     const fields = parseBlockFields(match[2] ?? "");
+    const parsedPart = parsePart(fields.PART);
     const body =
       fields.BODY || fields.SEARCH_GOAL || fields.SUMMARY || "";
 
@@ -101,6 +120,9 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
       query: fields.QUERY || undefined,
       outputMode: parseSearchOutputMode(fields.OUTPUT_MODE),
       rawResultId: fields.RAW_RESULT_ID || undefined,
+      partIndex: parsedPart.partIndex,
+      totalParts: parsedPart.totalParts,
+      characters: fields.CHARACTERS ? Number(fields.CHARACTERS) || undefined : undefined,
     });
   }
 

@@ -27,8 +27,11 @@ export type TaskIntent = {
     askUserCountRule?: TaskCountRule;
     searchRequestCount?: number;
     searchRequestCountRule?: TaskCountRule;
+    libraryReferenceCount?: number;
+    libraryReferenceCountRule?: TaskCountRule;
     allowMaterialRequest?: boolean;
     allowSearchRequest?: boolean;
+    allowLibraryReference?: boolean;
     finalizationPolicy?:
       | "auto_when_ready"
       | "wait_for_user_confirm"
@@ -61,6 +64,7 @@ export type TaskRequirementProgress = {
     | "ask_user"
     | "request_material"
     | "search_request"
+    | "library_reference"
     | "finalize";
   targetCount?: number;
   completedCount?: number;
@@ -94,6 +98,10 @@ export type TaskProtocolEventType =
   | "gpt_response"
   | "search_request"
   | "search_response"
+  | "library_index_request"
+  | "library_index_response"
+  | "library_item_request"
+  | "library_item_response"
   | "user_question"
   | "material_request"
   | "task_done"
@@ -110,6 +118,9 @@ export type TaskProtocolEvent = {
   query?: string;
   outputMode?: SearchResultMode;
   rawResultId?: string;
+  partIndex?: number;
+  totalParts?: number;
+  characters?: number;
 };
 
 export type TaskRuntimeState = {

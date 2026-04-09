@@ -12,6 +12,7 @@ export type IntentPhraseKind =
   | "ask_gpt"
   | "ask_user"
   | "search_request"
+  | "library_reference"
   | "char_limit";
 
 export type ApprovedIntentPhrase = {
@@ -63,20 +64,50 @@ function detectRuleFromClause(clause: string, fallback: TaskCountRule = "exact")
   return fallback;
 }
 
-function extractCountFromClause(clause: string): number | undefined {
-  const match = clause.match(/(\d+)\s*回/);
-  if (!match?.[1]) return undefined;
-  const parsed = Number(match[1]);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
+function extractCountInfoFromClause(
+  clause: string,
+  kind: Exclude<IntentPhraseKind, "char_limit">
+): ParsedRuleAndValue {
+  const normalized = clause.replace(/[０-９]/g, (digit) =>
+    String.fromCharCode(digit.charCodeAt(0) - 0xfee0)
+  );
 
+  const keywordPatterns =
+    kind === "ask_gpt"
+      ? [
+          /GPT(?:との?|へ|に対して)?(?:質問|お願い|依頼|リクエスト|相談|壁打ち)[^\d]{0,8}(\d+)\s*回/i,
+          /(\d+)\s*回[^。\n]{0,24}GPT(?:との?|へ|に対して)?(?:質問|お願い|依頼|リクエスト|相談|壁打ち)/i,
+        ]
+      : kind === "ask_user"
+        ? [
+            /(?:ユーザー|user)(?:への?|に対して)?(?:質問|確認)[^\d]{0,8}(\d+)\s*回/i,
+            /(\d+)\s*回[^。\n]{0,24}(?:ユーザー|user)(?:への?|に対して)?(?:質問|確認)/i,
+          ]
+        : [
+            /(?:検索|search|google)(?:要求|依頼|リクエスト)?[^\d]{0,8}(\d+)\s*回/i,
+            /(\d+)\s*回[^。\n]{0,24}(?:検索|search|google)(?:要求|依頼|リクエスト)?/i,
+          ];
+
+  for (const pattern of keywordPatterns) {
+    const match = normalized.match(pattern);
+    if (!match?.[1]) continue;
+    const count = Number(match[1]);
+    if (!Number.isFinite(count)) continue;
+    return {
+      count,
+      rule: detectRuleFromClause(match[0], "exact"),
+    };
+  }
+
+  return {};
+}
 function findMatchingClause(text: string, kind: IntentPhraseKind): string | null {
   const clauses = splitClauses(text);
   const matcher =
     kind === "ask_gpt"
       ? (clause: string) =>
           /gpt/i.test(clause) &&
-          /(質問|お願い|依頼|リクエスト|聞いて|聞く|照会|問い合わせ)/.test(clause)
+          /(質問|お願い|依頼|リクエスト|聞いて|聞く|照会|問い合わせ|相談|相談して|相談しながら|壁打ち)/.test(clause)
       : kind === "ask_user"
         ? (clause: string) =>
             /(ユーザー|利用者|user)/i.test(clause) &&
@@ -93,12 +124,7 @@ function findMatchingClause(text: string, kind: IntentPhraseKind): string | null
 function parseCountClause(text: string, kind: Exclude<IntentPhraseKind, "char_limit">): ParsedRuleAndValue {
   const clause = findMatchingClause(text, kind);
   if (!clause) return {};
-  const count = extractCountFromClause(clause);
-  if (!count) return {};
-  return {
-    count,
-    rule: detectRuleFromClause(clause, "exact"),
-  };
+  return extractCountInfoFromClause(clause, kind);
 }
 
 function detectCharLimit(text: string): { value?: number; rule?: TaskCountRule; phrase?: string } {
@@ -200,12 +226,97 @@ function detectConstraints(text: string): string[] {
   return constraints;
 }
 
+function normalizeFullWidthDigits(input: string) {
+  return input.replace(/[０-９]/g, (digit) =>
+    String.fromCharCode(digit.charCodeAt(0) - 0xfee0)
+  );
+}
+
+function detectDirectCountOverride(
+  text: string,
+  kind: "ask_gpt" | "ask_user" | "search_request"
+): ParsedRuleAndValue {
+  const normalized = normalizeFullWidthDigits(text);
+  const patterns =
+    kind === "ask_gpt"
+      ? [
+          /GPT(?:(?:へ|への|との?|に対して))?(?:質問|お願い|依頼|リクエスト|相談|壁打ち)[^\d]{0,12}(\d+)\s*回([^\n。]*)/i,
+          /(\d+)\s*回([^\n。]{0,24})GPT(?:(?:へ|への|との?|に対して))?(?:質問|お願い|依頼|リクエスト|相談|壁打ち)/i,
+        ]
+      : kind === "ask_user"
+        ? [
+            /(?:ユーザー|user)(?:(?:へ|への|との?|に対して))?(?:質問|確認)[^\d]{0,12}(\d+)\s*回([^\n。]*)/i,
+            /(\d+)\s*回([^\n。]{0,24})(?:ユーザー|user)(?:(?:へ|への|との?|に対して))?(?:質問|確認)/i,
+          ]
+        : [
+            /(?:検索|search|google)(?:要求|依頼|リクエスト)?[^\d]{0,12}(\d+)\s*回([^\n。]*)/i,
+            /(\d+)\s*回([^\n。]{0,24})(?:検索|search|google)(?:要求|依頼|リクエスト)?/i,
+          ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match?.[1]) continue;
+    const count = Number(match[1]);
+    if (!Number.isFinite(count)) continue;
+    const context = [match[0], match[2] || ""].join(" ").trim();
+    return {
+      count,
+      rule: detectRuleFromClause(context, "exact"),
+    };
+  }
+
+  return {};
+}
+
+function applyDirectCountOverrides(intent: TaskIntent, text: string): TaskIntent {
+  const next: TaskIntent = {
+    ...intent,
+    output: { ...intent.output },
+    workflow: { ...intent.workflow },
+    constraints: [...(intent.constraints || [])],
+  };
+
+  const askGpt = detectDirectCountOverride(text, "ask_gpt");
+  if (askGpt.count) {
+    next.workflow!.askGptCount = askGpt.count;
+    next.workflow!.askGptCountRule = askGpt.rule || "exact";
+  }
+
+  const askUser = detectDirectCountOverride(text, "ask_user");
+  if (askUser.count) {
+    next.workflow!.askUserCount = askUser.count;
+    next.workflow!.askUserCountRule = askUser.rule || "exact";
+  }
+
+  const search = detectDirectCountOverride(text, "search_request");
+  if (search.count) {
+    next.workflow!.searchRequestCount = search.count;
+    next.workflow!.searchRequestCountRule = search.rule || "exact";
+    next.workflow!.allowSearchRequest = true;
+  }
+
+  const normalized = normalizeFullWidthDigits(text);
+  const libraryMatch =
+    normalized.match(/ライブラリ(?:参照|一覧|リスト|書類|データ)[^\d]{0,12}(\d+)\s*回/i) ||
+    normalized.match(/(\d+)\s*回[^\n。]{0,24}ライブラリ(?:参照|一覧|リスト|書類|データ)/i);
+  if (libraryMatch?.[1]) {
+    next.workflow!.libraryReferenceCount = Number(libraryMatch[1]);
+    next.workflow!.libraryReferenceCountRule = detectRuleFromClause(libraryMatch[0], "exact");
+    next.workflow!.allowLibraryReference = true;
+  }
+
+  return next;
+}
 function buildBaseTaskIntent(text: string): TaskIntent {
   const askGpt = parseCountClause(text, "ask_gpt");
   const askUser = parseCountClause(text, "ask_user");
   const searchRequest = parseCountClause(text, "search_request");
+  const normalized = normalizeFullWidthDigits(text);
+  const libraryMatch =
+    normalized.match(/ライブラリ(?:参照|一覧|リスト|書類|データ)[^\d]{0,12}(\d+)\s*回/i) ||
+    normalized.match(/(\d+)\s*回[^\n。]{0,24}ライブラリ(?:参照|一覧|リスト|書類|データ)/i);
 
-  return {
+  const baseIntent: TaskIntent = {
     mode: "task",
     goal: detectGoal(text),
     output: {
@@ -228,6 +339,22 @@ function buildBaseTaskIntent(text: string): TaskIntent {
     constraints: detectConstraints(text),
     entities: detectEntities(text),
   };
+
+  if (libraryMatch?.[1]) {
+    baseIntent.workflow = {
+      ...baseIntent.workflow,
+      libraryReferenceCount: Number(libraryMatch[1]),
+      libraryReferenceCountRule: detectRuleFromClause(libraryMatch[0], "exact"),
+      allowLibraryReference: true,
+    };
+  } else if (/(ライブラリ|library)/i.test(text)) {
+    baseIntent.workflow = {
+      ...baseIntent.workflow,
+      allowLibraryReference: true,
+    };
+  }
+
+  return applyDirectCountOverrides(baseIntent, text);
 }
 
 function applyApprovedIntentPhrases(
@@ -263,6 +390,12 @@ function applyApprovedIntentPhrases(
       next.workflow!.allowSearchRequest = true;
     }
 
+    if (phrase.kind === "library_reference" && phrase.count) {
+      next.workflow!.libraryReferenceCount = phrase.count;
+      next.workflow!.libraryReferenceCountRule = phrase.rule || "exact";
+      next.workflow!.allowLibraryReference = true;
+    }
+
     if (phrase.kind === "char_limit" && phrase.charLimit) {
       next.constraints = (next.constraints || []).filter(
         (item) => !/Japanese characters/i.test(item)
@@ -275,7 +408,9 @@ function applyApprovedIntentPhrases(
 }
 
 function shouldFallbackToLlm(text: string, intent: TaskIntent) {
-  const mentionsAskGpt = /gpt/i.test(text) && /(質問|お願い|依頼|リクエスト|聞いて|聞く)/.test(text);
+  const mentionsAskGpt =
+    /gpt/i.test(text) &&
+    /(質問|お願い|依頼|リクエスト|聞いて|聞く|相談|相談して|相談しながら|壁打ち)/.test(text);
   const mentionsAskUser = /(ユーザー|利用者|user)/i.test(text) && /(質問|確認|聞いて|聞く)/.test(text);
   const mentionsSearch = /(検索|サーチ|search|google)/i.test(text);
   const mentionsCharLimit = /\d{3,5}\s*文字/.test(text);
@@ -325,12 +460,14 @@ function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
     '  "askUserCountRule": "exact" | "at_least" | "up_to" | "around" | null,',
     '  "searchRequestCount": number | null,',
     '  "searchRequestCountRule": "exact" | "at_least" | "up_to" | "around" | null,',
+    '  "libraryReferenceCount": number | null,',
+    '  "libraryReferenceCountRule": "exact" | "at_least" | "up_to" | "around" | null,',
     '  "charLimit": number | null,',
     '  "charLimitRule": "exact" | "at_least" | "up_to" | "around" | null,',
     '  "candidates": [',
     '    {',
     '      "phrase": string,',
-    '      "kind": "ask_gpt" | "ask_user" | "search_request" | "char_limit",',
+    '      "kind": "ask_gpt" | "ask_user" | "search_request" | "library_reference" | "char_limit",',
     '      "count": number | null,',
     '      "rule": "exact" | "at_least" | "up_to" | "around" | null,',
     '      "charLimit": number | null',
@@ -343,6 +480,7 @@ function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
     `BASELINE_ASK_GPT_COUNT: ${baseline.workflow?.askGptCount ?? 0}`,
     `BASELINE_ASK_USER_COUNT: ${baseline.workflow?.askUserCount ?? 0}`,
     `BASELINE_SEARCH_REQUEST_COUNT: ${baseline.workflow?.searchRequestCount ?? 0}`,
+    `BASELINE_LIBRARY_REFERENCE_COUNT: ${baseline.workflow?.libraryReferenceCount ?? 0}`,
     `BASELINE_HAS_CHAR_LIMIT: ${(baseline.constraints || []).some((item) => /Japanese characters/i.test(item)) ? "YES" : "NO"}`,
     "USER_TEXT_START",
     input,
@@ -372,6 +510,10 @@ function mergeFallbackIntent(base: TaskIntent, parsed: Record<string, unknown>):
     typeof parsed.searchRequestCount === "number" && parsed.searchRequestCount > 0
       ? parsed.searchRequestCount
       : null;
+  const libraryReferenceCount =
+    typeof parsed.libraryReferenceCount === "number" && parsed.libraryReferenceCount > 0
+      ? parsed.libraryReferenceCount
+      : null;
   const charLimit =
     typeof parsed.charLimit === "number" && parsed.charLimit > 0 ? parsed.charLimit : null;
 
@@ -387,6 +529,12 @@ function mergeFallbackIntent(base: TaskIntent, parsed: Record<string, unknown>):
     next.workflow!.searchRequestCount = searchRequestCount;
     next.workflow!.searchRequestCountRule = asRule(parsed.searchRequestCountRule) || "exact";
     next.workflow!.allowSearchRequest = true;
+  }
+  if ((next.workflow?.libraryReferenceCount ?? 0) === 0 && libraryReferenceCount) {
+    next.workflow!.libraryReferenceCount = libraryReferenceCount;
+    next.workflow!.libraryReferenceCountRule =
+      asRule(parsed.libraryReferenceCountRule) || "exact";
+    next.workflow!.allowLibraryReference = true;
   }
   if (charLimit) {
     next.constraints = (next.constraints || []).filter(
@@ -408,11 +556,12 @@ function buildPendingCandidates(
   for (const raw of parsed.candidates) {
     if (!raw || typeof raw !== "object") continue;
     const item = raw as Record<string, unknown>;
-    const kind =
-      item.kind === "ask_gpt" ||
-      item.kind === "ask_user" ||
-      item.kind === "search_request" ||
-      item.kind === "char_limit"
+      const kind =
+        item.kind === "ask_gpt" ||
+        item.kind === "ask_user" ||
+        item.kind === "search_request" ||
+        item.kind === "library_reference" ||
+        item.kind === "char_limit"
         ? item.kind
         : null;
     const phrase = typeof item.phrase === "string" ? item.phrase.trim() : "";
@@ -437,13 +586,86 @@ function buildPendingCandidates(
   return candidates;
 }
 
+function applySafeCountOverrides(intent: TaskIntent, text: string): TaskIntent {
+  const normalized = text.replace(/[０-９]/g, (digit) =>
+    String.fromCharCode(digit.charCodeAt(0) - 0xfee0)
+  );
+  const next: TaskIntent = {
+    ...intent,
+    output: { ...intent.output },
+    workflow: { ...intent.workflow },
+    constraints: [...(intent.constraints || [])],
+  };
+
+  const askGptMatch =
+    normalized.match(/GPTへの(?:お願い|依頼|リクエスト|相談)[^\d]{0,8}(\d+)\s*回([^\n。]*)/i) ||
+    normalized.match(/GPTへ(?:の)?(?:お願い|依頼|リクエスト|相談)[^\d]{0,8}(\d+)\s*回([^\n。]*)/i) ||
+    normalized.match(/(\d+)\s*回([^\n。]{0,24})GPTへの(?:お願い|依頼|リクエスト|相談)/i) ||
+    normalized.match(/(\d+)\s*回([^\n。]{0,24})GPTへ(?:の)?(?:お願い|依頼|リクエスト|相談)/i);
+  if (askGptMatch?.[1]) {
+    next.workflow!.askGptCount = Number(askGptMatch[1]);
+    next.workflow!.askGptCountRule = detectRuleFromClause(askGptMatch[0], "exact");
+  }
+
+  const askUserMatch =
+    normalized.match(/ユーザーへの(?:質問|確認)[^\d]{0,8}(\d+)\s*回([^\n。]*)/i) ||
+    normalized.match(/(\d+)\s*回([^\n。]{0,24})ユーザーへの(?:質問|確認)/i);
+  if (askUserMatch?.[1]) {
+    next.workflow!.askUserCount = Number(askUserMatch[1]);
+    next.workflow!.askUserCountRule = detectRuleFromClause(askUserMatch[0], "exact");
+  }
+
+  const searchMatch =
+    normalized.match(/検索[^\d]{0,8}(\d+)\s*回([^\n。]*)/i) ||
+    normalized.match(/(\d+)\s*回([^\n。]{0,24})検索/i);
+  if (searchMatch?.[1]) {
+    next.workflow!.searchRequestCount = Number(searchMatch[1]);
+    next.workflow!.searchRequestCountRule = detectRuleFromClause(searchMatch[0], "exact");
+    next.workflow!.allowSearchRequest = true;
+  }
+
+  const libraryMatch =
+    normalized.match(/(?:ライブラリ|ライブライ|library)[^\d]{0,12}(\d+)\s*回[^\n。]*/i) ||
+    normalized.match(/(\d+)\s*回[^\n。]{0,24}(?:ライブラリ|ライブライ|library)/i);
+  if (libraryMatch?.[1]) {
+    next.workflow!.libraryReferenceCount = Number(libraryMatch[1]);
+    next.workflow!.libraryReferenceCountRule = detectRuleFromClause(libraryMatch[0], "exact");
+    next.workflow!.allowLibraryReference = true;
+  } else if (/(?:ライブラリ|ライブライ|library)/i.test(normalized)) {
+    next.workflow!.allowLibraryReference = true;
+  }
+
+  return next;
+}
+
+function shouldFallbackToLlmSafe(text: string, intent: TaskIntent) {
+  const mentionsAskGpt =
+    /gpt/i.test(text) &&
+    /(お願い|相談|依頼|質問|request|ask|consult)/i.test(text);
+  const mentionsAskUser =
+    /(?:ユーザー|user)/i.test(text) &&
+    /(質問|確認|ask|question)/i.test(text);
+  const mentionsSearch = /(?:検索|search|google)/i.test(text);
+  const mentionsLibrary = /(?:ライブラリ|ライブライ|library)/i.test(text);
+  const mentionsCharLimit = /(?:\d{3,5}\s*文字|\d{3,5}\s*chars?)/i.test(text);
+
+  if (mentionsAskGpt && (intent.workflow?.askGptCount ?? 0) === 0) return true;
+  if (mentionsAskUser && (intent.workflow?.askUserCount ?? 0) === 0) return true;
+  if (mentionsSearch && (intent.workflow?.searchRequestCount ?? 0) === 0) return true;
+  if (mentionsLibrary && (intent.workflow?.libraryReferenceCount ?? 0) === 0) return true;
+  if (mentionsCharLimit && !(intent.constraints || []).some((item) => /Japanese characters/i.test(item))) {
+    return true;
+  }
+  return false;
+}
+
 export function parseTaskIntentFromText(
   input: string,
   approvedPhrases: ApprovedIntentPhrase[] = []
 ): TaskIntent {
   const text = normalizeText(input);
   const base = buildBaseTaskIntent(text);
-  return applyApprovedIntentPhrases(base, text, approvedPhrases);
+  return applySafeCountOverrides(applyApprovedIntentPhrases(base, text, approvedPhrases), text);
 }
 
 export async function resolveTaskIntentWithFallback(args: {
@@ -460,7 +682,7 @@ export async function resolveTaskIntentWithFallback(args: {
   const approvedPhrases = args.approvedPhrases || [];
   const base = parseTaskIntentFromText(text, approvedPhrases);
 
-  if (!shouldFallbackToLlm(text, base)) {
+  if (!shouldFallbackToLlmSafe(text, base)) {
     return { intent: base, pendingCandidates: [], usedFallback: false, usage: null };
   }
 
@@ -494,7 +716,7 @@ export async function resolveTaskIntentWithFallback(args: {
     }
 
     return {
-      intent: mergeFallbackIntent(base, parsed),
+      intent: applySafeCountOverrides(mergeFallbackIntent(base, parsed), text),
       pendingCandidates: buildPendingCandidates(parsed, text),
       usedFallback: true,
       usage: data?.usage ?? null,

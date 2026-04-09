@@ -1,0 +1,336 @@
+import { useEffect, useMemo, useState } from "react";
+import type { SearchReferenceMode } from "@/components/panels/gpt/gptPanelTypes";
+import type { SearchContext } from "@/types/task";
+
+const LAST_SEARCH_CONTEXT_KEY = "last_search_context";
+const SEARCH_HISTORY_KEY = "search_history";
+const SEARCH_HISTORY_LIMIT_KEY = "search_history_limit";
+const SEARCH_REFERENCE_COUNT_KEY = "search_reference_count";
+const SEARCH_AUTO_REFERENCE_ENABLED_KEY = "search_auto_reference_enabled";
+const SEARCH_REFERENCE_MODE_KEY = "search_reference_mode";
+
+export const DEFAULT_SEARCH_HISTORY_LIMIT = 20;
+export const DEFAULT_SEARCH_REFERENCE_COUNT = 3;
+export const DEFAULT_SEARCH_REFERENCE_MODE: SearchReferenceMode = "summary_only";
+
+function estimateTokenCount(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return Math.max(1, Math.ceil(trimmed.length / 4));
+}
+
+export function useSearchHistory() {
+  const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(null);
+  const [searchHistory, setSearchHistory] = useState<SearchContext[]>([]);
+  const [selectedTaskSearchResultId, setSelectedTaskSearchResultId] = useState("");
+  const [searchHistoryLimit, setSearchHistoryLimit] = useState(DEFAULT_SEARCH_HISTORY_LIMIT);
+  const [searchReferenceCount, setSearchReferenceCount] = useState(
+    DEFAULT_SEARCH_REFERENCE_COUNT
+  );
+  const [autoSearchReferenceEnabled, setAutoSearchReferenceEnabled] = useState(true);
+  const [searchReferenceMode, setSearchReferenceMode] = useState<SearchReferenceMode>(
+    DEFAULT_SEARCH_REFERENCE_MODE
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const savedSearchContext = window.localStorage.getItem(LAST_SEARCH_CONTEXT_KEY);
+    const savedSearchHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+    const savedSearchHistoryLimit = window.localStorage.getItem(SEARCH_HISTORY_LIMIT_KEY);
+    const savedSearchReferenceCount = window.localStorage.getItem(SEARCH_REFERENCE_COUNT_KEY);
+    const savedAutoSearchReferenceEnabled = window.localStorage.getItem(
+      SEARCH_AUTO_REFERENCE_ENABLED_KEY
+    );
+    const savedSearchReferenceMode = window.localStorage.getItem(
+      SEARCH_REFERENCE_MODE_KEY
+    );
+
+    if (savedSearchHistoryLimit) {
+      const parsed = Number(savedSearchHistoryLimit);
+      if (Number.isFinite(parsed) && parsed > 0) setSearchHistoryLimit(parsed);
+    }
+    if (savedSearchReferenceCount) {
+      const parsed = Number(savedSearchReferenceCount);
+      if (Number.isFinite(parsed) && parsed > 0) setSearchReferenceCount(parsed);
+    }
+    if (savedAutoSearchReferenceEnabled) {
+      setAutoSearchReferenceEnabled(savedAutoSearchReferenceEnabled === "true");
+    }
+    if (
+      savedSearchReferenceMode === "summary_only" ||
+      savedSearchReferenceMode === "summary_with_raw_excerpt"
+    ) {
+      setSearchReferenceMode(savedSearchReferenceMode);
+    }
+    if (savedSearchContext) {
+      try {
+        const parsed = JSON.parse(savedSearchContext) as SearchContext;
+        if (parsed?.rawResultId && parsed?.query) setLastSearchContext(parsed);
+      } catch {}
+    }
+    if (savedSearchHistory) {
+      try {
+        const parsed = JSON.parse(savedSearchHistory) as SearchContext[];
+        if (Array.isArray(parsed)) {
+          setSearchHistory(
+            parsed
+              .filter((item) => item?.rawResultId && item?.query)
+              .slice(0, DEFAULT_SEARCH_HISTORY_LIMIT)
+          );
+        }
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_HISTORY_LIMIT_KEY, String(searchHistoryLimit));
+  }, [searchHistoryLimit]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_REFERENCE_COUNT_KEY, String(searchReferenceCount));
+  }, [searchReferenceCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      SEARCH_AUTO_REFERENCE_ENABLED_KEY,
+      String(autoSearchReferenceEnabled)
+    );
+  }, [autoSearchReferenceEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_REFERENCE_MODE_KEY, searchReferenceMode);
+  }, [searchReferenceMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (lastSearchContext) {
+      window.localStorage.setItem(
+        LAST_SEARCH_CONTEXT_KEY,
+        JSON.stringify(lastSearchContext)
+      );
+      return;
+    }
+    window.localStorage.removeItem(LAST_SEARCH_CONTEXT_KEY);
+  }, [lastSearchContext]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
+  }, [searchHistory]);
+
+  useEffect(() => {
+    setSearchHistory((prev) => prev.slice(0, searchHistoryLimit));
+  }, [searchHistoryLimit]);
+
+  useEffect(() => {
+    if (!lastSearchContext) return;
+    setSearchHistory((prev) => {
+      if (prev.some((item) => item.rawResultId === lastSearchContext.rawResultId)) {
+        return prev;
+      }
+      return [lastSearchContext, ...prev].slice(0, searchHistoryLimit);
+    });
+  }, [lastSearchContext, searchHistoryLimit]);
+
+  useEffect(() => {
+    if (!selectedTaskSearchResultId) return;
+    if (searchHistory.some((item) => item.rawResultId === selectedTaskSearchResultId)) return;
+    if (lastSearchContext?.rawResultId === selectedTaskSearchResultId) return;
+    setSelectedTaskSearchResultId("");
+  }, [lastSearchContext?.rawResultId, searchHistory, selectedTaskSearchResultId]);
+
+  const getTaskSearchContext = () =>
+    searchHistory.find((item) => item.rawResultId === selectedTaskSearchResultId) ||
+    (selectedTaskSearchResultId &&
+    lastSearchContext?.rawResultId === selectedTaskSearchResultId
+      ? lastSearchContext
+      : null) ||
+    searchHistory[0] ||
+    lastSearchContext ||
+    null;
+
+  const moveSearchHistoryItem = (rawResultId: string, direction: "up" | "down") => {
+    setSearchHistory((prev) => {
+      const index = prev.findIndex((item) => item.rawResultId === rawResultId);
+      if (index < 0) return prev;
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const buildRawResultId = (params: {
+    taskId?: string;
+    actionId?: string;
+    createdAt?: string;
+  }) => {
+    const taskId = params.taskId?.trim() || "no-task";
+    const actionId = params.actionId?.trim() || "A000";
+    const stamp = (params.createdAt || new Date().toISOString()).replace(/\D/g, "").slice(0, 14);
+    return `RAW-${taskId}-${actionId}-${stamp || Date.now()}`;
+  };
+
+  const recordSearchContext = (
+    context: Omit<SearchContext, "rawResultId" | "createdAt"> & {
+      rawResultId?: string;
+      createdAt?: string;
+    }
+  ) => {
+    const createdAt = context.createdAt || new Date().toISOString();
+    const nextContext: SearchContext = {
+      ...context,
+      rawResultId:
+        context.rawResultId ||
+        buildRawResultId({
+          taskId: context.taskId,
+          actionId: context.actionId,
+          createdAt,
+        }),
+      createdAt,
+    };
+
+    setLastSearchContext(nextContext);
+    setSearchHistory((prev) => {
+      const deduped = prev.filter((item) => item.rawResultId !== nextContext.rawResultId);
+      return [nextContext, ...deduped].slice(0, searchHistoryLimit);
+    });
+
+    return nextContext;
+  };
+
+  const clearSearchHistory = () => {
+    setLastSearchContext(null);
+    setSearchHistory([]);
+    setSelectedTaskSearchResultId("");
+  };
+
+  const deleteSearchHistoryItem = (rawResultId: string) => {
+    setSearchHistory((prev) => prev.filter((item) => item.rawResultId !== rawResultId));
+    setLastSearchContext((prev) => (prev?.rawResultId === rawResultId ? null : prev));
+    setSelectedTaskSearchResultId((prev) => (prev === rawResultId ? "" : prev));
+  };
+
+  const searchHistoryStorageMB = useMemo(() => {
+    try {
+      const bytes = new TextEncoder().encode(JSON.stringify(searchHistory)).length;
+      return bytes / (1024 * 1024);
+    } catch {
+      return 0;
+    }
+  }, [searchHistory]);
+
+  const getReferenceTargets = () => {
+    const historyPool =
+      searchHistory.length > 0
+        ? searchHistory
+        : lastSearchContext
+          ? [lastSearchContext]
+          : [];
+    return historyPool;
+  };
+
+  const buildSearchReferenceContext = () => {
+    if (!autoSearchReferenceEnabled || searchReferenceCount <= 0) return "";
+    const targets = getReferenceTargets().slice(0, searchReferenceCount);
+    if (targets.length === 0) return "";
+
+    const lines = [
+      "<<STORED_SEARCH_CONTEXT>>",
+      "Use the stored search context below as first-pass supporting evidence when the user's current message is related.",
+      "If the current message is clearly unrelated, ignore this block.",
+      "When related, prefer this stored search context before falling back to general knowledge.",
+      "Do not pretend the stored search context answers things it does not actually cover.",
+      "",
+    ];
+
+    targets.forEach((item, index) => {
+      lines.push(`[SEARCH ${index + 1}]`);
+      lines.push(`RAW_RESULT_ID: ${item.rawResultId}`);
+      lines.push(`QUERY: ${item.query}`);
+      if (item.summaryText?.trim()) {
+        lines.push(`SUMMARY: ${item.summaryText.trim()}`);
+      }
+      if (searchReferenceMode === "summary_with_raw_excerpt" && item.rawText?.trim()) {
+        lines.push(`RAW_EXCERPT: ${item.rawText.trim().slice(0, 900)}`);
+      }
+      if (item.sources?.length) {
+        lines.push("SOURCES:");
+        item.sources.slice(0, 3).forEach((source) => {
+          lines.push(`- ${source.title}${source.link ? ` | ${source.link}` : ""}`);
+        });
+      }
+      lines.push("");
+    });
+
+    lines.push("<<END_STORED_SEARCH_CONTEXT>>");
+    return lines.join("\n").trim();
+  };
+
+  const estimateSearchReferenceTokens = () => {
+    const targets = getReferenceTargets().slice(0, Math.max(1, searchReferenceCount));
+    if (targets.length === 0) return 0;
+
+    const text = targets
+      .map((item, index) => {
+        const parts = [
+          `[SEARCH ${index + 1}]`,
+          `RAW_RESULT_ID: ${item.rawResultId}`,
+          `QUERY: ${item.query}`,
+        ];
+
+        if (item.summaryText?.trim()) {
+          parts.push(`SUMMARY: ${item.summaryText.trim()}`);
+        }
+
+        if (searchReferenceMode === "summary_with_raw_excerpt" && item.rawText?.trim()) {
+          parts.push(`RAW_EXCERPT: ${item.rawText.trim().slice(0, 900)}`);
+        }
+
+        if (item.sources?.length) {
+          parts.push(
+            ...item.sources
+              .slice(0, 3)
+              .map((source) => `SOURCE: ${source.title}${source.link ? ` | ${source.link}` : ""}`)
+          );
+        }
+
+        return parts.join("\n");
+      })
+      .join("\n\n");
+
+    return estimateTokenCount(text);
+  };
+
+  return {
+    lastSearchContext,
+    setLastSearchContext,
+    searchHistory,
+    setSearchHistory,
+    selectedTaskSearchResultId,
+    setSelectedTaskSearchResultId,
+    searchHistoryLimit,
+    setSearchHistoryLimit,
+    searchReferenceCount,
+    setSearchReferenceCount,
+    autoSearchReferenceEnabled,
+    setAutoSearchReferenceEnabled,
+    searchReferenceMode,
+    setSearchReferenceMode,
+    getTaskSearchContext,
+    moveSearchHistoryItem,
+    recordSearchContext,
+    clearSearchHistory,
+    deleteSearchHistoryItem,
+    searchHistoryStorageMB,
+    buildSearchReferenceContext,
+    estimateSearchReferenceTokens,
+  };
+}

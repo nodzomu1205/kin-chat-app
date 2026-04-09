@@ -46,14 +46,11 @@ const tabButtonStyle = (active: boolean, isMobile: boolean): React.CSSProperties
   fontSize: isMobile ? 10 : 11,
   fontWeight: 800,
   padding: isMobile ? "0 7px" : "0 8px",
-  boxShadow: active ? "none" : "none",
   cursor: "pointer",
   whiteSpace: "nowrap",
   flexShrink: 0,
   lineHeight: 1,
   boxSizing: "border-box",
-  position: "relative",
-  top: 0,
 });
 
 const resetLike = (base: React.CSSProperties): React.CSSProperties => ({
@@ -107,10 +104,10 @@ function ActionRow({
           解説
         </button>
         <button type="button" style={resetLike(buttonReply)} onClick={() => onAction("reply_only")}>
-          返信案
+          返信のみ
         </button>
         <button type="button" style={resetLike(buttonPolish)} onClick={() => onAction("polish")}>
-          添削
+          整える
         </button>
         <button type="button" style={resetLike(buttonTransfer)} onClick={onTransfer}>
           Kinに送る
@@ -150,7 +147,7 @@ function ActionRow({
           レス取込
         </button>
         <button type="button" style={tint(buttonTask, "#86efac", "#f0fdf4", "#15803d")} onClick={onAttachSearchResult}>
-          検索追加
+          データ取込
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
           ↺
@@ -189,7 +186,7 @@ function ActionRow({
 
   return (
     <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "0 4px" }}>
-      ファイル取込は下の「挿入」エリアから実行できます。
+      ファイル取込は下の「注入」エリアから操作できます。
     </div>
   );
 }

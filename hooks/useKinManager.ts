@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import type { KinProfile } from "@/types/chat";
 
-type KinStatus = "idle" | "connected" | "error";
+export type KinDisplayStatus = "idle" | "connected" | "error";
+export type KinConnectionState = "idle" | "connected" | "error";
+export type KinSelectionState = "none" | "selected";
 
 const KIN_LIST_KEY = "kin_list";
 const CURRENT_KIN_KEY = "kin_current";
@@ -22,8 +24,17 @@ export function useKinManager() {
   const [kinNameInput, setKinNameInput] = useState("");
   const [kinList, setKinList] = useState<KinProfile[]>([]);
   const [currentKin, setCurrentKin] = useState<string | null>(null);
-  const [kinStatus, setKinStatus] = useState<KinStatus>("idle");
+  const [kinConnectionState, setKinConnectionState] =
+    useState<KinConnectionState>("idle");
   const [hydrated, setHydrated] = useState(false);
+
+  const kinSelectionState: KinSelectionState = currentKin ? "selected" : "none";
+  const kinStatus: KinDisplayStatus =
+    kinSelectionState === "none"
+      ? "idle"
+      : kinConnectionState === "error"
+        ? "error"
+        : "connected";
 
   useEffect(() => {
     const savedKinList = localStorage.getItem(KIN_LIST_KEY);
@@ -89,16 +100,16 @@ export function useKinManager() {
 
       if (hasSavedCurrentKin) {
         setCurrentKin(savedCurrentKin);
-        setKinStatus(savedStatus === "error" ? "error" : "connected");
+        setKinConnectionState(savedStatus === "error" ? "error" : "connected");
       } else if (savedStatus === "idle") {
         setCurrentKin(null);
-        setKinStatus("idle");
+        setKinConnectionState("idle");
       } else if (deduped.length > 0) {
         setCurrentKin(deduped[0].id);
-        setKinStatus("connected");
+        setKinConnectionState("connected");
       } else {
         setCurrentKin(null);
-        setKinStatus("idle");
+        setKinConnectionState("idle");
       }
     } catch {
       console.warn("kin_list parse failed");
@@ -125,8 +136,8 @@ export function useKinManager() {
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(KIN_STATUS_KEY, kinStatus);
-  }, [hydrated, kinStatus]);
+    localStorage.setItem(KIN_STATUS_KEY, kinConnectionState);
+  }, [hydrated, kinConnectionState]);
 
   const connectKin = () => {
     const trimmedId = kinIdInput.trim();
@@ -150,19 +161,19 @@ export function useKinManager() {
     });
 
     setCurrentKin(trimmedId);
-    setKinStatus("connected");
+    setKinConnectionState("connected");
     setKinIdInput("");
     setKinNameInput("");
   };
 
   const switchKin = (id: string) => {
     setCurrentKin(id);
-    setKinStatus("connected");
+    setKinConnectionState("connected");
   };
 
   const disconnectKin = () => {
     setCurrentKin(null);
-    setKinStatus("idle");
+    setKinConnectionState("idle");
   };
 
   const removeKin = (id: string) => {
@@ -173,7 +184,7 @@ export function useKinManager() {
 
     if (currentKin === id) {
       setCurrentKin(null);
-      setKinStatus("idle");
+      setKinConnectionState("idle");
     }
   };
 
@@ -194,7 +205,9 @@ export function useKinManager() {
     kinList,
     currentKin,
     kinStatus,
-    setKinStatus,
+    kinConnectionState,
+    setKinConnectionState,
+    kinSelectionState,
     connectKin,
     switchKin,
     disconnectKin,

@@ -32,6 +32,7 @@ type Props = {
   onChangeTaskTitle: (value: string) => void;
   onChangeTaskUserInstruction: (value: string) => void;
   onChangeTaskBody: (value: string) => void;
+  onResetTaskContext?: () => void;
   isMobile?: boolean;
 };
 
@@ -78,6 +79,7 @@ export default function GptTaskStatusDrawer({
   onChangeTaskTitle,
   onChangeTaskUserInstruction,
   onChangeTaskBody,
+  onResetTaskContext,
   isMobile = false,
 }: Props) {
   const [editPolicyOpen, setEditPolicyOpen] = useState(false);
@@ -143,7 +145,14 @@ export default function GptTaskStatusDrawer({
           }}
         >
           <div style={tokenLeftLabelStyle}>現在タスク</div>
-          <div style={tokenMetaStyle}>active: 1件</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={tokenMetaStyle}>active: 1件</div>
+            {onResetTaskContext ? (
+              <button type="button" onClick={onResetTaskContext} style={buttonStyle}>
+                Clear
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div

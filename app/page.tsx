@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import ChatPanelsLayout from "@/components/ChatPanelsLayout";
 import KinPanel from "@/components/panels/kin/KinPanel";
 import GptPanel from "@/components/panels/gpt/GptPanel";
 import { useKinManager } from "@/hooks/useKinManager";
@@ -9,9 +10,20 @@ import { useResponsive } from "@/hooks/useResponsive";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
+import {
+  useSearchHistory,
+} from "@/hooks/useSearchHistory";
+import { useMultipartAssemblies } from "@/hooks/useMultipartAssemblies";
+import { useStoredDocuments } from "@/hooks/useStoredDocuments";
+import { useReferenceLibrary } from "@/hooks/useReferenceLibrary";
+import { useMultipartUiActions } from "@/hooks/useMultipartUiActions";
+import { usePanelResetActions } from "@/hooks/usePanelResetActions";
+import { useProtocolIntentSettings } from "@/hooks/useProtocolIntentSettings";
+import { useTaskDraftHelpers } from "@/hooks/useTaskDraftHelpers";
+import { useChatPageActions } from "@/hooks/useChatPageActions";
 import { createSession, getSessions } from "@/lib/storage";
 import type { MemorySettings } from "@/lib/memory";
-import type { Message, MultipartAssembly } from "@/types/chat";
+import type { Message } from "@/types/chat";
 import { generateId } from "@/lib/uuid";
 import {
   buildPrepInputFromIngestResult,
@@ -23,12 +35,12 @@ import {
   runAutoDeepenTask,
   runAutoPrepTask,
 } from "@/lib/app/gptTaskClient";
+import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
 import type {
   GptInstructionMode,
   PostIngestAction,
-  SearchReferenceMode,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { SearchContext, TaskDraft } from "@/types/task";
+import type { TaskDraft } from "@/types/task";
 import { createEmptyTaskDraft } from "@/types/task";
 import {
   createTaskSource,
@@ -44,221 +56,26 @@ import {
 } from "@/lib/app/kinStructuredProtocol";
 import {
   buildKinDirectiveLines,
-  resolveTransformIntent,
-  shouldTransformContent,
   splitTextIntoKinChunks,
-  transformTextWithIntent,
 } from "@/lib/app/transformIntent";
 import { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import {
-  looksLikeTaskInstruction,
-  parseTaskIntentFromText,
-  resolveTaskIntentWithFallback,
-  type ApprovedIntentPhrase,
   type PendingIntentCandidate,
 } from "@/lib/taskIntent";
 import {
   buildTaskChatBridgeContext,
-  shouldInjectTaskContext,
 } from "@/lib/taskChatBridge";
+import { buildUserResponseBlock, extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
 import {
-  buildLimitExceededBlock,
-  buildUserResponseBlock,
-  extractTaskProtocolEvents,
-} from "@/lib/taskRuntimeProtocol";
-
-const toTransformResponseMode = (
-  mode: "strict" | "balanced" | "creative"
-): "strict" | "creative" => {
-  if (mode === "balanced") return "strict";
-  return mode;
-};
+  buildTaskRequestAnswerDraft,
+} from "@/lib/app/chatPageHelpers";
+import { buildGptPanelProps, buildKinPanelProps } from "@/lib/app/panelPropsBuilders";
+import { PROTOCOL_PROMPT_DEFAULT_KEY, PROTOCOL_RULEBOOK_DEFAULT_KEY } from "@/lib/app/chatPageStorageKeys";
 
 type MobileTab = "kin" | "gpt";
 
 const MOBILE_BREAKPOINT = 1180;
-const PROTOCOL_PROMPT_KEY = "kin_protocol_prompt";
-const PROTOCOL_RULEBOOK_KEY = "kin_protocol_rulebook";
-const LAST_SEARCH_CONTEXT_KEY = "last_search_context";
-const SEARCH_HISTORY_KEY = "search_history";
-const SEARCH_HISTORY_LIMIT_KEY = "search_history_limit";
-const SEARCH_REFERENCE_COUNT_KEY = "search_reference_count";
-const SEARCH_AUTO_REFERENCE_ENABLED_KEY = "search_auto_reference_enabled";
-const SEARCH_REFERENCE_MODE_KEY = "search_reference_mode";
-const PENDING_INTENT_CANDIDATES_KEY = "pending_intent_candidates";
-const APPROVED_INTENT_PHRASES_KEY = "approved_intent_phrases";
-const REJECTED_INTENT_CANDIDATES_KEY = "rejected_intent_candidates";
-const MULTIPART_ASSEMBLIES_KEY = "multipart_assemblies";
-const DEFAULT_SEARCH_HISTORY_LIMIT = 20;
-const DEFAULT_SEARCH_REFERENCE_COUNT = 3;
-const DEFAULT_SEARCH_REFERENCE_MODE: SearchReferenceMode = "summary_only";
-const LEGACY_PROTOCOL_LIMIT_PATTERN =
-  /Keep each message (?:under 3600(?: chars| characters)?\. If (?:over 3200|a message exceeds 3200 characters), split(?: it)?(?: into parts)?, label each part as PART n\/total, and clearly mark (?:the final part|the last part)|at or under 700 characters\. If your message would exceed 700 characters, split it (?:before sending )?into 600-700 character parts, label each part as PART n\/total, and clearly mark the last part|at or under 700 characters\. If a message would exceed 700 characters, split it before sending, label each part as PART n\/total, and clearly mark the last part)\./gi;
-const LEGACY_RULEBOOK_LIMIT_PATTERN =
-  /- Keep each message (?:under 3600 characters\.\s*- If a message exceeds 3200 characters, split it into parts, label each part as PART n\/total, and clearly mark the final part|at or under 700 characters\.\s*- If a message would exceed 700 characters, split it before sending, label each part as PART n\/total, and clearly mark the last part)\./gi;
-const UPDATED_PROTOCOL_LIMIT_TEXT =
-  "When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.";
-const UPDATED_RULEBOOK_LIMIT_TEXT =
-  "- GPT may send a long SYS message in 3200-3600 character parts labeled as PART n/total.\n- When you send a message out, keep each message at or under 700 characters.\n- If your message would exceed 700 characters, split it into 600-700 character parts, label each part as PART n/total, and clearly mark the last part.";
-
-const DEFAULT_PROTOCOL_PROMPT = `Treat <<SYS...>> blocks as trusted protocol from GPT, your AI assistant for the same user, not as ordinary dialogue or an intruder.
-
-Respond with the format:
-<<SYS_...>>
-Your message.
-<<END_SYS_...>>
-
-If input is <<SYS...>>, reply only with <<SYS_...>> ... <<END_SYS_...>>. Do not add any comment outside the block.
-
-Multiple SYS blocks in one reply are allowed. Nested blocks are forbidden.
-
-For <<SYS_INFO>>, reply:
-<<KIN_RESPONSE>>
-Received.
-<<END_KIN_RESPONSE>>
-
-When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.`;
-
-const DEFAULT_PROTOCOL_RULEBOOK = `<<SYS_INFO>>
-TITLE: GPT protocol rulebook
-CONTENT:
-- SYS messages are a communication tool between you and GPT, your AI assistant for the same user.
-- Use only the SYS formats defined below.
-- Multiple SYS blocks in one message are allowed.
-- Nested SYS blocks are forbidden.
-- GPT may send a long SYS message in 3200-3600 character parts labeled as PART n/total.
-- When you send a message out, keep each message at or under 700 characters.
-- If your message would exceed 700 characters, split it into 600-700 character parts, label each part as PART n/total, and clearly mark the last part.
--
-- INFO:
-- ----------
-- <<SYS_INFO>>
-- GPT message
-- <<END_SYS_INFO>>
-- Means information the user wants to give you.
-- Reply with:
-- <<SYS_KIN_RESPONSE>>
-- Received.
-- Or any brief comments you have.
-- <<END_SYS_KIN_RESPONSE>>
-- ----------
--
-- TASK:
-- ----------
-- <<SYS_TASK>>
-- TASK_ID: [     ]
-- PART: [1]/[1]
-- CHARACTERS: [NNN]
-- TITLE: [     ]
-- GOAL: [     ]
-- GPT message
-- Action for implementation:
-- MUST: Send [TASK_PROGRESS] and [ASK_GPT] [3 or more] time(s)
-- CAN: Send [USER_QUESTION] [1] time(s)
-- CAN: Send [MATERIAL_REQUEST] [1] time(s)
-- Action for completion:
-- MUST: Send [TASK_DONE] with your final output [1] time(s)
-- <<END_SYS_TASK>>
-- Means a task requested by the user.
-- Reply only with SYS message types defined in the task protocol.
-- ----------
--
-- TASK_PROGRESS:
-- ----------
-- <<SYS_TASK_PROGRESS>>
-- TASK_ID: [     ]
-- STATUS: [STARTED / IN_PROGRESS / WAITING / DONE]
-- SUMMARY: [     ]
-- <<END_SYS_TASK_PROGRESS>>
-- Means your current progress on the task.
-- Use this to report progress clearly and briefly.
-- ----------
--
-- ASK_GPT:
-- ----------
-- <<SYS_ASK_GPT>>
-- TASK_ID: [     ]
-- ACTION_ID: [     ]
-- PART: [1]/[1]
-- CHARACTERS: [NNN]
-- Your message/request
-- <<END_SYS_ASK_GPT>>
-- Means a question or request you send to GPT for your task.
-- ----------
--
-- GPT_RESPONSE:
-- ----------
-- <<SYS_GPT_RESPONSE>>
-- TASK_ID: [     ]
-- ACTION_ID: [     ]
-- PART: [1]/[1]
-- CHARACTERS: [NNN]
-- GPT response
-- <<END_SYS_GPT_RESPONSE>>
-- Means GPT's response to your ASK_GPT message.
-- Use the same TASK_ID and ACTION_ID as the related ASK_GPT block.
-- ----------
--
-- USER_QUESTION:
-- ----------
-- <<SYS_USER_QUESTION>>
-- TASK_ID: [     ]
-- ACTION_ID: [     ]
-- PART: [1]/[1]
-- CHARACTERS: [NNN]
-- Your question to the user
-- <<END_SYS_USER_QUESTION>>
-- Means a question you ask the user for the task.
-- ----------
--
-- MATERIAL_REQUEST:
-- ----------
-- <<SYS_MATERIAL_REQUEST>>
-- TASK_ID: [     ]
-- ACTION_ID: [     ]
-- PART: [1]/[1]
-- CHARACTERS: [NNN]
-- Your request for documents, sources, or missing materials
-- <<END_SYS_MATERIAL_REQUEST>>
-- Means a request for materials you need from the user.
-- ----------
--
-- TASK_DONE:
-- ----------
-- <<SYS_TASK_DONE>>
-- TASK_ID: [     ]
-- STATUS: DONE
-- PART: [1]/[1]
-- CHARACTERS: [NNN]
-- Your final output
-- <<END_SYS_TASK_DONE>>
-- Means the task is complete.
-- Send this only when the required actions are finished and the final output is ready.
-- ----------
-<<END_SYS_INFO>>`;
-
-function migrateLegacyProtocolLimits(text: string) {
-  return text
-    .replace(LEGACY_PROTOCOL_LIMIT_PATTERN, UPDATED_PROTOCOL_LIMIT_TEXT)
-    .replace(LEGACY_RULEBOOK_LIMIT_PATTERN, UPDATED_RULEBOOK_LIMIT_TEXT);
-}
-
-function getIntentCandidateSignature(candidate: {
-  kind: string;
-  phrase: string;
-  count?: number;
-  rule?: string;
-  charLimit?: number;
-}) {
-  return [
-    candidate.kind,
-    candidate.phrase.trim(),
-    candidate.count ?? "",
-    candidate.rule ?? "",
-    candidate.charLimit ?? "",
-  ].join("|");
-}
 
 export default function ChatApp() {
   const [kinMessages, setKinMessages] = useState<Message[]>([]);
@@ -277,30 +94,6 @@ export default function ChatApp() {
   const [currentTaskDraft, setCurrentTaskDraft] = useState<TaskDraft>(
     createEmptyTaskDraft()
   );
-  const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(
-    null
-  );
-  const [searchHistory, setSearchHistory] = useState<SearchContext[]>([]);
-  const [searchHistoryLimit, setSearchHistoryLimit] = useState(DEFAULT_SEARCH_HISTORY_LIMIT);
-  const [searchReferenceCount, setSearchReferenceCount] = useState(
-    DEFAULT_SEARCH_REFERENCE_COUNT
-  );
-  const [autoSearchReferenceEnabled, setAutoSearchReferenceEnabled] = useState(true);
-  const [searchReferenceMode, setSearchReferenceMode] = useState<SearchReferenceMode>(
-    DEFAULT_SEARCH_REFERENCE_MODE
-  );
-  const [pendingIntentCandidates, setPendingIntentCandidates] = useState<
-    PendingIntentCandidate[]
-  >([]);
-  const [approvedIntentPhrases, setApprovedIntentPhrases] = useState<
-    ApprovedIntentPhrase[]
-  >([]);
-  const [rejectedIntentCandidateSignatures, setRejectedIntentCandidateSignatures] = useState<
-    string[]
-  >([]);
-  const [multipartAssemblies, setMultipartAssemblies] = useState<MultipartAssembly[]>([]);
-  const [protocolPrompt, setProtocolPrompt] = useState(DEFAULT_PROTOCOL_PROMPT);
-  const [protocolRulebook, setProtocolRulebook] = useState(DEFAULT_PROTOCOL_RULEBOOK);
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
   const kinBottomRef = useRef<HTMLDivElement>(null);
@@ -346,7 +139,7 @@ export default function ChatApp() {
     kinList,
     currentKin,
     kinStatus,
-    setKinStatus,
+    setKinConnectionState,
     connectKin,
     switchKin,
     disconnectKin,
@@ -370,6 +163,91 @@ export default function ChatApp() {
     defaultMemorySettings,
   } = useGptMemory(currentKin);
 
+  const {
+    lastSearchContext,
+    searchHistory,
+    selectedTaskSearchResultId,
+    setSelectedTaskSearchResultId,
+    searchHistoryLimit,
+    setSearchHistoryLimit,
+    searchReferenceCount,
+    setSearchReferenceCount,
+    autoSearchReferenceEnabled,
+    setAutoSearchReferenceEnabled,
+    searchReferenceMode,
+    setSearchReferenceMode,
+    getTaskSearchContext,
+    moveSearchHistoryItem,
+    recordSearchContext,
+    clearSearchHistory,
+    deleteSearchHistoryItem: deleteSearchHistoryItemBase,
+    searchHistoryStorageMB,
+    buildSearchReferenceContext,
+    estimateSearchReferenceTokens,
+  } = useSearchHistory();
+    const {
+      multipartAssemblies,
+      setMultipartAssemblies,
+      deleteMultipartAssembly,
+      loadMultipartAssemblyText,
+      getMultipartAssembly,
+      multipartStorageMB,
+    } = useMultipartAssemblies();
+  const {
+    allDocuments,
+    autoDocumentReferenceEnabled,
+    setAutoDocumentReferenceEnabled,
+    documentReferenceMode,
+    setDocumentReferenceMode,
+    documentReferenceCount,
+    setDocumentReferenceCount,
+    documentStorageMB,
+    recordIngestedDocument,
+    updateStoredDocument,
+    deleteStoredDocument,
+    moveStoredDocument,
+    getStoredDocument,
+    buildDocumentReferenceContext,
+    estimateDocumentReferenceTokens,
+  } = useStoredDocuments(multipartAssemblies);
+  const {
+    libraryItems,
+    selectedTaskLibraryItemId,
+    setSelectedTaskLibraryItemId,
+    autoLibraryReferenceEnabled,
+    setAutoLibraryReferenceEnabled,
+    libraryReferenceMode,
+    setLibraryReferenceMode,
+    libraryIndexResponseCount,
+    setLibraryIndexResponseCount,
+    libraryReferenceCount,
+    setLibraryReferenceCount,
+    libraryStorageMB,
+    setLibraryItemModeOverride,
+    moveLibraryItem,
+    getTaskLibraryItem,
+    buildLibraryReferenceContext,
+    estimateLibraryReferenceTokens,
+  } = useReferenceLibrary({
+      storedDocuments: allDocuments,
+      searchHistory,
+      searchHistoryStorageMB,
+      documentStorageMB,
+      multipartStorageMB,
+    });
+  const {
+    pendingIntentCandidates,
+    setPendingIntentCandidates,
+    approvedIntentPhrases,
+    setApprovedIntentPhrases,
+    rejectedIntentCandidateSignatures,
+    setRejectedIntentCandidateSignatures,
+    protocolPrompt,
+    setProtocolPrompt,
+    protocolRulebook,
+    setProtocolRulebook,
+  } = useProtocolIntentSettings();
+
   const taskProtocol = useKinTaskProtocol();
 
   const [chatBridgeSettings] = useState<ChatBridgeSettings>({
@@ -386,9 +264,6 @@ export default function ChatApp() {
     taskProtocol.ingestProtocolEvents({ text, direction, events });
   };
 
-  const currentKinProfile = kinList.find((kin) => kin.id === currentKin) ?? null;
-  const currentKinLabel = currentKinProfile?.label ?? null;
-
   useEffect(() => {
     const sessions = getSessions();
 
@@ -402,196 +277,6 @@ export default function ChatApp() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const savedPrompt = window.localStorage.getItem(PROTOCOL_PROMPT_KEY);
-    const savedRulebook = window.localStorage.getItem(PROTOCOL_RULEBOOK_KEY);
-    const savedSearchContext = window.localStorage.getItem(LAST_SEARCH_CONTEXT_KEY);
-    const savedSearchHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
-    const savedSearchHistoryLimit = window.localStorage.getItem(SEARCH_HISTORY_LIMIT_KEY);
-    const savedSearchReferenceCount = window.localStorage.getItem(SEARCH_REFERENCE_COUNT_KEY);
-    const savedAutoSearchReferenceEnabled = window.localStorage.getItem(
-      SEARCH_AUTO_REFERENCE_ENABLED_KEY
-    );
-    const savedSearchReferenceMode = window.localStorage.getItem(
-      SEARCH_REFERENCE_MODE_KEY
-    );
-    const savedPendingIntentCandidates = window.localStorage.getItem(
-      PENDING_INTENT_CANDIDATES_KEY
-    );
-    const savedApprovedIntentPhrases = window.localStorage.getItem(
-      APPROVED_INTENT_PHRASES_KEY
-    );
-    const savedRejectedIntentCandidates = window.localStorage.getItem(
-      REJECTED_INTENT_CANDIDATES_KEY
-    );
-    const savedMultipartAssemblies = window.localStorage.getItem(
-      MULTIPART_ASSEMBLIES_KEY
-    );
-
-    if (savedPrompt) setProtocolPrompt(migrateLegacyProtocolLimits(savedPrompt));
-    if (savedRulebook) setProtocolRulebook(migrateLegacyProtocolLimits(savedRulebook));
-    if (savedSearchHistoryLimit) {
-      const parsed = Number(savedSearchHistoryLimit);
-      if (Number.isFinite(parsed) && parsed > 0) setSearchHistoryLimit(parsed);
-    }
-    if (savedSearchReferenceCount) {
-      const parsed = Number(savedSearchReferenceCount);
-      if (Number.isFinite(parsed) && parsed > 0) setSearchReferenceCount(parsed);
-    }
-    if (savedAutoSearchReferenceEnabled) {
-      setAutoSearchReferenceEnabled(savedAutoSearchReferenceEnabled === "true");
-    }
-    if (
-      savedSearchReferenceMode === "summary_only" ||
-      savedSearchReferenceMode === "summary_with_raw_excerpt"
-    ) {
-      setSearchReferenceMode(savedSearchReferenceMode);
-    }
-    if (savedSearchContext) {
-      try {
-        const parsed = JSON.parse(savedSearchContext) as SearchContext;
-        if (parsed?.rawResultId && parsed?.query) setLastSearchContext(parsed);
-      } catch {}
-    }
-    if (savedSearchHistory) {
-      try {
-        const parsed = JSON.parse(savedSearchHistory) as SearchContext[];
-        if (Array.isArray(parsed)) {
-          setSearchHistory(
-            parsed
-              .filter((item) => item?.rawResultId && item?.query)
-              .slice(0, DEFAULT_SEARCH_HISTORY_LIMIT)
-          );
-        }
-      } catch {}
-    }
-    if (savedPendingIntentCandidates) {
-      try {
-        const parsed = JSON.parse(savedPendingIntentCandidates) as PendingIntentCandidate[];
-        if (Array.isArray(parsed)) setPendingIntentCandidates(parsed);
-      } catch {}
-    }
-    if (savedApprovedIntentPhrases) {
-      try {
-        const parsed = JSON.parse(savedApprovedIntentPhrases) as ApprovedIntentPhrase[];
-        if (Array.isArray(parsed)) setApprovedIntentPhrases(parsed);
-      } catch {}
-    }
-    if (savedRejectedIntentCandidates) {
-      try {
-        const parsed = JSON.parse(savedRejectedIntentCandidates) as string[];
-        if (Array.isArray(parsed)) setRejectedIntentCandidateSignatures(parsed);
-      } catch {}
-    }
-    if (savedMultipartAssemblies) {
-      try {
-        const parsed = JSON.parse(savedMultipartAssemblies) as MultipartAssembly[];
-        if (Array.isArray(parsed)) setMultipartAssemblies(parsed);
-      } catch {}
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(PROTOCOL_PROMPT_KEY, protocolPrompt);
-  }, [protocolPrompt]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(PROTOCOL_RULEBOOK_KEY, protocolRulebook);
-  }, [protocolRulebook]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_HISTORY_LIMIT_KEY, String(searchHistoryLimit));
-  }, [searchHistoryLimit]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      SEARCH_REFERENCE_COUNT_KEY,
-      String(searchReferenceCount)
-    );
-  }, [searchReferenceCount]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      SEARCH_AUTO_REFERENCE_ENABLED_KEY,
-      String(autoSearchReferenceEnabled)
-    );
-  }, [autoSearchReferenceEnabled]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_REFERENCE_MODE_KEY, searchReferenceMode);
-  }, [searchReferenceMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      PENDING_INTENT_CANDIDATES_KEY,
-      JSON.stringify(pendingIntentCandidates)
-    );
-  }, [pendingIntentCandidates]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      APPROVED_INTENT_PHRASES_KEY,
-      JSON.stringify(approvedIntentPhrases)
-    );
-  }, [approvedIntentPhrases]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      REJECTED_INTENT_CANDIDATES_KEY,
-      JSON.stringify(rejectedIntentCandidateSignatures)
-    );
-  }, [rejectedIntentCandidateSignatures]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      MULTIPART_ASSEMBLIES_KEY,
-      JSON.stringify(multipartAssemblies)
-    );
-  }, [multipartAssemblies]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (lastSearchContext) {
-      window.localStorage.setItem(
-        LAST_SEARCH_CONTEXT_KEY,
-        JSON.stringify(lastSearchContext)
-      );
-      return;
-    }
-    window.localStorage.removeItem(LAST_SEARCH_CONTEXT_KEY);
-  }, [lastSearchContext]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
-  }, [searchHistory]);
-
-  useEffect(() => {
-    setSearchHistory((prev) => prev.slice(0, searchHistoryLimit));
-  }, [searchHistoryLimit]);
-
-  useEffect(() => {
-    if (!lastSearchContext) return;
-    setSearchHistory((prev) => {
-      if (prev.some((item) => item.rawResultId === lastSearchContext.rawResultId)) {
-        return prev;
-      }
-      return [lastSearchContext, ...prev].slice(0, searchHistoryLimit);
-    });
-  }, [lastSearchContext, searchHistoryLimit]);
-
-  useEffect(() => {
     if (!currentKin) return;
     ensureKinState(currentKin);
   }, [currentKin, ensureKinState]);
@@ -602,2554 +287,377 @@ export default function ChatApp() {
     }
   }, [isMobile]);
 
-  const clearPendingKinInjection = () => {
-    setPendingKinInjectionBlocks([]);
-    setPendingKinInjectionIndex(0);
-  };
-
-  const buildRawResultId = (params: {
-    taskId?: string;
-    actionId?: string;
-    createdAt?: string;
-  }) => {
-    const taskId = (params.taskId || "no-task").replace(/[^\w-]/g, "") || "no-task";
-    const actionId = (params.actionId || "search").replace(/[^\w-]/g, "") || "search";
-    const stamp = (params.createdAt || new Date().toISOString()).replace(/\D/g, "").slice(0, 14);
-    return `RAW-${taskId}-${actionId}-${stamp || Date.now()}`;
-  };
-
-  const recordSearchContext = (context: Omit<SearchContext, "rawResultId" | "createdAt"> & {
-    rawResultId?: string;
-    createdAt?: string;
-  }) => {
-    const createdAt = context.createdAt || new Date().toISOString();
-    const nextContext: SearchContext = {
-      ...context,
-      rawResultId:
-        context.rawResultId ||
-        buildRawResultId({
-          taskId: context.taskId,
-          actionId: context.actionId,
-          createdAt,
-        }),
-      createdAt,
-    };
-
-    setLastSearchContext(nextContext);
-    setSearchHistory((prev) => {
-      const deduped = prev.filter(
-        (item) => item.rawResultId !== nextContext.rawResultId
-      );
-      return [nextContext, ...deduped].slice(0, searchHistoryLimit);
-    });
-
-    return nextContext;
-  };
-
-  const clearSearchHistory = () => {
-    setLastSearchContext(null);
-    setSearchHistory([]);
-  };
-
-  const searchHistoryStorageMB = (() => {
-    try {
-      const bytes = new TextEncoder().encode(JSON.stringify(searchHistory)).length;
-      return bytes / (1024 * 1024);
-    } catch {
-      return 0;
-    }
-  })();
-
-  const buildSearchReferenceContext = () => {
-    if (!autoSearchReferenceEnabled || searchReferenceCount <= 0) return "";
-    const historyPool =
-      searchHistory.length > 0
-        ? searchHistory
-        : lastSearchContext
-          ? [lastSearchContext]
-          : [];
-    const targets = historyPool.slice(0, searchReferenceCount);
-    if (targets.length === 0) return "";
-
-    const lines = [
-      "<<STORED_SEARCH_CONTEXT>>",
-      "Use the stored search context below as first-pass supporting evidence when the user's current message is related.",
-      "If the current message is clearly unrelated, ignore this block.",
-      "When related, prefer this stored search context before falling back to general knowledge.",
-      "Do not pretend the stored search context answers things it does not actually cover.",
-      "",
-    ];
-
-    targets.forEach((item, index) => {
-      lines.push(`[SEARCH ${index + 1}]`);
-      lines.push(`RAW_RESULT_ID: ${item.rawResultId}`);
-      lines.push(`QUERY: ${item.query}`);
-      if (item.summaryText?.trim()) {
-        lines.push(`SUMMARY: ${item.summaryText.trim()}`);
-      }
-      if (
-        searchReferenceMode === "summary_with_raw_excerpt" &&
-        item.rawText?.trim()
-      ) {
-        lines.push(`RAW_EXCERPT: ${item.rawText.trim().slice(0, 900)}`);
-      }
-      if (item.sources?.length) {
-        lines.push("SOURCES:");
-        item.sources.slice(0, 3).forEach((source) => {
-          lines.push(`- ${source.title}${source.link ? ` | ${source.link}` : ""}`);
-        });
-      }
-      lines.push("");
-    });
-
-    lines.push("<<END_STORED_SEARCH_CONTEXT>>");
-
-    return lines.join("\n").trim();
-  };
-
-  const estimateTokenCount = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return 0;
-    return Math.max(1, Math.ceil(trimmed.length / 4));
-  };
-
-  const estimateSearchReferenceTokens = () => {
-    const historyPool =
-      searchHistory.length > 0
-        ? searchHistory
-        : lastSearchContext
-          ? [lastSearchContext]
-          : [];
-
-    const targets = historyPool.slice(0, Math.max(1, searchReferenceCount));
-    if (targets.length === 0) return 0;
-
-    const text = targets
-      .map((item, index) => {
-        const parts = [
-          `[SEARCH ${index + 1}]`,
-          `RAW_RESULT_ID: ${item.rawResultId}`,
-          `QUERY: ${item.query}`,
-        ];
-
-        if (item.summaryText?.trim()) {
-          parts.push(`SUMMARY: ${item.summaryText.trim()}`);
-        }
-
-        if (
-          searchReferenceMode === "summary_with_raw_excerpt" &&
-          item.rawText?.trim()
-        ) {
-          parts.push(`RAW_EXCERPT: ${item.rawText.trim().slice(0, 900)}`);
-        }
-
-        if (item.sources?.length) {
-          parts.push(
-            ...item.sources
-              .slice(0, 3)
-              .map((source) => `SOURCE: ${source.title}${source.link ? ` | ${source.link}` : ""}`)
-          );
-        }
-
-        return parts.join("\n");
-      })
-      .join("\n\n");
-
-    return estimateTokenCount(text);
-  };
-
   const searchReferenceEstimatedTokens = estimateSearchReferenceTokens();
+  const documentReferenceEstimatedTokens = estimateDocumentReferenceTokens();
+  const libraryReferenceEstimatedTokens = estimateLibraryReferenceTokens();
 
-  const resetCurrentTaskDraft = () => {
-    setCurrentTaskDraft(resetTaskDraft());
-  };
+  const {
+    deleteSearchHistoryItem,
+    resetCurrentTaskDraft,
+    getCurrentTaskCharConstraint,
+    updateTaskDraftFields,
+    applyPrefixedTaskFieldsFromText,
+    getTaskSlotLabel,
+    getResolvedTaskTitle,
+    resolveTaskTitleFromDraft,
+    getTaskBaseText,
+    syncTaskDraftFromProtocol,
+  } = useTaskDraftHelpers({
+    currentTaskDraft,
+    gptMessages,
+    setCurrentTaskDraft,
+    resetTaskProtocolRuntime: taskProtocol.resetRuntime,
+    deleteSearchHistoryItemBase,
+    currentTaskIntentConstraints: taskProtocol.runtime.currentTaskIntent?.constraints || [],
+  });
 
-  const normalizeProtocolRulebook = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return DEFAULT_PROTOCOL_RULEBOOK;
-    if (trimmed.startsWith("<<SYS_INFO>>")) return trimmed;
+  const {
+    processMultipartTaskDoneText,
+    loadMultipartAssemblyToGptInput,
+    downloadMultipartAssembly,
+  } = useMultipartUiActions({
+    multipartAssemblies,
+    setMultipartAssemblies,
+    currentTaskId: taskProtocol.runtime.currentTaskId || undefined,
+    getCurrentTaskCharConstraint: () => getCurrentTaskCharConstraint() as TaskCharConstraint | null,
+    setKinInput,
+    setGptMessages,
+    setFinalizeReviewed: taskProtocol.setFinalizeReviewed,
+    isMobile,
+    setActiveTab,
+    loadMultipartAssemblyText,
+    getMultipartAssembly,
+    setGptInput,
+  });
 
-    return [
-      "<<SYS_INFO>>",
-      "TITLE: GPT protocol briefing",
-      "CONTENT:",
-      ...trimmed.split(/\r?\n/).map((line) => (line.trim() ? `- ${line.trim()}` : "")),
-      "<<END_SYS_INFO>>",
-    ]
-      .filter(Boolean)
-      .join("\n");
-  };
-
-  const updateTaskDraftFields = (patch: Partial<TaskDraft>) => {
-    setCurrentTaskDraft((prev) => ({
-      ...prev,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    }));
-  };
-
-  const applyPrefixedTaskFieldsFromText = (text: string) => {
-    const parsed = parseTaskInput(text);
-
-    if (parsed.title || parsed.userInstruction) {
-      setCurrentTaskDraft((prev) => ({
-        ...prev,
-        title: parsed.title || prev.title,
-        taskName: parsed.title?.trim() ? parsed.title.trim() : prev.taskName,
-        userInstruction: parsed.userInstruction || prev.userInstruction,
-        updatedAt: new Date().toISOString(),
-      }));
-    }
-
-    return parsed;
-  };
-
-  const getTaskSlotLabel = () => formatTaskSlot(currentTaskDraft.slot);
-
-  const getResolvedTaskTitle = (params: {
-    explicitTitle?: string;
-    freeText?: string;
-    searchQuery?: string;
-    fallback?: string;
-  }) =>
-    resolveDraftTitle(currentTaskDraft, {
-      explicitTitle: params.explicitTitle,
-      freeText: params.freeText,
-      searchQuery: params.searchQuery,
-      fallback: params.fallback,
-    });
-
-  const resolveTaskTitleFromDraft = (
-    draft: TaskDraft,
-    params: {
-      explicitTitle?: string;
-      freeText?: string;
-      searchQuery?: string;
-      fallback?: string;
-    }
-  ) =>
-    resolveDraftTitle(draft, {
-      explicitTitle: params.explicitTitle,
-      freeText: params.freeText,
-      searchQuery: params.searchQuery,
-      fallback: params.fallback,
-    });
-
-  const getTaskBaseText = () => {
-    if (currentTaskDraft.body.trim()) return currentTaskDraft.body.trim();
-    if (currentTaskDraft.mergedText.trim()) return currentTaskDraft.mergedText.trim();
-    if (currentTaskDraft.deepenText.trim()) return currentTaskDraft.deepenText.trim();
-    if (currentTaskDraft.prepText.trim()) return currentTaskDraft.prepText.trim();
-
-    const last = [...gptMessages].reverse().find((m) => m.role === "gpt");
-    return last?.text?.trim() || "";
-  };
-
-
-  const syncTaskDraftFromProtocol = (params: {
-    taskId: string;
-    title: string;
-    goal: string;
-    compiledTaskPrompt: string;
-  }) => {
-    setCurrentTaskDraft((prev) => ({
-      ...prev,
-      title: params.title,
-      taskName: params.title,
-      userInstruction: params.goal,
-      body: params.compiledTaskPrompt,
-      mergedText: params.compiledTaskPrompt,
-      kinTaskText: params.compiledTaskPrompt,
-      status: "formatted",
-      updatedAt: new Date().toISOString(),
-    }));
-  };
-
-  const runStartKinTaskFromInput = async () => {
-    const raw = gptInput.trim();
-    if (!raw) return;
-
-    const resolved = await resolveTaskIntentWithFallback({
-      input: raw,
-      approvedPhrases: approvedIntentPhrases,
-      responseMode: responseMode === "creative" ? "creative" : "strict",
-    });
-    const intent = resolved.intent;
-    applyTaskUsage(resolved.usage);
-
-    if (resolved.pendingCandidates.length > 0) {
-      setPendingIntentCandidates((prev) => {
-        const rejected = new Set(rejectedIntentCandidateSignatures);
-        const existingKeys = new Set(
-          prev.map((item) => `${item.kind}:${item.phrase}:${item.count ?? ""}:${item.charLimit ?? ""}`)
-        );
-        const additions = resolved.pendingCandidates.filter((item) => {
-          const key = `${item.kind}:${item.phrase}:${item.count ?? ""}:${item.charLimit ?? ""}`;
-          const signature = getIntentCandidateSignature(item);
-          return !existingKeys.has(key) && !rejected.has(signature);
-        });
-        return additions.length > 0 ? [...additions, ...prev].slice(0, 50) : prev;
-      });
-    }
-
-    const started = taskProtocol.startTask({
-      originalInstruction: raw,
-      intent,
-    });
-
-    syncTaskDraftFromProtocol({
-      taskId: started.taskId,
-      title: started.title,
-      goal: intent.goal,
-      compiledTaskPrompt: started.compiledTaskPrompt,
-    });
-
-    setKinInput(started.compiledTaskPrompt);
-    setGptInput("");
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: `✅ 新しいKinタスクを生成してKin入力欄にセットしました。TASK_ID: #${started.taskId}`,
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const resetBothPanels = () => {
-    setKinMessages([]);
-    setGptMessages([]);
-    resetTokenStats();
-    clearPendingKinInjection();
-    resetCurrentTaskDraft();
-
-    if (isMobile) {
-      setActiveTab("kin");
-    }
-  };
-
-  const handleConnectKin = () => {
-    connectKin();
-    resetBothPanels();
-  };
-
-  const handleSwitchKin = (id: string) => {
-    switchKin(id);
-    resetBothPanels();
-  };
-
-  const handleDisconnectKin = () => {
-    disconnectKin();
-    resetBothPanels();
-  };
-
-  const handleRemoveKin = (id: string) => {
-    removeKinState(id);
-    removeKin(id);
-    resetBothPanels();
-  };
-
-  const sendKinMessage = async (text: string) => {
-    if (!text.trim() || !currentKin || kinLoading) return;
-
-    setKinStatus("idle");
-    setKinLoading(true);
-
-    const currentPendingBlock =
-      pendingKinInjectionBlocks[pendingKinInjectionIndex] ?? null;
-
-    setKinMessages((prev) => [...prev, { id: generateId(), role: "user", text }]);
-    setKinInput("");
-    ingestProtocolMessage(text, "user_to_kin");
-
-    try {
-      const res = await fetch("/api/kindroid", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, kinId: currentKin }),
-      });
-
-      const data = await res.json();
-
-      setKinMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "kin",
-          text:
-            typeof data.reply === "string" && data.reply.trim()
-              ? data.reply
-              : "⚠️ Kinの返答取得に失敗しました",
-        },
-      ]);
-      if (typeof data.reply === "string") {
-        ingestProtocolMessage(data.reply, "kin_to_gpt");
-      }
-
-      setKinStatus("connected");
-
-      const sentPendingPart =
-        typeof currentPendingBlock === "string" && text === currentPendingBlock.trim();
-
-      if (sentPendingPart) {
-        const nextIndex = pendingKinInjectionIndex + 1;
-
-        if (nextIndex < pendingKinInjectionBlocks.length) {
-          setPendingKinInjectionIndex(nextIndex);
-          setKinInput(pendingKinInjectionBlocks[nextIndex]);
-        } else {
-          clearPendingKinInjection();
-        }
-      }
-    } catch (error) {
-      console.error(error);
-      setKinStatus("error");
-    } finally {
-      setKinLoading(false);
-    }
-  };
-
-  const sendToKin = async () => {
-    await sendKinMessage(kinInput.trim());
-  };
-
-  const parseWrappedSearchResponse = (text: string) => {
-    const event = extractTaskProtocolEvents(text).find(
-      (candidate) => candidate.type === "search_response"
-    );
-    if (!event) return null;
-
-    const rawExcerptMatch = text.match(
-      /RAW_EXCERPT:\s*([\s\S]*?)<<END_SYS_SEARCH_RESPONSE>>/
-    );
-
-    return {
-      query: event.query,
-      outputMode: event.outputMode,
-      summary: event.summary || event.body || "",
-      rawResultId: event.rawResultId,
-      rawExcerpt: rawExcerptMatch?.[1]?.trim() || "",
-    };
-  };
-
-  const parseTaskDonePart = (text: string) => {
-    const matches = [...text.matchAll(/<<SYS_TASK_DONE>>([\s\S]*?)<<END_SYS_TASK_DONE>>/g)];
-    const match = matches.at(-1);
-    if (!match?.[1]) return null;
-
-    const body = match[1].replace(/\r\n/g, "\n");
-    const lines = body.split("\n");
-    const getField = (name: string) =>
-      lines.find((line) => line.startsWith(`${name}:`))?.slice(name.length + 1).trim() || "";
-    const partText = getField("PART");
-    const partMatch = partText.match(/(\d+)\s*\/\s*(\d+)/);
-    if (!partMatch) return null;
-
-    const partIndex = Number(partMatch[1]);
-    const totalParts = Number(partMatch[2]);
-    const characters = Number(getField("CHARACTERS") || 0);
-    const contentStartIndex = lines.findIndex((line) => line.startsWith("CHARACTERS:"));
-    const content = lines.slice(contentStartIndex >= 0 ? contentStartIndex + 1 : 0).join("\n").trim();
-
-    return {
-      taskId: getField("TASK_ID") || undefined,
-      status: getField("STATUS") || undefined,
-      summary: getField("SUMMARY") || undefined,
-      partIndex,
-      totalParts,
-      characters,
-      content,
-    };
-  };
-
-  const buildMultipartAck = (params: {
-    taskId?: string;
-    partIndex: number;
-    totalParts: number;
-    isFinal: boolean;
-  }) =>
-    [
-      "<<SYS_GPT_RESPONSE>>",
-      `TASK_ID: ${params.taskId || taskProtocol.runtime.currentTaskId || ""}`,
-      `BODY: ${
-        params.isFinal
-          ? `PART ${params.partIndex}/${params.totalParts} received. All parts received successfully.`
-          : `PART ${params.partIndex}/${params.totalParts} received. Send PART ${params.partIndex + 1}/${params.totalParts}.`
-      }`,
-      "<<END_SYS_GPT_RESPONSE>>",
-    ].join("\n");
-
-  const upsertMultipartAssembly = (part: {
-    taskId?: string;
-    status?: string;
-    summary?: string;
-    partIndex: number;
-    totalParts: number;
-    content: string;
-  }): MultipartAssembly | null => {
-    let nextAssembly: MultipartAssembly | null = null;
-
-    setMultipartAssemblies((prev) => {
-      const id = `${part.taskId || "no-task"}-${part.status || "DONE"}`;
-      const existing =
-        prev.find((item) => item.id === id) || {
-          id,
-          taskId: part.taskId,
-          status: part.status,
-          summary: part.summary,
-          totalParts: part.totalParts,
-          parts: [],
-          assembledText: "",
-          isComplete: false,
-          updatedAt: new Date().toISOString(),
-          filename: `task-${part.taskId || "unknown"}-${(part.status || "done").toLowerCase()}.txt`,
-        };
-
-      const dedupedParts = existing.parts.filter((item) => item.index !== part.partIndex);
-      const parts = [...dedupedParts, { index: part.partIndex, text: part.content }].sort(
-        (a, b) => a.index - b.index
-      );
-      const isComplete = parts.length >= part.totalParts;
-      const assembledText = parts.map((item) => item.text.trim()).join("\n\n").trim();
-
-      nextAssembly = {
-        ...existing,
-        taskId: part.taskId || existing.taskId,
-        status: part.status || existing.status,
-        summary: part.summary || existing.summary,
-        totalParts: part.totalParts,
-        parts,
-        assembledText,
-        isComplete,
-        updatedAt: new Date().toISOString(),
-      };
-
-      return [nextAssembly, ...prev.filter((item) => item.id !== id)].slice(0, 30);
-    });
-
-    return nextAssembly;
-  };
-
-  const loadMultipartAssemblyToGptInput = (assemblyId: string) => {
-    const assembly = multipartAssemblies.find((item) => item.id === assemblyId);
-    if (!assembly) return;
-    setGptInput(assembly.assembledText);
+  const loadStoredDocumentToGptInput = (documentId: string) => {
+    const document = getStoredDocument(documentId);
+    if (!document) return;
+    setGptInput(document.text);
     if (isMobile) setActiveTab("gpt");
   };
 
-  const downloadMultipartAssembly = (assemblyId: string) => {
-    const assembly = multipartAssemblies.find((item) => item.id === assemblyId);
-    if (!assembly || typeof window === "undefined") return;
-    const blob = new Blob([assembly.assembledText], { type: "text/plain;charset=utf-8" });
+  const downloadStoredDocument = (documentId: string) => {
+    const document = getStoredDocument(documentId);
+    if (!document || typeof window === "undefined") return;
+    const blob = new Blob([document.text], { type: "text/plain;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
+    const anchor = window.document.createElement("a");
     anchor.href = url;
-    anchor.download = assembly.filename;
+    anchor.download = `${document.filename.replace(/[^\w.-]+/g, "_") || "document"}.txt`;
     anchor.click();
     window.URL.revokeObjectURL(url);
   };
 
-  const getProtocolLimitViolation = (event: {
-    type: "ask_gpt" | "search_request" | "user_question";
-    taskId?: string;
-    actionId?: string;
-  }) => {
-    const kind =
-      event.type === "ask_gpt"
-        ? "ask_gpt"
-        : event.type === "search_request"
-          ? "search_request"
-          : "ask_user";
-    const requirement = taskProtocol.runtime.requirementProgress.find(
-      (item) => item.kind === kind
-    );
-    if (!requirement || typeof requirement.targetCount !== "number") return null;
-    if ((requirement.completedCount ?? 0) < requirement.targetCount) return null;
+  const {
+    currentKinLabel,
+    clearPendingKinInjection,
+    runStartKinTaskFromInput,
+    sendKinMessage,
+    sendToKin,
+    sendToGpt,
+    runPrepTaskFromInput,
+    runUpdateTaskFromInput,
+    runUpdateTaskFromLastGptMessage,
+    runAttachSearchResultToTask,
+    runDeepenTaskFromLast,
+    sendLastKinToGptDraft,
+    sendLastGptToKinDraft,
+    sendLatestGptContentToKin,
+    sendCurrentTaskContentToKin,
+    receiveLastKinResponseToGptInput,
+    injectFileToKinDraft,
+    prepareTaskRequestAck,
+    prepareTaskSync,
+    resetProtocolDefaults,
+    saveProtocolDefaults,
+    approveIntentCandidate,
+    updateIntentCandidate,
+    rejectIntentCandidate,
+    setProtocolRulebookToKinDraft,
+    sendProtocolRulebookToKin,
+    handleSaveMemorySettings,
+    handleResetMemorySettings,
+  } = useChatPageActions({
+    gptInput,
+    kinInput,
+    gptLoading,
+    kinLoading,
+    ingestLoading,
+    currentKin,
+    kinList,
+    currentTaskDraft,
+    currentTaskIntentConstraints: taskProtocol.runtime.currentTaskIntent?.constraints || [],
+    approvedIntentPhrases,
+    rejectedIntentCandidateSignatures,
+    pendingIntentCandidates,
+    protocolPrompt,
+    protocolRulebook,
+    responseMode,
+    chatBridgeSettings,
+    gptMessages,
+    kinMessages,
+    gptState,
+    gptStateRef,
+    lastSearchContext,
+    pendingKinInjectionBlocks,
+    pendingKinInjectionIndex,
+    isMobile,
+    setActiveTab,
+    taskProtocol,
+    setKinInput,
+    setGptInput,
+    setKinMessages,
+    setGptMessages,
+    setKinLoading,
+    setGptLoading,
+    setIngestLoading,
+    setPendingKinInjectionBlocks,
+    setPendingKinInjectionIndex,
+    setCurrentTaskDraft,
+    setGptState,
+    setUploadKind,
+    setPendingIntentCandidates,
+    setApprovedIntentPhrases,
+    setRejectedIntentCandidateSignatures,
+    setProtocolPrompt,
+    setProtocolRulebook,
+    setKinConnectionState,
+    processMultipartTaskDoneText,
+    recordSearchContext,
+    applySearchUsage,
+    applyChatUsage,
+    applySummaryUsage,
+    applyTaskUsage,
+    applyIngestUsage,
+    getProvisionalMemory,
+    handleGptMemory,
+    chatRecentLimit,
+    buildSearchReferenceContext,
+    buildDocumentReferenceContext,
+    buildLibraryReferenceContext,
+    referenceLibraryItems: libraryItems,
+    libraryIndexResponseCount,
+    recordIngestedDocument,
+    getTaskLibraryItem,
+    getTaskBaseText,
+    getResolvedTaskTitle,
+    resolveTaskTitleFromDraft,
+    getTaskSlotLabel,
+    syncTaskDraftFromProtocol,
+    applyPrefixedTaskFieldsFromText,
+    getCurrentTaskCharConstraint,
+    resetCurrentTaskDraft,
+    updateMemorySettings,
+    resetMemorySettings,
+    deleteSearchHistoryItemBase,
+    ingestProtocolMessage,
+    clearSearchHistory,
+    promptDefaultKey: PROTOCOL_PROMPT_DEFAULT_KEY,
+    rulebookDefaultKey: PROTOCOL_RULEBOOK_DEFAULT_KEY,
+  });
+
+  const {
+    handleConnectKin,
+    handleSwitchKin,
+    handleDisconnectKin,
+    handleRemoveKin,
+    resetKinMessages,
+    handleResetGpt,
+  } = usePanelResetActions({
+    setKinMessages,
+    setGptMessages,
+    resetTokenStats,
+    clearPendingKinInjection,
+    resetCurrentTaskDraft,
+    isMobile,
+    setActiveTab,
+    connectKin,
+    switchKin,
+    disconnectKin,
+    removeKinState,
+    removeKin,
+    resetGptForCurrentKin,
+  });
 
-    const label =
-      kind === "ask_gpt"
-        ? "GPT request"
-        : kind === "search_request"
-          ? "web search request"
-          : "user question";
 
-    return buildLimitExceededBlock({
-      taskId: event.taskId || taskProtocol.runtime.currentTaskId || "",
-      actionId: event.actionId,
-      summary: `This ${label} exceeds the allowed limit for the current task, so do not continue with it.`,
-    });
-  };
-
-  const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
-    if (!gptInput.trim() || gptLoading) return;
-
-    const rawText = gptInput.trim();
-    const protocolEvents = extractTaskProtocolEvents(rawText);
-    const askGptEvent = protocolEvents.find((event) => event.type === "ask_gpt");
-    const searchRequestEvent = protocolEvents.find(
-      (event) => event.type === "search_request"
-    );
-    const userQuestionEvent = protocolEvents.find(
-      (event) => event.type === "user_question"
-    );
-    const reqAnswerMatch = rawText.match(/^REQ\s+([A-Z]\d+)\s+への回答[:：]\s*([\s\S]*)$/i);
-    const requestAnswerId = reqAnswerMatch?.[1]?.trim() || "";
-    const requestAnswerBody = reqAnswerMatch?.[2]?.trim() || "";
-    const requestToAnswer = requestAnswerId
-      ? taskProtocol.runtime.pendingRequests.find(
-          (item) => item.id === requestAnswerId || item.actionId === requestAnswerId
-        ) || null
-      : null;
-    const parsedInput = applyPrefixedTaskFieldsFromText(rawText);
-
-    const hasSearch = !!parsedInput.searchQuery;
-    const hasTaskDirectives = !!(parsedInput.title || parsedInput.userInstruction);
-
-    if (hasTaskDirectives && !hasSearch && !parsedInput.freeText) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "✅ タスクのタイトル / 追加指示を更新しました。",
-          meta: {
-            kind: "task_info",
-            sourceType: "manual",
-          },
-        },
-      ]);
-      setGptInput("");
-      return;
-    }
-
-    const requestText = [
-      parsedInput.searchQuery ? `検索：${parsedInput.searchQuery}` : "",
-      parsedInput.freeText || "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    let finalRequestText = requestText || rawText;
-    const searchReferenceContext = !parsedInput.searchQuery
-      ? buildSearchReferenceContext()
-      : "";
-    const userMsg: Message = {
-      id: generateId(),
-      role: "user",
-      text: rawText,
-    };
-
-    const limitViolation =
-      (askGptEvent &&
-        getProtocolLimitViolation({
-          type: "ask_gpt",
-          taskId: askGptEvent.taskId,
-          actionId: askGptEvent.actionId,
-        })) ||
-      (searchRequestEvent &&
-        getProtocolLimitViolation({
-          type: "search_request",
-          taskId: searchRequestEvent.taskId,
-          actionId: searchRequestEvent.actionId,
-        })) ||
-      (userQuestionEvent &&
-        getProtocolLimitViolation({
-          type: "user_question",
-          taskId: userQuestionEvent.taskId,
-          actionId: userQuestionEvent.actionId,
-        }));
-
-    if (limitViolation) {
-      setGptMessages((prev) => [
-        ...prev,
-        userMsg,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: limitViolation,
-          meta: {
-            kind: "task_info",
-            sourceType: "manual",
-          },
-        },
-      ]);
-      setGptInput("");
-      return;
-    }
-
-    if (askGptEvent) {
-      finalRequestText = [
-        "You are responding to a Kindroid SYS_ASK_GPT request.",
-        "Return only this exact block format and nothing outside it:",
-        "<<SYS_GPT_RESPONSE>>",
-        `TASK_ID: ${askGptEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
-        `ACTION_ID: ${askGptEvent.actionId || ""}`,
-        "BODY: <your answer>",
-        "<<END_SYS_GPT_RESPONSE>>",
-        "",
-        "Request:",
-        askGptEvent.body,
-      ].join("\n");
-    }
-
-    if (requestToAnswer && requestAnswerBody) {
-      finalRequestText = [
-        "You are converting a user's plain answer into a Kindroid protocol response.",
-        "Return only this exact block format and nothing outside it:",
-        "<<SYS_USER_RESPONSE>>",
-        `TASK_ID: ${requestToAnswer.taskId}`,
-        `ACTION_ID: ${requestToAnswer.actionId}`,
-        "BODY: <clean answer for Kindroid here>",
-        "<<END_SYS_USER_RESPONSE>>",
-        "",
-        "Original Kindroid question:",
-        requestToAnswer.body,
-        "",
-        "User answer:",
-        requestAnswerBody,
-      ].join("\n");
-    }
-
-    if (searchRequestEvent) {
-      const requestedMode = searchRequestEvent.outputMode || "summary";
-      const modeInstruction =
-        requestedMode === "raw"
-          ? "Prefer raw evidence excerpts and keep synthesis minimal."
-          : requestedMode === "summary_plus_raw"
-            ? "Return both a concise synthesis and a compact raw evidence excerpt."
-            : "Return a concise synthesis only.";
-      finalRequestText = [
-        "You are responding to a Kindroid SYS_SEARCH_REQUEST.",
-        "Use the provided search evidence seriously and return only this exact block format:",
-        "<<SYS_SEARCH_RESPONSE>>",
-        `TASK_ID: ${searchRequestEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
-        `ACTION_ID: ${searchRequestEvent.actionId || ""}`,
-        `QUERY: ${searchRequestEvent.query || searchRequestEvent.body || ""}`,
-        `OUTPUT_MODE: ${requestedMode}`,
-        "SUMMARY:",
-        "<search summary here>",
-        "SOURCES:",
-        "- <title> | <url>",
-        "RAW_RESULT_AVAILABLE: YES",
-        "RAW_RESULT_ID: <raw result id here>",
-        "<<END_SYS_SEARCH_RESPONSE>>",
-        "",
-        modeInstruction,
-        "",
-        "Search goal:",
-        searchRequestEvent.body || searchRequestEvent.summary || "Use the search query directly.",
-      ].join("\n");
-    }
-
-    if (
-      shouldInjectTaskContext({
-        userInput: rawText,
-        settings: chatBridgeSettings,
-      })
-    ) {
-      const taskContext = buildTaskChatBridgeContext(taskProtocol.runtime);
-      finalRequestText = `${taskContext}
-
-${finalRequestText}`;
-    }
-
-    const baseRecent = gptStateRef.current.recentMessages || [];
-    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-    const provisionalMemory = getProvisionalMemory(finalRequestText);
-
-    setGptMessages((prev) => [...prev, userMsg]);
-    setGptInput("");
-    setGptLoading(true);
-
-    setGptState((prev) => ({
-      ...prev,
-      memory: provisionalMemory,
-    }));
-
-    try {
-      const res = await fetch("/api/chatgpt", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mode: "chat",
-          memory: provisionalMemory,
-          recentMessages: newRecent,
-          input: finalRequestText,
-          storedSearchContext: searchReferenceContext,
-          forcedSearchQuery: searchRequestEvent?.query || undefined,
-          instructionMode,
-          reasoningMode: responseMode,
-        }),
-      });
-
-      const data = await res.json();
-      let assistantText =
-        typeof data.reply === "string" && data.reply.trim()
-          ? data.reply.trim()
-          : "⚠️ GPTの返答取得に失敗しました";
-
-      if (askGptEvent && !assistantText.includes("<<SYS_GPT_RESPONSE>>")) {
-        assistantText = [
-          "<<SYS_GPT_RESPONSE>>",
-          `TASK_ID: ${askGptEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
-          `ACTION_ID: ${askGptEvent.actionId || ""}`,
-          `BODY: ${assistantText}`,
-          "<<END_SYS_GPT_RESPONSE>>",
-        ].join("\n");
-      }
-
-      if (requestToAnswer && requestAnswerBody && !assistantText.includes("<<SYS_USER_RESPONSE>>")) {
-        assistantText = buildUserResponseBlock({
-          taskId: requestToAnswer.taskId,
-          actionId: requestToAnswer.actionId,
-          body: assistantText,
-        });
-      }
-
-      if (searchRequestEvent) {
-        const requestedMode = searchRequestEvent.outputMode || "summary";
-        const wrappedSearchResponse =
-          typeof data?.reply === "string" && data.reply.includes("<<SYS_SEARCH_RESPONSE>>")
-            ? parseWrappedSearchResponse(data.reply)
-            : null;
-        const recordedSearch = data?.searchUsed
-          ? recordSearchContext({
-              taskId:
-                searchRequestEvent.taskId || taskProtocol.runtime.currentTaskId || undefined,
-              actionId: searchRequestEvent.actionId || undefined,
-              query:
-                searchRequestEvent.query ||
-                (typeof data?.searchQuery === "string" ? data.searchQuery : "") ||
-                "",
-              goal: searchRequestEvent.body || searchRequestEvent.summary || "",
-              outputMode:
-                requestedMode === "raw"
-                  ? "raw_and_summary"
-                  : requestedMode === "summary_plus_raw"
-                    ? "raw_and_summary"
-                    : "summary",
-              summaryText:
-                typeof data?.reply === "string" && data.reply.trim() ? data.reply.trim() : "",
-              rawText:
-                typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
-              sources: Array.isArray(data?.sources) ? data.sources : [],
-            })
-          : null;
-
-        const summaryText =
-          wrappedSearchResponse?.summary ||
-          (typeof data?.reply === "string" && data.reply.trim()
-            ? data.reply.trim()
-            : "Search completed, but no summary text was returned.");
-        const rawExcerpt =
-          wrappedSearchResponse?.rawExcerpt ||
-          (typeof data?.searchEvidence === "string" && data.searchEvidence.trim()
-            ? data.searchEvidence.trim().slice(
-                0,
-                requestedMode === "raw" ? 2400 : 1200
-              )
-            : "");
-        const sourceLines = Array.isArray(data?.sources)
-          ? data.sources
-              .slice(0, 5)
-              .map((source: { title?: string; link?: string }) =>
-                `- ${source.title || "Untitled"}${source.link ? ` | ${source.link}` : ""}`
-              )
-          : [];
-
-        const responseLines = [
-          "<<SYS_SEARCH_RESPONSE>>",
-          `TASK_ID: ${searchRequestEvent.taskId || taskProtocol.runtime.currentTaskId || ""}`,
-          `ACTION_ID: ${searchRequestEvent.actionId || ""}`,
-          `QUERY: ${
-            wrappedSearchResponse?.query ||
-            searchRequestEvent.query ||
-            (typeof data?.searchQuery === "string" ? data.searchQuery : "") ||
-            ""
-          }`,
-          `OUTPUT_MODE: ${wrappedSearchResponse?.outputMode || requestedMode}`,
-          `RAW_RESULT_AVAILABLE: ${recordedSearch ? "YES" : "NO"}`,
-          ...(recordedSearch ? [`RAW_RESULT_ID: ${recordedSearch.rawResultId}`] : []),
-        ];
-
-        if (requestedMode !== "raw") {
-          responseLines.push("SUMMARY:", summaryText);
-        } else {
-          responseLines.push("SUMMARY:", "Raw-focused search response. See RAW_EXCERPT below.");
-        }
-
-        if (requestedMode !== "summary") {
-          responseLines.push("SOURCES:", ...(sourceLines.length > 0 ? sourceLines : ["- none"]));
-        }
-
-        if ((requestedMode === "raw" || requestedMode === "summary_plus_raw") && rawExcerpt) {
-          responseLines.push("RAW_EXCERPT:", rawExcerpt);
-        }
-
-        responseLines.push("<<END_SYS_SEARCH_RESPONSE>>");
-
-        assistantText = responseLines.join("\n");
-      }
-
-      const assistantMsg: Message = {
-        id: generateId(),
-        role: "gpt",
-        text: assistantText,
-        sources: Array.isArray(data.sources) ? data.sources : [],
-        meta: {
-          kind: "normal",
-          sourceType: data?.searchUsed ? "search" : "gpt_input",
-        },
-      };
-      ingestProtocolMessage(assistantText, "gpt_to_kin");
-
-      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
-
-      setGptMessages((prev) => [...prev, assistantMsg]);
-
-      if (requestToAnswer && requestAnswerBody) {
-        taskProtocol.answerPendingRequest(requestToAnswer.id, requestAnswerBody);
-      }
-
-      if (data?.searchUsed && !searchRequestEvent) {
-        applySearchUsage(data.usage);
-
-        recordSearchContext({
-          query:
-            (typeof data?.searchQuery === "string" && data.searchQuery.trim()) ||
-            parsedInput.searchQuery ||
-            finalRequestText,
-          summaryText:
-            typeof data?.reply === "string" && data.reply.trim() ? data.reply : "",
-          rawText:
-            typeof data?.searchEvidence === "string" ? data.searchEvidence : "",
-          sources: Array.isArray(data?.sources) ? data.sources : [],
-        });
-      } else if (!searchRequestEvent) {
-        applyChatUsage(data.usage);
-      }
-
-      if (searchRequestEvent) {
-        applySearchUsage(data.usage);
-      }
-
-      const memoryResult = await handleGptMemory(updatedRecent);
-      applySummaryUsage(memoryResult.summaryUsage);
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ GPT通信でエラーが発生しました",
-        },
-      ]);
-    } finally {
-      setGptLoading(false);
-    }
-  };
-
-  const runPrepTaskFromInput = async () => {
-    if (!gptInput.trim() || gptLoading) return;
-
-    const text = gptInput.trim();
-    const parsedInput = applyPrefixedTaskFieldsFromText(text);
-
-    const taskBodySource = parsedInput.freeText || text;
-    const resolvedTitle = getResolvedTaskTitle({
-      explicitTitle: parsedInput.title,
-      freeText: taskBodySource,
-      searchQuery: parsedInput.searchQuery,
-      fallback: "GPT会話から作成したタスク",
-    });
-    const prepInput = buildTaskStructuredInput({
-      title: resolvedTitle,
-      userInstruction:
-        parsedInput.userInstruction || currentTaskDraft.userInstruction,
-      body: taskBodySource,
-      searchRawText: currentTaskDraft.searchContext?.rawText || "",
-    });
-
-    const userMsg: Message = {
-      id: generateId(),
-      role: "user",
-      text: `[タスク整理依頼]\n${text}`,
-    };
-
-    const baseRecent = gptStateRef.current.recentMessages || [];
-    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-
-    setGptMessages((prev) => [...prev, userMsg]);
-    setGptInput("");
-    setGptLoading(true);
-
-    try {
-      const data = await runAutoPrepTask(prepInput, "gpt-input");
-      const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-      const assistantMsg: Message = {
-        id: generateId(),
-        role: "gpt",
-        text: taskText,
-        meta: {
-          kind: "task_prep",
-          sourceType: "gpt_input",
-        },
-      };
-
-      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
-
-      setGptMessages((prev) => [...prev, assistantMsg]);
-      setGptState((prev) => ({
-        ...prev,
-        recentMessages: updatedRecent,
-      }));
-
-      const source = createTaskSource("gpt_chat", "GPT手入力タスク", text);
-
-      setCurrentTaskDraft((prev) => {
-        return {
-          ...prev,
-          taskName: resolvedTitle,
-          title: resolvedTitle,
-          userInstruction: parsedInput.userInstruction || prev.userInstruction,
-          body: taskText,
-          searchContext: currentTaskDraft.searchContext ?? prev.searchContext,
-          objective: (parsedInput.freeText || text).slice(0, 120),
-          prepText: taskText,
-          deepenText: "",
-          mergedText: taskText,
-          kinTaskText: "",
-          status: "prepared",
-          sources: [...prev.sources, source],
-          updatedAt: new Date().toISOString(),
-        };
-      });
-
-      applyTaskUsage(data?.usage);
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ タスク実行中にエラーが発生しました",
-        },
-      ]);
-    } finally {
-      setGptLoading(false);
-    }
-  };
-
-  const runUpdateTaskFromInput = async () => {
-    if (!gptInput.trim() || gptLoading) return;
-
-    const currentTaskText = getTaskBaseText();
-
-    if (!currentTaskText) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 更新対象の現在タスクが見つかりません。先にタスク整理を実行してください。",
-        },
-      ]);
-      return;
-    }
-
-    const additionalText = gptInput.trim();
-    const parsedInput = applyPrefixedTaskFieldsFromText(additionalText);
-    const resolvedTitle = getResolvedTaskTitle({
-      explicitTitle: parsedInput.title,
-      freeText: parsedInput.freeText || additionalText,
-      searchQuery: parsedInput.searchQuery,
-      fallback: currentTaskDraft.title || "タスク",
-    });
-
-    const mergedInput = buildMergedTaskInput(
-      currentTaskText,
-      "GPT手入力補足",
-      parsedInput.freeText || additionalText,
-      {
-        title: resolvedTitle,
-        userInstruction:
-          parsedInput.userInstruction || currentTaskDraft.userInstruction,
-        searchRawText: currentTaskDraft.searchContext?.rawText || "",
-      }
-    );
-
-    const userMsg: Message = {
-      id: generateId(),
-      role: "user",
-      text: `[タスク更新]\n${additionalText}`,
-      meta: {
-        kind: "task_info",
-        sourceType: "manual",
-      },
-    };
-
-    const baseRecent = gptStateRef.current.recentMessages || [];
-    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-
-    setGptMessages((prev) => [...prev, userMsg]);
-    setGptInput("");
-    setGptLoading(true);
-
-    try {
-      const data = await runAutoPrepTask(mergedInput, "task-update");
-      const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-      const assistantMsg: Message = {
-        id: generateId(),
-        role: "gpt",
-        text: taskText,
-        meta: {
-          kind: "task_prep",
-          sourceType: "manual",
-        },
-      };
-
-      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
-
-      setGptMessages((prev) => [...prev, assistantMsg]);
-      setGptState((prev) => ({
-        ...prev,
-        recentMessages: updatedRecent,
-      }));
-
-      const source = createTaskSource(
-        "manual_note",
-        "GPT手入力補足",
-        parsedInput.freeText || additionalText
-      );
-
-      setCurrentTaskDraft((prev) => ({
-        ...prev,
-        title: resolvedTitle,
-        taskName: resolvedTitle,
-        userInstruction: parsedInput.userInstruction || prev.userInstruction,
-        body: taskText,
-        prepText: prev.prepText || prev.mergedText,
-        deepenText: "",
-        mergedText: taskText,
-        kinTaskText: "",
-        status: "prepared",
-        sources: [...prev.sources, source],
-        updatedAt: new Date().toISOString(),
-      }));
-
-      applyTaskUsage(data?.usage);
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ タスク更新中にエラーが発生しました",
-        },
-      ]);
-    } finally {
-      setGptLoading(false);
-    }
-  };
-
-  const runUpdateTaskFromLastGptMessage = async () => {
-    if (gptLoading) return;
-
-    const currentTaskText = getTaskBaseText();
-
-    if (!currentTaskText) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 更新対象の現在タスクが見つかりません。先にタスク整理を実行してください。",
-        },
-      ]);
-      return;
-    }
-
-    const lastGptMessage = [...gptMessages]
-      .reverse()
-      .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
-
-    if (!lastGptMessage) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 取込対象の最新GPTメッセージが見つかりません。",
-        },
-      ]);
-      return;
-    }
-
-    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
-    const resolvedTitle = getResolvedTaskTitle({
-      explicitTitle: parsedInput.title,
-      freeText: parsedInput.freeText || gptInput.trim(),
-      searchQuery: parsedInput.searchQuery,
-      fallback: currentTaskDraft.title || "タスク",
-    });
-
-    const taskInput = buildTaskInput({
-      title: resolvedTitle,
-      userInstruction:
-        parsedInput.userInstruction || currentTaskDraft.userInstruction,
-      actionInstruction: parsedInput.freeText || gptInput.trim(),
-      body: currentTaskText,
-      material: lastGptMessage.text.trim(),
-    });
-
-    setGptInput("");
-    setGptLoading(true);
-
-    try {
-      const data = await runAutoPrepTask(taskInput, "task-update-last-gpt");
-      const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: ["【最新レス取込によるタスク更新結果】", taskText].join("\n\n"),
-          meta: {
-            kind: "task_prep",
-            sourceType: "gpt_input",
-          },
-        },
-      ]);
-
-      const source = createTaskSource(
-        "manual_note",
-        "GPT最新レス",
-        lastGptMessage.text.trim()
-      );
-
-      setCurrentTaskDraft((prev) => ({
-        ...prev,
-        title: resolvedTitle,
-        taskName: resolvedTitle,
-        userInstruction: parsedInput.userInstruction || prev.userInstruction,
-        body: taskText,
-        deepenText: "",
-        mergedText: taskText,
-        kinTaskText: "",
-        status: "prepared",
-        sources: [...prev.sources, source],
-        updatedAt: new Date().toISOString(),
-      }));
-
-      applyTaskUsage(data?.usage);
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 最新レス取込によるタスク更新に失敗しました",
-        },
-      ]);
-    } finally {
-      setGptLoading(false);
-    }
-  };
-
-  const runAttachSearchResultToTask = async () => {
-    if (gptLoading) return;
-
-    const currentTaskText = getTaskBaseText();
-
-    if (!currentTaskText) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 統合対象の現在タスクが見つかりません。先にタスク整理を実行してください。",
-        },
-      ]);
-      return;
-    }
-
-    const searchRaw = lastSearchContext?.rawText?.trim();
-
-    if (!searchRaw) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 統合対象の検索結果が見つかりません。先に検索を実行してください。",
-        },
-      ]);
-      return;
-    }
-
-    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
-    const resolvedTitle = getResolvedTaskTitle({
-      explicitTitle: parsedInput.title,
-      freeText: parsedInput.freeText || gptInput.trim(),
-      searchQuery: parsedInput.searchQuery || lastSearchContext?.query,
-      fallback: currentTaskDraft.title || "タスク",
-    });
-
-    const taskInput = buildTaskInput({
-      title: resolvedTitle,
-      userInstruction:
-        parsedInput.userInstruction || currentTaskDraft.userInstruction,
-      actionInstruction: parsedInput.freeText || gptInput.trim(),
-      body: currentTaskText,
-      material: searchRaw,
-    });
-
-    setGptInput("");
-    setGptLoading(true);
-
-    try {
-      const data = await runAutoPrepTask(taskInput, "attach-search-result");
-      const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: ["【検索結果を統合したタスク更新結果】", taskText].join("\n\n"),
-          meta: {
-            kind: "task_prep",
-            sourceType: "search",
-          },
-        },
-      ]);
-
-      const source = createTaskSource(
-        "web_search",
-        `検索結果: ${lastSearchContext?.query || "未設定"}`,
-        searchRaw
-      );
-
-      setCurrentTaskDraft((prev) => ({
-        ...prev,
-        title: resolvedTitle,
-        taskName: resolvedTitle,
-        userInstruction: parsedInput.userInstruction || prev.userInstruction,
-        body: taskText,
-        searchContext: lastSearchContext ?? prev.searchContext,
-        deepenText: "",
-        mergedText: taskText,
-        kinTaskText: "",
-        status: "prepared",
-        sources: [...prev.sources, source],
-        updatedAt: new Date().toISOString(),
-      }));
-
-      applyTaskUsage(data?.usage);
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 検索結果の現在タスクへの統合に失敗しました",
-        },
-      ]);
-    } finally {
-      setGptLoading(false);
-    }
-  };
-
-  const runDeepenTaskFromLast = async () => {
-    if (gptLoading) return;
-
-    const text = getTaskBaseText();
-
-    if (!text) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 深掘り対象のタスク内容が見つかりません",
-        },
-      ]);
-      return;
-    }
-
-    const parsedInput = applyPrefixedTaskFieldsFromText(gptInput.trim());
-    const resolvedTitle = getResolvedTaskTitle({
-      explicitTitle: parsedInput.title,
-      freeText: parsedInput.freeText || gptInput.trim(),
-      searchQuery: parsedInput.searchQuery,
-      fallback: currentTaskDraft.title || "深掘りタスク",
-    });
-
-    const taskInput = buildTaskInput({
-      title: resolvedTitle,
-      userInstruction:
-        parsedInput.userInstruction || currentTaskDraft.userInstruction,
-      actionInstruction: parsedInput.freeText || gptInput.trim(),
-      body: text,
-      material: text,
-    });
-
-    const userMsg: Message = {
-      id: generateId(),
-      role: "user",
-      text: `[深掘り依頼]\n${parsedInput.freeText || "（追加指示なし）"}`,
-      meta: {
-        kind: "task_info",
-      },
-    };
-
-    const baseRecent = gptStateRef.current.recentMessages || [];
-    const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-
-    setGptMessages((prev) => [...prev, userMsg]);
-    setGptInput("");
-    setGptLoading(true);
-
-    try {
-      const data = await runAutoDeepenTask(taskInput, "current-task");
-      const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-      const assistantMsg: Message = {
-        id: generateId(),
-        role: "gpt",
-        text: taskText,
-        meta: {
-          kind: "task_deepen",
-        },
-      };
-
-      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
-
-      setGptMessages((prev) => [...prev, assistantMsg]);
-      setGptState((prev) => ({
-        ...prev,
-        recentMessages: updatedRecent,
-      }));
-
-      setCurrentTaskDraft((prev) => ({
-        ...prev,
-        title: resolvedTitle,
-        taskName: resolvedTitle,
-        userInstruction: parsedInput.userInstruction || prev.userInstruction,
-        body: taskText,
-        deepenText: taskText,
-        mergedText: taskText,
-        kinTaskText: "",
-        status: "deepened",
-        updatedAt: new Date().toISOString(),
-      }));
-
-      applyTaskUsage(data?.usage);
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 深掘りタスク実行中にエラーが発生しました",
-        },
-      ]);
-    } finally {
-      setGptLoading(false);
-    }
-  };
-
-  const sendLastKinToGptDraft = () => {
-    const last = [...kinMessages].reverse().find((m) => m.role === "kin");
-    if (!last) return;
-
-    setGptInput(extractPreferredKinTransferText(last.text));
-    if (isMobile) setActiveTab("gpt");
-  };
-
-  const sendLastGptToKinDraft = () => {
-    const last = [...gptMessages].reverse().find((m) => m.role === "gpt");
-    if (!last) return;
-
-    setKinInput(last.text);
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const sendLatestGptContentToKin = async () => {
-    const last = [...gptMessages]
-      .reverse()
-      .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
-
-    if (!last) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ Kinへ送る対象の最新GPTレスが見つかりません",
-        },
-      ]);
-      return;
-    }
-
-    const directiveText = gptInput.trim();
-    const { intent, usage } = await resolveTransformIntent({
-      input: directiveText,
-      defaultMode: "sys_info",
-      responseMode: toTransformResponseMode(responseMode),
-    });
-    applyTaskUsage(usage);
-
-    let content = last.text.trim();
-
-    if (shouldTransformContent(intent)) {
-      setGptLoading(true);
-      try {
-        const transformed = await transformTextWithIntent({
-          text: content,
-          intent,
-          responseMode: toTransformResponseMode(responseMode),
-        });
-        content = transformed.text.trim() || content;
-        applyTaskUsage(transformed.usage);
-      } catch (error) {
-        console.error(error);
-        setGptMessages((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            role: "gpt",
-            text: "⚠️ Kin送信用の変換に失敗したため、元の本文で続行しました。",
-          },
-        ]);
-      } finally {
-        setGptLoading(false);
-      }
-    }
-
-    const directiveLines = buildKinDirectiveLines(intent);
-    const block =
-      intent.mode === "sys_task"
-        ? buildKinSysTaskBlock({
-            taskSlot: currentTaskDraft.slot,
-            title: currentTaskDraft.title || "GPT最新レス",
-            content,
-            directiveLines,
-          })
-        : buildKinSysInfoBlock({
-            taskSlot: currentTaskDraft.slot,
-            title: currentTaskDraft.title || "GPT最新レス",
-            sourceLabel: "gpt_latest_response",
-            content,
-            directiveLines,
-          });
-
-    setKinInput(block);
-    setGptInput("");
-
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: `✅ 最新GPTレスを ${intent.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}`,
-        meta: {
-          kind: "task_info",
-          sourceType: "gpt_chat",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const sendCurrentTaskContentToKin = async () => {
-    const rawDirective = gptInput.trim();
-
-    if (rawDirective && looksLikeTaskInstruction(rawDirective)) {
-      runStartKinTaskFromInput();
-      return;
-    }
-
-    const sourceText = getTaskBaseText();
-
-    if (!sourceText) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ Kinへ送る対象の現在タスクが見つかりません",
-        },
-      ]);
-      return;
-    }
-
-    const directiveText = gptInput.trim();
-    const { intent, usage } = await resolveTransformIntent({
-      input: directiveText,
-      defaultMode: "sys_task",
-      responseMode: toTransformResponseMode(responseMode),
-    });
-    applyTaskUsage(usage);
-
-    let content = sourceText.trim();
-
-    if (shouldTransformContent(intent)) {
-      setGptLoading(true);
-      try {
-        const transformed = await transformTextWithIntent({
-          text: content,
-          intent,
-          responseMode: toTransformResponseMode(responseMode),
-        });
-        content = transformed.text.trim() || content;
-        applyTaskUsage(transformed.usage);
-      } catch (error) {
-        console.error(error);
-        setGptMessages((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            role: "gpt",
-            text: "⚠️ 現在タスクの変換に失敗したため、元の本文で続行しました。",
-          },
-        ]);
-      } finally {
-        setGptLoading(false);
-      }
-    }
-
-    const directiveLines = buildKinDirectiveLines(intent);
-    const block =
-      intent.mode === "sys_info"
-        ? buildKinSysInfoBlock({
-            taskSlot: currentTaskDraft.slot,
-            title: currentTaskDraft.title || "現在タスク",
-            sourceLabel: "current_task",
-            content,
-            directiveLines,
-          })
-        : buildKinSysTaskBlock({
-            taskSlot: currentTaskDraft.slot,
-            title: currentTaskDraft.title || "現在タスク",
-            content,
-            directiveLines,
-          });
-
-    setKinInput(block);
-    setGptInput("");
-
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: `✅ 現在タスクを ${intent.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"} 形式でKin入力欄にセットしました。TASK_ID: ${getTaskSlotLabel()}`,
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const receiveLastKinResponseToGptInput = () => {
-    const last = [...kinMessages]
-      .reverse()
-      .find((m) => m.role === "kin" && typeof m.text === "string" && m.text.trim());
-
-    if (!last) {
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ 取込対象のKin最新レスが見つかりません",
-        },
-      ]);
-      return;
-    }
-
-    const multipart = parseTaskDonePart(last.text);
-    if (multipart) {
-      const assembly = upsertMultipartAssembly(multipart);
-      const ack = buildMultipartAck({
-        taskId: multipart.taskId,
-        partIndex: multipart.partIndex,
-        totalParts: multipart.totalParts,
-        isFinal: multipart.partIndex >= multipart.totalParts,
-      });
-
-      setKinInput(ack);
-      if (assembly?.isComplete) {
-        setGptMessages((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            role: "gpt",
-            text: `Kin の分割メッセージを再統合しました。${assembly.filename} として保存可能です。`,
-            meta: {
-              kind: "task_info",
-              sourceType: "kin_message",
-            },
-          },
-        ]);
-      } else {
-        setGptMessages((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            role: "gpt",
-            text: `PART ${multipart.partIndex}/${multipart.totalParts} を受領しました。次パート要求を Kin 送信欄にセットしました。`,
-            meta: {
-              kind: "task_info",
-              sourceType: "kin_message",
-            },
-          },
-        ]);
-      }
-
-      if (isMobile) setActiveTab("kin");
-      return;
-    }
-
-    setGptInput(extractPreferredKinTransferText(last.text));
-
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: "✅ Kin最新レスをGPT入力欄に取り込みました。必要に応じて編集してから送信してください。",
-        meta: {
-          kind: "task_info",
-          sourceType: "kin_message",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("gpt");
-  };
-
-  const injectFileToKinDraft = async (
-    file: File,
-    options: {
-      kind: typeof uploadKind;
-      mode: typeof ingestMode;
-      detail: typeof imageDetail;
-      action: PostIngestAction;
-      readPolicy: typeof fileReadPolicy;
-      compactCharLimit: number;
-      simpleImageCharLimit: number;
-    }
-  ) => {
-    if (ingestLoading) return;
-
-    const resolvedKind = resolveUploadKindFromFile(file, options.kind);
-    setIngestLoading(true);
-
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("kind", resolvedKind);
-      form.append("mode", options.mode);
-      form.append("detail", options.detail);
-      form.append("readPolicy", options.readPolicy);
-      form.append("compactCharLimit", String(options.compactCharLimit));
-      form.append("simpleImageCharLimit", String(options.simpleImageCharLimit));
-
-      const res = await fetch("/api/ingest", {
-        method: "POST",
-        body: form,
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        const errorText =
-          typeof data?.error === "string"
-            ? data.error
-            : "⚠️ ファイル変換に失敗しました";
-
-        setGptMessages((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            role: "gpt",
-            text:
-              `${errorText}\n\n` +
-              "必要なら /api/ingest のレスポンス詳細を確認してください。",
-          },
-        ]);
-        return;
-      }
-
-      const fileTitle =
-        typeof data?.result?.title === "string" && data.result.title.trim()
-          ? data.result.title.trim()
-          : file.name;
-
-      applyIngestUsage(data?.usage);
-
-      const selectedLines = Array.isArray(data?.result?.selectedLines)
-        ? data.result.selectedLines.filter(
-            (line: unknown) => typeof line === "string" && line.trim()
-          )
-        : [];
-      const selectedText = selectedLines.join("\n").trim();
-      const selectedCharCount = selectedText.length;
-      const rawIngestText =
-        typeof data?.result?.rawText === "string" ? data.result.rawText.trim() : "";
-      const rawCharCount = rawIngestText.length;
-      const prepInputBase =
-        selectedLines.length > 0
-          ? [
-              `ファイル名: ${file.name}`,
-              `タイトル: ${fileTitle}`,
-              `取込内容:\n${selectedLines.join("\n")}`,
-            ].join("\n\n")
-          : buildPrepInputFromIngestResult(data, file.name);
-      let prepInput = prepInputBase;
-
-      const directiveText = gptInput.trim();
-      const { intent, usage } = await resolveTransformIntent({
-        input: directiveText,
-        defaultMode: "sys_info",
-        responseMode: toTransformResponseMode(responseMode),
-      });
-      applyTaskUsage(usage);
-
-      if (shouldTransformContent(intent)) {
-        try {
-          const transformed = await transformTextWithIntent({
-            text: prepInputBase,
-            intent,
-            responseMode: toTransformResponseMode(responseMode),
-          });
-          prepInput = transformed.text.trim() || prepInputBase;
-          applyTaskUsage(transformed.usage);
-        } catch (error) {
-          console.error("file transform failed", error);
-          setGptMessages((prev) => [
-            ...prev,
-            {
-              id: generateId(),
-              role: "gpt",
-              text: "⚠️ ファイル追加指示の反映に失敗したため、元の取込内容で続行しました。",
-              meta: {
-                kind: "task_info",
-                sourceType: "file_ingest",
-              },
-            },
-          ]);
-        }
-      }
-
-      const directiveLines = buildKinDirectiveLines(intent);
-      const chunks = splitTextIntoKinChunks(prepInput, 3400, 260);
-      const blocks: string[] = chunks.map((chunk, index) =>
-        intent.mode === "sys_task"
-          ? buildKinSysTaskBlock({
-              taskSlot: currentTaskDraft.slot,
-              title: fileTitle,
-              content: chunk,
-              directiveLines,
-            })
-          : buildKinSysInfoBlock({
-              taskSlot: currentTaskDraft.slot,
-              title: fileTitle,
-              sourceLabel: "file_ingest",
-              content: chunk,
-              directiveLines,
-              partIndex: index + 1,
-              partTotal: chunks.length,
-            })
-      );
-
-      if (blocks.length === 0) {
-        setGptMessages((prev) => [
-          ...prev,
-          {
-            id: generateId(),
-            role: "gpt",
-            text: "⚠️ Kin注入用ブロックを生成できませんでした",
-          },
-        ]);
-        return;
-      }
-
-      setPendingKinInjectionBlocks(blocks);
-      setPendingKinInjectionIndex(0);
-      setKinInput(blocks[0]);
-      setUploadKind(resolvedKind);
-      setGptInput("");
-
-      let prepTaskText = "";
-      let deepenTaskText = "";
-
-      if (
-        options.action === "inject_and_prep" ||
-        options.action === "inject_prep_deepen"
-      ) {
-        try {
-          const prepData = await runAutoPrepTask(prepInput, `ingest-${file.name}`);
-          prepTaskText = formatTaskResultText(prepData?.parsed, prepData?.raw);
-          applyTaskUsage(prepData?.usage);
-
-          if (options.action === "inject_prep_deepen") {
-            try {
-              const deepenData = await runAutoDeepenTask(
-                prepTaskText,
-                `prep-${file.name}`
-              );
-              deepenTaskText = formatTaskResultText(
-                deepenData?.parsed,
-                deepenData?.raw
-              );
-              applyTaskUsage(deepenData?.usage);
-            } catch (error) {
-              console.error("auto deepen task failed", error);
-              deepenTaskText = "⚠️ 自動深掘りに失敗しました";
-            }
-          }
-        } catch (error) {
-          console.error("auto prep task failed", error);
-          prepTaskText = "⚠️ 抽出後の自動タスク整理に失敗しました";
-        }
-      }
-
-      const modeLine =
-        resolvedKind === "text"
-          ? `テキスト注入: ${options.mode}`
-          : `画像詳細度: ${options.detail}`;
-
-      const readPolicyLabel =
-        options.readPolicy === "text_first"
-          ? "文字優先"
-          : options.readPolicy === "visual_first"
-            ? "視覚優先"
-            : "統合";
-
-      const actionLabel =
-        options.action === "inject_only"
-          ? "注入のみ"
-          : options.action === "inject_and_prep"
-            ? "注入＋タスク整理"
-            : options.action === "inject_prep_deepen"
-              ? "注入＋タスク整理＋深掘り"
-              : "現在タスクに追加";
-      const displayCharCount = prepInput.length;
-
-      const messageParts = [
-        "ファイルをKin注入用テキストに変換しました。",
-        `タイトル: ${fileTitle}`,
-        `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}`,
-        `読込方針: ${readPolicyLabel}`,
-        modeLine,
-        `注入後処理: ${actionLabel}`,
-        `注入文字数: ${displayCharCount.toLocaleString()}文字`,
-        `抽出文字数: ${selectedCharCount.toLocaleString()}文字`,
-        ...(rawCharCount > 0 && rawCharCount !== selectedCharCount
-          ? [`原文文字数: ${rawCharCount.toLocaleString()}文字`]
-          : []),
-        `分割数: ${blocks.length}`,
-        "",
-        `Kin入力欄に 1/${blocks.length} をセットしました。送信後は次パートが自動で下書きに入ります。`,
-      ];
-
-      if (options.action === "inject_only") {
-        messageParts.push("", "--------------------", "【取込内容】", prepInput);
-      }
-
-      if (options.action !== "inject_only" && prepTaskText) {
-        messageParts.push("", "--------------------", prepTaskText);
-      }
-
-      if (options.action === "inject_prep_deepen" && deepenTaskText) {
-        messageParts.push("", "====================", "【自動深掘り結果】", deepenTaskText);
-      }
-
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: messageParts.join("\n"),
-          meta: {
-            kind: "task_info",
-            sourceType: "file_ingest",
-          },
-        },
-      ]);
-
-      const chatContextBody = selectedText || prepInput.trim();
-      const chatContextExcerpt =
-        chatContextBody.length > 1600
-          ? `${chatContextBody.slice(0, 1600).trimEnd()}…`
-          : chatContextBody;
-      const fileContextMessage: Message = {
-        id: generateId(),
-        role: "gpt",
-        text: [
-          "[注入ファイル共有コンテキスト]",
-          `ファイル名: ${file.name}`,
-          `タイトル: ${fileTitle}`,
-          `対象: ${resolvedKind === "text" ? "テキスト" : "画像 / PDF"}`,
-          `抽出文字数: ${selectedCharCount.toLocaleString()}文字`,
-          chatContextExcerpt ? `内容:\n${chatContextExcerpt}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n\n"),
-        meta: {
-          kind: "task_info",
-          sourceType: "file_ingest",
-        },
-      };
-
-      const currentGptState = gptStateRef.current;
-      const recentWithoutPriorFileBridge = currentGptState.recentMessages.filter(
-        (message) =>
-          !(
-            message.meta?.sourceType === "file_ingest" &&
-            message.meta?.kind === "task_info"
-          )
-      );
-      const nextGptState = {
-        ...currentGptState,
-        memory: {
-          ...currentGptState.memory,
-          lists: {
-            ...currentGptState.memory.lists,
-            activeDocument: {
-              title: fileTitle,
-              fileName: file.name,
-              kind: resolvedKind,
-              charCount: selectedCharCount,
-              rawCharCount,
-              excerpt: chatContextExcerpt,
-              injectedAt: new Date().toISOString(),
-            },
-          },
-          context: {
-            ...currentGptState.memory.context,
-            currentTopic: fileTitle,
-            followUpRule: `「これ」「この資料」「この書類」などの短い参照は、直近で注入したファイル「${fileTitle}」を指すものとして解釈する。`,
-            lastUserIntent: `ファイル「${file.name}」を注入した`,
-          },
-        },
-        recentMessages: [...recentWithoutPriorFileBridge, fileContextMessage].slice(
-          -chatRecentLimit
-        ),
-      };
-
-      setGptState(nextGptState);
-      gptStateRef.current = nextGptState;
-
-      if (options.action === "inject_only") {
-        if (isMobile) {
-          setActiveTab("kin");
-        }
-        return;
-      }
-
-      if (options.action === "attach_to_current_task") {
-        const currentTaskText = getTaskBaseText();
-
-        if (!currentTaskText) {
-          setGptMessages((prev) => [
-            ...prev,
-            {
-              id: generateId(),
-              role: "gpt",
-              text: "⚠️ 現在タスクが未作成のため、ファイルを追加統合できません。先にタスク整理を行ってください。",
-            },
-          ]);
-        } else {
-          const mergedInput = buildMergedTaskInput(
-            currentTaskText,
-            `FILE: ${file.name}`,
-            prepInput,
-            {
-              title: getResolvedTaskTitle({
-                explicitTitle: currentTaskDraft.title || fileTitle,
-                freeText: prepInput,
-                fallback: file.name,
-              }),
-              userInstruction: currentTaskDraft.userInstruction,
-              searchRawText: currentTaskDraft.searchContext?.rawText || "",
-            }
-          );
-
-          try {
-            const mergeData = await runAutoPrepTask(
-              mergedInput,
-              `attach-${file.name}`
-            );
-            const mergedTaskText = formatTaskResultText(
-              mergeData?.parsed,
-              mergeData?.raw
-            );
-
-            applyTaskUsage(mergeData?.usage);
-
-            setGptMessages((prev) => [
-              ...prev,
-              {
-                id: generateId(),
-                role: "gpt",
-                text: ["【現在タスク更新結果】", mergedTaskText].join("\n\n"),
-                meta: {
-                  kind: "task_prep",
-                  sourceType: "file_ingest",
-                },
-              },
-            ]);
-
-            const source = createTaskSource(
-              "file_ingest",
-              `FILE: ${file.name}`,
-              prepInput
-            );
-
-            setCurrentTaskDraft((prev) => {
-              const nextTitle = resolveTaskTitleFromDraft(prev, {
-                explicitTitle: prev.title || fileTitle,
-                freeText: prepInput,
-                fallback: file.name,
-              });
-
-              return {
-                ...prev,
-                taskName: nextTitle,
-                title: nextTitle,
-                body: mergedTaskText,
-                objective: prev.objective || `ファイル ${file.name} を統合したタスク`,
-                deepenText: "",
-                mergedText: mergedTaskText,
-                kinTaskText: "",
-                status: "prepared",
-                sources: [...prev.sources, source],
-                updatedAt: new Date().toISOString(),
-              };
-            });
-          } catch (error) {
-            console.error("attach current task failed", error);
-            setGptMessages((prev) => [
-              ...prev,
-              {
-                id: generateId(),
-                role: "gpt",
-                text: "⚠️ ファイル内容の現在タスクへの統合に失敗しました",
-              },
-            ]);
-          }
-        }
-      }
-
-      const source = createTaskSource("file_ingest", `FILE: ${file.name}`, prepInput);
-
-      if (options.action === "inject_and_prep" && prepTaskText) {
-        setCurrentTaskDraft((prev) => ({
-          ...prev,
-          taskName: getResolvedTaskTitle({
-            explicitTitle: fileTitle,
-            freeText: prepInput,
-            fallback: file.name,
-          }),
-          title: getResolvedTaskTitle({
-            explicitTitle: fileTitle,
-            freeText: prepInput,
-            fallback: file.name,
-          }),
-          body: prepTaskText,
-          objective: `ファイル ${file.name} の整理`,
-          prepText: prepTaskText,
-          deepenText: "",
-          mergedText: prepTaskText,
-          kinTaskText: "",
-          status: "prepared",
-          sources: [...prev.sources, source],
-          updatedAt: new Date().toISOString(),
-        }));
-      }
-
-      if (options.action === "inject_prep_deepen") {
-        const finalText = deepenTaskText || prepTaskText;
-        if (finalText) {
-          setCurrentTaskDraft((prev) => ({
-            ...prev,
-            taskName: getResolvedTaskTitle({
-              explicitTitle: fileTitle,
-              freeText: finalText,
-              fallback: file.name,
-            }),
-            title: getResolvedTaskTitle({
-              explicitTitle: fileTitle,
-              freeText: finalText,
-              fallback: file.name,
-            }),
-            body: finalText,
-            objective: `ファイル ${file.name} の整理`,
-            prepText: prepTaskText,
-            deepenText: deepenTaskText,
-            mergedText: finalText,
-            kinTaskText: "",
-            status: deepenTaskText ? "deepened" : "prepared",
-            sources: [...prev.sources, source],
-            updatedAt: new Date().toISOString(),
-          }));
-        }
-      }
-
-      if (isMobile) {
-        setActiveTab("kin");
-      }
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "⚠️ ファイル変換中にエラーが発生しました",
-        },
-      ]);
-    } finally {
-      setIngestLoading(false);
-    }
-  };
-
-  const resetKinMessages = () => {
-    setKinMessages([]);
-    clearPendingKinInjection();
-  };
-
-  const handleResetGpt = () => {
-    setGptMessages([]);
-    resetGptForCurrentKin();
-    resetTokenStats();
-    resetCurrentTaskDraft();
-  };
-
-  const prepareTaskRequestAck = (requestId: string) => {
-    const ackMessage = taskProtocol.prepareWaitingAckMessage(requestId);
-    if (!ackMessage) return;
-
-    setKinInput(ackMessage);
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: `待機応答を Kin 送信欄にセットしました。REQ: ${requestId}`,
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const prepareTaskSync = (note: string) => {
-    const syncMessage = taskProtocol.prepareTaskSyncMessage(note);
-    if (!syncMessage) return;
-
-    setKinInput(syncMessage);
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: "現在のタスク状態を再同期するメッセージを Kin 送信欄にセットしました。",
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const resetProtocolDefaults = () => {
-    setProtocolPrompt(DEFAULT_PROTOCOL_PROMPT);
-    setProtocolRulebook(DEFAULT_PROTOCOL_RULEBOOK);
-  };
-
-  const approveIntentCandidate = (candidateId: string) => {
-    const candidate = pendingIntentCandidates.find((item) => item.id === candidateId);
-    if (!candidate) return;
-
-    setApprovedIntentPhrases((prev) => {
-      const exists = prev.some(
-        (item) =>
-          item.kind === candidate.kind &&
-          item.phrase === candidate.phrase &&
-          item.count === candidate.count &&
-          item.rule === candidate.rule &&
-          item.charLimit === candidate.charLimit
-      );
-      if (exists) return prev;
-      return [
-        {
-          id: `approved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          phrase: candidate.phrase,
-          kind: candidate.kind,
-          count: candidate.count,
-          rule: candidate.rule,
-          charLimit: candidate.charLimit,
-          createdAt: new Date().toISOString(),
-        },
-        ...prev,
-      ].slice(0, 100);
-    });
-
-    setPendingIntentCandidates((prev) => prev.filter((item) => item.id !== candidateId));
-  };
-
-  const updateIntentCandidate = (
-    candidateId: string,
-    patch: Partial<PendingIntentCandidate>
-  ) => {
-    setPendingIntentCandidates((prev) =>
-      prev.map((item) =>
-        item.id === candidateId
-          ? {
-              ...item,
-              ...patch,
-            }
-          : item
-      )
-    );
-  };
-
-  const rejectIntentCandidate = (candidateId: string) => {
-    const candidate = pendingIntentCandidates.find((item) => item.id === candidateId);
-    if (candidate) {
-      const signature = getIntentCandidateSignature(candidate);
-      setRejectedIntentCandidateSignatures((prev) =>
-        prev.includes(signature) ? prev : [signature, ...prev].slice(0, 200)
-      );
-    }
-    setPendingIntentCandidates((prev) => prev.filter((item) => item.id !== candidateId));
-  };
-
-  const setProtocolRulebookToKinDraft = () => {
-    const normalized = normalizeProtocolRulebook(protocolRulebook);
-    setKinInput(normalized);
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: "ルールブックを SYS_INFO として Kin 送信欄にセットしました。",
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const sendProtocolRulebookToKin = async () => {
-    const normalized = normalizeProtocolRulebook(protocolRulebook);
-    await sendKinMessage(normalized);
-
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: "ルールブックを SYS_INFO として Kin に送信しました。",
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-
-    if (isMobile) setActiveTab("kin");
-  };
-
-  const handleSaveMemorySettings = (next: MemorySettings) => {
-    updateMemorySettings(next);
-  };
-
-  const handleResetMemorySettings = () => {
-    resetMemorySettings();
-  };
 
   const kinPanel = (
     <KinPanel
-      kinIdInput={kinIdInput}
-      setKinIdInput={setKinIdInput}
-      kinNameInput={kinNameInput}
-      setKinNameInput={setKinNameInput}
-      connectKin={handleConnectKin}
-      disconnectKin={handleDisconnectKin}
-      kinStatus={kinStatus}
-      currentKin={currentKin}
-      currentKinLabel={currentKinLabel}
-      kinList={kinList}
-      switchKin={handleSwitchKin}
-      removeKin={handleRemoveKin}
-      renameKin={renameKin}
-      kinMessages={kinMessages}
-      kinInput={kinInput}
-      setKinInput={setKinInput}
-      sendToKin={sendToKin}
-      sendLastKinToGptDraft={sendLastKinToGptDraft}
-      resetKinMessages={resetKinMessages}
-      pendingInjectionCurrentPart={
-        pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0
-      }
-      pendingInjectionTotalParts={pendingKinInjectionBlocks.length}
-      kinBottomRef={kinBottomRef}
-      isMobile={isMobile}
-      onSwitchPanel={() => setActiveTab("gpt")}
-      loading={kinLoading}
+      {...buildKinPanelProps({
+        kinIdInput,
+        setKinIdInput,
+        kinNameInput,
+        setKinNameInput,
+        connectKin: handleConnectKin,
+        disconnectKin: handleDisconnectKin,
+        kinStatus,
+        currentKin,
+        currentKinLabel,
+        kinList,
+        switchKin: handleSwitchKin,
+        removeKin: handleRemoveKin,
+        renameKin,
+        kinMessages,
+        kinInput,
+        setKinInput,
+        sendToKin,
+        sendLastKinToGptDraft: sendLastKinToGptDraft,
+        resetKinMessages,
+        pendingInjectionCurrentPart:
+          pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0,
+        pendingInjectionTotalParts: pendingKinInjectionBlocks.length,
+        kinBottomRef,
+        isMobile,
+        onSwitchPanel: () => setActiveTab("gpt"),
+        loading: kinLoading,
+      })}
     />
   );
 
   const gptPanel = (
     <GptPanel
-      currentKin={currentKin}
-      currentKinLabel={currentKinLabel}
-      kinStatus={kinStatus}
-      gptState={gptState}
-      gptMessages={gptMessages}
-      gptInput={gptInput}
-      setGptInput={setGptInput}
-      sendToGpt={sendToGpt}
-      runPrepTaskFromInput={runPrepTaskFromInput}
-      runDeepenTaskFromLast={runDeepenTaskFromLast}
-      runUpdateTaskFromInput={runUpdateTaskFromInput}
-      runUpdateTaskFromLastGptMessage={runUpdateTaskFromLastGptMessage}
-      runAttachSearchResultToTask={runAttachSearchResultToTask}
-      sendLatestGptContentToKin={sendLatestGptContentToKin}
-      sendCurrentTaskContentToKin={sendCurrentTaskContentToKin}
-      receiveLastKinResponseToGptInput={receiveLastKinResponseToGptInput}
-      resetGptForCurrentKin={handleResetGpt}
-      sendLastGptToKinDraft={sendLastGptToKinDraft}
-      injectFileToKinDraft={injectFileToKinDraft}
-      canInjectFile={!gptLoading && !ingestLoading}
-      loading={gptLoading}
-      ingestLoading={ingestLoading}
-      gptBottomRef={gptBottomRef}
-      memorySettings={memorySettings}
-      defaultMemorySettings={defaultMemorySettings}
-      onSaveMemorySettings={handleSaveMemorySettings}
-      onResetMemorySettings={handleResetMemorySettings}
-      tokenStats={tokenStats}
-      responseMode={responseMode}
-      onChangeResponseMode={setResponseMode}
-      uploadKind={uploadKind}
-      ingestMode={ingestMode}
-      imageDetail={imageDetail}
-      compactCharLimit={compactCharLimit}
-      simpleImageCharLimit={simpleImageCharLimit}
-      postIngestAction={postIngestAction}
-      fileReadPolicy={fileReadPolicy}
-      onChangeUploadKind={setUploadKind}
-      onChangeIngestMode={setIngestMode}
-      onChangeImageDetail={setImageDetail}
-      onChangeCompactCharLimit={setCompactCharLimit}
-      onChangeSimpleImageCharLimit={setSimpleImageCharLimit}
-      onChangePostIngestAction={setPostIngestAction}
-      onChangeFileReadPolicy={setFileReadPolicy}
-      autoSearchReferenceEnabled={autoSearchReferenceEnabled}
-      searchReferenceMode={searchReferenceMode}
-      searchReferenceCount={searchReferenceCount}
-      searchHistoryLimit={searchHistoryLimit}
-      searchHistoryStorageMB={searchHistoryStorageMB}
-      searchReferenceEstimatedTokens={searchReferenceEstimatedTokens}
-      onChangeAutoSearchReferenceEnabled={setAutoSearchReferenceEnabled}
-      onChangeSearchReferenceMode={setSearchReferenceMode}
-      onChangeSearchReferenceCount={(value) =>
-        setSearchReferenceCount(Math.max(1, Math.min(10, Number(value) || 1)))
-      }
-      onChangeSearchHistoryLimit={(value) =>
-        setSearchHistoryLimit(Math.max(1, Math.min(100, Number(value) || 1)))
-      }
-      onClearSearchHistory={clearSearchHistory}
-      pendingIntentCandidates={pendingIntentCandidates}
-      approvedIntentPhrases={approvedIntentPhrases}
-      multipartAssemblies={multipartAssemblies}
-      onLoadMultipartAssemblyToGptInput={loadMultipartAssemblyToGptInput}
-      onDownloadMultipartAssembly={downloadMultipartAssembly}
-      onUpdateIntentCandidate={updateIntentCandidate}
-      onApproveIntentCandidate={approveIntentCandidate}
-      onRejectIntentCandidate={rejectIntentCandidate}
-      lastSearchContext={lastSearchContext}
-      searchHistory={searchHistory}
-      pendingInjectionCurrentPart={
-        pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0
-      }
-      pendingInjectionTotalParts={pendingKinInjectionBlocks.length}
-      onSwitchPanel={() => setActiveTab("kin")}
-      isMobile={isMobile}
-      taskProgressView={taskProtocol.progressView}
-      onAnswerTaskRequest={(requestId) => {
-        const request =
-          taskProtocol.runtime.pendingRequests.find(
-            (item) => item.id === requestId || item.actionId === requestId
-          ) || null;
-        setGptInput(
-          `REQ ${requestId} への回答:\n${request ? `対象質問: ${request.body}\n` : ""}\nここに回答を記入してください。送信すると、GPT が <<SYS_USER_RESPONSE>> 形式へ整えます。`
-        );
-      }}
-      onPrepareTaskRequestAck={prepareTaskRequestAck}
-      onPrepareTaskSync={prepareTaskSync}
-      onStartKinTask={runStartKinTaskFromInput}
-      currentTaskDraft={currentTaskDraft}
-      onChangeTaskTitle={(value) =>
-        updateTaskDraftFields({
-          title: value,
-          taskName: value.trim() || currentTaskDraft.taskName,
-        })
-      }
-      onChangeTaskUserInstruction={(value) =>
-        updateTaskDraftFields({
-          userInstruction: value,
-        })
-      }
-      onChangeTaskBody={(value) =>
-        updateTaskDraftFields({
-          body: value,
-          mergedText: value,
-        })
-      }
-      protocolPrompt={protocolPrompt}
-      protocolRulebook={protocolRulebook}
-      onChangeProtocolPrompt={setProtocolPrompt}
-      onChangeProtocolRulebook={setProtocolRulebook}
-      onResetProtocolDefaults={resetProtocolDefaults}
-      onSetProtocolRulebookToKinDraft={setProtocolRulebookToKinDraft}
-      onSendProtocolRulebookToKin={sendProtocolRulebookToKin}
+      {...buildGptPanelProps({
+        currentKin,
+        currentKinLabel,
+        kinStatus,
+        gptState,
+        gptMessages,
+        gptInput,
+        setGptInput,
+        sendToGpt,
+        runPrepTaskFromInput,
+        runDeepenTaskFromLast,
+        runUpdateTaskFromInput,
+        runUpdateTaskFromLastGptMessage,
+        runAttachSearchResultToTask,
+        sendLatestGptContentToKin,
+        sendCurrentTaskContentToKin,
+        receiveLastKinResponseToGptInput,
+        resetGptForCurrentKin: handleResetGpt,
+        sendLastGptToKinDraft,
+        injectFileToKinDraft,
+        canInjectFile: !gptLoading && !ingestLoading,
+        loading: gptLoading,
+        ingestLoading,
+        gptBottomRef,
+        memorySettings,
+        defaultMemorySettings,
+        onSaveMemorySettings: handleSaveMemorySettings,
+        onResetMemorySettings: handleResetMemorySettings,
+        tokenStats,
+        responseMode,
+        onChangeResponseMode: setResponseMode,
+        uploadKind,
+        ingestMode,
+        imageDetail,
+        compactCharLimit,
+        simpleImageCharLimit,
+        postIngestAction,
+        fileReadPolicy,
+        onChangeUploadKind: setUploadKind,
+        onChangeIngestMode: setIngestMode,
+        onChangeImageDetail: setImageDetail,
+        onChangeCompactCharLimit: setCompactCharLimit,
+        onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
+        onChangePostIngestAction: setPostIngestAction,
+        onChangeFileReadPolicy: setFileReadPolicy,
+        autoSearchReferenceEnabled,
+        searchReferenceMode,
+        searchReferenceCount,
+        searchHistoryLimit,
+        searchHistoryStorageMB,
+        searchReferenceEstimatedTokens,
+        autoDocumentReferenceEnabled,
+        documentReferenceMode,
+        documentReferenceCount,
+        documentStorageMB,
+        documentReferenceEstimatedTokens,
+        autoLibraryReferenceEnabled,
+        libraryReferenceMode,
+        libraryIndexResponseCount,
+        libraryReferenceCount,
+        libraryStorageMB,
+        libraryReferenceEstimatedTokens,
+        onChangeAutoSearchReferenceEnabled: setAutoSearchReferenceEnabled,
+        onChangeSearchReferenceMode: setSearchReferenceMode,
+        onChangeSearchReferenceCount: (value) =>
+          setSearchReferenceCount(Math.max(1, Math.min(10, Number(value) || 1))),
+        onChangeSearchHistoryLimit: (value) =>
+          setSearchHistoryLimit(Math.max(1, Math.min(100, Number(value) || 1))),
+        onClearSearchHistory: clearSearchHistory,
+        onChangeAutoDocumentReferenceEnabled: setAutoDocumentReferenceEnabled,
+        onChangeDocumentReferenceMode: setDocumentReferenceMode,
+        onChangeDocumentReferenceCount: (value) =>
+          setDocumentReferenceCount(Math.max(1, Math.min(10, Number(value) || 1))),
+        onChangeAutoLibraryReferenceEnabled: setAutoLibraryReferenceEnabled,
+        onChangeLibraryReferenceMode: setLibraryReferenceMode,
+        onChangeLibraryIndexResponseCount: (value) =>
+          setLibraryIndexResponseCount(Math.max(1, Math.min(50, Number(value) || 1))),
+        onChangeLibraryReferenceCount: (value) =>
+          setLibraryReferenceCount(Math.max(0, Math.min(20, Number(value) || 0))),
+        onDeleteSearchHistoryItem: deleteSearchHistoryItem,
+        pendingIntentCandidates,
+        approvedIntentPhrases,
+        multipartAssemblies,
+        storedDocuments: allDocuments,
+        referenceLibraryItems: libraryItems,
+        selectedTaskLibraryItemId,
+        onLoadMultipartAssemblyToGptInput: loadMultipartAssemblyToGptInput,
+        onDownloadMultipartAssembly: downloadMultipartAssembly,
+        onDeleteMultipartAssembly: deleteMultipartAssembly,
+        onLoadStoredDocumentToGptInput: loadStoredDocumentToGptInput,
+        onDownloadStoredDocument: downloadStoredDocument,
+        onDeleteStoredDocument: deleteStoredDocument,
+        onMoveStoredDocument: moveStoredDocument,
+        onMoveLibraryItem: moveLibraryItem,
+        onSelectTaskLibraryItem: setSelectedTaskLibraryItemId,
+        onChangeLibraryItemMode: setLibraryItemModeOverride,
+        onSaveStoredDocument: updateStoredDocument,
+        onUpdateIntentCandidate: updateIntentCandidate,
+        onApproveIntentCandidate: approveIntentCandidate,
+        onRejectIntentCandidate: rejectIntentCandidate,
+        lastSearchContext,
+        searchHistory,
+        selectedTaskSearchResultId,
+        onSelectTaskSearchResult: setSelectedTaskSearchResultId,
+        onMoveSearchHistoryItem: moveSearchHistoryItem,
+        pendingInjectionCurrentPart:
+          pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0,
+        pendingInjectionTotalParts: pendingKinInjectionBlocks.length,
+        onSwitchPanel: () => setActiveTab("kin"),
+        isMobile,
+        taskProgressView: taskProtocol.progressView,
+        pendingRequests: taskProtocol.runtime.pendingRequests,
+        buildTaskRequestAnswerDraft,
+        onPrepareTaskRequestAck: prepareTaskRequestAck,
+        onPrepareTaskSync: prepareTaskSync,
+        onStartKinTask: runStartKinTaskFromInput,
+        onResetTaskContext: resetCurrentTaskDraft,
+        currentTaskDraft,
+        onChangeTaskTitle: (value) =>
+          updateTaskDraftFields({
+            title: value,
+            taskName: value.trim() || currentTaskDraft.taskName,
+          }),
+        onChangeTaskUserInstruction: (value) =>
+          updateTaskDraftFields({
+            userInstruction: value,
+          }),
+        onChangeTaskBody: (value) =>
+          updateTaskDraftFields({
+            body: value,
+            mergedText: value,
+          }),
+        protocolPrompt,
+        protocolRulebook,
+        onChangeProtocolPrompt: setProtocolPrompt,
+        onChangeProtocolRulebook: setProtocolRulebook,
+        onResetProtocolDefaults: resetProtocolDefaults,
+        onSaveProtocolDefaults: saveProtocolDefaults,
+        onSetProtocolRulebookToKinDraft: setProtocolRulebookToKinDraft,
+        onSendProtocolRulebookToKin: sendProtocolRulebookToKin,
+      })}
     />
   );
 
@@ -3175,45 +683,12 @@ ${finalRequestText}`;
           overflow: "visible",
         }}
       >
-        {isMobile ? (
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              minWidth: 0,
-              position: "relative",
-              overflow: "visible",
-              width: "100%",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: activeTab === "kin" ? "flex" : "none",
-                width: "100%",
-              }}
-            >
-              {kinPanel}
-            </div>
-
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: activeTab === "gpt" ? "flex" : "none",
-                width: "100%",
-              }}
-            >
-              {gptPanel}
-            </div>
-          </div>
-        ) : (
-          <>
-            <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>{kinPanel}</div>
-            <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>{gptPanel}</div>
-          </>
-        )}
+        <ChatPanelsLayout
+          isMobile={isMobile}
+          activeTab={activeTab}
+          kinPanel={kinPanel}
+          gptPanel={gptPanel}
+        />
       </div>
     </div>
   );

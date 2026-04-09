@@ -129,14 +129,45 @@ export default function TestTaskPage() {
             searchHistoryLimit={20}
             searchHistoryStorageMB={0}
             searchReferenceEstimatedTokens={0}
+            autoDocumentReferenceEnabled={true}
+            documentReferenceMode="summary_only"
+            documentReferenceCount={2}
+            documentStorageMB={0}
+            documentReferenceEstimatedTokens={0}
+            autoLibraryReferenceEnabled={true}
+            libraryReferenceMode="summary_only"
+            libraryIndexResponseCount={12}
+            libraryReferenceCount={3}
+            libraryStorageMB={0}
+            libraryReferenceEstimatedTokens={0}
             onChangeAutoSearchReferenceEnabled={noop}
             onChangeSearchReferenceMode={noop}
             onChangeSearchReferenceCount={noop}
             onChangeSearchHistoryLimit={noop}
             onClearSearchHistory={noop}
+            onChangeAutoDocumentReferenceEnabled={noop}
+            onChangeDocumentReferenceMode={noop}
+            onChangeDocumentReferenceCount={noop}
+            onChangeAutoLibraryReferenceEnabled={noop}
+            onChangeLibraryReferenceMode={noop}
+            onChangeLibraryIndexResponseCount={noop}
+            onChangeLibraryReferenceCount={noop}
+            onDeleteSearchHistoryItem={noop}
             multipartAssemblies={[]}
+            storedDocuments={[]}
+            referenceLibraryItems={[]}
+            selectedTaskLibraryItemId=""
             onLoadMultipartAssemblyToGptInput={noop}
             onDownloadMultipartAssembly={noop}
+            onDeleteMultipartAssembly={noop}
+            onLoadStoredDocumentToGptInput={noop}
+            onDownloadStoredDocument={noop}
+            onDeleteStoredDocument={noop}
+            onMoveStoredDocument={noop}
+            onMoveLibraryItem={noop}
+            onSelectTaskLibraryItem={noop}
+            onChangeLibraryItemMode={noop}
+            onSaveStoredDocument={noop}
             pendingIntentCandidates={[]}
             approvedIntentPhrases={[]}
             onUpdateIntentCandidate={noop}
@@ -144,6 +175,9 @@ export default function TestTaskPage() {
             onRejectIntentCandidate={noop}
             lastSearchContext={null}
             searchHistory={[]}
+            selectedTaskSearchResultId=""
+            onSelectTaskSearchResult={noop}
+            onMoveSearchHistoryItem={noop}
             pendingInjectionCurrentPart={0}
             pendingInjectionTotalParts={0}
             onSwitchPanel={noop}
@@ -174,8 +208,10 @@ export default function TestTaskPage() {
             onChangeProtocolPrompt={setProtocolPrompt}
             onChangeProtocolRulebook={setProtocolRulebook}
             onResetProtocolDefaults={noop}
+            onSaveProtocolDefaults={noop}
             onSetProtocolRulebookToKinDraft={noop}
             onSendProtocolRulebookToKin={noopAsync}
+            onResetTaskContext={noop}
           />
         </div>
       </div>

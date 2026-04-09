@@ -1,6 +1,5 @@
-import React from "react";
-import type { KinMemoryState } from "@/types/chat";
-import type { TokenStats } from "./gptPanelTypes";
+﻿import React from "react";
+import type { GptStateLike, TokenStats } from "./gptPanelTypes";
 import {
   longValueStyle,
   tokenCardStyle,
@@ -60,7 +59,7 @@ function RunCount({ count }: { count: number }) {
 
 type Props = {
   mode: Exclude<GptTopDrawerTab, "settings" | null>;
-  gptState: KinMemoryState;
+  gptState: GptStateLike;
   tokenStats: TokenStats;
   recent5Chat: TokenUsage;
   totalUsage: TokenUsage;
@@ -131,29 +130,29 @@ export default function GptMetaDrawer({
               marginBottom: 8,
             }}
           >
-            <div style={tokenLeftLabelStyle}>メモリ占有</div>
+            <div style={tokenLeftLabelStyle}>メモリ容量</div>
             <div style={tokenLineStyle}>合計 {memoryUsed}/{memoryCapacity}</div>
           </div>
           <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-            直近チャット {recentCount}/{chatRecentLimit}
+            recentMessages {recentCount}/{chatRecentLimit}
             {" ・ "}
-            ファクト {factCount}/{maxFacts}
+            facts {factCount}/{maxFacts}
             {" ・ "}
-            好み {preferenceCount}/{maxPreferences}
+            preferences {preferenceCount}/{maxPreferences}
           </div>
         </div>
 
         <div style={tokenCardStyle}>
           <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>トピック</div>
           <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
-            {gptState.memory.context.currentTopic || "-"}
+            {gptState.memory?.context?.currentTopic || "-"}
           </div>
         </div>
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>目標</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>現在タスク</div>
           <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
-            {gptState.memory.context.currentTask || "-"}
+            {gptState.memory?.context?.currentTask || "-"}
           </div>
         </div>
 
@@ -167,7 +166,7 @@ export default function GptMetaDrawer({
               marginBottom: 8,
             }}
           >
-            <div style={tokenLeftLabelStyle}>メモリ内容</div>
+            <div style={tokenLeftLabelStyle}>メモリ詳細</div>
 
             <button
               type="button"
@@ -200,7 +199,7 @@ export default function GptMetaDrawer({
                 overflowY: "auto",
               }}
             >
-              {JSON.stringify(gptState.memory, null, 2)}
+              {JSON.stringify(gptState.memory ?? {}, null, 2)}
             </pre>
           )}
         </div>
@@ -233,7 +232,7 @@ export default function GptMetaDrawer({
           }}
         >
           <div style={tokenLeftLabelStyle}>会話トークン消費</div>
-          <div style={tokenMetaStyle}>（合計 / IN / OUT）</div>
+          <div style={tokenMetaStyle}>(合計 / IN / OUT)</div>
         </div>
 
         <div style={{ ...tokenLineStyle, marginBottom: 8 }}>
@@ -262,7 +261,7 @@ export default function GptMetaDrawer({
           }}
         >
           <div style={tokenLeftLabelStyle}>その他トークン消費</div>
-          <div style={tokenMetaStyle}>（合計 / IN / OUT）</div>
+          <div style={tokenMetaStyle}>(合計 / IN / OUT)</div>
         </div>
 
         <div style={{ ...tokenLineStyle, marginBottom: 8 }}>

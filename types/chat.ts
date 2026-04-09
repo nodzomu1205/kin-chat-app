@@ -50,3 +50,33 @@ export type MultipartAssembly = {
   updatedAt: string;
   filename: string;
 };
+
+export type StoredDocument = {
+  id: string;
+  sourceType: "kin_created" | "ingested_file";
+  title: string;
+  filename: string;
+  text: string;
+  summary?: string;
+  taskId?: string;
+  charCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ReferenceLibraryItem = {
+  id: string;
+  sourceId: string;
+  itemType: "search" | "kin_created" | "ingested_file";
+  title: string;
+  subtitle: string;
+  summary: string;
+  excerptText: string;
+  createdAt: string;
+  updatedAt: string;
+  filename?: string;
+  taskId?: string;
+  rawResultId?: string;
+  sources?: SourceItem[];
+  modeOverride?: "default" | "summary_only" | "summary_with_excerpt";
+};

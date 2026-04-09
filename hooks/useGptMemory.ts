@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -9,12 +9,19 @@ import {
   normalizeMemorySettings,
   DEFAULT_MEMORY_SETTINGS,
 } from "@/lib/memory";
+import { resolvePreferredTopicContext } from "@/lib/app/gptContextResolver";
 import type { KinMemoryState, Message } from "@/types/chat";
 
 export type TokenUsage = {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+};
+
+type ProvisionalMemoryOptions = {
+  currentTaskTitle?: string;
+  activeDocumentTitle?: string;
+  lastSearchQuery?: string;
 };
 
 const KIN_MEMORY_MAP_KEY = "kin_memory_map";
@@ -70,80 +77,6 @@ const normalizeRecentMessages = (
       );
     })
     .slice(-limit);
-};
-
-const inferTopicFromText = (
-  text: string,
-  currentTopic?: string
-): string | undefined => {
-  const normalized = text.trim();
-  if (!normalized) return currentTopic;
-
-  if (
-    normalized.includes("天気") ||
-    normalized.includes("気温") ||
-    normalized.includes("雨") ||
-    normalized.includes("晴れ") ||
-    normalized.includes("曇") ||
-    normalized.includes("予報")
-  ) {
-    return "天気";
-  }
-
-  if (
-    normalized.includes("GDP") ||
-    normalized.includes("経済") ||
-    normalized.includes("名目GDP")
-  ) {
-    return "GDP";
-  }
-
-  const shortFollowUp =
-    normalized.length <= 12 &&
-    (normalized.endsWith("は？") ||
-      normalized.endsWith("?") ||
-      normalized.endsWith("は") ||
-      normalized.endsWith("は?"));
-
-  if (shortFollowUp && currentTopic) {
-    return currentTopic;
-  }
-
-  return currentTopic;
-};
-
-const buildTopicContext = (
-  topic: string | undefined,
-  currentMemory: Memory
-): Memory["context"] => {
-  if (!topic) return currentMemory.context;
-
-  if (topic === "天気") {
-    return {
-      currentTopic: "天気",
-      currentTask: "ユーザーは特定の地域の天気を知りたい",
-      followUpRule:
-        "地名だけの短い追質問は、その地域の天気を聞いているものとして解釈する",
-      lastUserIntent: "次の地域の天気を知りたい",
-    };
-  }
-
-  if (topic === "GDP") {
-    return {
-      currentTopic: "GDP",
-      currentTask: "ユーザーは国や地域のGDP情報を知りたい",
-      followUpRule:
-        "国名や地域名だけの短い追質問は、その対象のGDP情報を聞いているものとして解釈する",
-      lastUserIntent: "次の国や地域のGDPを知りたい",
-    };
-  }
-
-  return {
-    currentTopic: topic,
-    currentTask: currentMemory.context.currentTask,
-    followUpRule: currentMemory.context.followUpRule,
-    lastUserIntent: currentMemory.context.lastUserIntent,
-  };
 };
 
 const normalizeUsage = (usage: unknown): TokenUsage | null => {
@@ -288,17 +221,19 @@ export function useGptMemory(currentKin: string | null) {
   );
 
   const getProvisionalMemory = useCallback(
-    (inputText: string): Memory => {
+    (inputText: string, options?: ProvisionalMemoryOptions): Memory => {
       const currentMemory = gptStateRef.current.memory;
-      const currentTopic = currentMemory.context.currentTopic;
-
-      const inferredTopic = inferTopicFromText(inputText, currentTopic);
 
       const nextMemory: Memory = {
         ...currentMemory,
         context: {
-          ...buildTopicContext(inferredTopic, currentMemory),
-          lastUserIntent: inputText,
+          ...resolvePreferredTopicContext({
+            inputText,
+            currentMemory,
+            currentTaskTitle: options?.currentTaskTitle,
+            activeDocumentTitle: options?.activeDocumentTitle,
+            lastSearchQuery: options?.lastSearchQuery,
+          }),
         },
       };
 
@@ -416,3 +351,4 @@ export function useGptMemory(currentKin: string | null) {
     defaultMemorySettings: DEFAULT_MEMORY_SETTINGS,
   };
 }
+

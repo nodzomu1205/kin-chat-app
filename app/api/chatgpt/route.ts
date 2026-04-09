@@ -323,6 +323,8 @@ export async function POST(req: Request) {
         instructionMode,
         reasoningMode,
         storedSearchContext,
+        storedDocumentContext,
+        storedLibraryContext,
         forcedSearchQuery,
       } =
         body;
@@ -375,12 +377,32 @@ export async function POST(req: Request) {
       });
 
       if (
+        typeof storedLibraryContext === "string" &&
+        storedLibraryContext.trim()
+      ) {
+        messages.push({
+          role: "system",
+          content: storedLibraryContext.trim(),
+        });
+      }
+
+      if (
         typeof storedSearchContext === "string" &&
         storedSearchContext.trim()
       ) {
         messages.push({
           role: "system",
           content: storedSearchContext.trim(),
+        });
+      }
+
+      if (
+        typeof storedDocumentContext === "string" &&
+        storedDocumentContext.trim()
+      ) {
+        messages.push({
+          role: "system",
+          content: storedDocumentContext.trim(),
         });
       }
 
