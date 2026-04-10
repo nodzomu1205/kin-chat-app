@@ -31,48 +31,157 @@ import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
 
 export default function GptPanel(props: GptPanelProps) {
+  const header = props.header ?? {
+    currentKin: props.currentKin,
+    currentKinLabel: props.currentKinLabel,
+    kinStatus: props.kinStatus,
+    isMobile: props.isMobile,
+    onSwitchPanel: props.onSwitchPanel,
+  };
+  const chat = props.chat ?? {
+    gptState: props.gptState,
+    gptMessages: props.gptMessages,
+    gptInput: props.gptInput,
+    setGptInput: props.setGptInput,
+    sendToGpt: props.sendToGpt,
+    resetGptForCurrentKin: props.resetGptForCurrentKin,
+    loading: props.loading,
+    gptBottomRef: props.gptBottomRef,
+  };
+  const task = props.task ?? {
+    currentTaskDraft: props.currentTaskDraft,
+    taskProgressView: props.taskProgressView,
+    pendingInjectionCurrentPart: props.pendingInjectionCurrentPart,
+    pendingInjectionTotalParts: props.pendingInjectionTotalParts,
+    runPrepTaskFromInput: props.runPrepTaskFromInput,
+    runDeepenTaskFromLast: props.runDeepenTaskFromLast,
+    runUpdateTaskFromInput: props.runUpdateTaskFromInput,
+    runUpdateTaskFromLastGptMessage: props.runUpdateTaskFromLastGptMessage,
+    runAttachSearchResultToTask: props.runAttachSearchResultToTask,
+    sendLatestGptContentToKin: props.sendLatestGptContentToKin,
+    sendCurrentTaskContentToKin: props.sendCurrentTaskContentToKin,
+    receiveLastKinResponseToGptInput: props.receiveLastKinResponseToGptInput,
+    sendLastGptToKinDraft: props.sendLastGptToKinDraft,
+    onChangeTaskTitle: props.onChangeTaskTitle,
+    onChangeTaskUserInstruction: props.onChangeTaskUserInstruction,
+    onChangeTaskBody: props.onChangeTaskBody,
+    onPrepareTaskRequestAck: props.onPrepareTaskRequestAck,
+    onPrepareTaskSync: props.onPrepareTaskSync,
+    onStartKinTask: props.onStartKinTask,
+    onResetTaskContext: props.onResetTaskContext,
+  };
+  const settings = props.settings ?? {
+    memorySettings: props.memorySettings,
+    defaultMemorySettings: props.defaultMemorySettings,
+    tokenStats: props.tokenStats,
+    responseMode: props.responseMode,
+    uploadKind: props.uploadKind,
+    ingestMode: props.ingestMode,
+    imageDetail: props.imageDetail,
+    postIngestAction: props.postIngestAction,
+    fileReadPolicy: props.fileReadPolicy,
+    compactCharLimit: props.compactCharLimit,
+    simpleImageCharLimit: props.simpleImageCharLimit,
+    ingestLoading: props.ingestLoading,
+    canInjectFile: props.canInjectFile,
+    autoSearchReferenceEnabled: props.autoSearchReferenceEnabled,
+    searchReferenceMode: props.searchReferenceMode,
+    searchReferenceCount: props.searchReferenceCount,
+    searchHistoryLimit: props.searchHistoryLimit,
+    searchHistoryStorageMB: props.searchHistoryStorageMB,
+    searchReferenceEstimatedTokens: props.searchReferenceEstimatedTokens,
+    autoDocumentReferenceEnabled: props.autoDocumentReferenceEnabled,
+    documentReferenceMode: props.documentReferenceMode,
+    documentReferenceCount: props.documentReferenceCount,
+    documentStorageMB: props.documentStorageMB,
+    documentReferenceEstimatedTokens: props.documentReferenceEstimatedTokens,
+    autoLibraryReferenceEnabled: props.autoLibraryReferenceEnabled,
+    libraryReferenceMode: props.libraryReferenceMode,
+    libraryIndexResponseCount: props.libraryIndexResponseCount,
+    libraryReferenceCount: props.libraryReferenceCount,
+    libraryStorageMB: props.libraryStorageMB,
+    libraryReferenceEstimatedTokens: props.libraryReferenceEstimatedTokens,
+    onSaveMemorySettings: props.onSaveMemorySettings,
+    onResetMemorySettings: props.onResetMemorySettings,
+    onChangeResponseMode: props.onChangeResponseMode,
+    onChangeUploadKind: props.onChangeUploadKind,
+    onChangeIngestMode: props.onChangeIngestMode,
+    onChangeImageDetail: props.onChangeImageDetail,
+    onChangeCompactCharLimit: props.onChangeCompactCharLimit,
+    onChangeSimpleImageCharLimit: props.onChangeSimpleImageCharLimit,
+    onChangePostIngestAction: props.onChangePostIngestAction,
+    onChangeFileReadPolicy: props.onChangeFileReadPolicy,
+    onChangeAutoSearchReferenceEnabled: props.onChangeAutoSearchReferenceEnabled,
+    onChangeSearchReferenceMode: props.onChangeSearchReferenceMode,
+    onChangeSearchReferenceCount: props.onChangeSearchReferenceCount,
+    onChangeSearchHistoryLimit: props.onChangeSearchHistoryLimit,
+    onClearSearchHistory: props.onClearSearchHistory,
+    onChangeAutoDocumentReferenceEnabled: props.onChangeAutoDocumentReferenceEnabled,
+    onChangeDocumentReferenceMode: props.onChangeDocumentReferenceMode,
+    onChangeDocumentReferenceCount: props.onChangeDocumentReferenceCount,
+    onChangeAutoLibraryReferenceEnabled: props.onChangeAutoLibraryReferenceEnabled,
+    onChangeLibraryReferenceMode: props.onChangeLibraryReferenceMode,
+    onChangeLibraryIndexResponseCount: props.onChangeLibraryIndexResponseCount,
+    onChangeLibraryReferenceCount: props.onChangeLibraryReferenceCount,
+  };
+
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
   const [bottomTab, setBottomTab] = useState<BottomTabKey>("chat");
   const [showMemoryContent, setShowMemoryContent] = useState(false);
   const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(() =>
-    toLocalSettings(props)
+    toLocalSettings({ ...props, memorySettings: settings.memorySettings, defaultMemorySettings: settings.defaultMemorySettings })
   );
 
   useEffect(() => {
-    setLocalSettings(toLocalSettings(props));
-  }, [props.memorySettings, props.defaultMemorySettings, props.currentKin]);
+    setLocalSettings(
+      toLocalSettings({
+        ...props,
+        memorySettings: settings.memorySettings,
+        defaultMemorySettings: settings.defaultMemorySettings,
+      })
+    );
+  }, [settings.memorySettings, settings.defaultMemorySettings, header.currentKin]);
 
-  const recentCount = props.gptState.recentMessages?.length ?? 0;
-  const factCount = props.gptState.memory?.facts?.length ?? 0;
-  const preferenceCount = props.gptState.memory?.preferences?.length ?? 0;
+  const recentCount = chat.gptState.recentMessages?.length ?? 0;
+  const factCount = chat.gptState.memory?.facts?.length ?? 0;
+  const preferenceCount = chat.gptState.memory?.preferences?.length ?? 0;
+  const listCount = Object.keys(chat.gptState.memory?.lists ?? {}).length;
   const memoryUsed = recentCount + factCount + preferenceCount;
   const memoryCapacity =
-    (props.memorySettings.chatRecentLimit ?? 0) +
-    (props.memorySettings.maxFacts ?? 0) +
-    (props.memorySettings.maxPreferences ?? 0);
+    (settings.memorySettings.chatRecentLimit ?? 0) +
+    (settings.memorySettings.maxFacts ?? 0) +
+    (settings.memorySettings.maxPreferences ?? 0);
+  const latestUserText =
+    [...chat.gptMessages]
+      .reverse()
+      .find((message) => message.role === "user")?.text || "";
 
   const floatingLabel = useMemo<FloatingLabel>(() => resolveFloatingLabel({
     activeDrawer,
     bottomTab,
-    currentTaskDraft: props.currentTaskDraft,
-    currentTaskFromMemory: props.gptState.memory?.context?.currentTask,
-    currentTopic: props.gptState.memory?.context?.currentTopic,
+    currentTaskDraft: task.currentTaskDraft,
+    currentTaskFromMemory: chat.gptState.memory?.context?.currentTask,
+    currentTopic: chat.gptState.memory?.context?.currentTopic,
+    currentInput: chat.gptInput,
+    latestUserText,
   }), [
     activeDrawer,
     bottomTab,
-    props.currentTaskDraft,
-    props.gptState.memory?.context?.currentTask,
-    props.gptState.memory?.context?.currentTopic,
+    task.currentTaskDraft,
+    chat.gptState.memory?.context?.currentTask,
+    chat.gptState.memory?.context?.currentTopic,
+    chat.gptInput,
+    latestUserText,
   ]);
 
   const memoryCapacityPreview =
-    toPositiveInt(localSettings.chatRecentLimit, props.memorySettings.chatRecentLimit ?? 0) +
-    toPositiveInt(localSettings.maxFacts, props.memorySettings.maxFacts ?? 0) +
-    toPositiveInt(localSettings.maxPreferences, props.memorySettings.maxPreferences ?? 0);
+    toPositiveInt(localSettings.chatRecentLimit, settings.memorySettings.chatRecentLimit ?? 0) +
+    toPositiveInt(localSettings.maxFacts, settings.memorySettings.maxFacts ?? 0) +
+    toPositiveInt(localSettings.maxPreferences, settings.memorySettings.maxPreferences ?? 0);
 
   const rolling5Usage = sumUsages(
-    Array.isArray((props.tokenStats as { recentChatUsages?: unknown }).recentChatUsages)
-      ? (((props.tokenStats as { recentChatUsages?: unknown }).recentChatUsages as Array<{
+    Array.isArray((settings.tokenStats as { recentChatUsages?: unknown }).recentChatUsages)
+      ? (((settings.tokenStats as { recentChatUsages?: unknown }).recentChatUsages as Array<{
           inputTokens: number;
           outputTokens: number;
           totalTokens: number;
@@ -80,19 +189,19 @@ export default function GptPanel(props: GptPanelProps) {
       : []
   );
   const totalUsage = {
-    inputTokens: props.tokenStats.cumulativeInput ?? 0,
-    outputTokens: props.tokenStats.cumulativeOutput ?? 0,
-    totalTokens: props.tokenStats.cumulativeTotal ?? 0,
+    inputTokens: settings.tokenStats.cumulativeInput ?? 0,
+    outputTokens: settings.tokenStats.cumulativeOutput ?? 0,
+    totalTokens: settings.tokenStats.cumulativeTotal ?? 0,
   };
 
   const handleToolbarAction = (mode: GptInstructionMode) => {
-    void props.sendToGpt(mode);
+    void chat.sendToGpt(mode);
   };
 
   return (
     <div
       style={{
-        ...panelShellStyle(props.isMobile),
+        ...panelShellStyle(header.isMobile),
         height: "100%",
         minHeight: 0,
         overflow: "visible",
@@ -104,7 +213,7 @@ export default function GptPanel(props: GptPanelProps) {
           zIndex: 20,
           background: "#10a37f",
           color: "#fff",
-          padding: props.isMobile ? "9px 12px" : "10px 14px",
+          padding: header.isMobile ? "9px 12px" : "10px 14px",
           flexShrink: 0,
           minHeight: 46,
           boxSizing: "border-box",
@@ -120,7 +229,7 @@ export default function GptPanel(props: GptPanelProps) {
         >
           <div
             style={{
-              fontSize: props.isMobile ? 17 : 16,
+              fontSize: header.isMobile ? 17 : 16,
               fontWeight: 800,
               whiteSpace: "nowrap",
               flexShrink: 0,
@@ -140,12 +249,12 @@ export default function GptPanel(props: GptPanelProps) {
               overflow: "hidden",
               textOverflow: "ellipsis",
             }}
-            title={props.currentKinLabel || "Kin未選択"}
+            title={header.currentKinLabel || "Kin未選択"}
           >
-            {props.currentKinLabel || "Kin未選択"}
+            {header.currentKinLabel || "Kin未選択"}
           </div>
 
-          <span style={statusDotStyle(props.kinStatus as "idle" | "connected" | "error")} aria-label={props.kinStatus} />
+          <span style={statusDotStyle(header.kinStatus as "idle" | "connected" | "error")} aria-label={header.kinStatus} />
 
           <div style={{ flex: 1 }} />
 
@@ -164,11 +273,11 @@ export default function GptPanel(props: GptPanelProps) {
           </button>
         </div>
 
-        <DrawerTabs activeDrawer={activeDrawer} isMobile={props.isMobile} onChange={setActiveDrawer} />
+        <DrawerTabs activeDrawer={activeDrawer} isMobile={header.isMobile} onChange={setActiveDrawer} />
       </div>
 
       {activeDrawer ? (
-        <div style={drawerWrapStyle(props.isMobile)}>
+        <div style={drawerWrapStyle(header.isMobile)}>
           <GptDrawerRouter
             activeDrawer={activeDrawer}
             props={props}
@@ -179,6 +288,7 @@ export default function GptPanel(props: GptPanelProps) {
             recentCount={recentCount}
             factCount={factCount}
             preferenceCount={preferenceCount}
+            listCount={listCount}
             memoryCapacityPreview={memoryCapacityPreview}
             rolling5Usage={rolling5Usage}
             totalUsage={totalUsage}
@@ -191,7 +301,7 @@ export default function GptPanel(props: GptPanelProps) {
 
       <div
         style={{
-          ...chatBodyStyle(props.isMobile),
+          ...chatBodyStyle(header.isMobile),
           position: "relative",
           flex: 1,
           minHeight: 0,
@@ -229,7 +339,7 @@ export default function GptPanel(props: GptPanelProps) {
                     flexShrink: 0,
                     borderRadius: 999,
                     padding: "3px 8px",
-                    fontSize: props.isMobile ? 10.5 : 11,
+                    fontSize: header.isMobile ? 10.5 : 11,
                     fontWeight: 800,
                     color: floatingLabel.accent,
                     background: floatingLabel.chipBg,
@@ -247,7 +357,7 @@ export default function GptPanel(props: GptPanelProps) {
                     whiteSpace: "nowrap",
                     fontWeight: 800,
                     color: "#111827",
-                    fontSize: props.isMobile ? 12.5 : 14,
+                    fontSize: header.isMobile ? 12.5 : 14,
                   }}
                 >
                   {floatingLabel.value}
@@ -259,7 +369,7 @@ export default function GptPanel(props: GptPanelProps) {
           </div>
           <div
             suppressHydrationWarning
-            style={{ flexShrink: 0, whiteSpace: "nowrap", color: "#374151", fontSize: props.isMobile ? 11.5 : 12.5, fontWeight: 700 }}
+            style={{ flexShrink: 0, whiteSpace: "nowrap", color: "#374151", fontSize: header.isMobile ? 11.5 : 12.5, fontWeight: 700 }}
           >
             {formatUpdatedAt(floatingLabel.updatedAt)}
           </div>
@@ -267,15 +377,15 @@ export default function GptPanel(props: GptPanelProps) {
 
         <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
           <ChatMessages
-            messages={props.gptMessages}
-            bottomRef={props.gptBottomRef}
-            loadingText={props.loading ? "ChatGPTが応答中…" : null}
+            messages={chat.gptMessages}
+            bottomRef={chat.gptBottomRef}
+            loadingText={chat.loading ? "ChatGPTが応答中…" : null}
           />
         </div>
       </div>
 
-      <div style={footerStyle(props.isMobile)}>
-        {props.pendingInjectionTotalParts > 0 && (
+      <div style={footerStyle(header.isMobile)}>
+        {task.pendingInjectionTotalParts > 0 && (
           <div
             style={{
               fontSize: 12,
@@ -288,55 +398,55 @@ export default function GptPanel(props: GptPanelProps) {
               marginBottom: 0,
             }}
           >
-            注入送信中 {props.pendingInjectionCurrentPart}/{props.pendingInjectionTotalParts}
+            注入送信中 {task.pendingInjectionCurrentPart}/{task.pendingInjectionTotalParts}
           </div>
         )}
 
-        <div style={{ position: "relative", paddingTop: props.isMobile ? 0 : 0, marginTop: 0 }}>
+        <div style={{ position: "relative", paddingTop: header.isMobile ? 0 : 0, marginTop: 0 }}>
           <GptToolbar
             activeTab={bottomTab}
-            isMobile={props.isMobile}
-            onSwitchPanel={props.onSwitchPanel}
+            isMobile={header.isMobile}
+            onSwitchPanel={header.onSwitchPanel}
             onChangeTab={setBottomTab}
             onAction={handleToolbarAction}
-            onRunTask={() => void props.runPrepTaskFromInput()}
-            onRunDeepen={() => void props.runDeepenTaskFromLast()}
-            onRunTaskUpdate={() => void props.runUpdateTaskFromInput()}
-            onImportLastResponse={() => void props.runUpdateTaskFromLastGptMessage()}
-            onAttachSearchResult={() => void props.runAttachSearchResultToTask()}
-            onSendLatestResponseToKin={() => void props.sendLatestGptContentToKin()}
-            onSendCurrentTaskToKin={() => void props.sendCurrentTaskContentToKin()}
-            onReceiveKinResponse={() => void props.receiveLastKinResponseToGptInput()}
-            onTransfer={props.sendLastGptToKinDraft}
-            onReset={props.resetGptForCurrentKin}
+            onRunTask={() => void task.runPrepTaskFromInput()}
+            onRunDeepen={() => void task.runDeepenTaskFromLast()}
+            onRunTaskUpdate={() => void task.runUpdateTaskFromInput()}
+            onImportLastResponse={() => void task.runUpdateTaskFromLastGptMessage()}
+            onAttachSearchResult={() => void task.runAttachSearchResultToTask()}
+            onSendLatestResponseToKin={() => void task.sendLatestGptContentToKin()}
+            onSendCurrentTaskToKin={() => void task.sendCurrentTaskContentToKin()}
+            onReceiveKinResponse={() => void task.receiveLastKinResponseToGptInput()}
+            onTransfer={task.sendLastGptToKinDraft}
+            onReset={chat.resetGptForCurrentKin}
           />
         </div>
 
         <GptComposer
-          value={props.gptInput}
-          onChange={(value) => props.setGptInput(value)}
-          onSubmit={() => void props.sendToGpt("normal")}
-          submitOnEnter={!props.isMobile}
+          value={chat.gptInput}
+          onChange={(value) => chat.setGptInput(value)}
+          onSubmit={() => void chat.sendToGpt("normal")}
+          submitOnEnter={!header.isMobile}
           placeholder={
             getComposerPlaceholder(bottomTab)
           }
           onInjectFile={props.injectFileToKinDraft}
-          loading={props.loading}
-          ingestLoading={props.ingestLoading}
-          canInjectFile={props.canInjectFile}
-          uploadKind={props.uploadKind}
-          ingestMode={props.ingestMode}
-          imageDetail={props.imageDetail}
-          postIngestAction={props.postIngestAction}
-          fileReadPolicy={props.fileReadPolicy}
-          compactCharLimit={props.compactCharLimit}
-          simpleImageCharLimit={props.simpleImageCharLimit}
-          onChangeUploadKind={props.onChangeUploadKind}
-          onChangeIngestMode={props.onChangeIngestMode}
-          onChangeImageDetail={props.onChangeImageDetail}
-          onChangePostIngestAction={props.onChangePostIngestAction}
+          loading={chat.loading}
+          ingestLoading={settings.ingestLoading}
+          canInjectFile={settings.canInjectFile}
+          uploadKind={settings.uploadKind}
+          ingestMode={settings.ingestMode}
+          imageDetail={settings.imageDetail}
+          postIngestAction={settings.postIngestAction}
+          fileReadPolicy={settings.fileReadPolicy}
+          compactCharLimit={settings.compactCharLimit}
+          simpleImageCharLimit={settings.simpleImageCharLimit}
+          onChangeUploadKind={settings.onChangeUploadKind}
+          onChangeIngestMode={settings.onChangeIngestMode}
+          onChangeImageDetail={settings.onChangeImageDetail}
+          onChangePostIngestAction={settings.onChangePostIngestAction}
           showFileTools={bottomTab === "file"}
-          isMobile={props.isMobile}
+          isMobile={header.isMobile}
         />
       </div>
     </div>

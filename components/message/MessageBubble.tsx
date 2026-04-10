@@ -25,7 +25,7 @@ export default function MessageBubble({ role, text, sources = [] }: Props) {
   return (
     <div
       style={{
-        maxWidth: "74%",
+        maxWidth: "92%",
         minWidth: 0,
         marginLeft: isUser ? "auto" : 0,
         marginRight: isUser ? 0 : "auto",

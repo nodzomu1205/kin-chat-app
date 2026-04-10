@@ -20,6 +20,7 @@ type Props = {
   recentCount: number;
   factCount: number;
   preferenceCount: number;
+  listCount: number;
   memoryCapacityPreview: number;
   rolling5Usage: { inputTokens: number; outputTokens: number; totalTokens: number };
   totalUsage: { inputTokens: number; outputTokens: number; totalTokens: number };
@@ -38,6 +39,7 @@ export default function GptDrawerRouter({
   recentCount,
   factCount,
   preferenceCount,
+  listCount,
   memoryCapacityPreview,
   rolling5Usage,
   totalUsage,
@@ -45,12 +47,145 @@ export default function GptDrawerRouter({
   setShowMemoryContent,
   toPositiveInt,
 }: Props) {
+  const task = props.task ?? {
+    currentTaskDraft: props.currentTaskDraft,
+    taskProgressView: props.taskProgressView,
+    pendingInjectionCurrentPart: props.pendingInjectionCurrentPart,
+    pendingInjectionTotalParts: props.pendingInjectionTotalParts,
+    runPrepTaskFromInput: props.runPrepTaskFromInput,
+    runDeepenTaskFromLast: props.runDeepenTaskFromLast,
+    runUpdateTaskFromInput: props.runUpdateTaskFromInput,
+    runUpdateTaskFromLastGptMessage: props.runUpdateTaskFromLastGptMessage,
+    runAttachSearchResultToTask: props.runAttachSearchResultToTask,
+    sendLatestGptContentToKin: props.sendLatestGptContentToKin,
+    sendCurrentTaskContentToKin: props.sendCurrentTaskContentToKin,
+    receiveLastKinResponseToGptInput: props.receiveLastKinResponseToGptInput,
+    sendLastGptToKinDraft: props.sendLastGptToKinDraft,
+    onChangeTaskTitle: props.onChangeTaskTitle,
+    onChangeTaskUserInstruction: props.onChangeTaskUserInstruction,
+    onChangeTaskBody: props.onChangeTaskBody,
+    onAnswerTaskRequest: props.onAnswerTaskRequest,
+    onPrepareTaskRequestAck: props.onPrepareTaskRequestAck,
+    onPrepareTaskSync: props.onPrepareTaskSync,
+    onStartKinTask: props.onStartKinTask,
+    onResetTaskContext: props.onResetTaskContext,
+  };
+  const protocol = props.protocol ?? {
+    protocolPrompt: props.protocolPrompt,
+    protocolRulebook: props.protocolRulebook,
+    pendingIntentCandidates: props.pendingIntentCandidates,
+    approvedIntentPhrases: props.approvedIntentPhrases,
+    onChangeProtocolPrompt: props.onChangeProtocolPrompt,
+    onChangeProtocolRulebook: props.onChangeProtocolRulebook,
+    onResetProtocolDefaults: props.onResetProtocolDefaults,
+    onSaveProtocolDefaults: props.onSaveProtocolDefaults,
+    onSetProtocolRulebookToKinDraft: props.onSetProtocolRulebookToKinDraft,
+    onSendProtocolRulebookToKin: props.onSendProtocolRulebookToKin,
+    onUpdateIntentCandidate: props.onUpdateIntentCandidate,
+    onApproveIntentCandidate: props.onApproveIntentCandidate,
+    onRejectIntentCandidate: props.onRejectIntentCandidate,
+    onUpdateApprovedIntentPhrase: props.onUpdateApprovedIntentPhrase,
+    onDeleteApprovedIntentPhrase: props.onDeleteApprovedIntentPhrase,
+  };
+  const references = props.references ?? {
+    lastSearchContext: props.lastSearchContext,
+    searchHistory: props.searchHistory,
+    selectedTaskSearchResultId: props.selectedTaskSearchResultId,
+    multipartAssemblies: props.multipartAssemblies,
+    storedDocuments: props.storedDocuments,
+    referenceLibraryItems: props.referenceLibraryItems,
+    selectedTaskLibraryItemId: props.selectedTaskLibraryItemId,
+    onSelectTaskSearchResult: props.onSelectTaskSearchResult,
+    onMoveSearchHistoryItem: props.onMoveSearchHistoryItem,
+    onDeleteSearchHistoryItem: props.onDeleteSearchHistoryItem,
+    onLoadMultipartAssemblyToGptInput: props.onLoadMultipartAssemblyToGptInput,
+    onDownloadMultipartAssembly: props.onDownloadMultipartAssembly,
+    onDeleteMultipartAssembly: props.onDeleteMultipartAssembly,
+    onLoadStoredDocumentToGptInput: props.onLoadStoredDocumentToGptInput,
+    onDownloadStoredDocument: props.onDownloadStoredDocument,
+    onDeleteStoredDocument: props.onDeleteStoredDocument,
+    onMoveStoredDocument: props.onMoveStoredDocument,
+    onMoveLibraryItem: props.onMoveLibraryItem,
+    onSelectTaskLibraryItem: props.onSelectTaskLibraryItem,
+    onChangeLibraryItemMode: props.onChangeLibraryItemMode,
+    onStartAskAiModeSearch: props.onStartAskAiModeSearch,
+    onSaveStoredDocument: props.onSaveStoredDocument,
+  };
+  const settings = props.settings ?? {
+    memorySettings: props.memorySettings,
+    defaultMemorySettings: props.defaultMemorySettings,
+    tokenStats: props.tokenStats,
+    responseMode: props.responseMode,
+    uploadKind: props.uploadKind,
+    ingestMode: props.ingestMode,
+    imageDetail: props.imageDetail,
+    postIngestAction: props.postIngestAction,
+    fileReadPolicy: props.fileReadPolicy,
+    compactCharLimit: props.compactCharLimit,
+    simpleImageCharLimit: props.simpleImageCharLimit,
+    ingestLoading: props.ingestLoading,
+    canInjectFile: props.canInjectFile,
+    autoSearchReferenceEnabled: props.autoSearchReferenceEnabled,
+    searchMode: props.searchMode,
+    searchEngines: props.searchEngines,
+    searchLocation: props.searchLocation,
+    searchReferenceMode: props.searchReferenceMode,
+    searchReferenceCount: props.searchReferenceCount,
+    searchHistoryLimit: props.searchHistoryLimit,
+    searchHistoryStorageMB: props.searchHistoryStorageMB,
+    searchReferenceEstimatedTokens: props.searchReferenceEstimatedTokens,
+    autoDocumentReferenceEnabled: props.autoDocumentReferenceEnabled,
+    documentReferenceMode: props.documentReferenceMode,
+    documentReferenceCount: props.documentReferenceCount,
+    documentStorageMB: props.documentStorageMB,
+    documentReferenceEstimatedTokens: props.documentReferenceEstimatedTokens,
+    autoLibraryReferenceEnabled: props.autoLibraryReferenceEnabled,
+    libraryReferenceMode: props.libraryReferenceMode,
+    libraryIndexResponseCount: props.libraryIndexResponseCount,
+    libraryReferenceCount: props.libraryReferenceCount,
+    libraryStorageMB: props.libraryStorageMB,
+    libraryReferenceEstimatedTokens: props.libraryReferenceEstimatedTokens,
+    autoSendKinSysInput: props.autoSendKinSysInput,
+    autoCopyKinSysResponseToGpt: props.autoCopyKinSysResponseToGpt,
+    autoSendGptSysInput: props.autoSendGptSysInput,
+    autoCopyGptSysResponseToKin: props.autoCopyGptSysResponseToKin,
+    onSaveMemorySettings: props.onSaveMemorySettings,
+    onResetMemorySettings: props.onResetMemorySettings,
+    onChangeResponseMode: props.onChangeResponseMode,
+    onChangeUploadKind: props.onChangeUploadKind,
+    onChangeIngestMode: props.onChangeIngestMode,
+    onChangeImageDetail: props.onChangeImageDetail,
+    onChangeCompactCharLimit: props.onChangeCompactCharLimit,
+    onChangeSimpleImageCharLimit: props.onChangeSimpleImageCharLimit,
+    onChangePostIngestAction: props.onChangePostIngestAction,
+    onChangeFileReadPolicy: props.onChangeFileReadPolicy,
+    onChangeAutoSearchReferenceEnabled: props.onChangeAutoSearchReferenceEnabled,
+    onChangeSearchMode: props.onChangeSearchMode,
+    onChangeSearchEngines: props.onChangeSearchEngines,
+    onChangeSearchLocation: props.onChangeSearchLocation,
+    onChangeSearchReferenceMode: props.onChangeSearchReferenceMode,
+    onChangeSearchReferenceCount: props.onChangeSearchReferenceCount,
+    onChangeSearchHistoryLimit: props.onChangeSearchHistoryLimit,
+    onClearSearchHistory: props.onClearSearchHistory,
+    onChangeAutoDocumentReferenceEnabled: props.onChangeAutoDocumentReferenceEnabled,
+    onChangeDocumentReferenceMode: props.onChangeDocumentReferenceMode,
+    onChangeDocumentReferenceCount: props.onChangeDocumentReferenceCount,
+    onChangeAutoLibraryReferenceEnabled: props.onChangeAutoLibraryReferenceEnabled,
+    onChangeLibraryReferenceMode: props.onChangeLibraryReferenceMode,
+    onChangeLibraryIndexResponseCount: props.onChangeLibraryIndexResponseCount,
+    onChangeLibraryReferenceCount: props.onChangeLibraryReferenceCount,
+    onChangeAutoSendKinSysInput: props.onChangeAutoSendKinSysInput,
+    onChangeAutoCopyKinSysResponseToGpt: props.onChangeAutoCopyKinSysResponseToGpt,
+    onChangeAutoSendGptSysInput: props.onChangeAutoSendGptSysInput,
+    onChangeAutoCopyGptSysResponseToKin: props.onChangeAutoCopyGptSysResponseToKin,
+  };
+
   if (activeDrawer === "memory") {
     return (
       <GptMetaDrawer
         mode="memory"
         gptState={props.gptState}
-        tokenStats={props.tokenStats}
+        tokenStats={settings.tokenStats}
         recent5Chat={rolling5Usage}
         totalUsage={totalUsage}
         memoryUsed={memoryUsed}
@@ -58,9 +193,10 @@ export default function GptDrawerRouter({
         recentCount={recentCount}
         factCount={factCount}
         preferenceCount={preferenceCount}
-        chatRecentLimit={props.memorySettings.chatRecentLimit}
-        maxFacts={props.memorySettings.maxFacts}
-        maxPreferences={props.memorySettings.maxPreferences}
+        listCount={listCount}
+        chatRecentLimit={settings.memorySettings.chatRecentLimit}
+        maxFacts={settings.memorySettings.maxFacts}
+        maxPreferences={settings.memorySettings.maxPreferences}
         showMemoryContent={showMemoryContent}
         onToggleMemoryContent={() => setShowMemoryContent((prev) => !prev)}
         isMobile={props.isMobile}
@@ -73,7 +209,7 @@ export default function GptDrawerRouter({
       <GptMetaDrawer
         mode="tokens"
         gptState={props.gptState}
-        tokenStats={props.tokenStats}
+        tokenStats={settings.tokenStats}
         recent5Chat={rolling5Usage}
         totalUsage={totalUsage}
         memoryUsed={memoryUsed}
@@ -81,9 +217,10 @@ export default function GptDrawerRouter({
         recentCount={recentCount}
         factCount={factCount}
         preferenceCount={preferenceCount}
-        chatRecentLimit={props.memorySettings.chatRecentLimit}
-        maxFacts={props.memorySettings.maxFacts}
-        maxPreferences={props.memorySettings.maxPreferences}
+        listCount={listCount}
+        chatRecentLimit={settings.memorySettings.chatRecentLimit}
+        maxFacts={settings.memorySettings.maxFacts}
+        maxPreferences={settings.memorySettings.maxPreferences}
         showMemoryContent={showMemoryContent}
         onToggleMemoryContent={() => setShowMemoryContent((prev) => !prev)}
         isMobile={props.isMobile}
@@ -94,11 +231,11 @@ export default function GptDrawerRouter({
   if (activeDrawer === "task_draft") {
     return (
       <GptTaskStatusDrawer
-        taskDraft={props.currentTaskDraft}
-        onChangeTaskTitle={props.onChangeTaskTitle}
-        onChangeTaskUserInstruction={props.onChangeTaskUserInstruction}
-        onChangeTaskBody={props.onChangeTaskBody}
-        onResetTaskContext={props.onResetTaskContext}
+        taskDraft={task.currentTaskDraft}
+        onChangeTaskTitle={task.onChangeTaskTitle}
+        onChangeTaskUserInstruction={task.onChangeTaskUserInstruction}
+        onChangeTaskBody={task.onChangeTaskBody}
+        onResetTaskContext={task.onResetTaskContext}
         isMobile={props.isMobile}
       />
     );
@@ -107,10 +244,10 @@ export default function GptDrawerRouter({
   if (activeDrawer === "task_progress") {
     return (
       <TaskProgressPanel
-        taskProgressView={props.taskProgressView}
-        onAnswerTaskRequest={props.onAnswerTaskRequest}
-        onPrepareTaskRequestAck={props.onPrepareTaskRequestAck}
-        onPrepareTaskSync={props.onPrepareTaskSync}
+        taskProgressView={task.taskProgressView}
+        onAnswerTaskRequest={task.onAnswerTaskRequest}
+        onPrepareTaskRequestAck={task.onPrepareTaskRequestAck}
+        onPrepareTaskSync={task.onPrepareTaskSync}
       />
     );
   }
@@ -118,19 +255,20 @@ export default function GptDrawerRouter({
   if (activeDrawer === "received_docs") {
     return (
       <ReceivedDocsDrawer
-        multipartAssemblies={props.multipartAssemblies}
-        referenceLibraryItems={props.referenceLibraryItems}
-        libraryReferenceCount={props.libraryReferenceCount}
-        selectedTaskLibraryItemId={props.selectedTaskLibraryItemId}
-        onSelectTaskLibraryItem={props.onSelectTaskLibraryItem}
-        onMoveLibraryItem={props.onMoveLibraryItem}
-        onChangeLibraryItemMode={props.onChangeLibraryItemMode}
-        onDownloadMultipartAssembly={props.onDownloadMultipartAssembly}
-        onDeleteMultipartAssembly={props.onDeleteMultipartAssembly}
-        onDownloadStoredDocument={props.onDownloadStoredDocument}
-        onDeleteStoredDocument={props.onDeleteStoredDocument}
-        onDeleteSearchHistoryItem={props.onDeleteSearchHistoryItem}
-        onSaveStoredDocument={props.onSaveStoredDocument}
+        multipartAssemblies={references.multipartAssemblies}
+        referenceLibraryItems={references.referenceLibraryItems}
+        libraryReferenceCount={settings.libraryReferenceCount}
+        selectedTaskLibraryItemId={references.selectedTaskLibraryItemId}
+        onSelectTaskLibraryItem={references.onSelectTaskLibraryItem}
+        onMoveLibraryItem={references.onMoveLibraryItem}
+        onChangeLibraryItemMode={references.onChangeLibraryItemMode}
+        onStartAskAiModeSearch={references.onStartAskAiModeSearch}
+        onDownloadMultipartAssembly={references.onDownloadMultipartAssembly}
+        onDeleteMultipartAssembly={references.onDeleteMultipartAssembly}
+        onDownloadStoredDocument={references.onDownloadStoredDocument}
+        onDeleteStoredDocument={references.onDeleteStoredDocument}
+        onDeleteSearchHistoryItem={references.onDeleteSearchHistoryItem}
+        onSaveStoredDocument={references.onSaveStoredDocument}
       />
     );
   }
@@ -146,94 +284,110 @@ export default function GptDrawerRouter({
           }))
         }
         onReset={() => {
-          props.onResetMemorySettings();
+          settings.onResetMemorySettings();
           setLocalSettings({
-            maxFacts: String(props.defaultMemorySettings.maxFacts ?? 0),
-            maxPreferences: String(props.defaultMemorySettings.maxPreferences ?? 0),
-            chatRecentLimit: String(props.defaultMemorySettings.chatRecentLimit ?? 0),
-            summarizeThreshold: String(props.defaultMemorySettings.summarizeThreshold ?? 0),
-            recentKeep: String(props.defaultMemorySettings.recentKeep ?? 0),
+            maxFacts: String(settings.defaultMemorySettings.maxFacts ?? 0),
+            maxPreferences: String(settings.defaultMemorySettings.maxPreferences ?? 0),
+            chatRecentLimit: String(settings.defaultMemorySettings.chatRecentLimit ?? 0),
+            summarizeThreshold: String(settings.defaultMemorySettings.summarizeThreshold ?? 0),
+            recentKeep: String(settings.defaultMemorySettings.recentKeep ?? 0),
           });
         }}
         onSave={() => {
-          props.onSaveMemorySettings({
+          settings.onSaveMemorySettings({
             maxFacts: toPositiveInt(
               localSettings.maxFacts,
-              props.memorySettings.maxFacts ?? 0
+              settings.memorySettings.maxFacts ?? 0
             ),
             maxPreferences: toPositiveInt(
               localSettings.maxPreferences,
-              props.memorySettings.maxPreferences ?? 0
+              settings.memorySettings.maxPreferences ?? 0
             ),
             chatRecentLimit: toPositiveInt(
               localSettings.chatRecentLimit,
-              props.memorySettings.chatRecentLimit ?? 0
+              settings.memorySettings.chatRecentLimit ?? 0
             ),
             summarizeThreshold: toPositiveInt(
               localSettings.summarizeThreshold,
-              props.memorySettings.summarizeThreshold ?? 0
+              settings.memorySettings.summarizeThreshold ?? 0
             ),
             recentKeep: toPositiveInt(
               localSettings.recentKeep,
-              props.memorySettings.recentKeep ?? 0
+              settings.memorySettings.recentKeep ?? 0
             ),
           });
         }}
         memoryCapacityPreview={memoryCapacityPreview}
-        responseMode={props.responseMode}
-        onChangeResponseMode={props.onChangeResponseMode}
-        ingestMode={props.ingestMode}
-        onChangeIngestMode={props.onChangeIngestMode}
-        imageDetail={props.imageDetail}
-        onChangeImageDetail={props.onChangeImageDetail}
-        compactCharLimit={props.compactCharLimit}
-        simpleImageCharLimit={props.simpleImageCharLimit}
-        onChangeCompactCharLimit={props.onChangeCompactCharLimit}
-        onChangeSimpleImageCharLimit={props.onChangeSimpleImageCharLimit}
-        fileReadPolicy={props.fileReadPolicy}
-        onChangeFileReadPolicy={props.onChangeFileReadPolicy}
-        autoSearchReferenceEnabled={props.autoSearchReferenceEnabled}
-        searchReferenceMode={props.searchReferenceMode}
-        searchReferenceCount={props.searchReferenceCount}
-        searchHistoryLimit={props.searchHistoryLimit}
-        searchHistoryStorageMB={props.searchHistoryStorageMB}
-        searchReferenceEstimatedTokens={props.searchReferenceEstimatedTokens}
-        autoDocumentReferenceEnabled={props.autoDocumentReferenceEnabled}
-        documentReferenceMode={props.documentReferenceMode}
-        documentReferenceCount={props.documentReferenceCount}
-        documentStorageMB={props.documentStorageMB}
-        documentReferenceEstimatedTokens={props.documentReferenceEstimatedTokens}
-        autoLibraryReferenceEnabled={props.autoLibraryReferenceEnabled}
-        libraryReferenceMode={props.libraryReferenceMode}
-        libraryIndexResponseCount={props.libraryIndexResponseCount}
-        libraryReferenceCount={props.libraryReferenceCount}
-        libraryStorageMB={props.libraryStorageMB}
-        libraryReferenceEstimatedTokens={props.libraryReferenceEstimatedTokens}
-        onChangeAutoSearchReferenceEnabled={props.onChangeAutoSearchReferenceEnabled}
-        onChangeSearchReferenceMode={props.onChangeSearchReferenceMode}
-        onChangeSearchReferenceCount={props.onChangeSearchReferenceCount}
-        onChangeSearchHistoryLimit={props.onChangeSearchHistoryLimit}
-        onClearSearchHistory={props.onClearSearchHistory}
-        onChangeAutoDocumentReferenceEnabled={props.onChangeAutoDocumentReferenceEnabled}
-        onChangeDocumentReferenceMode={props.onChangeDocumentReferenceMode}
-        onChangeDocumentReferenceCount={props.onChangeDocumentReferenceCount}
-        onChangeAutoLibraryReferenceEnabled={props.onChangeAutoLibraryReferenceEnabled}
-        onChangeLibraryReferenceMode={props.onChangeLibraryReferenceMode}
-        onChangeLibraryIndexResponseCount={props.onChangeLibraryIndexResponseCount}
-        onChangeLibraryReferenceCount={props.onChangeLibraryReferenceCount}
-        protocolPrompt={props.protocolPrompt}
-        protocolRulebook={props.protocolRulebook}
-        onChangeProtocolPrompt={props.onChangeProtocolPrompt}
-        onChangeProtocolRulebook={props.onChangeProtocolRulebook}
-        onResetProtocolDefaults={props.onResetProtocolDefaults}
-        onSaveProtocolDefaults={props.onSaveProtocolDefaults}
-        onSetProtocolRulebookToKinDraft={props.onSetProtocolRulebookToKinDraft}
-        onSendProtocolRulebookToKin={props.onSendProtocolRulebookToKin}
-        pendingIntentCandidates={props.pendingIntentCandidates}
-        approvedIntentPhrases={props.approvedIntentPhrases}
-        onUpdateIntentCandidate={props.onUpdateIntentCandidate}
-        onApproveIntentCandidate={props.onApproveIntentCandidate}
-        onRejectIntentCandidate={props.onRejectIntentCandidate}
+        responseMode={settings.responseMode}
+        onChangeResponseMode={settings.onChangeResponseMode}
+        ingestMode={settings.ingestMode}
+        onChangeIngestMode={settings.onChangeIngestMode}
+        imageDetail={settings.imageDetail}
+        onChangeImageDetail={settings.onChangeImageDetail}
+        compactCharLimit={settings.compactCharLimit}
+        simpleImageCharLimit={settings.simpleImageCharLimit}
+        onChangeCompactCharLimit={settings.onChangeCompactCharLimit}
+        onChangeSimpleImageCharLimit={settings.onChangeSimpleImageCharLimit}
+        fileReadPolicy={settings.fileReadPolicy}
+        onChangeFileReadPolicy={settings.onChangeFileReadPolicy}
+        autoSearchReferenceEnabled={settings.autoSearchReferenceEnabled}
+        searchMode={settings.searchMode}
+        searchEngines={settings.searchEngines}
+        searchLocation={settings.searchLocation}
+        searchReferenceMode={settings.searchReferenceMode}
+        searchReferenceCount={settings.searchReferenceCount}
+        searchHistoryLimit={settings.searchHistoryLimit}
+        searchHistoryStorageMB={settings.searchHistoryStorageMB}
+        searchReferenceEstimatedTokens={settings.searchReferenceEstimatedTokens}
+        autoDocumentReferenceEnabled={settings.autoDocumentReferenceEnabled}
+        documentReferenceMode={settings.documentReferenceMode}
+        documentReferenceCount={settings.documentReferenceCount}
+        documentStorageMB={settings.documentStorageMB}
+        documentReferenceEstimatedTokens={settings.documentReferenceEstimatedTokens}
+         autoLibraryReferenceEnabled={settings.autoLibraryReferenceEnabled}
+         libraryReferenceMode={settings.libraryReferenceMode}
+         libraryIndexResponseCount={settings.libraryIndexResponseCount}
+         libraryReferenceCount={settings.libraryReferenceCount}
+         libraryStorageMB={settings.libraryStorageMB}
+         libraryReferenceEstimatedTokens={settings.libraryReferenceEstimatedTokens}
+         autoSendKinSysInput={settings.autoSendKinSysInput}
+         autoCopyKinSysResponseToGpt={settings.autoCopyKinSysResponseToGpt}
+         autoSendGptSysInput={settings.autoSendGptSysInput}
+         autoCopyGptSysResponseToKin={settings.autoCopyGptSysResponseToKin}
+         onChangeAutoSearchReferenceEnabled={settings.onChangeAutoSearchReferenceEnabled}
+        onChangeSearchMode={settings.onChangeSearchMode}
+        onChangeSearchEngines={settings.onChangeSearchEngines}
+        onChangeSearchLocation={settings.onChangeSearchLocation}
+        onChangeSearchReferenceMode={settings.onChangeSearchReferenceMode}
+        onChangeSearchReferenceCount={settings.onChangeSearchReferenceCount}
+        onChangeSearchHistoryLimit={settings.onChangeSearchHistoryLimit}
+        onClearSearchHistory={settings.onClearSearchHistory}
+        onChangeAutoDocumentReferenceEnabled={settings.onChangeAutoDocumentReferenceEnabled}
+        onChangeDocumentReferenceMode={settings.onChangeDocumentReferenceMode}
+        onChangeDocumentReferenceCount={settings.onChangeDocumentReferenceCount}
+         onChangeAutoLibraryReferenceEnabled={settings.onChangeAutoLibraryReferenceEnabled}
+         onChangeLibraryReferenceMode={settings.onChangeLibraryReferenceMode}
+         onChangeLibraryIndexResponseCount={settings.onChangeLibraryIndexResponseCount}
+         onChangeLibraryReferenceCount={settings.onChangeLibraryReferenceCount}
+         onChangeAutoSendKinSysInput={settings.onChangeAutoSendKinSysInput}
+         onChangeAutoCopyKinSysResponseToGpt={settings.onChangeAutoCopyKinSysResponseToGpt}
+         onChangeAutoSendGptSysInput={settings.onChangeAutoSendGptSysInput}
+         onChangeAutoCopyGptSysResponseToKin={settings.onChangeAutoCopyGptSysResponseToKin}
+         protocolPrompt={protocol.protocolPrompt}
+        protocolRulebook={protocol.protocolRulebook}
+        onChangeProtocolPrompt={protocol.onChangeProtocolPrompt}
+        onChangeProtocolRulebook={protocol.onChangeProtocolRulebook}
+        onResetProtocolDefaults={protocol.onResetProtocolDefaults}
+        onSaveProtocolDefaults={protocol.onSaveProtocolDefaults}
+        onSetProtocolRulebookToKinDraft={protocol.onSetProtocolRulebookToKinDraft}
+        onSendProtocolRulebookToKin={protocol.onSendProtocolRulebookToKin}
+        pendingIntentCandidates={protocol.pendingIntentCandidates}
+        approvedIntentPhrases={protocol.approvedIntentPhrases}
+        onUpdateIntentCandidate={protocol.onUpdateIntentCandidate}
+        onApproveIntentCandidate={protocol.onApproveIntentCandidate}
+        onRejectIntentCandidate={protocol.onRejectIntentCandidate}
+        onUpdateApprovedIntentPhrase={protocol.onUpdateApprovedIntentPhrase}
+        onDeleteApprovedIntentPhrase={protocol.onDeleteApprovedIntentPhrase}
         isMobile={props.isMobile}
       />
     );

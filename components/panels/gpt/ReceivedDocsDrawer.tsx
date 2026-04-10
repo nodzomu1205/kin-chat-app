@@ -22,6 +22,7 @@ type Props = Pick<
   | "onSelectTaskLibraryItem"
   | "onMoveLibraryItem"
   | "onChangeLibraryItemMode"
+  | "onStartAskAiModeSearch"
   | "onDownloadMultipartAssembly"
   | "onDeleteMultipartAssembly"
   | "onDownloadStoredDocument"
@@ -70,6 +71,7 @@ export default function ReceivedDocsDrawer({
   onSelectTaskLibraryItem,
   onMoveLibraryItem,
   onChangeLibraryItemMode,
+  onStartAskAiModeSearch,
   onDownloadMultipartAssembly,
   onDeleteMultipartAssembly,
   onDownloadStoredDocument,
@@ -99,6 +101,23 @@ export default function ReceivedDocsDrawer({
     }
     return referenceLibraryItems.filter((item) => item.itemType === "search");
   }, [activeTab, referenceLibraryItems]);
+
+  const getAskAiModeCandidates = (
+    item: Props["referenceLibraryItems"][number]
+  ) =>
+    (item.askAiModeItems || [])
+      .map((candidate) => ({
+        query:
+          candidate.question?.trim() ||
+          candidate.title?.trim() ||
+          candidate.snippet?.trim() ||
+          "",
+        snippet: candidate.snippet?.trim() || "",
+      }))
+      .filter((candidate, index, array) => {
+        if (!candidate.query) return false;
+        return array.findIndex((entry) => entry.query === candidate.query) === index;
+      });
 
   useEffect(() => {
     if (expandedId && !visibleItems.some((item) => item.id === expandedId)) {
@@ -148,6 +167,8 @@ export default function ReceivedDocsDrawer({
               item.itemType === "kin_created"
                 ? multipartAssemblies.find((entry) => `kin:${entry.id}` === item.sourceId) || null
                 : null;
+            const askAiModeCandidates =
+              item.itemType === "search" ? getAskAiModeCandidates(item) : [];
 
             return (
               <div
@@ -393,6 +414,32 @@ export default function ReceivedDocsDrawer({
 
                     {item.itemType === "search" ? (
                       <>
+                        {askAiModeCandidates.length > 0 ? (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                              Ask AI Mode
+                            </div>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              {askAiModeCandidates.map((candidate) => (
+                                <button
+                                  key={`${item.id}:${candidate.query}`}
+                                  type="button"
+                                  onClick={() => void onStartAskAiModeSearch(candidate.query)}
+                                  style={{
+                                    ...pillButton,
+                                    background: "#fff7ed",
+                                    color: "#c2410c",
+                                    border: "1px solid #fdba74",
+                                    maxWidth: "100%",
+                                  }}
+                                  title={candidate.snippet || candidate.query}
+                                >
+                                  AIで続ける: {candidate.query}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                         {item.sources?.length ? (
                           <div style={{ display: "grid", gap: 4, fontSize: 12, color: "#475569" }}>
                             {item.sources.map((source, sourceIndex) => (

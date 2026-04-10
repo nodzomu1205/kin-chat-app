@@ -1,5 +1,6 @@
 import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
 import type { DrawerMode } from "@/components/panels/gpt/DrawerTabs";
+import { normalizePromptTopic } from "@/lib/app/gptContextResolver";
 
 export type BottomTabKey =
   | "chat"
@@ -64,13 +65,18 @@ export function resolveFloatingLabel(args: {
   currentTaskDraft: GptPanelProps["currentTaskDraft"];
   currentTaskFromMemory?: string;
   currentTopic?: string;
+  currentInput?: string;
+  latestUserText?: string;
 }): FloatingLabel {
   const taskName =
     args.currentTaskDraft.title?.trim() ||
     args.currentTaskDraft.taskName?.trim() ||
     args.currentTaskFromMemory?.trim() ||
     "";
-  const topic = args.currentTopic?.trim() || "";
+  const liveTopic =
+    normalizePromptTopic(args.currentInput || "") ||
+    normalizePromptTopic(args.latestUserText || "");
+  const topic = liveTopic || args.currentTopic?.trim() || "";
   const taskFocused =
     args.bottomTab === "task_primary" ||
     args.bottomTab === "task_secondary" ||
@@ -129,13 +135,13 @@ export function resolveFloatingLabel(args: {
 export function getComposerPlaceholder(bottomTab: BottomTabKey) {
   if (bottomTab === "chat") return "メッセージを入力";
   if (bottomTab === "task_primary") {
-    return "送信以外のボタン使用時は、新規又は更新タスク内容を入力";
+    return "タスク形成ボタン使用時。新規タスク内容を入力";
   }
   if (bottomTab === "task_secondary") {
-    return "送信以外のボタン使用時は、タスク整理に関する指示や方向性を入力";
+    return "タスク形成ボタン使用時。タスク整理に関する指示や追加データを入力";
   }
   if (bottomTab === "kin") {
-    return "送信以外のボタン使用時は、Kinへの指示内容や条件を入力";
+    return "タスク形成ボタン使用時。Kinへの指示内容や条件を入力";
   }
-  return "送信以外のボタン使用時は、ファイル取込時の指示を入力";
+  return "タスク形成ボタン使用時。ファイル取込時の指示や追加条件を入力";
 }

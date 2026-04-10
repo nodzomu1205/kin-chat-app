@@ -6,7 +6,7 @@ import type {
   ReferenceLibraryItem,
   StoredDocument,
 } from "@/types/chat";
-import type { SearchContext, TaskDraft } from "@/types/task";
+import type { SearchContext, SearchEngine, SearchMode, TaskDraft } from "@/types/task";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
@@ -64,6 +64,7 @@ export type GptStateLike = {
   memory?: {
     facts?: string[];
     preferences?: string[];
+    lists?: Record<string, unknown>;
     context?: {
       currentTopic?: string;
       currentTask?: string;
@@ -82,6 +83,176 @@ export type TaskProgressView = {
   latestSummary: string;
   requirementProgress: TaskRequirementProgress[];
   userFacingRequests: UserFacingTaskRequest[];
+};
+
+export type GptPanelHeaderProps = {
+  currentKin: string | null;
+  currentKinLabel: string | null;
+  kinStatus: string;
+  isMobile: boolean;
+  onSwitchPanel: () => void;
+};
+
+export type GptPanelChatProps = {
+  gptState: GptStateLike;
+  gptMessages: Message[];
+  gptInput: string;
+  setGptInput: Dispatch<SetStateAction<string>>;
+  sendToGpt: (instructionMode?: GptInstructionMode) => void | Promise<void>;
+  resetGptForCurrentKin: () => void;
+  loading: boolean;
+  gptBottomRef: RefObject<HTMLDivElement | null>;
+};
+
+export type GptPanelTaskProps = {
+  currentTaskDraft: TaskDraft;
+  taskProgressView?: TaskProgressView;
+  pendingInjectionCurrentPart: number;
+  pendingInjectionTotalParts: number;
+  runPrepTaskFromInput: () => void | Promise<void>;
+  runDeepenTaskFromLast: () => void | Promise<void>;
+  runUpdateTaskFromInput: () => void | Promise<void>;
+  runUpdateTaskFromLastGptMessage: () => void | Promise<void>;
+  runAttachSearchResultToTask: () => void | Promise<void>;
+  sendLatestGptContentToKin: () => void | Promise<void>;
+  sendCurrentTaskContentToKin: () => void | Promise<void>;
+  receiveLastKinResponseToGptInput: () => void | Promise<void>;
+  sendLastGptToKinDraft: () => void | Promise<void>;
+  onChangeTaskTitle: (value: string) => void;
+  onChangeTaskUserInstruction: (value: string) => void;
+  onChangeTaskBody: (value: string) => void;
+  onAnswerTaskRequest?: (requestId: string) => void;
+  onPrepareTaskRequestAck?: (requestId: string) => void;
+  onPrepareTaskSync?: (note: string) => void;
+  onStartKinTask?: () => void | Promise<void>;
+  onResetTaskContext?: () => void;
+};
+
+export type GptPanelProtocolProps = {
+  protocolPrompt: string;
+  protocolRulebook: string;
+  pendingIntentCandidates: PendingIntentCandidate[];
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  onChangeProtocolPrompt: (value: string) => void;
+  onChangeProtocolRulebook: (value: string) => void;
+  onResetProtocolDefaults: () => void;
+  onSaveProtocolDefaults: () => void;
+  onSetProtocolRulebookToKinDraft: () => void | Promise<void>;
+  onSendProtocolRulebookToKin: () => void | Promise<void>;
+  onUpdateIntentCandidate: (
+    candidateId: string,
+    patch: Partial<PendingIntentCandidate>
+  ) => void;
+  onApproveIntentCandidate: (candidateId: string) => void;
+  onRejectIntentCandidate: (candidateId: string) => void;
+  onUpdateApprovedIntentPhrase: (
+    phraseId: string,
+    patch: Partial<ApprovedIntentPhrase>
+  ) => void;
+  onDeleteApprovedIntentPhrase: (phraseId: string) => void;
+};
+
+export type GptPanelReferenceProps = {
+  lastSearchContext: SearchContext | null;
+  searchHistory: SearchContext[];
+  selectedTaskSearchResultId: string;
+  multipartAssemblies: MultipartAssembly[];
+  storedDocuments: StoredDocument[];
+  referenceLibraryItems: ReferenceLibraryItem[];
+  selectedTaskLibraryItemId: string;
+  onSelectTaskSearchResult: (rawResultId: string) => void;
+  onMoveSearchHistoryItem: (
+    rawResultId: string,
+    direction: "up" | "down"
+  ) => void;
+  onDeleteSearchHistoryItem: (rawResultId: string) => void;
+  onLoadMultipartAssemblyToGptInput: (assemblyId: string) => void;
+  onDownloadMultipartAssembly: (assemblyId: string) => void;
+  onDeleteMultipartAssembly: (assemblyId: string) => void;
+  onLoadStoredDocumentToGptInput: (documentId: string) => void;
+  onDownloadStoredDocument: (documentId: string) => void;
+  onDeleteStoredDocument: (documentId: string) => void;
+  onMoveStoredDocument: (documentId: string, direction: "up" | "down") => void;
+  onMoveLibraryItem: (itemId: string, direction: "up" | "down") => void;
+  onSelectTaskLibraryItem: (itemId: string) => void;
+  onChangeLibraryItemMode: (
+    itemId: string,
+    mode: LibraryItemModeOverride
+  ) => void;
+  onStartAskAiModeSearch: (query: string) => void | Promise<void>;
+  onSaveStoredDocument: (
+    documentId: string,
+    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
+  ) => void;
+};
+
+export type GptPanelSettingsProps = {
+  memorySettings: MemorySettings;
+  defaultMemorySettings: MemorySettings;
+  tokenStats: TokenStats;
+  responseMode: ResponseMode;
+  uploadKind: UploadKind;
+  ingestMode: IngestMode;
+  imageDetail: ImageDetail;
+  postIngestAction: PostIngestAction;
+  fileReadPolicy: FileReadPolicy;
+  compactCharLimit: number;
+  simpleImageCharLimit: number;
+  ingestLoading: boolean;
+  canInjectFile: boolean;
+  autoSearchReferenceEnabled: boolean;
+  searchMode: SearchMode;
+  searchEngines: SearchEngine[];
+  searchLocation: string;
+  searchReferenceMode: SearchReferenceMode;
+  searchReferenceCount: number;
+  searchHistoryLimit: number;
+  searchHistoryStorageMB: number;
+  searchReferenceEstimatedTokens: number;
+  autoDocumentReferenceEnabled: boolean;
+  documentReferenceMode: DocumentReferenceMode;
+  documentReferenceCount: number;
+  documentStorageMB: number;
+  documentReferenceEstimatedTokens: number;
+  autoLibraryReferenceEnabled: boolean;
+  libraryReferenceMode: LibraryReferenceMode;
+  libraryIndexResponseCount: number;
+  libraryReferenceCount: number;
+  libraryStorageMB: number;
+  libraryReferenceEstimatedTokens: number;
+  autoSendKinSysInput: boolean;
+  autoCopyKinSysResponseToGpt: boolean;
+  autoSendGptSysInput: boolean;
+  autoCopyGptSysResponseToKin: boolean;
+  onSaveMemorySettings: (next: MemorySettings) => void;
+  onResetMemorySettings: () => void;
+  onChangeResponseMode: (value: ResponseMode) => void;
+  onChangeUploadKind: (value: UploadKind) => void;
+  onChangeIngestMode: (value: IngestMode) => void;
+  onChangeImageDetail: (value: ImageDetail) => void;
+  onChangeCompactCharLimit: (value: number) => void;
+  onChangeSimpleImageCharLimit: (value: number) => void;
+  onChangePostIngestAction: (value: PostIngestAction) => void;
+  onChangeFileReadPolicy: (value: FileReadPolicy) => void;
+  onChangeAutoSearchReferenceEnabled: (value: boolean) => void;
+  onChangeSearchMode: (value: SearchMode) => void;
+  onChangeSearchEngines: (value: SearchEngine[]) => void;
+  onChangeSearchLocation: (value: string) => void;
+  onChangeSearchReferenceMode: (value: SearchReferenceMode) => void;
+  onChangeSearchReferenceCount: (value: number) => void;
+  onChangeSearchHistoryLimit: (value: number) => void;
+  onClearSearchHistory: () => void;
+  onChangeAutoDocumentReferenceEnabled: (value: boolean) => void;
+  onChangeDocumentReferenceMode: (value: DocumentReferenceMode) => void;
+  onChangeDocumentReferenceCount: (value: number) => void;
+  onChangeAutoLibraryReferenceEnabled: (value: boolean) => void;
+  onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
+  onChangeLibraryIndexResponseCount: (value: number) => void;
+  onChangeLibraryReferenceCount: (value: number) => void;
+  onChangeAutoSendKinSysInput: (value: boolean) => void;
+  onChangeAutoCopyKinSysResponseToGpt: (value: boolean) => void;
+  onChangeAutoSendGptSysInput: (value: boolean) => void;
+  onChangeAutoCopyGptSysResponseToKin: (value: boolean) => void;
 };
 
 export type GptPanelProps = {
@@ -141,6 +312,9 @@ export type GptPanelProps = {
   onChangePostIngestAction: (value: PostIngestAction) => void;
   onChangeFileReadPolicy: (value: FileReadPolicy) => void;
   autoSearchReferenceEnabled: boolean;
+  searchMode: SearchMode;
+  searchEngines: SearchEngine[];
+  searchLocation: string;
   searchReferenceMode: SearchReferenceMode;
   searchReferenceCount: number;
   searchHistoryLimit: number;
@@ -157,7 +331,14 @@ export type GptPanelProps = {
   libraryReferenceCount: number;
   libraryStorageMB: number;
   libraryReferenceEstimatedTokens: number;
+  autoSendKinSysInput: boolean;
+  autoCopyKinSysResponseToGpt: boolean;
+  autoSendGptSysInput: boolean;
+  autoCopyGptSysResponseToKin: boolean;
   onChangeAutoSearchReferenceEnabled: (value: boolean) => void;
+  onChangeSearchMode: (value: SearchMode) => void;
+  onChangeSearchEngines: (value: SearchEngine[]) => void;
+  onChangeSearchLocation: (value: string) => void;
   onChangeSearchReferenceMode: (value: SearchReferenceMode) => void;
   onChangeSearchReferenceCount: (value: number) => void;
   onChangeSearchHistoryLimit: (value: number) => void;
@@ -169,6 +350,10 @@ export type GptPanelProps = {
   onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (value: number) => void;
   onChangeLibraryReferenceCount: (value: number) => void;
+  onChangeAutoSendKinSysInput: (value: boolean) => void;
+  onChangeAutoCopyKinSysResponseToGpt: (value: boolean) => void;
+  onChangeAutoSendGptSysInput: (value: boolean) => void;
+  onChangeAutoCopyGptSysResponseToKin: (value: boolean) => void;
   onDeleteSearchHistoryItem: (rawResultId: string) => void;
   multipartAssemblies: MultipartAssembly[];
   onLoadMultipartAssemblyToGptInput: (assemblyId: string) => void;
@@ -187,6 +372,7 @@ export type GptPanelProps = {
     itemId: string,
     mode: LibraryItemModeOverride
   ) => void;
+  onStartAskAiModeSearch: (query: string) => void | Promise<void>;
   onSaveStoredDocument: (
     documentId: string,
     patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
@@ -199,6 +385,11 @@ export type GptPanelProps = {
   ) => void;
   onApproveIntentCandidate: (candidateId: string) => void;
   onRejectIntentCandidate: (candidateId: string) => void;
+  onUpdateApprovedIntentPhrase: (
+    phraseId: string,
+    patch: Partial<ApprovedIntentPhrase>
+  ) => void;
+  onDeleteApprovedIntentPhrase: (phraseId: string) => void;
   lastSearchContext: SearchContext | null;
   searchHistory: SearchContext[];
   selectedTaskSearchResultId: string;
@@ -229,4 +420,10 @@ export type GptPanelProps = {
   onPrepareTaskSync?: (note: string) => void;
   onStartKinTask?: () => void | Promise<void>;
   onResetTaskContext?: () => void;
+  header?: GptPanelHeaderProps;
+  chat?: GptPanelChatProps;
+  task?: GptPanelTaskProps;
+  protocol?: GptPanelProtocolProps;
+  references?: GptPanelReferenceProps;
+  settings?: GptPanelSettingsProps;
 };

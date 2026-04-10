@@ -5,6 +5,31 @@ export type ParsedTaskInput = {
   freeText: string;
 };
 
+const PREFIX_SEARCH_JA = "\u691c\u7d22";
+const PREFIX_TITLE_JA = "\u30bf\u30a4\u30c8\u30eb";
+const PREFIX_INSTRUCTION_JA = "\u8ffd\u52a0\u6307\u793a";
+const PREFIX_INSTRUCTION_SHORT_JA = "\u6307\u793a";
+function extractPrefixedValue(line: string, prefixes: string[]) {
+  const normalizedLine = line.normalize("NFKC").trim();
+
+  for (const prefix of prefixes) {
+    const normalizedPrefix = prefix.normalize("NFKC").toLowerCase();
+    const lowerLine = normalizedLine.toLowerCase();
+    if (!lowerLine.startsWith(normalizedPrefix)) {
+      continue;
+    }
+
+    const rest = normalizedLine.slice(normalizedPrefix.length).trimStart();
+    if (!rest.startsWith(":")) {
+      continue;
+    }
+
+    return rest.slice(1).trim();
+  }
+
+  return "";
+}
+
 export function parseTaskInput(text: string): ParsedTaskInput {
   const lines = text.split(/\r?\n/);
 
@@ -17,18 +42,28 @@ export function parseTaskInput(text: string): ParsedTaskInput {
     const line = raw.trim();
     if (!line) continue;
 
-    if (line.startsWith("検索：") || line.startsWith("検索:")) {
-      searchQuery = line.replace(/^検索[:：]/, "").trim();
+    const nextSearchQuery = extractPrefixedValue(line, [
+      PREFIX_SEARCH_JA,
+      "search",
+    ]);
+    if (nextSearchQuery) {
+      searchQuery = nextSearchQuery;
       continue;
     }
 
-    if (line.startsWith("タイトル：") || line.startsWith("タイトル:")) {
-      title = line.replace(/^タイトル[:：]/, "").trim();
+    const nextTitle = extractPrefixedValue(line, [PREFIX_TITLE_JA, "title"]);
+    if (nextTitle) {
+      title = nextTitle;
       continue;
     }
 
-    if (line.startsWith("追加指示：") || line.startsWith("追加指示:")) {
-      userInstruction = line.replace(/^追加指示[:：]/, "").trim();
+    const nextUserInstruction = extractPrefixedValue(line, [
+      PREFIX_INSTRUCTION_JA,
+      PREFIX_INSTRUCTION_SHORT_JA,
+      "instruction",
+    ]);
+    if (nextUserInstruction) {
+      userInstruction = nextUserInstruction;
       continue;
     }
 

@@ -62,19 +62,100 @@ export type TaskSource = {
   createdAt: string;
 };
 
+export type SearchMode =
+  | "normal"
+  | "ai"
+  | "integrated"
+  | "ai_first"
+  | "news"
+  | "geo"
+  | "travel"
+  | "product"
+  | "entity"
+  | "evidence";
+
+export type SearchEngine =
+  | "google_search"
+  | "google_ai_mode"
+  | "google_news"
+  | "google_maps"
+  | "google_local"
+  | "google_flights"
+  | "google_hotels"
+  | "google_shopping"
+  | "amazon_search";
+
+export type SearchSourceItem = {
+  title: string;
+  link: string;
+  snippet?: string;
+  sourceType?: string;
+  publishedAt?: string;
+};
+
+export type SearchProductItem = {
+  title: string;
+  link?: string;
+  price?: string;
+  source?: string;
+  rating?: number;
+};
+
+export type SearchLocalResultItem = {
+  title: string;
+  address?: string;
+  link?: string;
+  rating?: number;
+  reviews?: number;
+};
+
+export type SearchFlightItem = {
+  airline?: string;
+  price?: string;
+  departure?: string;
+  arrival?: string;
+  duration?: string;
+};
+
+export type SearchHotelItem = {
+  title: string;
+  link?: string;
+  price?: string;
+  rating?: number;
+  location?: string;
+};
+
+export type SearchEntityProfile = {
+  name?: string;
+  description?: string;
+  website?: string;
+  notableFacts?: string[];
+};
+
 export type SearchContext = {
+  id?: string;
   rawResultId: string;
+  mode?: SearchMode;
+  engine?: SearchEngine;
+  engines?: SearchEngine[];
+  seriesId?: string;
+  continuationToken?: string;
   taskId?: string;
   actionId?: string;
   query: string;
+  location?: string;
   goal?: string;
   outputMode?: "summary" | "summary_with_sources" | "raw_and_summary";
   summaryText?: string;
+  aiSummary?: string;
   rawText: string;
-  sources: {
-    title: string;
-    link: string;
-  }[];
+  sources: SearchSourceItem[];
+  products?: SearchProductItem[];
+  localResults?: SearchLocalResultItem[];
+  flights?: SearchFlightItem[];
+  hotels?: SearchHotelItem[];
+  entityProfile?: SearchEntityProfile;
+  metadata?: Record<string, unknown>;
   createdAt: string;
 };
 

@@ -30,6 +30,28 @@ function includesAny(text: string, keywords: string[]) {
   return keywords.some((keyword) => text.includes(keyword));
 }
 
+export function normalizePromptTopic(text: string) {
+  const normalized = text
+    .replace(/\s+/g, " ")
+    .replace(/^検索[:：]\s*/i, "")
+    .trim();
+
+  if (!normalized) return "";
+
+  return normalized
+    .replace(/^(?:では、?|じゃあ、?|それで、?|ちなみに、?)/, "")
+    .replace(
+      /(?:について|に関して|に関する)(?:教えて(?:ください|下さい)?|知っていますか|説明して(?:ください|下さい)?|詳しく教えて(?:ください|下さい)?|まとめて(?:ください|下さい)?|どうなりますか)?[!！。？?]*$/i,
+      ""
+    )
+    .replace(
+      /(?:を|は)?(?:教えて(?:ください|下さい)?|説明して(?:ください|下さい)?|まとめて(?:ください|下さい)?|知りたいです|知りたい|お願いします|お願い)[!！。？?]*$/i,
+      ""
+    )
+    .replace(/[!！。？?]+$/g, "")
+    .trim();
+}
+
 export function resolveTopicFromText(
   text: string,
   currentTopic?: string
@@ -115,11 +137,13 @@ export function resolvePreferredTopicContext(
         : undefined
     );
   const normalizedSearchQuery = getTrimmedString(lastSearchQuery);
+  const normalizedInputTopic = getTrimmedString(normalizePromptTopic(inputText));
 
   const preferredTopic =
     normalizedTaskTitle ||
     normalizedDocumentTitle ||
     normalizedSearchQuery ||
+    normalizedInputTopic ||
     memoryTopic ||
     resolveTopicFromText(inputText, memoryTopic);
 
@@ -128,7 +152,11 @@ export function resolvePreferredTopicContext(
   return {
     ...baseContext,
     currentTopic: preferredTopic,
-    currentTask: normalizedTaskTitle || memoryTask || baseContext.currentTask,
+    currentTask:
+      normalizedTaskTitle ||
+      preferredTopic ||
+      memoryTask ||
+      baseContext.currentTask,
     lastUserIntent: inputText,
   };
 }

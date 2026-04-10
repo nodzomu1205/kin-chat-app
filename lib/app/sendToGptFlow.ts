@@ -6,9 +6,11 @@ import {
   extractTaskProtocolEvents,
 } from "@/lib/taskRuntimeProtocol";
 import { normalizeUsage } from "@/lib/tokenStats";
+import { parseSearchContinuation } from "@/lib/search-domain/continuations";
 import type { Message, ReferenceLibraryItem, SourceItem } from "@/types/chat";
 import type { ChatBridgeSettings, TaskRuntimeState } from "@/types/taskProtocol";
 import type { GptInstructionMode, ResponseMode } from "@/components/panels/gpt/gptPanelTypes";
+import type { SearchEngine, SearchMode } from "@/types/task";
 
 type ProtocolLimitEvent = {
   type: "ask_gpt" | "search_request" | "user_question" | "library_reference";
@@ -30,6 +32,22 @@ type ParsedInputLike = {
   userInstruction?: string;
 };
 
+function extractInlineSearchQuery(text: string) {
+  if (!text) return "";
+  const normalized = text.normalize("NFKC");
+  const lines = normalized.split(/\r?\n/);
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    const match = line.match(/^(?:検索|search)\s*[:：]\s*(.+)$/i);
+    if (match) {
+      return match[1]?.trim() || "";
+    }
+  }
+
+  return "";
+}
+
 type WrappedSearchResponse = {
   query?: string;
   outputMode?: string;
@@ -50,11 +68,16 @@ type SearchSource = {
   link?: string;
 };
 
+const SEARCH_DEBUG_ENABLED = false;
+const CONTEXT_DEBUG_ENABLED = false;
+
 type ChatApiResponse = {
   reply?: string;
   usage?: Parameters<typeof normalizeUsage>[0];
   searchUsed?: boolean;
   searchQuery?: string;
+  searchSeriesId?: string;
+  searchContinuationToken?: string;
   searchEvidence?: string;
   sources?: SearchSource[];
 };
@@ -69,7 +92,7 @@ type RunSendToGptFlowArgs = {
   taskProtocolRuntime: TaskRuntimeState;
   findPendingRequest: (requestId: string) => PendingRequestLike | null;
   applyPrefixedTaskFieldsFromText: (text: string) => ParsedInputLike;
-  buildSearchReferenceContext: () => string;
+  buildSearchReferenceContext: (currentInput?: string) => string;
   buildDocumentReferenceContext: () => string;
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
@@ -86,6 +109,9 @@ type RunSendToGptFlowArgs = {
     }
   ) => unknown;
   currentTaskTitle?: string;
+  searchMode: SearchMode;
+  searchEngines: SearchEngine[];
+  searchLocation: string;
   activeDocumentTitle?: string;
   lastSearchQuery?: string;
   handleGptMemory: (recent: Message[]) => Promise<MemoryResultLike>;
@@ -104,6 +130,12 @@ type RunSendToGptFlowArgs = {
     direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
   ) => void;
   recordSearchContext: (args: {
+    mode?: SearchMode;
+    engines?: SearchEngine[];
+    location?: string;
+    seriesId?: string;
+    continuationToken?: string;
+    metadata?: Record<string, unknown>;
     taskId?: string;
     actionId?: string;
     query: string;
@@ -113,6 +145,8 @@ type RunSendToGptFlowArgs = {
     rawText: string;
     sources: SourceItem[];
   }) => SearchRecord;
+  getContinuationTokenForSeries: (seriesId: string) => string;
+  getAskAiModeLinkForQuery: (query: string) => string;
   applySearchUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applyChatUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
@@ -135,6 +169,9 @@ export async function runSendToGptFlow({
   parseWrappedSearchResponse,
   getProvisionalMemory,
   currentTaskTitle,
+  searchMode,
+  searchEngines,
+  searchLocation,
   activeDocumentTitle,
   lastSearchQuery,
   handleGptMemory,
@@ -150,6 +187,8 @@ export async function runSendToGptFlow({
   taskProtocolAnswerPendingRequest,
   ingestProtocolMessage,
   recordSearchContext,
+  getContinuationTokenForSeries,
+  getAskAiModeLinkForQuery,
   applySearchUsage,
   applyChatUsage,
   applySummaryUsage,
@@ -190,8 +229,32 @@ export async function runSendToGptFlow({
     ? findPendingRequest(requestAnswerId)
     : null;
   const parsedInput = applyPrefixedTaskFieldsFromText(rawText);
+  const inlineSearchQuery = extractInlineSearchQuery(rawText);
+  const effectiveParsedSearchQuery = parsedInput.searchQuery || inlineSearchQuery;
+  const continuationDetails = parseSearchContinuation(
+    searchRequestEvent?.query || parsedInput.searchQuery || inlineSearchQuery || ""
+  );
+  const aiContinuationEnabled =
+    searchEngines.includes("google_ai_mode") ||
+    (searchEngines.length === 0 &&
+      (searchMode === "ai" ||
+        searchMode === "integrated" ||
+        searchMode === "ai_first"));
+  const searchSeriesId = aiContinuationEnabled ? continuationDetails.seriesId : undefined;
+  const continuationToken = searchSeriesId
+    ? getContinuationTokenForSeries(searchSeriesId)
+    : "";
+  const askAiModeLink =
+    aiContinuationEnabled && !continuationToken
+      ? getAskAiModeLinkForQuery(
+          continuationDetails.cleanQuery ||
+            searchRequestEvent?.query ||
+            effectiveParsedSearchQuery ||
+            ""
+        )
+      : "";
 
-  const hasSearch = !!parsedInput.searchQuery;
+  const hasSearch = !!effectiveParsedSearchQuery;
   const hasTaskDirectives = !!(parsedInput.title || parsedInput.userInstruction);
 
   if (hasTaskDirectives && !hasSearch && !parsedInput.freeText) {
@@ -218,10 +281,26 @@ export async function runSendToGptFlow({
     .filter(Boolean)
     .join("\n");
 
-  let finalRequestText = requestText || rawText;
-  const searchReferenceContext = !parsedInput.searchQuery
-    ? buildSearchReferenceContext()
-    : "";
+  const normalizedRequestText = [
+    effectiveParsedSearchQuery ? `検索：${effectiveParsedSearchQuery}` : "",
+    parsedInput.freeText || "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const effectiveRequestText = [
+    effectiveParsedSearchQuery
+      ? `\u691c\u7d22\uFF1A${effectiveParsedSearchQuery}`
+      : "",
+    parsedInput.freeText || "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  let finalRequestText = effectiveRequestText || normalizedRequestText || requestText || rawText;
+  // Search history is already represented in the reference library, so avoid
+  // double-injecting it during normal chat turns.
+  const searchReferenceContext = "";
   const documentReferenceContext = buildDocumentReferenceContext();
   const libraryReferenceContext = buildLibraryReferenceContext();
   const effectiveSearchReferenceContext = libraryReferenceContext
@@ -400,7 +479,10 @@ export async function runSendToGptFlow({
     finalRequestText = lines.join("\n");
   }
 
-  if (shouldInjectTaskContextWithSettings(rawText)) {
+  const shouldInjectTaskContext =
+    !!currentTaskId && shouldInjectTaskContextWithSettings(rawText);
+
+  if (shouldInjectTaskContext) {
     const taskContext = buildTaskChatBridgeContext(taskProtocolRuntime);
     finalRequestText = `${taskContext}\n\n${finalRequestText}`;
   }
@@ -408,12 +490,48 @@ export async function runSendToGptFlow({
   const baseRecent = gptStateRef.current.recentMessages || [];
   const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
   const provisionalMemory = getProvisionalMemory(finalRequestText, {
-    currentTaskTitle,
-    activeDocumentTitle,
+    currentTaskTitle: shouldInjectTaskContext ? currentTaskTitle : undefined,
+    activeDocumentTitle: documentReferenceContext ? activeDocumentTitle : undefined,
     lastSearchQuery,
   });
+  const provisionalMemoryText =
+    provisionalMemory && typeof provisionalMemory === "object"
+      ? JSON.stringify(provisionalMemory)
+      : String(provisionalMemory || "");
 
-  setGptMessages((prev) => [...prev, userMsg]);
+  setGptMessages((prev) => {
+    const next = [...prev, userMsg];
+    if (SEARCH_DEBUG_ENABLED && effectiveParsedSearchQuery) {
+      next.push({
+        id: generateId(),
+        role: "gpt",
+        text: `[search debug] client detected query: ${effectiveParsedSearchQuery}`,
+        meta: {
+          kind: "task_info",
+          sourceType: "manual",
+        },
+      });
+    }
+    if (CONTEXT_DEBUG_ENABLED) {
+      next.push({
+        id: generateId(),
+        role: "gpt",
+        text:
+          `[context debug] request=${finalRequestText.length} ` +
+          `memory=${provisionalMemoryText.length} ` +
+          `task=${shouldInjectTaskContext ? "on" : "off"} ` +
+          `searchCtx=${effectiveSearchReferenceContext.length} ` +
+          `docCtx=${effectiveDocumentReferenceContext.length} ` +
+          `libraryCtx=${libraryReferenceContext.length} ` +
+          `recent=${newRecent.length}`,
+        meta: {
+          kind: "task_info",
+          sourceType: "manual",
+        },
+      });
+    }
+    return next;
+  });
   setGptInput("");
   setGptLoading(true);
 
@@ -436,7 +554,17 @@ export async function runSendToGptFlow({
         storedSearchContext: effectiveSearchReferenceContext,
         storedDocumentContext: effectiveDocumentReferenceContext,
         storedLibraryContext: libraryReferenceContext,
-        forcedSearchQuery: searchRequestEvent?.query || undefined,
+        forcedSearchQuery:
+          continuationDetails.cleanQuery ||
+          searchRequestEvent?.query ||
+          effectiveParsedSearchQuery ||
+          undefined,
+        searchSeriesId,
+        searchContinuationToken: continuationToken || undefined,
+        searchAskAiModeLink: askAiModeLink || undefined,
+        searchMode,
+        searchEngines,
+        searchLocation,
         instructionMode,
         reasoningMode: responseMode,
       }),
@@ -474,9 +602,21 @@ export async function runSendToGptFlow({
           : null;
       const recordedSearch = data.searchUsed
         ? recordSearchContext({
+            mode: searchMode,
+            engines: searchEngines,
+            location: searchLocation || undefined,
+            seriesId:
+              typeof data.searchSeriesId === "string"
+                ? data.searchSeriesId
+                : searchSeriesId,
+            continuationToken:
+              typeof data.searchContinuationToken === "string"
+                ? data.searchContinuationToken
+                : undefined,
             taskId: searchRequestEvent.taskId || currentTaskId || undefined,
             actionId: searchRequestEvent.actionId || undefined,
             query:
+              continuationDetails.cleanQuery ||
               searchRequestEvent.query ||
               (typeof data.searchQuery === "string" ? data.searchQuery : "") ||
               "",
@@ -488,6 +628,20 @@ export async function runSendToGptFlow({
             summaryText:
               typeof data.reply === "string" && data.reply.trim() ? data.reply.trim() : "",
             rawText: typeof data.searchEvidence === "string" ? data.searchEvidence : "",
+            metadata:
+              typeof data.searchSeriesId === "string" ||
+              typeof data.searchContinuationToken === "string"
+                ? {
+                    seriesId:
+                      typeof data.searchSeriesId === "string"
+                        ? data.searchSeriesId
+                        : searchSeriesId,
+                    subsequentRequestToken:
+                      typeof data.searchContinuationToken === "string"
+                        ? data.searchContinuationToken
+                        : undefined,
+                  }
+                : undefined,
             sources: Array.isArray(data.sources)
               ? data.sources.map((source) => ({
                   title: source.title || "",
@@ -584,13 +738,39 @@ export async function runSendToGptFlow({
     if (data.searchUsed && !searchRequestEvent) {
       applySearchUsage(data.usage);
       recordSearchContext({
+        mode: searchMode,
+        engines: searchEngines,
+        location: searchLocation || undefined,
+        seriesId:
+          typeof data.searchSeriesId === "string"
+            ? data.searchSeriesId
+            : searchSeriesId,
+        continuationToken:
+          typeof data.searchContinuationToken === "string"
+            ? data.searchContinuationToken
+            : undefined,
         query:
           (typeof data.searchQuery === "string" && data.searchQuery.trim()) ||
-          parsedInput.searchQuery ||
+          continuationDetails.cleanQuery ||
+          effectiveParsedSearchQuery ||
           finalRequestText,
         summaryText:
           typeof data.reply === "string" && data.reply.trim() ? data.reply : "",
         rawText: typeof data.searchEvidence === "string" ? data.searchEvidence : "",
+        metadata:
+          typeof data.searchSeriesId === "string" ||
+          typeof data.searchContinuationToken === "string"
+            ? {
+                seriesId:
+                  typeof data.searchSeriesId === "string"
+                    ? data.searchSeriesId
+                    : searchSeriesId,
+                subsequentRequestToken:
+                  typeof data.searchContinuationToken === "string"
+                    ? data.searchContinuationToken
+                    : undefined,
+              }
+            : undefined,
         sources: Array.isArray(data.sources)
           ? data.sources.map((source) => ({
               title: source.title || "",
@@ -600,6 +780,23 @@ export async function runSendToGptFlow({
       });
     } else if (!searchRequestEvent) {
       applyChatUsage(data.usage);
+    }
+
+    if (SEARCH_DEBUG_ENABLED && effectiveParsedSearchQuery) {
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: `[search debug] api searchUsed=${String(
+            data.searchUsed
+          )} searchQuery=${String(data.searchQuery || "")}`,
+          meta: {
+            kind: "task_info",
+            sourceType: "manual",
+          },
+        },
+      ]);
     }
 
     if (searchRequestEvent) {

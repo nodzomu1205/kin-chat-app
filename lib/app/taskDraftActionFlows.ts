@@ -347,11 +347,6 @@ export async function runAttachSearchResultToTaskFlow(
   const taskSearchContext = args.getTaskSearchContext();
   const taskLibraryItem = args.getTaskLibraryItem();
 
-  if (!currentTaskText) {
-    appendInfoMessage(args.setGptMessages, "No current task content was found.");
-    return;
-  }
-
   const materialText =
     taskLibraryItem?.itemType === "search"
       ? taskSearchContext?.rawText?.trim() || taskLibraryItem.excerptText.trim()
@@ -367,8 +362,94 @@ export async function runAttachSearchResultToTaskFlow(
     explicitTitle: parsedInput.title,
     freeText: parsedInput.freeText || args.gptInput.trim(),
     searchQuery: parsedInput.searchQuery || taskSearchContext?.query,
-    fallback: args.currentTaskDraft.title || "Task",
+    fallback:
+      args.currentTaskDraft.title ||
+      taskLibraryItem?.title ||
+      taskSearchContext?.query ||
+      "Task",
   });
+
+  if (!currentTaskText) {
+    const prepInput = buildTaskStructuredInput({
+      title: resolvedTitle,
+      userInstruction:
+        parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+      body: materialText,
+      searchRawText:
+        taskLibraryItem?.itemType === "search"
+          ? taskSearchContext?.rawText || ""
+          : "",
+    });
+
+    args.setGptInput("");
+    args.setGptLoading(true);
+
+    try {
+      const data = await runAutoPrepTask(prepInput, "attach-library-item");
+      const taskText = formatTaskResultText(data?.parsed, data?.raw);
+
+      args.setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: ["Library item imported into a new task.", taskText].join("\n\n"),
+          meta: {
+            kind: "task_prep",
+            sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
+          },
+        },
+      ]);
+
+      const source = createTaskSource(
+        taskLibraryItem?.itemType === "search"
+          ? "web_search"
+          : taskLibraryItem?.itemType === "ingested_file"
+            ? "file_ingest"
+            : "kin_message",
+        taskLibraryItem?.itemType === "search"
+          ? `Search result: ${taskLibraryItem.title || taskSearchContext?.query || "Untitled"}`
+          : `Library item: ${taskLibraryItem?.title || "Untitled"}`,
+        materialText
+      );
+
+      args.setCurrentTaskDraft((prev) => ({
+        ...prev,
+        title: resolvedTitle,
+        taskName: resolvedTitle,
+        userInstruction: parsedInput.userInstruction || prev.userInstruction,
+        body: taskText,
+        searchContext:
+          taskLibraryItem?.itemType === "search"
+            ? taskSearchContext ?? prev.searchContext
+            : prev.searchContext,
+        objective:
+          prev.objective ||
+          parsedInput.freeText ||
+          taskLibraryItem?.title ||
+          taskSearchContext?.query ||
+          "Imported from library item",
+        prepText: taskText,
+        deepenText: "",
+        mergedText: taskText,
+        kinTaskText: "",
+        status: "prepared",
+        sources: [...prev.sources, source],
+        updatedAt: new Date().toISOString(),
+      }));
+
+      args.applyTaskUsage(data?.usage);
+    } catch (error) {
+      console.error(error);
+      appendInfoMessage(
+        args.setGptMessages,
+        "Importing the library item into a new task failed."
+      );
+    } finally {
+      args.setGptLoading(false);
+    }
+    return;
+  }
 
   const taskInput = buildTaskInput({
     title: resolvedTitle,

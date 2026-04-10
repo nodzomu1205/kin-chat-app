@@ -57,6 +57,10 @@ function toDocumentLibraryItem(item: StoredDocument): ReferenceLibraryItem {
 }
 
 function toSearchLibraryItem(item: SearchContext): ReferenceLibraryItem {
+  const askAiModeItems = Array.isArray(item.metadata?.askAiModeItems)
+    ? (item.metadata.askAiModeItems as ReferenceLibraryItem["askAiModeItems"])
+    : undefined;
+
   return {
     id: `search:${item.rawResultId}`,
     sourceId: item.rawResultId,
@@ -72,6 +76,7 @@ function toSearchLibraryItem(item: SearchContext): ReferenceLibraryItem {
     rawResultId: item.rawResultId,
     taskId: item.taskId,
     sources: item.sources,
+    askAiModeItems,
   };
 }
 
@@ -229,7 +234,7 @@ export function useReferenceLibrary(params: {
       const kept = prev.filter((id) => ids.has(id));
       const missing = baseItems.map((item) => item.id).filter((id) => !kept.includes(id));
       if (missing.length === 0 && kept.length === prev.length) return prev;
-      return [...kept, ...missing];
+      return [...missing, ...kept];
     });
   }, [baseItems]);
 
@@ -301,26 +306,21 @@ export function useReferenceLibrary(params: {
     const targets = libraryItemsWithOverrides.slice(0, libraryReferenceCount);
     if (targets.length === 0) return "";
 
-    const lines = [
-      "<<STORED_LIBRARY_CONTEXT>>",
-      "Use the library items below as first-pass supporting context when the current message relates to them.",
-      "If unrelated, ignore this block.",
-      "Prefer the listed items in priority order before falling back to general knowledge.",
-      "",
-    ];
+    const lines = ["<<STORED_LIBRARY_CONTEXT>>"];
 
     targets.forEach((item, index) => {
       const effectiveMode = getEffectiveMode(item.id);
       lines.push(`[LIB ${index + 1}]`);
-      lines.push(`ITEM_ID: ${item.id}`);
-      lines.push(`ITEM_TYPE: ${item.itemType}`);
       lines.push(`TITLE: ${item.title}`);
-      lines.push(`SUBTITLE: ${item.subtitle}`);
       lines.push(`SUMMARY: ${item.summary}`);
       if (effectiveMode === "summary_with_excerpt" && item.excerptText.trim()) {
         lines.push(`EXCERPT: ${item.excerptText.trim().slice(0, 1200)}`);
       }
-      if (item.itemType === "search" && item.sources?.length) {
+      if (
+        effectiveMode === "summary_with_excerpt" &&
+        item.itemType === "search" &&
+        item.sources?.length
+      ) {
         lines.push("SOURCES:");
         item.sources.slice(0, 3).forEach((source) => {
           lines.push(`- ${source.title}${source.link ? ` | ${source.link}` : ""}`);
@@ -339,18 +339,16 @@ export function useReferenceLibrary(params: {
     if (targets.length === 0) return 0;
     const text = targets
       .map((item, index) => {
+        const effectiveMode = getEffectiveMode(item.id);
         const parts = [
           `[LIB ${index + 1}]`,
-          `ITEM_ID: ${item.id}`,
-          `ITEM_TYPE: ${item.itemType}`,
           `TITLE: ${item.title}`,
-          `SUBTITLE: ${item.subtitle}`,
           `SUMMARY: ${item.summary}`,
         ];
-        if (getEffectiveMode(item.id) === "summary_with_excerpt" && item.excerptText.trim()) {
+        if (effectiveMode === "summary_with_excerpt" && item.excerptText.trim()) {
           parts.push(`EXCERPT: ${item.excerptText.trim().slice(0, 1200)}`);
         }
-        if (item.itemType === "search" && item.sources?.length) {
+        if (effectiveMode === "summary_with_excerpt" && item.itemType === "search" && item.sources?.length) {
           parts.push(
             ...item.sources
               .slice(0, 3)

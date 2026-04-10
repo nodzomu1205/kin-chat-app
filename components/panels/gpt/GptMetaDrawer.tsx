@@ -57,6 +57,111 @@ function RunCount({ count }: { count: number }) {
   );
 }
 
+function MemoryListCard(props: {
+  title: string;
+  items: string[];
+  emptyText: string;
+}) {
+  const { title, items, emptyText } = props;
+
+  return (
+    <div style={tokenCardStyle}>
+      <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>{title}</div>
+      {items.length === 0 ? (
+        <div style={{ ...tokenMetaStyle, fontSize: 12 }}>{emptyText}</div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {items.map((item, index) => (
+            <div
+              key={`${title}-${index}`}
+              style={{
+                fontSize: 12,
+                lineHeight: 1.6,
+                color: "#0f172a",
+                padding: "8px 10px",
+                borderRadius: 10,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              {item}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NamedListValue({ value }: { value: unknown }) {
+  if (Array.isArray(value)) {
+    const items = value.filter((item): item is string => typeof item === "string");
+    return (
+      <div style={{ display: "grid", gap: 8 }}>
+        {items.map((item, index) => (
+          <div
+            key={`${item}-${index}`}
+            style={{
+              fontSize: 12,
+              lineHeight: 1.6,
+              color: "#0f172a",
+              padding: "8px 10px",
+              borderRadius: 10,
+              background: "#ffffff",
+              border: "1px solid #dbe4e8",
+            }}
+          >
+            {item}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return (
+      <div style={{ display: "grid", gap: 8 }}>
+        {entries.map(([key, nestedValue]) => (
+          <div
+            key={key}
+            style={{
+              padding: "8px 10px",
+              borderRadius: 10,
+              background: "#ffffff",
+              border: "1px solid #dbe4e8",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                color: "#334155",
+                marginBottom: 6,
+              }}
+            >
+              {key}
+            </div>
+            <NamedListValue value={nestedValue} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        fontSize: 12,
+        lineHeight: 1.6,
+        color: "#0f172a",
+      }}
+    >
+      {String(value ?? "-")}
+    </div>
+  );
+}
+
 type Props = {
   mode: Exclude<GptTopDrawerTab, "settings" | null>;
   gptState: GptStateLike;
@@ -68,6 +173,7 @@ type Props = {
   recentCount: number;
   factCount: number;
   preferenceCount: number;
+  listCount: number;
   chatRecentLimit: number;
   maxFacts: number;
   maxPreferences: number;
@@ -87,6 +193,7 @@ export default function GptMetaDrawer({
   recentCount,
   factCount,
   preferenceCount,
+  listCount,
   chatRecentLimit,
   maxFacts,
   maxPreferences,
@@ -108,6 +215,14 @@ export default function GptMetaDrawer({
   );
 
   const grandTotal = mergeUsage(conversationTrackedTotal, otherTrackedTotal);
+  const facts = Array.isArray(gptState.memory?.facts) ? gptState.memory.facts : [];
+  const preferences = Array.isArray(gptState.memory?.preferences)
+    ? gptState.memory.preferences
+    : [];
+  const namedLists =
+    gptState.memory?.lists && typeof gptState.memory.lists === "object"
+      ? Object.entries(gptState.memory.lists)
+      : [];
 
   if (mode === "memory") {
     return (
@@ -139,6 +254,8 @@ export default function GptMetaDrawer({
             facts {factCount}/{maxFacts}
             {" ・ "}
             preferences {preferenceCount}/{maxPreferences}
+            {" ・ "}
+            collection groups {listCount}
           </div>
         </div>
 
@@ -150,10 +267,77 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>現在タスク</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>目標</div>
           <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
             {gptState.memory?.context?.currentTask || "-"}
           </div>
+        </div>
+
+        <div style={tokenCardStyle}>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>直近の意図</div>
+          <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
+            {gptState.memory?.context?.lastUserIntent || "-"}
+          </div>
+          {gptState.memory?.context?.followUpRule ? (
+            <div style={{ ...tokenMetaStyle, marginTop: 10, lineHeight: 1.6 }}>
+              follow-up rule: {gptState.memory.context.followUpRule}
+            </div>
+          ) : null}
+        </div>
+
+        <MemoryListCard
+          title="Facts"
+          items={facts}
+          emptyText="会話から抽出された短い事実はまだありません。"
+        />
+
+        <MemoryListCard
+          title="Preferences"
+          items={preferences}
+          emptyText="継続的な好みや出力条件はまだありません。"
+        />
+
+        <div style={tokenCardStyle}>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>Collections</div>
+          <div style={{ ...tokenMetaStyle, fontSize: 12, marginBottom: 10 }}>
+            会話から拾った構造化メモです。検索語や、人物ごとの作品群のようなまとまりを置きます。
+          </div>
+          {namedLists.length === 0 ? (
+            <div style={{ ...tokenMetaStyle, fontSize: 12 }}>
+              構造化されたコレクションはまだありません。
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 10 }}>
+              {namedLists.map(([name, value]) => (
+                <div
+                  key={name}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 800,
+                      color: "#334155",
+                      marginBottom: 6,
+                    }}
+                  >
+                    {name}
+                  </div>
+                  <pre
+                    style={{ display: "none" }}
+                  >
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
+                  <NamedListValue value={value} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={tokenCardStyle}>

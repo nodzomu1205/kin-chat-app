@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SearchReferenceMode } from "@/components/panels/gpt/gptPanelTypes";
-import type { SearchContext } from "@/types/task";
+import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
+import type { SearchContext, SearchEngine, SearchMode } from "@/types/task";
 
 const LAST_SEARCH_CONTEXT_KEY = "last_search_context";
 const SEARCH_HISTORY_KEY = "search_history";
@@ -8,10 +9,26 @@ const SEARCH_HISTORY_LIMIT_KEY = "search_history_limit";
 const SEARCH_REFERENCE_COUNT_KEY = "search_reference_count";
 const SEARCH_AUTO_REFERENCE_ENABLED_KEY = "search_auto_reference_enabled";
 const SEARCH_REFERENCE_MODE_KEY = "search_reference_mode";
+const SEARCH_MODE_KEY = "search_mode";
+const SEARCH_ENGINES_KEY = "search_engines";
+const SEARCH_LOCATION_KEY = "search_location";
 
 export const DEFAULT_SEARCH_HISTORY_LIMIT = 20;
 export const DEFAULT_SEARCH_REFERENCE_COUNT = 3;
 export const DEFAULT_SEARCH_REFERENCE_MODE: SearchReferenceMode = "summary_only";
+export const DEFAULT_SEARCH_MODE: SearchMode = "normal";
+
+const ALLOWED_SEARCH_ENGINES: SearchEngine[] = [
+  "google_search",
+  "google_ai_mode",
+  "google_news",
+  "google_maps",
+  "google_local",
+  "google_flights",
+  "google_hotels",
+  "google_shopping",
+  "amazon_search",
+];
 
 function estimateTokenCount(text: string) {
   const trimmed = text.trim();
@@ -19,11 +36,58 @@ function estimateTokenCount(text: string) {
   return Math.max(1, Math.ceil(trimmed.length / 4));
 }
 
+function normalizeSearchTextKey(text: string) {
+  return text
+    .normalize("NFKC")
+    .replace(/[（\(]\s*継続[#＃][^)）]+[)）]\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeReferenceTopic(text: string) {
+  return text
+    .normalize("NFKC")
+    .replace(/^検索\s*[:：]\s*/i, "")
+    .replace(/[!?！？。\.]/g, " ")
+    .replace(
+      /(?:について|とは|教えて|知りたい|詳しく|簡潔に|説明して|お願い|ください|ですか|ますか)/g,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function hasRelevantSearchOverlap(inputText: string, query: string) {
+  const normalizedInput = normalizeReferenceTopic(inputText);
+  const normalizedQuery = normalizeReferenceTopic(query);
+
+  if (!normalizedInput || !normalizedQuery) return false;
+  if (normalizedInput.length < 3 || normalizedQuery.length < 3) return false;
+
+  return (
+    normalizedInput.includes(normalizedQuery) ||
+    normalizedQuery.includes(normalizedInput)
+  );
+}
+
+type AskAiModeCandidate = {
+  question?: string;
+  title?: string;
+  snippet?: string;
+  link?: string;
+  serpapi_link?: string;
+};
+
 export function useSearchHistory() {
   const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(null);
   const [searchHistory, setSearchHistory] = useState<SearchContext[]>([]);
   const [selectedTaskSearchResultId, setSelectedTaskSearchResultId] = useState("");
   const [searchHistoryLimit, setSearchHistoryLimit] = useState(DEFAULT_SEARCH_HISTORY_LIMIT);
+  const [searchMode, setSearchMode] = useState<SearchMode>(DEFAULT_SEARCH_MODE);
+  const [searchEngines, setSearchEngines] = useState<SearchEngine[]>([]);
+  const [searchLocation, setSearchLocation] = useState("");
   const [searchReferenceCount, setSearchReferenceCount] = useState(
     DEFAULT_SEARCH_REFERENCE_COUNT
   );
@@ -45,6 +109,9 @@ export function useSearchHistory() {
     const savedSearchReferenceMode = window.localStorage.getItem(
       SEARCH_REFERENCE_MODE_KEY
     );
+    const savedSearchMode = window.localStorage.getItem(SEARCH_MODE_KEY);
+    const savedSearchEngines = window.localStorage.getItem(SEARCH_ENGINES_KEY);
+    const savedSearchLocation = window.localStorage.getItem(SEARCH_LOCATION_KEY);
 
     if (savedSearchHistoryLimit) {
       const parsed = Number(savedSearchHistoryLimit);
@@ -53,6 +120,24 @@ export function useSearchHistory() {
     if (savedSearchReferenceCount) {
       const parsed = Number(savedSearchReferenceCount);
       if (Number.isFinite(parsed) && parsed > 0) setSearchReferenceCount(parsed);
+    }
+    if (savedSearchMode) {
+      setSearchMode(normalizeStoredSearchMode(savedSearchMode));
+    }
+    if (savedSearchEngines) {
+      try {
+        const parsed = JSON.parse(savedSearchEngines) as string[];
+        if (Array.isArray(parsed)) {
+          setSearchEngines(
+            parsed.filter((engine): engine is SearchEngine =>
+              ALLOWED_SEARCH_ENGINES.includes(engine as SearchEngine)
+            )
+          );
+        }
+      } catch {}
+    }
+    if (savedSearchLocation) {
+      setSearchLocation(savedSearchLocation);
     }
     if (savedAutoSearchReferenceEnabled) {
       setAutoSearchReferenceEnabled(savedAutoSearchReferenceEnabled === "true");
@@ -92,6 +177,21 @@ export function useSearchHistory() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(SEARCH_REFERENCE_COUNT_KEY, String(searchReferenceCount));
   }, [searchReferenceCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_MODE_KEY, searchMode);
+  }, [searchMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_ENGINES_KEY, JSON.stringify(searchEngines));
+  }, [searchEngines]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_LOCATION_KEY, searchLocation);
+  }, [searchLocation]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -206,6 +306,79 @@ export function useSearchHistory() {
     return nextContext;
   };
 
+  const getContinuationTokenForSeries = (seriesId: string) => {
+    const normalizedSeriesId = seriesId.trim();
+    if (!normalizedSeriesId) return "";
+
+    const pool = [
+      ...(lastSearchContext ? [lastSearchContext] : []),
+      ...searchHistory,
+    ];
+
+    const matched = pool.find((item) => {
+      const itemSeriesId =
+        typeof item.seriesId === "string"
+          ? item.seriesId
+          : typeof item.metadata?.seriesId === "string"
+            ? String(item.metadata?.seriesId)
+            : "";
+      return itemSeriesId === normalizedSeriesId;
+    });
+
+    if (!matched) return "";
+    if (typeof matched.continuationToken === "string" && matched.continuationToken.trim()) {
+      return matched.continuationToken.trim();
+    }
+    if (
+      typeof matched.metadata?.subsequentRequestToken === "string" &&
+      String(matched.metadata?.subsequentRequestToken).trim()
+    ) {
+      return String(matched.metadata?.subsequentRequestToken).trim();
+    }
+    return "";
+  };
+
+  const getAskAiModeLinkForQuery = (query: string) => {
+    const normalizedQuery = normalizeSearchTextKey(query);
+    if (!normalizedQuery) return "";
+
+    const pool = [
+      ...(lastSearchContext ? [lastSearchContext] : []),
+      ...searchHistory,
+    ];
+
+    for (const item of pool) {
+      const candidates = Array.isArray(item.metadata?.askAiModeItems)
+        ? (item.metadata?.askAiModeItems as AskAiModeCandidate[])
+        : [];
+
+      for (const candidate of candidates) {
+        const labels = [
+          candidate.question,
+          candidate.title,
+          candidate.snippet,
+        ]
+          .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+          .map((value) => normalizeSearchTextKey(value));
+
+        if (!labels.includes(normalizedQuery)) continue;
+
+        if (
+          typeof candidate.serpapi_link === "string" &&
+          candidate.serpapi_link.trim()
+        ) {
+          return candidate.serpapi_link.trim();
+        }
+
+        if (typeof candidate.link === "string" && candidate.link.trim()) {
+          return candidate.link.trim();
+        }
+      }
+    }
+
+    return "";
+  };
+
   const clearSearchHistory = () => {
     setLastSearchContext(null);
     setSearchHistory([]);
@@ -237,9 +410,14 @@ export function useSearchHistory() {
     return historyPool;
   };
 
-  const buildSearchReferenceContext = () => {
+  const buildSearchReferenceContext = (currentInput?: string) => {
     if (!autoSearchReferenceEnabled || searchReferenceCount <= 0) return "";
-    const targets = getReferenceTargets().slice(0, searchReferenceCount);
+    const pool = getReferenceTargets();
+    const targets = (
+      currentInput?.trim()
+        ? pool.filter((item) => hasRelevantSearchOverlap(currentInput, item.query))
+        : pool
+    ).slice(0, searchReferenceCount);
     if (targets.length === 0) return "";
 
     const lines = [
@@ -318,6 +496,12 @@ export function useSearchHistory() {
     setSelectedTaskSearchResultId,
     searchHistoryLimit,
     setSearchHistoryLimit,
+    searchMode,
+    setSearchMode,
+    searchEngines,
+    setSearchEngines,
+    searchLocation,
+    setSearchLocation,
     searchReferenceCount,
     setSearchReferenceCount,
     autoSearchReferenceEnabled,
@@ -327,6 +511,8 @@ export function useSearchHistory() {
     getTaskSearchContext,
     moveSearchHistoryItem,
     recordSearchContext,
+    getContinuationTokenForSeries,
+    getAskAiModeLinkForQuery,
     clearSearchHistory,
     deleteSearchHistoryItem,
     searchHistoryStorageMB,

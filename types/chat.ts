@@ -78,5 +78,12 @@ export type ReferenceLibraryItem = {
   taskId?: string;
   rawResultId?: string;
   sources?: SourceItem[];
+  askAiModeItems?: Array<{
+    question?: string;
+    title?: string;
+    snippet?: string;
+    link?: string;
+    serpapi_link?: string;
+  }>;
   modeOverride?: "default" | "summary_only" | "summary_with_excerpt";
 };

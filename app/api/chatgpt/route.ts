@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { searchGoogle } from "@/lib/search";
+import { searchWithMode } from "@/lib/search";
+import { parseSearchContinuation } from "@/lib/search-domain/continuations";
+import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
+import { parseTaskInput } from "@/lib/taskInputParser";
 import {
   createEmptyMemory,
   normalizeMemoryShape,
   safeParseMemory,
   memoryToPrompt,
 } from "@/lib/memory";
+import type { SearchEngine, SearchMode } from "@/types/task";
 
 // 検索コマンド解析
 function parseSearchCommand(text: string) {
@@ -24,6 +28,11 @@ function parseSearchCommand(text: string) {
   }
 
   return null;
+}
+
+function parseSearchCommandStable(text: string) {
+  if (!text) return null;
+  return parseTaskInput(text).searchQuery.trim() || null;
 }
 
 function parsePolishInput(input: string) {
@@ -66,6 +75,20 @@ type UsageSummary = {
   outputTokens: number;
   totalTokens: number;
 };
+
+function wantsGoogleMapsLink(text: string) {
+  if (!text) return false;
+  const normalized = text.normalize("NFKC").toLowerCase();
+  return (
+    normalized.includes("google maps") ||
+    normalized.includes("google mapsへのリンク") ||
+    normalized.includes("mapsへのリンク") ||
+    normalized.includes("maps link") ||
+    normalized.includes("map link") ||
+    (normalized.includes("地図") && normalized.includes("リンク")) ||
+    (normalized.includes("マップ") && normalized.includes("リンク"))
+  );
+}
 
 function extractUsage(data: any): UsageSummary {
   const inputTokens =
@@ -170,43 +193,14 @@ function buildBaseSystemPrompt(params: {
   const modeBlock =
     reasoningMode === "strict"
       ? `
-You are a reasoning engine operating under strict information control.
+You are a strict factual assistant.
 
-# Source priority
-System > User > Search Evidence > Internal Knowledge
+- Priority: System > User > Search Evidence > Internal Knowledge.
+- Do not guess missing facts.
+- If explicit evidence exists, treat it as confirmed.
+- If evidence is absent, say it is unknown.
 
-# No guessing
-- Never guess missing information.
-- Never deny or override explicit source evidence with general memory.
-- If something is not explicitly confirmed by the provided evidence, say it is unknown.
-
-# Fact-first reasoning
-Always reason in this order:
-1. Extract verifiable facts
-2. Separate known vs unknown
-3. Interpret carefully
-4. Conclude
-
-# Scope separation
-Always distinguish between:
-- API capabilities
-- This implementation limitations
-
-# Model identity
-- You do NOT know your real hidden runtime identity unless explicitly provided by system message.
-- Never deny a user-provided model name unless system message explicitly contradicts it.
-
-# Search handling
-- Treat provided search evidence as higher priority than internal knowledge.
-- If a source contains an explicit list, table, matrix, accepted types section, or bullet list, treat it as authoritative.
-- Do NOT downgrade an explicit listed support item to "unclear".
-- Only mark something unknown if the provided evidence does not explicitly confirm it.
-- Prefer extracted evidence over broad summarization.
-
-# Verification step
-Before finalizing, silently check:
-"Did I label any explicitly listed item as unknown or unclear?"
-If yes, revise.
+- Prefer provided search evidence over internal knowledge.
 
 # Output requirement
 For factual verification tasks, use this exact structure:
@@ -216,48 +210,28 @@ For factual verification tasks, use this exact structure:
 4. 結論
 
 # Style
-- Be precise
-- Be cautious
-- Be audit-like when appropriate
+- Be precise and cautious.
       `.trim()
       : `
-You are a helpful assistant in creative conversation mode.
+You are a helpful conversational assistant.
 
-Goals:
-- Be natural, fluent, and user-friendly.
-- You may summarize and explain more conversationally than strict mode.
-- Prefer readability over rigid structure unless the user requests structure.
-- Use memory and recent context naturally.
-- Prefer continuity across turns unless the user clearly changes topic.
-
-Rules:
-- If search evidence is provided, use it seriously.
-- You may combine confirmed facts into a concise explanation.
+- Be natural, concise, and clear.
+- Use recent context and memory for continuity.
+- Prefer provided search evidence over vague prior knowledge.
 - Do not invent unsupported facts.
-- You do not need to explicitly separate known/unknown unless useful.
-- You do not need to use the strict 4-section output format unless the user asks for verification or audit-style output.
-
-Style:
-- Answer naturally.
-- Prefer concise synthesis over compliance-style formatting.
-- Avoid sounding like a policy engine.
       `.trim();
 
   return `
 ${modeBlock}
 
-You MUST always use the structured long-term memory below when relevant.
-This memory is the source of truth for preserved context across turns.
+Use the structured long-term memory below when relevant.
 
 Important conversation rules:
-- Continue the current topic naturally across follow-up questions.
-- Short follow-up questions often omit the topic. Infer the omitted topic from memory and recent messages.
+- Continue the current topic across short follow-up questions when appropriate.
 - If the user gives only a place name such as "鹿児島は？" and the active topic is weather, interpret it as asking about the weather in that place.
-- If the user gives only a noun or short phrase, prefer continuity with the current topic unless the user clearly changed topics.
-- Treat numbered items, lists, sequences, and structured data as exact when possible.
-- If recent messages are incomplete, rely on memory.
-- If memory and recent messages conflict, prefer the user's most recent explicit correction.
-- Do not explicitly mention "memory" unless the user asks.
+- Treat structured lists as exact when possible.
+- Prefer the user's latest explicit correction over older memory.
+- Do not mention memory unless asked.
 
 === LONG-TERM MEMORY (JSON) ===
 ${memoryToPrompt(normalizedMemory)}
@@ -310,6 +284,24 @@ SEARCH EVIDENCE END
   `.trim();
 }
 
+function extractJsonObjectText(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch?.[1]?.trim()) {
+    return fencedMatch[1].trim();
+  }
+
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    return trimmed.slice(start, end + 1);
+  }
+
+  return trimmed;
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -326,6 +318,12 @@ export async function POST(req: Request) {
         storedDocumentContext,
         storedLibraryContext,
         forcedSearchQuery,
+        searchSeriesId,
+        searchContinuationToken,
+        searchAskAiModeLink,
+        searchMode,
+        searchEngines,
+        searchLocation,
       } =
         body;
 
@@ -353,17 +351,107 @@ export async function POST(req: Request) {
       const searchQuery =
         typeof forcedSearchQuery === "string" && forcedSearchQuery.trim()
           ? forcedSearchQuery.trim()
-          : parseSearchCommand(input);
+          : parseSearchCommandStable(input);
+      const parsedContinuation = searchQuery
+        ? parseSearchContinuation(searchQuery)
+        : { cleanQuery: "", seriesId: undefined };
       const useSearch = !!searchQuery;
 
       let searchText = "";
       let sources: { title: string; link: string }[] = [];
+      let returnedSearchContinuationToken = "";
 
       if (useSearch && searchQuery) {
         console.log("🔍 SEARCH:", searchQuery);
-        const result = await searchGoogle(searchQuery);
-        searchText = result.text;
-        sources = result.sources;
+        const safeSearchMode: SearchMode =
+          searchMode === "ai" ||
+          searchMode === "integrated" ||
+          searchMode === "ai_first" ||
+          searchMode === "news" ||
+          searchMode === "geo" ||
+          searchMode === "travel" ||
+          searchMode === "product" ||
+          searchMode === "entity" ||
+          searchMode === "evidence" ||
+          searchMode === "normal"
+            ? normalizeStoredSearchMode(searchMode)
+            : "normal";
+        const safeSearchEngines: SearchEngine[] = Array.isArray(searchEngines)
+          ? searchEngines.filter((engine): engine is SearchEngine =>
+                [
+                  "google_search",
+                  "google_ai_mode",
+                  "google_news",
+                  "google_maps",
+                  "google_local",
+                  "google_flights",
+                "google_hotels",
+                "google_shopping",
+                "amazon_search",
+              ].includes(String(engine))
+            )
+          : [];
+        const result = await searchWithMode({
+          query: parsedContinuation.cleanQuery || searchQuery,
+          mode: safeSearchMode,
+          engines: safeSearchEngines.length > 0 ? safeSearchEngines : undefined,
+          seriesId:
+            typeof searchSeriesId === "string" && searchSeriesId.trim()
+              ? searchSeriesId.trim()
+              : parsedContinuation.seriesId,
+          continuationToken:
+            typeof searchContinuationToken === "string" &&
+            searchContinuationToken.trim()
+              ? searchContinuationToken.trim()
+              : undefined,
+          askAiModeLink:
+            typeof searchAskAiModeLink === "string" && searchAskAiModeLink.trim()
+              ? searchAskAiModeLink.trim()
+              : undefined,
+          location:
+            typeof searchLocation === "string" && searchLocation.trim()
+              ? searchLocation.trim()
+              : undefined,
+          maxResults: 5,
+        });
+        searchText =
+          result.rawText || result.summaryText || result.aiSummary || "";
+        returnedSearchContinuationToken =
+          typeof result.continuationToken === "string"
+            ? result.continuationToken
+            : "";
+        sources = (result.sources || []).map((source) => ({
+          title: source.title,
+          link: source.link,
+        }));
+
+        if (wantsGoogleMapsLink(input)) {
+          const mapLikeSource =
+            (result.sources || []).find((source) => {
+              const link = typeof source.link === "string" ? source.link.toLowerCase() : "";
+              return (
+                link.includes("google.com/maps") ||
+                link.includes("maps.google") ||
+                link.includes("google.com/search")
+              );
+            }) || null;
+
+          if (mapLikeSource?.link) {
+            return NextResponse.json({
+              reply: `${mapLikeSource.title}\n${mapLikeSource.link}`,
+              sources,
+              usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+              searchUsed: true,
+              searchQuery: parsedContinuation.cleanQuery || searchQuery || "",
+              searchSeriesId:
+                typeof searchSeriesId === "string" && searchSeriesId.trim()
+                  ? searchSeriesId.trim()
+                  : parsedContinuation.seriesId || "",
+              searchContinuationToken: returnedSearchContinuationToken,
+              searchEvidence: searchText,
+            });
+          }
+        }
       }
 
       const messages: OpenAIMessage[] = [];
@@ -407,13 +495,13 @@ export async function POST(req: Request) {
       }
 
       if (useSearch && searchQuery && searchText) {
-        messages.push({
-          role: "system",
-          content: buildSearchSystemPrompt(
-            searchQuery,
-            searchText,
-            safeReasoningMode
-          ),
+          messages.push({
+            role: "system",
+            content: buildSearchSystemPrompt(
+              parsedContinuation.cleanQuery || searchQuery,
+              searchText,
+              safeReasoningMode
+            ),
         });
       }
 
@@ -460,14 +548,19 @@ export async function POST(req: Request) {
         data.output_text ||
         "⚠️ reply not found";
 
-      return NextResponse.json({
-        reply,
-        sources,
-        usage: extractUsage(data),
-        searchUsed: useSearch,
-        searchQuery: searchQuery || "",
-        searchEvidence: searchText,
-      });
+        return NextResponse.json({
+          reply,
+          sources,
+          usage: extractUsage(data),
+          searchUsed: useSearch,
+          searchQuery: parsedContinuation.cleanQuery || searchQuery || "",
+          searchSeriesId:
+            typeof searchSeriesId === "string" && searchSeriesId.trim()
+              ? searchSeriesId.trim()
+              : parsedContinuation.seriesId || "",
+          searchContinuationToken: returnedSearchContinuationToken,
+          searchEvidence: searchText,
+        });
     }
 
     if (mode === "summarize") {
@@ -552,7 +645,7 @@ ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
         data.output_text ||
         JSON.stringify(normalizedMemory);
 
-      const parsedMemory = safeParseMemory(rawMemory);
+      const parsedMemory = safeParseMemory(extractJsonObjectText(rawMemory));
 
       console.log("🧠 FINAL MEMORY:", JSON.stringify(parsedMemory, null, 2));
 

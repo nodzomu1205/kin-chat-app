@@ -13,6 +13,7 @@ type Props = Pick<
   | "onSelectTaskLibraryItem"
   | "onMoveLibraryItem"
   | "onChangeLibraryItemMode"
+  | "onStartAskAiModeSearch"
   | "onDownloadMultipartAssembly"
   | "onDeleteMultipartAssembly"
   | "onDownloadStoredDocument"
