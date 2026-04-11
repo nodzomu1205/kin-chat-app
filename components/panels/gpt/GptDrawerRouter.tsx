@@ -125,15 +125,11 @@ export default function GptDrawerRouter({
     simpleImageCharLimit: props.simpleImageCharLimit,
     ingestLoading: props.ingestLoading,
     canInjectFile: props.canInjectFile,
-    autoSearchReferenceEnabled: props.autoSearchReferenceEnabled,
     searchMode: props.searchMode,
     searchEngines: props.searchEngines,
     searchLocation: props.searchLocation,
-    searchReferenceMode: props.searchReferenceMode,
-    searchReferenceCount: props.searchReferenceCount,
     searchHistoryLimit: props.searchHistoryLimit,
     searchHistoryStorageMB: props.searchHistoryStorageMB,
-    searchReferenceEstimatedTokens: props.searchReferenceEstimatedTokens,
     autoDocumentReferenceEnabled: props.autoDocumentReferenceEnabled,
     documentReferenceMode: props.documentReferenceMode,
     documentReferenceCount: props.documentReferenceCount,
@@ -159,12 +155,9 @@ export default function GptDrawerRouter({
     onChangeSimpleImageCharLimit: props.onChangeSimpleImageCharLimit,
     onChangePostIngestAction: props.onChangePostIngestAction,
     onChangeFileReadPolicy: props.onChangeFileReadPolicy,
-    onChangeAutoSearchReferenceEnabled: props.onChangeAutoSearchReferenceEnabled,
     onChangeSearchMode: props.onChangeSearchMode,
     onChangeSearchEngines: props.onChangeSearchEngines,
     onChangeSearchLocation: props.onChangeSearchLocation,
-    onChangeSearchReferenceMode: props.onChangeSearchReferenceMode,
-    onChangeSearchReferenceCount: props.onChangeSearchReferenceCount,
     onChangeSearchHistoryLimit: props.onChangeSearchHistoryLimit,
     onClearSearchHistory: props.onClearSearchHistory,
     onChangeAutoDocumentReferenceEnabled: props.onChangeAutoDocumentReferenceEnabled,
@@ -330,15 +323,11 @@ export default function GptDrawerRouter({
         onChangeSimpleImageCharLimit={settings.onChangeSimpleImageCharLimit}
         fileReadPolicy={settings.fileReadPolicy}
         onChangeFileReadPolicy={settings.onChangeFileReadPolicy}
-        autoSearchReferenceEnabled={settings.autoSearchReferenceEnabled}
         searchMode={settings.searchMode}
         searchEngines={settings.searchEngines}
         searchLocation={settings.searchLocation}
-        searchReferenceMode={settings.searchReferenceMode}
-        searchReferenceCount={settings.searchReferenceCount}
         searchHistoryLimit={settings.searchHistoryLimit}
         searchHistoryStorageMB={settings.searchHistoryStorageMB}
-        searchReferenceEstimatedTokens={settings.searchReferenceEstimatedTokens}
         autoDocumentReferenceEnabled={settings.autoDocumentReferenceEnabled}
         documentReferenceMode={settings.documentReferenceMode}
         documentReferenceCount={settings.documentReferenceCount}
@@ -354,12 +343,9 @@ export default function GptDrawerRouter({
          autoCopyKinSysResponseToGpt={settings.autoCopyKinSysResponseToGpt}
          autoSendGptSysInput={settings.autoSendGptSysInput}
          autoCopyGptSysResponseToKin={settings.autoCopyGptSysResponseToKin}
-         onChangeAutoSearchReferenceEnabled={settings.onChangeAutoSearchReferenceEnabled}
         onChangeSearchMode={settings.onChangeSearchMode}
         onChangeSearchEngines={settings.onChangeSearchEngines}
         onChangeSearchLocation={settings.onChangeSearchLocation}
-        onChangeSearchReferenceMode={settings.onChangeSearchReferenceMode}
-        onChangeSearchReferenceCount={settings.onChangeSearchReferenceCount}
         onChangeSearchHistoryLimit={settings.onChangeSearchHistoryLimit}
         onClearSearchHistory={settings.onClearSearchHistory}
         onChangeAutoDocumentReferenceEnabled={settings.onChangeAutoDocumentReferenceEnabled}

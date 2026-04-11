@@ -32,6 +32,50 @@ type ParsedInputLike = {
   userInstruction?: string;
 };
 
+function resolveProtocolSearchOverrides(params: {
+  requestedEngine?: string;
+  requestedLocation?: string;
+  fallbackMode: SearchMode;
+  fallbackEngines: SearchEngine[];
+  fallbackLocation: string;
+}) {
+  const engine = params.requestedEngine?.trim().toLowerCase();
+  const location = params.requestedLocation?.trim() || params.fallbackLocation;
+
+  switch (engine) {
+    case "google_search":
+      return {
+        searchMode: "normal" as SearchMode,
+        searchEngines: ["google_search"] as SearchEngine[],
+        searchLocation: location,
+      };
+    case "google_ai_mode":
+      return {
+        searchMode: "ai" as SearchMode,
+        searchEngines: ["google_ai_mode"] as SearchEngine[],
+        searchLocation: location,
+      };
+    case "google_news":
+      return {
+        searchMode: "news" as SearchMode,
+        searchEngines: ["google_news"] as SearchEngine[],
+        searchLocation: location,
+      };
+    case "google_local":
+      return {
+        searchMode: "geo" as SearchMode,
+        searchEngines: ["google_local"] as SearchEngine[],
+        searchLocation: location,
+      };
+    default:
+      return {
+        searchMode: params.fallbackMode,
+        searchEngines: params.fallbackEngines,
+        searchLocation: location,
+      };
+  }
+}
+
 function extractInlineSearchQuery(text: string) {
   if (!text) return "";
   const normalized = text.normalize("NFKC");
@@ -92,7 +136,6 @@ type RunSendToGptFlowArgs = {
   taskProtocolRuntime: TaskRuntimeState;
   findPendingRequest: (requestId: string) => PendingRequestLike | null;
   applyPrefixedTaskFieldsFromText: (text: string) => ParsedInputLike;
-  buildSearchReferenceContext: (currentInput?: string) => string;
   buildDocumentReferenceContext: () => string;
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
@@ -159,7 +202,6 @@ export async function runSendToGptFlow({
   taskProtocolRuntime,
   findPendingRequest,
   applyPrefixedTaskFieldsFromText,
-  buildSearchReferenceContext,
   buildDocumentReferenceContext,
   buildLibraryReferenceContext,
   referenceLibraryItems,
@@ -234,12 +276,22 @@ export async function runSendToGptFlow({
   const continuationDetails = parseSearchContinuation(
     searchRequestEvent?.query || parsedInput.searchQuery || inlineSearchQuery || ""
   );
+  const protocolSearchOverrides = resolveProtocolSearchOverrides({
+    requestedEngine: searchRequestEvent?.searchEngine,
+    requestedLocation: searchRequestEvent?.searchLocation,
+    fallbackMode: searchMode,
+    fallbackEngines: searchEngines,
+    fallbackLocation: searchLocation,
+  });
+  const effectiveSearchMode = protocolSearchOverrides.searchMode;
+  const effectiveSearchEngines = protocolSearchOverrides.searchEngines;
+  const effectiveSearchLocation = protocolSearchOverrides.searchLocation;
   const aiContinuationEnabled =
-    searchEngines.includes("google_ai_mode") ||
-    (searchEngines.length === 0 &&
-      (searchMode === "ai" ||
-        searchMode === "integrated" ||
-        searchMode === "ai_first"));
+    effectiveSearchEngines.includes("google_ai_mode") ||
+    (effectiveSearchEngines.length === 0 &&
+      (effectiveSearchMode === "ai" ||
+        effectiveSearchMode === "integrated" ||
+        effectiveSearchMode === "ai_first"));
   const searchSeriesId = aiContinuationEnabled ? continuationDetails.seriesId : undefined;
   const continuationToken = searchSeriesId
     ? getContinuationTokenForSeries(searchSeriesId)
@@ -300,12 +352,8 @@ export async function runSendToGptFlow({
   let finalRequestText = effectiveRequestText || normalizedRequestText || requestText || rawText;
   // Search history is already represented in the reference library, so avoid
   // double-injecting it during normal chat turns.
-  const searchReferenceContext = "";
   const documentReferenceContext = buildDocumentReferenceContext();
   const libraryReferenceContext = buildLibraryReferenceContext();
-  const effectiveSearchReferenceContext = libraryReferenceContext
-    ? ""
-    : searchReferenceContext;
   const effectiveDocumentReferenceContext = libraryReferenceContext
     ? ""
     : documentReferenceContext;
@@ -411,6 +459,8 @@ export async function runSendToGptFlow({
       `TASK_ID: ${searchRequestEvent.taskId || currentTaskId || ""}`,
       `ACTION_ID: ${searchRequestEvent.actionId || ""}`,
       `QUERY: ${searchRequestEvent.query || searchRequestEvent.body || ""}`,
+      `ENGINE: ${searchRequestEvent.searchEngine || effectiveSearchEngines[0] || ""}`,
+      `LOCATION: ${searchRequestEvent.searchLocation || effectiveSearchLocation || ""}`,
       `OUTPUT_MODE: ${requestedMode}`,
       "SUMMARY:",
       "<search summary here>",
@@ -520,7 +570,7 @@ export async function runSendToGptFlow({
           `[context debug] request=${finalRequestText.length} ` +
           `memory=${provisionalMemoryText.length} ` +
           `task=${shouldInjectTaskContext ? "on" : "off"} ` +
-          `searchCtx=${effectiveSearchReferenceContext.length} ` +
+          `searchCtx=0 ` +
           `docCtx=${effectiveDocumentReferenceContext.length} ` +
           `libraryCtx=${libraryReferenceContext.length} ` +
           `recent=${newRecent.length}`,
@@ -551,7 +601,7 @@ export async function runSendToGptFlow({
         memory: provisionalMemory,
         recentMessages: newRecent,
         input: finalRequestText,
-        storedSearchContext: effectiveSearchReferenceContext,
+        storedSearchContext: "",
         storedDocumentContext: effectiveDocumentReferenceContext,
         storedLibraryContext: libraryReferenceContext,
         forcedSearchQuery:
@@ -562,9 +612,9 @@ export async function runSendToGptFlow({
         searchSeriesId,
         searchContinuationToken: continuationToken || undefined,
         searchAskAiModeLink: askAiModeLink || undefined,
-        searchMode,
-        searchEngines,
-        searchLocation,
+        searchMode: effectiveSearchMode,
+        searchEngines: effectiveSearchEngines,
+        searchLocation: effectiveSearchLocation,
         instructionMode,
         reasoningMode: responseMode,
       }),
@@ -602,9 +652,9 @@ export async function runSendToGptFlow({
           : null;
       const recordedSearch = data.searchUsed
         ? recordSearchContext({
-            mode: searchMode,
-            engines: searchEngines,
-            location: searchLocation || undefined,
+            mode: effectiveSearchMode,
+            engines: effectiveSearchEngines,
+            location: effectiveSearchLocation || undefined,
             seriesId:
               typeof data.searchSeriesId === "string"
                 ? data.searchSeriesId
@@ -679,6 +729,12 @@ export async function runSendToGptFlow({
           (typeof data.searchQuery === "string" ? data.searchQuery : "") ||
           ""
         }`,
+        `ENGINE: ${
+          searchRequestEvent.searchEngine || effectiveSearchEngines[0] || ""
+        }`,
+        `LOCATION: ${
+          searchRequestEvent.searchLocation || effectiveSearchLocation || ""
+        }`,
         `OUTPUT_MODE: ${wrappedSearchResponse?.outputMode || requestedMode}`,
         `RAW_RESULT_AVAILABLE: ${recordedSearch ? "YES" : "NO"}`,
         ...(recordedSearch ? [`RAW_RESULT_ID: ${recordedSearch.rawResultId}`] : []),
@@ -738,9 +794,9 @@ export async function runSendToGptFlow({
     if (data.searchUsed && !searchRequestEvent) {
       applySearchUsage(data.usage);
       recordSearchContext({
-        mode: searchMode,
-        engines: searchEngines,
-        location: searchLocation || undefined,
+        mode: effectiveSearchMode,
+        engines: effectiveSearchEngines,
+        location: effectiveSearchLocation || undefined,
         seriesId:
           typeof data.searchSeriesId === "string"
             ? data.searchSeriesId

@@ -116,6 +116,8 @@ export type TaskProtocolEvent = {
   required?: boolean;
   summary?: string;
   query?: string;
+  searchEngine?: string;
+  searchLocation?: string;
   outputMode?: SearchResultMode;
   rawResultId?: string;
   partIndex?: number;
@@ -137,6 +139,8 @@ export type TaskRuntimeState = {
     taskId: string;
     actionId?: string;
     query: string;
+    searchEngine?: string;
+    searchLocation?: string;
     mode: SearchResultMode;
     rawResultId?: string;
     resultText: string;

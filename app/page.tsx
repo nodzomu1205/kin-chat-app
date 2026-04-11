@@ -20,9 +20,11 @@ import { useReferenceLibrary } from "@/hooks/useReferenceLibrary";
 import { useMultipartUiActions } from "@/hooks/useMultipartUiActions";
 import { usePanelResetActions } from "@/hooks/usePanelResetActions";
 import { useProtocolIntentSettings } from "@/hooks/useProtocolIntentSettings";
+import { useProtocolAutomationEffects } from "@/hooks/useProtocolAutomationEffects";
+import { useChatPageLifecycle } from "@/hooks/useChatPageLifecycle";
+import { useStoredDocumentUiActions } from "@/hooks/useStoredDocumentUiActions";
 import { useTaskDraftHelpers } from "@/hooks/useTaskDraftHelpers";
 import { useChatPageActions } from "@/hooks/useChatPageActions";
-import { createSession, getSessions } from "@/lib/storage";
 import type { MemorySettings } from "@/lib/memory";
 import type { Message } from "@/types/chat";
 import { generateId } from "@/lib/uuid";
@@ -52,7 +54,6 @@ import { parseTaskInput } from "@/lib/taskInputParser";
 import {
   buildKinSysInfoBlock,
   buildKinSysTaskBlock,
-  extractPreferredKinTransferText,
   formatTaskSlot,
 } from "@/lib/app/kinStructuredProtocol";
 import {
@@ -73,7 +74,6 @@ import {
 } from "@/lib/app/chatPageHelpers";
 import { buildGptPanelProps, buildKinPanelProps } from "@/lib/app/panelPropsBuilders";
 import { PROTOCOL_PROMPT_DEFAULT_KEY, PROTOCOL_RULEBOOK_DEFAULT_KEY } from "@/lib/app/chatPageStorageKeys";
-import { containsSysProtocolBlock } from "@/lib/app/protocolAutomation";
 
 type MobileTab = "kin" | "gpt";
 
@@ -100,10 +100,6 @@ export default function ChatApp() {
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
   const kinBottomRef = useRef<HTMLDivElement>(null);
   const gptBottomRef = useRef<HTMLDivElement>(null);
-  const lastAutoSentKinInputRef = useRef("");
-  const lastAutoSentGptInputRef = useRef("");
-  const lastAutoCopiedKinMessageIdRef = useRef("");
-  const lastAutoCopiedGptMessageIdRef = useRef("");
 
   useAutoScroll(kinBottomRef, [kinMessages, kinLoading]);
   useAutoScroll(gptBottomRef, [gptMessages, gptLoading]);
@@ -183,12 +179,6 @@ export default function ChatApp() {
     setSearchEngines,
     searchLocation,
     setSearchLocation,
-    searchReferenceCount,
-    setSearchReferenceCount,
-    autoSearchReferenceEnabled,
-    setAutoSearchReferenceEnabled,
-    searchReferenceMode,
-    setSearchReferenceMode,
     getTaskSearchContext,
     moveSearchHistoryItem,
     recordSearchContext,
@@ -197,8 +187,6 @@ export default function ChatApp() {
     clearSearchHistory,
     deleteSearchHistoryItem: deleteSearchHistoryItemBase,
     searchHistoryStorageMB,
-    buildSearchReferenceContext,
-    estimateSearchReferenceTokens,
   } = useSearchHistory();
     const {
       multipartAssemblies,
@@ -279,30 +267,14 @@ export default function ChatApp() {
     taskProtocol.ingestProtocolEvents({ text, direction, events });
   };
 
-  useEffect(() => {
-    const sessions = getSessions();
+  useChatPageLifecycle({
+    currentKin,
+    ensureKinState,
+    isMobile,
+    setActiveTab,
+    setCurrentSessionId,
+  });
 
-    if (sessions.length === 0) {
-      const newSession = createSession();
-      setCurrentSessionId(newSession.id);
-      return;
-    }
-
-    setCurrentSessionId(sessions[0].id);
-  }, []);
-
-  useEffect(() => {
-    if (!currentKin) return;
-    ensureKinState(currentKin);
-  }, [currentKin, ensureKinState]);
-
-  useEffect(() => {
-    if (isMobile) {
-      setActiveTab((prev) => (prev === "gpt" ? "gpt" : "kin"));
-    }
-  }, [isMobile]);
-
-  const searchReferenceEstimatedTokens = estimateSearchReferenceTokens();
   const documentReferenceEstimatedTokens = estimateDocumentReferenceTokens();
   const libraryReferenceEstimatedTokens = estimateLibraryReferenceTokens();
 
@@ -345,24 +317,13 @@ export default function ChatApp() {
     setGptInput,
   });
 
-  const loadStoredDocumentToGptInput = (documentId: string) => {
-    const document = getStoredDocument(documentId);
-    if (!document) return;
-    setGptInput(document.text);
-    if (isMobile) setActiveTab("gpt");
-  };
-
-  const downloadStoredDocument = (documentId: string) => {
-    const document = getStoredDocument(documentId);
-    if (!document || typeof window === "undefined") return;
-    const blob = new Blob([document.text], { type: "text/plain;charset=utf-8" });
-    const url = window.URL.createObjectURL(blob);
-    const anchor = window.document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${document.filename.replace(/[^\w.-]+/g, "_") || "document"}.txt`;
-    anchor.click();
-    window.URL.revokeObjectURL(url);
-  };
+  const { loadStoredDocumentToGptInput, downloadStoredDocument } =
+    useStoredDocumentUiActions({
+      getStoredDocument,
+      setGptInput,
+      isMobile,
+      setActiveTab,
+    });
 
   const {
     currentKinLabel,
@@ -456,7 +417,6 @@ export default function ChatApp() {
     getProvisionalMemory,
     handleGptMemory,
     chatRecentLimit,
-    buildSearchReferenceContext,
     buildDocumentReferenceContext,
     buildLibraryReferenceContext,
     referenceLibraryItems: libraryItems,
@@ -480,55 +440,21 @@ export default function ChatApp() {
     rulebookDefaultKey: PROTOCOL_RULEBOOK_DEFAULT_KEY,
   });
 
-  useEffect(() => {
-    const trimmed = kinInput.trim();
-    if (!autoBridgeSettings.autoSendKinSysInput || !trimmed || kinLoading) return;
-    if (!containsSysProtocolBlock(trimmed)) return;
-    if (lastAutoSentKinInputRef.current === trimmed) return;
-    lastAutoSentKinInputRef.current = trimmed;
-    void sendToKin();
-  }, [autoBridgeSettings.autoSendKinSysInput, kinInput, kinLoading, sendToKin]);
-
-  useEffect(() => {
-    const trimmed = gptInput.trim();
-    if (!autoBridgeSettings.autoSendGptSysInput || !trimmed || gptLoading) return;
-    if (!containsSysProtocolBlock(trimmed)) return;
-    if (lastAutoSentGptInputRef.current === trimmed) return;
-    lastAutoSentGptInputRef.current = trimmed;
-    void sendToGpt();
-  }, [autoBridgeSettings.autoSendGptSysInput, gptInput, gptLoading, sendToGpt]);
-
-  useEffect(() => {
-    const latestKin = [...kinMessages].reverse().find((m) => m.role === "kin");
-    if (!autoBridgeSettings.autoCopyKinSysResponseToGpt || !latestKin) return;
-    if (!containsSysProtocolBlock(latestKin.text)) return;
-    if (lastAutoCopiedKinMessageIdRef.current === latestKin.id) return;
-    lastAutoCopiedKinMessageIdRef.current = latestKin.id;
-    setGptInput(extractPreferredKinTransferText(latestKin.text));
-    if (isMobile) setActiveTab("gpt");
-  }, [
-    autoBridgeSettings.autoCopyKinSysResponseToGpt,
-    isMobile,
+  useProtocolAutomationEffects({
+    autoBridgeSettings,
+    kinInput,
+    gptInput,
+    kinLoading,
+    gptLoading,
     kinMessages,
-    setActiveTab,
-    setGptInput,
-  ]);
-
-  useEffect(() => {
-    const latestGpt = [...gptMessages].reverse().find((m) => m.role === "gpt");
-    if (!autoBridgeSettings.autoCopyGptSysResponseToKin || !latestGpt) return;
-    if (!containsSysProtocolBlock(latestGpt.text)) return;
-    if (lastAutoCopiedGptMessageIdRef.current === latestGpt.id) return;
-    lastAutoCopiedGptMessageIdRef.current = latestGpt.id;
-    setKinInput(extractPreferredKinTransferText(latestGpt.text));
-    if (isMobile) setActiveTab("kin");
-  }, [
-    autoBridgeSettings.autoCopyGptSysResponseToKin,
     gptMessages,
+    sendToKin,
+    sendToGpt,
+    setGptInput,
+    setKinInput,
     isMobile,
     setActiveTab,
-    setKinInput,
-  ]);
+  });
 
   const {
     handleConnectKin,
@@ -635,15 +561,11 @@ export default function ChatApp() {
         onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
         onChangePostIngestAction: setPostIngestAction,
         onChangeFileReadPolicy: setFileReadPolicy,
-        autoSearchReferenceEnabled,
         searchMode,
         searchEngines,
         searchLocation,
-        searchReferenceMode,
-        searchReferenceCount,
         searchHistoryLimit,
         searchHistoryStorageMB,
-        searchReferenceEstimatedTokens,
         autoDocumentReferenceEnabled,
         documentReferenceMode,
         documentReferenceCount,
@@ -661,13 +583,9 @@ export default function ChatApp() {
           autoSendGptSysInput: autoBridgeSettings.autoSendGptSysInput,
           autoCopyGptSysResponseToKin:
             autoBridgeSettings.autoCopyGptSysResponseToKin,
-          onChangeAutoSearchReferenceEnabled: setAutoSearchReferenceEnabled,
         onChangeSearchMode: setSearchMode,
         onChangeSearchEngines: setSearchEngines,
         onChangeSearchLocation: setSearchLocation,
-        onChangeSearchReferenceMode: setSearchReferenceMode,
-        onChangeSearchReferenceCount: (value) =>
-          setSearchReferenceCount(Math.max(1, Math.min(10, Number(value) || 1))),
         onChangeSearchHistoryLimit: (value) =>
           setSearchHistoryLimit(Math.max(1, Math.min(100, Number(value) || 1))),
         onClearSearchHistory: clearSearchHistory,

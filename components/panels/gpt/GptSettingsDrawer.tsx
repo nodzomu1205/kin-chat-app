@@ -2,71 +2,505 @@
 
 import React from "react";
 import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
-import { inferPrimarySearchModeFromEngines, isPrimarySearchMode, normalizeStoredSearchMode, SEARCH_MODE_PRESETS, type PrimarySearchMode } from "@/lib/search-domain/presets";
+import {
+  inferPrimarySearchModeFromEngines,
+  isPrimarySearchMode,
+  normalizeStoredSearchMode,
+  SEARCH_MODE_PRESETS,
+  type PrimarySearchMode,
+} from "@/lib/search-domain/presets";
 import type { SearchEngine, SearchMode } from "@/types/task";
-import type { DocumentReferenceMode, FileReadPolicy, ImageDetail, IngestMode, LibraryReferenceMode, ResponseMode, SearchReferenceMode } from "./gptPanelTypes";
-import { buttonPrimary, buttonSecondaryWide, helpTextStyle, inputStyle, labelStyle } from "./gptPanelStyles";
+import type {
+  DocumentReferenceMode,
+  FileReadPolicy,
+  ImageDetail,
+  IngestMode,
+  LibraryReferenceMode,
+  ResponseMode,
+} from "./gptPanelTypes";
+import {
+  buttonPrimary,
+  buttonSecondaryWide,
+  helpTextStyle,
+  inputStyle,
+  labelStyle,
+} from "./gptPanelStyles";
 
-export type LocalMemorySettingsInput={maxFacts:string;maxPreferences:string;chatRecentLimit:string;summarizeThreshold:string;recentKeep:string};
-type Tab="memory"|"ingest"|"search"|"library"|"rules"|"output"|"protocol";
-type Props={
-  localSettings:LocalMemorySettingsInput; onFieldChange:(k:keyof LocalMemorySettingsInput,v:string)=>void; onReset:()=>void; onSave:()=>void; memoryCapacityPreview:number;
-  responseMode:ResponseMode; onChangeResponseMode:(v:ResponseMode)=>void; ingestMode:IngestMode; onChangeIngestMode:(v:IngestMode)=>void; imageDetail:ImageDetail; onChangeImageDetail:(v:ImageDetail)=>void;
-  compactCharLimit:number; simpleImageCharLimit:number; onChangeCompactCharLimit:(v:number)=>void; onChangeSimpleImageCharLimit:(v:number)=>void; fileReadPolicy:FileReadPolicy; onChangeFileReadPolicy:(v:FileReadPolicy)=>void;
-  autoSearchReferenceEnabled:boolean; searchMode:SearchMode; searchEngines:SearchEngine[]; searchLocation:string; searchReferenceMode:SearchReferenceMode; searchReferenceCount:number; searchHistoryLimit:number; searchHistoryStorageMB:number; searchReferenceEstimatedTokens:number;
-  autoDocumentReferenceEnabled:boolean; documentReferenceMode:DocumentReferenceMode; documentReferenceCount:number; documentStorageMB:number; documentReferenceEstimatedTokens:number;
-  autoLibraryReferenceEnabled:boolean; libraryReferenceMode:LibraryReferenceMode; libraryIndexResponseCount:number; libraryReferenceCount:number; libraryStorageMB:number; libraryReferenceEstimatedTokens:number;
-  autoSendKinSysInput:boolean; autoCopyKinSysResponseToGpt:boolean; autoSendGptSysInput:boolean; autoCopyGptSysResponseToKin:boolean;
-  onChangeAutoSearchReferenceEnabled:(v:boolean)=>void; onChangeSearchMode:(v:SearchMode)=>void; onChangeSearchEngines:(v:SearchEngine[])=>void; onChangeSearchLocation:(v:string)=>void; onChangeSearchReferenceMode:(v:SearchReferenceMode)=>void; onChangeSearchReferenceCount:(v:number)=>void; onChangeSearchHistoryLimit:(v:number)=>void; onClearSearchHistory:()=>void;
-  onChangeAutoDocumentReferenceEnabled:(v:boolean)=>void; onChangeDocumentReferenceMode:(v:DocumentReferenceMode)=>void; onChangeDocumentReferenceCount:(v:number)=>void;
-  onChangeAutoLibraryReferenceEnabled:(v:boolean)=>void; onChangeLibraryReferenceMode:(v:LibraryReferenceMode)=>void; onChangeLibraryIndexResponseCount:(v:number)=>void; onChangeLibraryReferenceCount:(v:number)=>void;
-  onChangeAutoSendKinSysInput:(v:boolean)=>void; onChangeAutoCopyKinSysResponseToGpt:(v:boolean)=>void; onChangeAutoSendGptSysInput:(v:boolean)=>void; onChangeAutoCopyGptSysResponseToKin:(v:boolean)=>void;
-  protocolPrompt:string; protocolRulebook:string; onChangeProtocolPrompt:(v:string)=>void; onChangeProtocolRulebook:(v:string)=>void; onResetProtocolDefaults:()=>void; onSaveProtocolDefaults:()=>void; onSetProtocolRulebookToKinDraft:()=>void|Promise<void>; onSendProtocolRulebookToKin:()=>void|Promise<void>;
-  pendingIntentCandidates:PendingIntentCandidate[]; approvedIntentPhrases:ApprovedIntentPhrase[];
-  onUpdateIntentCandidate:(id:string,patch:Partial<PendingIntentCandidate>)=>void; onApproveIntentCandidate:(id:string)=>void; onRejectIntentCandidate:(id:string)=>void; onUpdateApprovedIntentPhrase:(id:string,patch:Partial<ApprovedIntentPhrase>)=>void; onDeleteApprovedIntentPhrase:(id:string)=>void; isMobile?:boolean;
+export type LocalMemorySettingsInput = {
+  maxFacts: string;
+  maxPreferences: string;
+  chatRecentLimit: string;
+  summarizeThreshold: string;
+  recentKeep: string;
 };
 
-const sectionCard:React.CSSProperties={border:"1px solid #dbe4e8",borderRadius:12,background:"rgba(255,255,255,0.92)",padding:12};
-const subtleCard:React.CSSProperties={border:"1px solid #e2e8f0",borderRadius:12,background:"#fbfdff",padding:12};
-const selectStyle:React.CSSProperties={height:36,borderRadius:12,border:"1px solid #cbd5e1",background:"#fff",fontSize:12,fontWeight:700,color:"#334155",padding:"0 12px"};
-const compactInputStyle:React.CSSProperties={...inputStyle,width:108,minWidth:108,textAlign:"center",padding:"8px 10px"};
-const tabButton=(active:boolean):React.CSSProperties=>({height:34,borderRadius:999,border:active?"1px solid #67e8f9":"1px solid #cbd5e1",background:active?"#ecfeff":"#fff",color:active?"#155e75":"#475569",fontSize:12,fontWeight:800,padding:"0 12px",cursor:"pointer",lineHeight:1});
-const SEARCH_ENGINE_LABELS: Record<SearchEngine,string>={google_search:"Google Search",google_ai_mode:"Google AI",google_news:"Google News",google_maps:"Google Maps",google_local:"Google Local",google_flights:"Google Flights",google_hotels:"Google Hotels",google_shopping:"Google Shopping",amazon_search:"Amazon"};
+type Tab = "memory" | "ingest" | "search" | "library" | "rules" | "output" | "protocol";
 
-function NumberField({label,value,onChange,help}:{label:string;value:string;onChange:(value:string)=>void;help?:string}){return <div><div style={labelStyle}>{label}</div><input inputMode="numeric" value={value} onChange={(e)=>onChange(e.target.value)} style={inputStyle}/>{help?<div style={helpTextStyle}>{help}</div>:null}</div>;}
-function ChoiceRow<T extends string>({label,value,options,onChange}:{label:string;value:T|"";options:Array<{value:T;label:string}>;onChange:(value:T)=>void;}){return <div><div style={{...labelStyle,marginBottom:8}}>{label}</div><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{options.map((option)=><button key={option.value} type="button" style={tabButton(value===option.value)} onClick={()=>onChange(option.value)}>{option.label}</button>)}</div></div>;}
-function ToggleItem({checked,onChange,label}:{checked:boolean;onChange:(value:boolean)=>void;label:string}){return <label style={{display:"inline-flex",alignItems:"center",gap:8,color:"#334155",fontWeight:700,fontSize:13}}><input type="checkbox" checked={checked} onChange={(e)=>onChange(e.target.checked)}/>{label}</label>;}
-function CountRuleEditor({count,rule,onCountChange,onRuleChange}:{count?:number;rule?:string;onCountChange:(next?:number)=>void;onRuleChange:(next:string)=>void;}){return <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginTop:8}}><div style={labelStyle}>count</div><input inputMode="numeric" value={String(count??"")} onChange={(e)=>onCountChange(Number(e.target.value.replace(/[^\d]/g,"")||0)||undefined)} style={compactInputStyle}/><div style={labelStyle}>rule</div><select value={rule??"exact"} onChange={(e)=>onRuleChange(e.target.value)} style={{...selectStyle,minWidth:120}}><option value="exact">exact</option><option value="at_least">at_least</option><option value="up_to">up_to</option><option value="around">around</option></select></div>;}
+type Props = {
+  localSettings: LocalMemorySettingsInput;
+  onFieldChange: (k: keyof LocalMemorySettingsInput, v: string) => void;
+  onReset: () => void;
+  onSave: () => void;
+  memoryCapacityPreview: number;
+  responseMode: ResponseMode;
+  onChangeResponseMode: (v: ResponseMode) => void;
+  ingestMode: IngestMode;
+  onChangeIngestMode: (v: IngestMode) => void;
+  imageDetail: ImageDetail;
+  onChangeImageDetail: (v: ImageDetail) => void;
+  compactCharLimit: number;
+  simpleImageCharLimit: number;
+  onChangeCompactCharLimit: (v: number) => void;
+  onChangeSimpleImageCharLimit: (v: number) => void;
+  fileReadPolicy: FileReadPolicy;
+  onChangeFileReadPolicy: (v: FileReadPolicy) => void;
+  searchMode: SearchMode;
+  searchEngines: SearchEngine[];
+  searchLocation: string;
+  searchHistoryLimit: number;
+  searchHistoryStorageMB: number;
+  autoDocumentReferenceEnabled: boolean;
+  documentReferenceMode: DocumentReferenceMode;
+  documentReferenceCount: number;
+  documentStorageMB: number;
+  documentReferenceEstimatedTokens: number;
+  autoLibraryReferenceEnabled: boolean;
+  libraryReferenceMode: LibraryReferenceMode;
+  libraryIndexResponseCount: number;
+  libraryReferenceCount: number;
+  libraryStorageMB: number;
+  libraryReferenceEstimatedTokens: number;
+  autoSendKinSysInput: boolean;
+  autoCopyKinSysResponseToGpt: boolean;
+  autoSendGptSysInput: boolean;
+  autoCopyGptSysResponseToKin: boolean;
+  onChangeSearchMode: (v: SearchMode) => void;
+  onChangeSearchEngines: (v: SearchEngine[]) => void;
+  onChangeSearchLocation: (v: string) => void;
+  onChangeSearchHistoryLimit: (v: number) => void;
+  onClearSearchHistory: () => void;
+  onChangeAutoDocumentReferenceEnabled: (v: boolean) => void;
+  onChangeDocumentReferenceMode: (v: DocumentReferenceMode) => void;
+  onChangeDocumentReferenceCount: (v: number) => void;
+  onChangeAutoLibraryReferenceEnabled: (v: boolean) => void;
+  onChangeLibraryReferenceMode: (v: LibraryReferenceMode) => void;
+  onChangeLibraryIndexResponseCount: (v: number) => void;
+  onChangeLibraryReferenceCount: (v: number) => void;
+  onChangeAutoSendKinSysInput: (v: boolean) => void;
+  onChangeAutoCopyKinSysResponseToGpt: (v: boolean) => void;
+  onChangeAutoSendGptSysInput: (v: boolean) => void;
+  onChangeAutoCopyGptSysResponseToKin: (v: boolean) => void;
+  protocolPrompt: string;
+  protocolRulebook: string;
+  onChangeProtocolPrompt: (v: string) => void;
+  onChangeProtocolRulebook: (v: string) => void;
+  onResetProtocolDefaults: () => void;
+  onSaveProtocolDefaults: () => void;
+  onSetProtocolRulebookToKinDraft: () => void | Promise<void>;
+  onSendProtocolRulebookToKin: () => void | Promise<void>;
+  pendingIntentCandidates: PendingIntentCandidate[];
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  onUpdateIntentCandidate: (id: string, patch: Partial<PendingIntentCandidate>) => void;
+  onApproveIntentCandidate: (id: string) => void;
+  onRejectIntentCandidate: (id: string) => void;
+  onUpdateApprovedIntentPhrase: (id: string, patch: Partial<ApprovedIntentPhrase>) => void;
+  onDeleteApprovedIntentPhrase: (id: string) => void;
+  isMobile?: boolean;
+};
 
-export default function GptSettingsDrawer(props:Props){
-  const {localSettings,onFieldChange,onReset,onSave,memoryCapacityPreview,responseMode,onChangeResponseMode,ingestMode,onChangeIngestMode,imageDetail,onChangeImageDetail,compactCharLimit,simpleImageCharLimit,onChangeCompactCharLimit,onChangeSimpleImageCharLimit,fileReadPolicy,onChangeFileReadPolicy,searchMode,searchEngines,searchLocation,onChangeSearchMode,onChangeSearchEngines,onChangeSearchLocation,autoLibraryReferenceEnabled,libraryReferenceMode,libraryIndexResponseCount,libraryReferenceCount,libraryStorageMB,libraryReferenceEstimatedTokens,autoSendKinSysInput,autoCopyKinSysResponseToGpt,autoSendGptSysInput,autoCopyGptSysResponseToKin,onChangeAutoLibraryReferenceEnabled,onChangeLibraryReferenceMode,onChangeLibraryIndexResponseCount,onChangeLibraryReferenceCount,onChangeAutoSendKinSysInput,onChangeAutoCopyKinSysResponseToGpt,onChangeAutoSendGptSysInput,onChangeAutoCopyGptSysResponseToKin,protocolPrompt,protocolRulebook,onChangeProtocolPrompt,onChangeProtocolRulebook,onResetProtocolDefaults,onSaveProtocolDefaults,onSetProtocolRulebookToKinDraft,onSendProtocolRulebookToKin,pendingIntentCandidates,approvedIntentPhrases,onUpdateIntentCandidate,onApproveIntentCandidate,onRejectIntentCandidate,onUpdateApprovedIntentPhrase,onDeleteApprovedIntentPhrase,isMobile=false}=props;
-  const [activeTab,setActiveTab]=React.useState<Tab>("memory");
-  const [showApprovedRules,setShowApprovedRules]=React.useState(false);
-  const [localLibraryReferenceCount,setLocalLibraryReferenceCount]=React.useState(String(libraryReferenceCount));
-  const [localLibraryIndexResponseCount,setLocalLibraryIndexResponseCount]=React.useState(String(libraryIndexResponseCount));
-  const normalizedSearchMode=normalizeStoredSearchMode(searchMode);
-  const activeSearchMode:PrimarySearchMode|undefined=searchEngines.length>0?(inferPrimarySearchModeFromEngines(searchEngines)??undefined):(isPrimarySearchMode(normalizedSearchMode)?normalizedSearchMode:"normal");
-  const handleSelectSearchMode=(mode:PrimarySearchMode)=>{onChangeSearchMode(mode as SearchMode);onChangeSearchEngines([...SEARCH_MODE_PRESETS[mode].engines]);};
-  const handleToggleSearchEngine=(engine:SearchEngine)=>{const next=searchEngines.includes(engine)?searchEngines.filter((item)=>item!==engine):[...searchEngines,engine];onChangeSearchEngines(next);const inferred=inferPrimarySearchModeFromEngines(next);if(inferred)onChangeSearchMode(inferred as SearchMode);};
-  React.useEffect(()=>setLocalLibraryReferenceCount(String(libraryReferenceCount)),[libraryReferenceCount]);
-  React.useEffect(()=>setLocalLibraryIndexResponseCount(String(libraryIndexResponseCount)),[libraryIndexResponseCount]);
-  const tabs:[Tab,string][]=[["memory","メモリ"],["ingest","取込"],["search","検索"],["library","ライブラリ"],["rules","ルール"],["output","出力"],["protocol","プロトコル"]];
+const sectionCard: React.CSSProperties = {
+  border: "1px solid #dbe4e8",
+  borderRadius: 12,
+  background: "rgba(255,255,255,0.92)",
+  padding: 12,
+};
 
-  return <div style={{display:"grid",gap:12}}>
-    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{tabs.map(([key,label])=><button key={key} type="button" style={tabButton(activeTab===key)} onClick={()=>setActiveTab(key)}>{label}</button>)}</div>
-    {activeTab==="memory"?<><div style={sectionCard}><div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3, minmax(0, 1fr))",gap:10}}>
-      <NumberField label="MAX_FACTS" value={localSettings.maxFacts} onChange={(v)=>onFieldChange("maxFacts",v)} help="facts の最大数"/>
-      <NumberField label="MAX_PREFERENCES" value={localSettings.maxPreferences} onChange={(v)=>onFieldChange("maxPreferences",v)} help="preferences の最大数"/>
-      <NumberField label="CHAT_RECENT_LIMIT" value={localSettings.chatRecentLimit} onChange={(v)=>onFieldChange("chatRecentLimit",v)} help="recentMessages の保持数"/>
-      <NumberField label="SUMMARIZE_THRESHOLD" value={localSettings.summarizeThreshold} onChange={(v)=>onFieldChange("summarizeThreshold",v)} help="要約開始の閾値"/>
-      <NumberField label="RECENT_KEEP" value={localSettings.recentKeep} onChange={(v)=>onFieldChange("recentKeep",v)} help="要約後に残す件数"/>
-      <div><div style={labelStyle}>メモリ容量</div><div style={{...inputStyle,display:"flex",alignItems:"center",fontWeight:800,color:"#334155",background:"#f8fafc"}}>合計 {memoryCapacityPreview}</div><div style={helpTextStyle}>chat recent + facts + preferences の合計</div></div>
-    </div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}><button type="button" style={buttonSecondaryWide} onClick={onReset}>リセット</button><button type="button" style={buttonPrimary} onClick={onSave}>保存</button></div></>:null}
-    {activeTab==="ingest"?<div style={{display:"grid",gap:12}}><div style={sectionCard}><ChoiceRow label="ファイル読み取り方針" value={fileReadPolicy} options={[{value:"text_first",label:"テキスト優先"},{value:"visual_first",label:"見た目優先"},{value:"text_and_layout",label:"両方"}]} onChange={onChangeFileReadPolicy}/></div><div style={sectionCard}><div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2, minmax(0, 1fr))",gap:12}}><div style={subtleCard}><div style={labelStyle}>テキスト取込設定</div><div style={{display:"grid",gap:8,marginTop:8}}><select value={ingestMode} onChange={(e)=>onChangeIngestMode(e.target.value as IngestMode)} style={selectStyle}><option value="compact">compact</option><option value="detailed">detailed</option><option value="max">max</option></select><NumberField label="文字数上限" value={String(compactCharLimit)} onChange={(v)=>onChangeCompactCharLimit(Number(v||0))}/></div></div><div style={subtleCard}><div style={labelStyle}>画像 / PDF 設定</div><div style={{display:"grid",gap:8,marginTop:8}}><select value={imageDetail} onChange={(e)=>onChangeImageDetail(e.target.value as ImageDetail)} style={selectStyle}><option value="simple">simple</option><option value="detailed">detailed</option><option value="max">max</option></select><NumberField label="文字数上限" value={String(simpleImageCharLimit)} onChange={(v)=>onChangeSimpleImageCharLimit(Number(v||0))}/></div></div></div></div></div>:null}
-    {activeTab==="search"?<div style={{display:"grid",gap:12}}><div style={sectionCard}><ChoiceRow label="検索モード" value={(activeSearchMode??"") as PrimarySearchMode|""} options={[{value:"normal" as PrimarySearchMode,label:"通常"},{value:"ai" as PrimarySearchMode,label:"AI"},{value:"integrated" as PrimarySearchMode,label:"統合"},{value:"news" as PrimarySearchMode,label:"News"},{value:"geo" as PrimarySearchMode,label:"Maps / Local"}]} onChange={(value)=>handleSelectSearchMode(value as PrimarySearchMode)}/><div style={{...helpTextStyle,marginTop:8}}>モード選択に応じて Engine を揃えます。個別トグル時も近い組み合わせならモードへ反映します。</div></div><div style={sectionCard}><div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2, minmax(0, 1fr))",gap:12}}><div><div style={labelStyle}>Location</div><input value={searchLocation} onChange={(e)=>onChangeSearchLocation(e.target.value)} placeholder="例: Johannesburg, South Africa" style={inputStyle}/><div style={helpTextStyle}>地域性が重要な検索では Location を補助的に使います。</div></div><div><div style={labelStyle}>Engines</div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}}>{(["google_search","google_ai_mode","google_news","google_maps","google_local"] as SearchEngine[]).map((engine)=>{const active=searchEngines.includes(engine);return <button key={engine} type="button" style={tabButton(active)} onClick={()=>handleToggleSearchEngine(engine)}>{SEARCH_ENGINE_LABELS[engine]}</button>;})}</div><div style={helpTextStyle}>通常 = Search / AI = Google AI / 統合 = Search + AI / News = Google News</div></div></div></div></div>:null}
-    {activeTab==="library"?<div style={sectionCard}><div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3, minmax(0, 1fr))",gap:10}}><div style={subtleCard}><div style={labelStyle}>自動ライブラリ参照</div><div style={{marginTop:8}}><ToggleItem checked={autoLibraryReferenceEnabled} onChange={onChangeAutoLibraryReferenceEnabled} label="会話中にライブラリを自動参照する"/></div></div><div><div style={labelStyle}>参照モード</div><select value={libraryReferenceMode} onChange={(e)=>onChangeLibraryReferenceMode(e.target.value as LibraryReferenceMode)} style={selectStyle}><option value="summary_only">summary only</option><option value="summary_with_excerpt">summary + excerpt</option></select></div><div><div style={labelStyle}>索引返答件数</div><input inputMode="numeric" value={localLibraryIndexResponseCount} onChange={(e)=>{const digits=e.target.value.replace(/[^\d]/g,"");setLocalLibraryIndexResponseCount(digits);if(digits!=="")onChangeLibraryIndexResponseCount(Number(digits));}} onBlur={()=>{const next=String(Math.max(1,Number(localLibraryIndexResponseCount||1)));setLocalLibraryIndexResponseCount(next);onChangeLibraryIndexResponseCount(Number(next));}} style={inputStyle}/></div><div><div style={labelStyle}>自動参照件数</div><input inputMode="numeric" value={localLibraryReferenceCount} onChange={(e)=>{const digits=e.target.value.replace(/[^\d]/g,"");setLocalLibraryReferenceCount(digits);if(digits!=="")onChangeLibraryReferenceCount(Number(digits));}} onBlur={()=>{const next=String(Math.max(0,Number(localLibraryReferenceCount||0)));setLocalLibraryReferenceCount(next);onChangeLibraryReferenceCount(Number(next));}} style={inputStyle}/></div><div><div style={labelStyle}>ライブラリ容量</div><div style={{...inputStyle,display:"flex",alignItems:"center",fontWeight:800,color:"#334155",background:"#f8fafc"}}>{libraryStorageMB.toFixed(3)} MB</div></div><div><div style={labelStyle}>概算追加トークン</div><div style={{...inputStyle,display:"flex",alignItems:"center",fontWeight:800,color:"#334155",background:"#f8fafc"}}>約 {libraryReferenceEstimatedTokens}</div></div></div></div>:null}
-    {activeTab==="rules"?<div style={{display:"grid",gap:12}}><div style={sectionCard}><div style={{...labelStyle,marginBottom:10}}>新規ルール候補</div>{pendingIntentCandidates.length===0?<div style={helpTextStyle}>現在、承認待ちのルール候補はありません。</div>:<div style={{display:"grid",gap:10}}>{pendingIntentCandidates.map((candidate)=><div key={candidate.id} style={subtleCard}><div style={{fontSize:12,fontWeight:800,color:"#0f172a"}}>{candidate.kind} / {candidate.phrase}</div>{candidate.kind==="char_limit"?<div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginTop:8}}><div style={labelStyle}>rule</div><select value={candidate.rule??"around"} onChange={(e)=>onUpdateIntentCandidate(candidate.id,{rule:e.target.value as PendingIntentCandidate["rule"]})} style={{...selectStyle,minWidth:120}}><option value="exact">exact</option><option value="at_least">at_least</option><option value="up_to">up_to</option><option value="around">around</option></select><div style={labelStyle}>charLimit</div><input inputMode="numeric" value={String(candidate.charLimit??"")} onChange={(e)=>onUpdateIntentCandidate(candidate.id,{charLimit:Number(e.target.value.replace(/[^\d]/g,"")||0)||undefined})} style={compactInputStyle}/></div>:<CountRuleEditor count={candidate.count} rule={candidate.rule} onCountChange={(count)=>onUpdateIntentCandidate(candidate.id,{count})} onRuleChange={(rule)=>onUpdateIntentCandidate(candidate.id,{rule:rule as PendingIntentCandidate["rule"]})}/>}<div style={{...helpTextStyle,marginTop:6,whiteSpace:"pre-wrap"}}>{candidate.sourceText}</div><div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10}}><button type="button" style={buttonPrimary} onClick={()=>onApproveIntentCandidate(candidate.id)}>承認</button><button type="button" style={buttonSecondaryWide} onClick={()=>onRejectIntentCandidate(candidate.id)}>却下</button></div></div>)}</div>}</div><div style={sectionCard}><button type="button" style={tabButton(showApprovedRules)} onClick={()=>setShowApprovedRules((prev)=>!prev)}>{showApprovedRules?"承認済みルールを閉じる":`承認済みルールを表示 (${approvedIntentPhrases.length})`}</button>{showApprovedRules?<div style={{display:"grid",gap:10,marginTop:10}}>{approvedIntentPhrases.length===0?<div style={helpTextStyle}>承認済みルールはまだありません。</div>:approvedIntentPhrases.map((phrase)=><div key={phrase.id} style={subtleCard}><div style={{fontSize:12,fontWeight:800,color:"#0f172a"}}>{phrase.kind} / {phrase.phrase}</div>{phrase.kind==="char_limit"?<div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginTop:8}}><div style={labelStyle}>rule</div><select value={phrase.rule??"around"} onChange={(e)=>onUpdateApprovedIntentPhrase(phrase.id,{rule:e.target.value as ApprovedIntentPhrase["rule"]})} style={{...selectStyle,minWidth:120}}><option value="exact">exact</option><option value="at_least">at_least</option><option value="up_to">up_to</option><option value="around">around</option></select><div style={labelStyle}>charLimit</div><input inputMode="numeric" value={String(phrase.charLimit??"")} onChange={(e)=>onUpdateApprovedIntentPhrase(phrase.id,{charLimit:Number(e.target.value.replace(/[^\d]/g,"")||0)||undefined})} style={compactInputStyle}/></div>:<CountRuleEditor count={phrase.count} rule={phrase.rule} onCountChange={(count)=>onUpdateApprovedIntentPhrase(phrase.id,{count})} onRuleChange={(rule)=>onUpdateApprovedIntentPhrase(phrase.id,{rule:rule as ApprovedIntentPhrase["rule"]})}/>}<div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginTop:10}}><div style={helpTextStyle}>承認日: {phrase.createdAt.slice(0,10)}</div><button type="button" style={buttonSecondaryWide} onClick={()=>onDeleteApprovedIntentPhrase(phrase.id)}>削除</button></div></div>)}</div>:null}</div></div>:null}
-    {activeTab==="output"?<div style={sectionCard}><ChoiceRow label="出力モード" value={responseMode} options={[{value:"creative",label:"CREATIVE"},{value:"strict",label:"STRICT"}]} onChange={onChangeResponseMode}/><div style={{...helpTextStyle,marginTop:8}}>ここでの設定は、検索結果の扱い方だけでなく、通常の説明や一部整形にも影響します。</div></div>:null}
-    {activeTab==="protocol"?<div style={{display:"grid",gap:12}}><div style={sectionCard}><div style={labelStyle}>Prompt</div><textarea value={protocolPrompt} onChange={(e)=>onChangeProtocolPrompt(e.target.value)} style={{width:"100%",minHeight:120,border:"1px solid #d1d5db",borderRadius:12,padding:"10px 12px",fontSize:13,lineHeight:1.6,color:"#0f172a",resize:"vertical",background:"#fff",boxSizing:"border-box"}}/></div><div style={sectionCard}><div style={labelStyle}>Rulebook</div><textarea value={protocolRulebook} onChange={(e)=>onChangeProtocolRulebook(e.target.value)} style={{width:"100%",minHeight:220,border:"1px solid #d1d5db",borderRadius:12,padding:"10px 12px",fontSize:13,lineHeight:1.6,color:"#0f172a",resize:"vertical",background:"#fff",boxSizing:"border-box"}}/></div><div style={sectionCard}><div style={labelStyle}>自動連携</div><div style={{display:"grid",gap:10,marginTop:8}}><ToggleItem checked={autoSendKinSysInput} onChange={onChangeAutoSendKinSysInput} label="Kin送信欄にSYSフォーマットが入ったら自動送信"/><ToggleItem checked={autoCopyKinSysResponseToGpt} onChange={onChangeAutoCopyKinSysResponseToGpt} label="Kin最新レスにSYSフォーマットが入ったらGPT入力へ自動転記"/><ToggleItem checked={autoSendGptSysInput} onChange={onChangeAutoSendGptSysInput} label="GPT入力欄にSYSフォーマットが入ったら自動送信"/><ToggleItem checked={autoCopyGptSysResponseToKin} onChange={onChangeAutoCopyGptSysResponseToKin} label="GPT最新レスにSYSフォーマットが入ったらKin入力へ自動転記"/></div><div style={{...helpTextStyle,marginTop:8}}>転記と自動送信を両方オンにすると、SYSブロックの往復を連続で進められます。</div></div><div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}><button type="button" style={buttonSecondaryWide} onClick={onResetProtocolDefaults}>既定値に戻す</button><button type="button" style={buttonSecondaryWide} onClick={onSaveProtocolDefaults}>既定値として保存</button><button type="button" style={buttonSecondaryWide} onClick={()=>void onSetProtocolRulebookToKinDraft()}>Kin入力へセット</button><button type="button" style={buttonPrimary} onClick={()=>void onSendProtocolRulebookToKin()}>SYS_INFO として送る</button></div></div>:null}
-  </div>;
+const subtleCard: React.CSSProperties = {
+  border: "1px solid #e2e8f0",
+  borderRadius: 12,
+  background: "#fbfdff",
+  padding: 12,
+};
+
+const selectStyle: React.CSSProperties = {
+  height: 36,
+  borderRadius: 12,
+  border: "1px solid #cbd5e1",
+  background: "#fff",
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#334155",
+  padding: "0 12px",
+};
+
+const tabButton = (active: boolean): React.CSSProperties => ({
+  height: 34,
+  borderRadius: 999,
+  border: active ? "1px solid #67e8f9" : "1px solid #cbd5e1",
+  background: active ? "#ecfeff" : "#fff",
+  color: active ? "#155e75" : "#475569",
+  fontSize: 12,
+  fontWeight: 800,
+  padding: "0 12px",
+  cursor: "pointer",
+  lineHeight: 1,
+});
+
+function NumberField(props: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  help?: string;
+}) {
+  return (
+    <div>
+      <div style={labelStyle}>{props.label}</div>
+      <input
+        inputMode="numeric"
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+        style={inputStyle}
+      />
+      {props.help ? <div style={helpTextStyle}>{props.help}</div> : null}
+    </div>
+  );
+}
+
+function ToggleButtons(props: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  help?: string;
+}) {
+  return (
+    <div style={subtleCard}>
+      <div style={{ ...labelStyle, marginBottom: 8 }}>{props.label}</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" style={tabButton(props.checked)} onClick={() => props.onChange(true)}>
+          ON
+        </button>
+        <button type="button" style={tabButton(!props.checked)} onClick={() => props.onChange(false)}>
+          OFF
+        </button>
+      </div>
+      {props.help ? <div style={{ ...helpTextStyle, marginTop: 8 }}>{props.help}</div> : null}
+    </div>
+  );
+}
+
+const SEARCH_ENGINES: SearchEngine[] = [
+  "google_search",
+  "google_ai_mode",
+  "google_news",
+  "google_local",
+];
+
+export default function GptSettingsDrawer(props: Props) {
+  const [activeTab, setActiveTab] = React.useState<Tab>("memory");
+  const [showApproved, setShowApproved] = React.useState(false);
+
+  const normalizedSearchMode = normalizeStoredSearchMode(props.searchMode);
+  const activeSearchMode: PrimarySearchMode | undefined =
+    props.searchEngines.length > 0
+      ? inferPrimarySearchModeFromEngines(props.searchEngines) ?? undefined
+      : isPrimarySearchMode(normalizedSearchMode)
+        ? normalizedSearchMode
+        : "normal";
+
+  const tabs: [Tab, string][] = [
+    ["memory", "メモリ"],
+    ["ingest", "取込"],
+    ["search", "検索"],
+    ["library", "ライブラリ"],
+    ["rules", "ルール"],
+    ["output", "出力"],
+    ["protocol", "プロトコル"],
+  ];
+
+  const setSearchPreset = (mode: PrimarySearchMode) => {
+    props.onChangeSearchMode(mode as SearchMode);
+    props.onChangeSearchEngines(
+      [...SEARCH_MODE_PRESETS[mode].engines].filter(
+        (engine): engine is SearchEngine => engine !== "google_maps"
+      )
+    );
+  };
+
+  const toggleSearchEngine = (engine: SearchEngine) => {
+    const next = props.searchEngines.includes(engine)
+      ? props.searchEngines.filter((item) => item !== engine)
+      : [...props.searchEngines, engine];
+    props.onChangeSearchEngines(next);
+    const inferred = inferPrimarySearchModeFromEngines(next);
+    if (inferred) props.onChangeSearchMode(inferred as SearchMode);
+  };
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {tabs.map(([key, label]) => (
+          <button key={key} type="button" style={tabButton(activeTab === key)} onClick={() => setActiveTab(key)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "memory" ? (
+        <>
+          <div style={sectionCard}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: props.isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
+                gap: 10,
+              }}
+            >
+              <NumberField label="MAX_FACTS" value={props.localSettings.maxFacts} onChange={(v) => props.onFieldChange("maxFacts", v)} help="facts の最大数" />
+              <NumberField label="MAX_PREFERENCES" value={props.localSettings.maxPreferences} onChange={(v) => props.onFieldChange("maxPreferences", v)} help="preferences の最大数" />
+              <NumberField label="CHAT_RECENT_LIMIT" value={props.localSettings.chatRecentLimit} onChange={(v) => props.onFieldChange("chatRecentLimit", v)} help="recentMessages の保持数" />
+              <NumberField label="SUMMARIZE_THRESHOLD" value={props.localSettings.summarizeThreshold} onChange={(v) => props.onFieldChange("summarizeThreshold", v)} help="要約を始める閾値" />
+              <NumberField label="RECENT_KEEP" value={props.localSettings.recentKeep} onChange={(v) => props.onFieldChange("recentKeep", v)} help="要約後に残す recentMessages 数" />
+              <div>
+                <div style={labelStyle}>メモリ容量プレビュー</div>
+                <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f8fafc", fontWeight: 800 }}>
+                  合計 {props.memoryCapacityPreview}
+                </div>
+                <div style={helpTextStyle}>recent + facts + preferences</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <button type="button" style={buttonSecondaryWide} onClick={props.onReset}>リセット</button>
+            <button type="button" style={buttonPrimary} onClick={props.onSave}>保存</button>
+          </div>
+        </>
+      ) : null}
+
+      {activeTab === "ingest" ? (
+        <div style={sectionCard}>
+          <div style={{ display: "grid", gap: 12 }}>
+            <div>
+              <div style={labelStyle}>ファイル読み取り方針</div>
+              <select value={props.fileReadPolicy} onChange={(e) => props.onChangeFileReadPolicy(e.target.value as FileReadPolicy)} style={selectStyle}>
+                <option value="text_first">テキスト優先</option>
+                <option value="visual_first">見た目優先</option>
+                <option value="text_and_layout">両方</option>
+              </select>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: props.isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+              <div style={subtleCard}>
+                <div style={labelStyle}>テキスト取込</div>
+                <select value={props.ingestMode} onChange={(e) => props.onChangeIngestMode(e.target.value as IngestMode)} style={selectStyle}>
+                  <option value="compact">compact</option>
+                  <option value="detailed">detailed</option>
+                  <option value="max">max</option>
+                </select>
+                <div style={{ marginTop: 8 }}>
+                  <NumberField label="文字数上限" value={String(props.compactCharLimit)} onChange={(v) => props.onChangeCompactCharLimit(Number(v || 0))} />
+                </div>
+              </div>
+              <div style={subtleCard}>
+                <div style={labelStyle}>画像 / PDF 取込</div>
+                <select value={props.imageDetail} onChange={(e) => props.onChangeImageDetail(e.target.value as ImageDetail)} style={selectStyle}>
+                  <option value="simple">simple</option>
+                  <option value="detailed">detailed</option>
+                  <option value="max">max</option>
+                </select>
+                <div style={{ marginTop: 8 }}>
+                  <NumberField label="文字数上限" value={String(props.simpleImageCharLimit)} onChange={(v) => props.onChangeSimpleImageCharLimit(Number(v || 0))} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "search" ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={sectionCard}>
+            <div style={{ ...labelStyle, marginBottom: 8 }}>検索プリセット</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {(["normal", "ai", "integrated", "news", "geo"] as PrimarySearchMode[]).map((mode) => (
+                <button key={mode} type="button" style={tabButton(activeSearchMode === mode)} onClick={() => setSearchPreset(mode)}>
+                  {mode === "normal" ? "通常" : mode === "ai" ? "AI" : mode === "integrated" ? "統合" : mode === "news" ? "News" : "Local"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={sectionCard}>
+            <div style={{ display: "grid", gridTemplateColumns: props.isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+              <div>
+                <div style={labelStyle}>Location</div>
+                <input value={props.searchLocation} onChange={(e) => props.onChangeSearchLocation(e.target.value)} placeholder="例: Japan / Johannesburg, South Africa" style={inputStyle} />
+                <div style={helpTextStyle}>Protocol の `LOCATION` も自然な地名で指定します。</div>
+              </div>
+              <div>
+                <div style={labelStyle}>Engines</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                  {SEARCH_ENGINES.map((engine) => (
+                    <button key={engine} type="button" style={tabButton(props.searchEngines.includes(engine))} onClick={() => toggleSearchEngine(engine)}>
+                      {engine}
+                    </button>
+                  ))}
+                </div>
+                <div style={helpTextStyle}>Protocol では `google_search / google_ai_mode / google_news / google_local` を使用します。</div>
+              </div>
+            </div>
+          </div>
+          <div style={sectionCard}>
+            <div style={{ display: "grid", gridTemplateColumns: props.isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+              <div>
+                <div style={labelStyle}>検索履歴保持数</div>
+                <input inputMode="numeric" value={String(props.searchHistoryLimit)} onChange={(e) => props.onChangeSearchHistoryLimit(Number(e.target.value.replace(/[^\d]/g, "") || 1))} style={inputStyle} />
+              </div>
+              <div>
+                <div style={labelStyle}>検索履歴サイズ</div>
+                <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f8fafc", fontWeight: 800 }}>
+                  {props.searchHistoryStorageMB.toFixed(3)} MB
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "end" }}>
+                <button type="button" style={buttonSecondaryWide} onClick={props.onClearSearchHistory}>検索履歴をクリア</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "library" ? (
+        <div style={sectionCard}>
+          <div style={{ display: "grid", gridTemplateColumns: props.isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+            <ToggleButtons label="文書自動参照" checked={props.autoDocumentReferenceEnabled} onChange={props.onChangeAutoDocumentReferenceEnabled} />
+            <ToggleButtons label="ライブラリ自動参照" checked={props.autoLibraryReferenceEnabled} onChange={props.onChangeAutoLibraryReferenceEnabled} />
+            <div style={subtleCard}>
+              <div style={labelStyle}>文書参照モード</div>
+              <select value={props.documentReferenceMode} onChange={(e) => props.onChangeDocumentReferenceMode(e.target.value as DocumentReferenceMode)} style={selectStyle}>
+                <option value="summary_only">summary only</option>
+                <option value="summary_with_excerpt">summary + excerpt</option>
+              </select>
+            </div>
+            <div style={subtleCard}>
+              <div style={labelStyle}>ライブラリ参照モード</div>
+              <select value={props.libraryReferenceMode} onChange={(e) => props.onChangeLibraryReferenceMode(e.target.value as LibraryReferenceMode)} style={selectStyle}>
+                <option value="summary_only">summary only</option>
+                <option value="summary_with_excerpt">summary + excerpt</option>
+              </select>
+            </div>
+            <div>
+              <div style={labelStyle}>文書参照件数</div>
+              <input inputMode="numeric" value={String(props.documentReferenceCount)} onChange={(e) => props.onChangeDocumentReferenceCount(Number(e.target.value.replace(/[^\d]/g, "") || 1))} style={inputStyle} />
+            </div>
+            <div>
+              <div style={labelStyle}>ライブラリ index 件数</div>
+              <input inputMode="numeric" value={String(props.libraryIndexResponseCount)} onChange={(e) => props.onChangeLibraryIndexResponseCount(Number(e.target.value.replace(/[^\d]/g, "") || 1))} style={inputStyle} />
+            </div>
+            <div>
+              <div style={labelStyle}>ライブラリ参照件数</div>
+              <input inputMode="numeric" value={String(props.libraryReferenceCount)} onChange={(e) => props.onChangeLibraryReferenceCount(Number(e.target.value.replace(/[^\d]/g, "") || 0))} style={inputStyle} />
+            </div>
+            <div>
+              <div style={labelStyle}>文書容量</div>
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f8fafc", fontWeight: 800 }}>{props.documentStorageMB.toFixed(3)} MB</div>
+            </div>
+            <div>
+              <div style={labelStyle}>文書推定トークン</div>
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f8fafc", fontWeight: 800 }}>約 {props.documentReferenceEstimatedTokens}</div>
+            </div>
+            <div>
+              <div style={labelStyle}>ライブラリ容量</div>
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f8fafc", fontWeight: 800 }}>{props.libraryStorageMB.toFixed(3)} MB</div>
+            </div>
+            <div>
+              <div style={labelStyle}>ライブラリ推定トークン</div>
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", background: "#f8fafc", fontWeight: 800 }}>約 {props.libraryReferenceEstimatedTokens}</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "rules" ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={sectionCard}>
+            <div style={{ ...labelStyle, marginBottom: 8 }}>承認待ちルール</div>
+            {props.pendingIntentCandidates.length === 0 ? (
+              <div style={helpTextStyle}>現在、承認待ちルールはありません。</div>
+            ) : (
+              props.pendingIntentCandidates.map((candidate) => (
+                <div key={candidate.id} style={{ ...subtleCard, marginTop: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800 }}>{candidate.kind} / {candidate.phrase}</div>
+                  <div style={{ ...helpTextStyle, marginTop: 6, whiteSpace: "pre-wrap" }}>{candidate.sourceText}</div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <button type="button" style={buttonPrimary} onClick={() => props.onApproveIntentCandidate(candidate.id)}>承認</button>
+                    <button type="button" style={buttonSecondaryWide} onClick={() => props.onRejectIntentCandidate(candidate.id)}>却下</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <div style={sectionCard}>
+            <button type="button" style={tabButton(showApproved)} onClick={() => setShowApproved((prev) => !prev)}>
+              {showApproved ? "承認済みルールを閉じる" : `承認済みルールを表示 (${props.approvedIntentPhrases.length})`}
+            </button>
+            {showApproved ? (
+              <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                {props.approvedIntentPhrases.map((phrase) => (
+                  <div key={phrase.id} style={subtleCard}>
+                    <div style={{ fontSize: 12, fontWeight: 800 }}>{phrase.kind} / {phrase.phrase}</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginTop: 10 }}>
+                      <div style={helpTextStyle}>作成日: {phrase.createdAt.slice(0, 10)}</div>
+                      <button type="button" style={buttonSecondaryWide} onClick={() => props.onDeleteApprovedIntentPhrase(phrase.id)}>削除</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "output" ? (
+        <div style={sectionCard}>
+          <div style={{ ...labelStyle, marginBottom: 8 }}>出力モード</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(["creative", "balanced", "strict"] as ResponseMode[]).map((mode) => (
+              <button key={mode} type="button" style={tabButton(props.responseMode === mode)} onClick={() => props.onChangeResponseMode(mode)}>
+                {mode.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "protocol" ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <div style={sectionCard}>
+            <div style={{ ...labelStyle, marginBottom: 8 }}>自動化</div>
+            <div style={{ display: "grid", gap: 10 }}>
+              <ToggleButtons label="A. Kin入力欄の SYS を自動送信" checked={props.autoSendKinSysInput} onChange={props.onChangeAutoSendKinSysInput} help="Kin入力欄に SYS ブロックが入ったら自動送信します。" />
+              <ToggleButtons label="B. Kin最新レスの SYS を GPT入力欄へ自動転記" checked={props.autoCopyKinSysResponseToGpt} onChange={props.onChangeAutoCopyKinSysResponseToGpt} help="Kin の最新メッセージが SYS ブロックなら GPT入力欄へ下書き転記します。" />
+              <ToggleButtons label="C. GPT入力欄の SYS を自動送信" checked={props.autoSendGptSysInput} onChange={props.onChangeAutoSendGptSysInput} help="GPT入力欄に SYS ブロックが入ったら自動送信します。" />
+              <ToggleButtons label="D. GPT最新レスの SYS を Kin入力欄へ自動転記" checked={props.autoCopyGptSysResponseToKin} onChange={props.onChangeAutoCopyGptSysResponseToKin} help="GPT の最新メッセージが SYS ブロックなら Kin入力欄へ下書き転記します。" />
+            </div>
+          </div>
+          <div style={sectionCard}>
+            <div style={labelStyle}>Prompt</div>
+            <textarea value={props.protocolPrompt} onChange={(e) => props.onChangeProtocolPrompt(e.target.value)} style={{ width: "100%", minHeight: 120, border: "1px solid #d1d5db", borderRadius: 12, padding: "10px 12px", fontSize: 13, lineHeight: 1.6, color: "#0f172a", resize: "vertical", background: "#fff", boxSizing: "border-box" }} />
+          </div>
+          <div style={sectionCard}>
+            <div style={labelStyle}>Rulebook</div>
+            <textarea value={props.protocolRulebook} onChange={(e) => props.onChangeProtocolRulebook(e.target.value)} style={{ width: "100%", minHeight: 260, border: "1px solid #d1d5db", borderRadius: 12, padding: "10px 12px", fontSize: 13, lineHeight: 1.6, color: "#0f172a", resize: "vertical", background: "#fff", boxSizing: "border-box" }} />
+            <div style={{ ...helpTextStyle, marginTop: 8 }}>
+              検索プロトコルでは `ENGINE: google_search / google_ai_mode / google_news / google_local` と `LOCATION: Japan` のような自然な地名表記を使います。
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <button type="button" style={buttonSecondaryWide} onClick={props.onResetProtocolDefaults}>既定値に戻す</button>
+            <button type="button" style={buttonSecondaryWide} onClick={props.onSaveProtocolDefaults}>既定値として保存</button>
+            <button type="button" style={buttonSecondaryWide} onClick={() => void props.onSetProtocolRulebookToKinDraft()}>Kin入力欄へセット</button>
+            <button type="button" style={buttonPrimary} onClick={() => void props.onSendProtocolRulebookToKin()}>SYS_INFO として送信</button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }

@@ -115,7 +115,6 @@ export type UseChatPageActionsArgs = {
     recent: Message[]
   ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
   chatRecentLimit: number;
-  buildSearchReferenceContext: (currentInput?: string) => string;
   buildDocumentReferenceContext: () => string;
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];

@@ -98,6 +98,96 @@ CONTENT:
 - Use the same TASK_ID and ACTION_ID as the related ASK_GPT block.
 - ----------
 -
+- SEARCH_REQUEST:
+- ----------
+- <<SYS_SEARCH_REQUEST>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- QUERY: [     ]
+- ENGINE: [google_search / google_ai_mode / google_news / google_local]
+- LOCATION: [Japan / Johannesburg, South Africa / ...]
+- SEARCH_GOAL: [     ]
+- OUTPUT_MODE: [summary / summary_plus_raw]
+- <<END_SYS_SEARCH_REQUEST>>
+- Means a web search request you send to GPT.
+- QUERY is required. ENGINE and LOCATION are optional but recommended when they matter.
+- Use natural location names such as Japan. GPT will resolve locale codes if needed.
+- ENGINE guidance:
+-   - google_search: normal web search
+-   - google_ai_mode: Google AI Mode
+-   - google_news: Google News
+-   - google_local: Google Local for places and map-like local results
+- If ENGINE is omitted, GPT may use the current panel search engine setting.
+- If LOCATION is omitted, GPT may use the current panel location setting.
+- For google_news, still write LOCATION as a natural place name like Japan. GPT will resolve locale details such as gl / hl internally when needed.
+- For google_ai_mode follow-up searches, keep the same line of inquiry and reuse the prior follow-up wording when possible so GPT can preserve AI-mode continuity.
+- ----------
+-
+- SEARCH_RESPONSE:
+- ----------
+- <<SYS_SEARCH_RESPONSE>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- QUERY: [     ]
+- ENGINE: [     ]
+- LOCATION: [     ]
+- OUTPUT_MODE: [summary / summary_plus_raw]
+- SUMMARY: [     ]
+- RAW_RESULT_AVAILABLE: [YES / NO]
+- RAW_RESULT_ID: [     ]
+- <<END_SYS_SEARCH_RESPONSE>>
+- Means GPT's response to your SEARCH_REQUEST.
+- Use the same TASK_ID and ACTION_ID as the related SEARCH_REQUEST block.
+- SEARCH_RESPONSE should echo ENGINE and LOCATION when they were specified or inferred for the search.
+- ----------
+-
+- LIBRARY_INDEX_REQUEST:
+- ----------
+- <<SYS_LIBRARY_INDEX_REQUEST>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- BODY: Send a compact library list with ITEM_ID, TYPE, TITLE, and SHORT_SUMMARY.
+- <<END_SYS_LIBRARY_INDEX_REQUEST>>
+- Use this when you want GPT to list stored library items first.
+- ----------
+-
+- LIBRARY_INDEX_RESPONSE:
+- ----------
+- <<SYS_LIBRARY_INDEX_RESPONSE>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- BODY:
+- - ITEM_ID: LIB-001 | TYPE: search | TITLE: Example title | SHORT_SUMMARY: Example summary
+- <<END_SYS_LIBRARY_INDEX_RESPONSE>>
+- Means GPT's compact index response for library browsing.
+- ----------
+-
+- LIBRARY_ITEM_REQUEST:
+- ----------
+- <<SYS_LIBRARY_ITEM_REQUEST>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- ITEM_ID: [     ]
+- OUTPUT_MODE: [summary / summary_plus_raw]
+- BODY: Send the requested library item.
+- <<END_SYS_LIBRARY_ITEM_REQUEST>>
+- Use this when you already know the ITEM_ID you want.
+- Prefer library item requests over repeated web searches when the needed evidence is already stored.
+- ----------
+-
+- LIBRARY_ITEM_RESPONSE:
+- ----------
+- <<SYS_LIBRARY_ITEM_RESPONSE>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- ITEM_ID: [     ]
+- OUTPUT_MODE: [summary / summary_plus_raw]
+- SUMMARY: [     ]
+- RAW_EXCERPT: [optional]
+- <<END_SYS_LIBRARY_ITEM_RESPONSE>>
+- Means GPT's detailed response for one specific stored library item.
+- ----------
+-
 - USER_QUESTION:
 - ----------
 - <<SYS_USER_QUESTION>>

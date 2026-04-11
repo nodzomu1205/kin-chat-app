@@ -64,54 +64,57 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
     });
   };
 
+  const buildCommonFlowArgs = () => ({
+    gptLoading: args.gptLoading,
+    processMultipartTaskDoneText: args.processMultipartTaskDoneText,
+    taskProtocolRuntime: args.taskProtocol.runtime,
+    findPendingRequest: (requestId: string) =>
+      args.taskProtocol.runtime.pendingRequests.find(
+        (item) => item.id === requestId || item.actionId === requestId
+      ) || null,
+    applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
+    buildDocumentReferenceContext: args.buildDocumentReferenceContext,
+    buildLibraryReferenceContext: args.buildLibraryReferenceContext,
+    referenceLibraryItems: args.referenceLibraryItems,
+    libraryIndexResponseCount: args.libraryIndexResponseCount,
+    getProtocolLimitViolation,
+    shouldInjectTaskContextWithSettings: (userInput: string) =>
+      shouldInjectTaskContext({
+        userInput,
+        settings: args.chatBridgeSettings,
+      }),
+    parseWrappedSearchResponse,
+    getProvisionalMemory: args.getProvisionalMemory,
+    currentTaskTitle: undefined,
+    activeDocumentTitle: undefined,
+    lastSearchQuery: args.lastSearchContext?.query,
+    handleGptMemory: args.handleGptMemory,
+    chatRecentLimit: args.chatRecentLimit,
+    gptStateRef: args.gptStateRef,
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    setGptState: args.setGptState,
+    responseMode: args.responseMode,
+    currentTaskId: args.taskProtocol.runtime.currentTaskId,
+    taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
+    ingestProtocolMessage: args.ingestProtocolMessage,
+    recordSearchContext: args.recordSearchContext,
+    getContinuationTokenForSeries: args.getContinuationTokenForSeries,
+    getAskAiModeLinkForQuery: args.getAskAiModeLinkForQuery,
+    applySearchUsage: args.applySearchUsage,
+    applyChatUsage: args.applyChatUsage,
+    applySummaryUsage: args.applySummaryUsage,
+  });
+
   const sendToGpt = async (instructionMode: any = "normal") => {
     await runSendToGptFlow({
+      ...buildCommonFlowArgs(),
       gptInput: args.gptInput,
-      gptLoading: args.gptLoading,
-      processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-      taskProtocolRuntime: args.taskProtocol.runtime,
-      findPendingRequest: (requestId) =>
-        args.taskProtocol.runtime.pendingRequests.find(
-          (item) => item.id === requestId || item.actionId === requestId
-        ) || null,
-      applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
-      buildSearchReferenceContext: args.buildSearchReferenceContext,
-      buildDocumentReferenceContext: args.buildDocumentReferenceContext,
-      buildLibraryReferenceContext: args.buildLibraryReferenceContext,
-      referenceLibraryItems: args.referenceLibraryItems,
-      libraryIndexResponseCount: args.libraryIndexResponseCount,
-      getProtocolLimitViolation,
-      shouldInjectTaskContextWithSettings: (userInput) =>
-        shouldInjectTaskContext({
-          userInput,
-          settings: args.chatBridgeSettings,
-        }),
-      parseWrappedSearchResponse,
-      getProvisionalMemory: args.getProvisionalMemory,
-      currentTaskTitle: undefined,
       searchMode: args.searchMode,
       searchEngines: args.searchEngines,
       searchLocation: args.searchLocation,
-      activeDocumentTitle: undefined,
-      lastSearchQuery: args.lastSearchContext?.query,
-      handleGptMemory: args.handleGptMemory,
-      chatRecentLimit: args.chatRecentLimit,
-      gptStateRef: args.gptStateRef,
-      setGptMessages: args.setGptMessages,
-      setGptInput: args.setGptInput,
-      setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
       instructionMode,
-      responseMode: args.responseMode,
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-      taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
-      ingestProtocolMessage: args.ingestProtocolMessage,
-      recordSearchContext: args.recordSearchContext,
-      getContinuationTokenForSeries: args.getContinuationTokenForSeries,
-      getAskAiModeLinkForQuery: args.getAskAiModeLinkForQuery,
-      applySearchUsage: args.applySearchUsage,
-      applyChatUsage: args.applyChatUsage,
-      applySummaryUsage: args.applySummaryUsage,
     });
   };
 
@@ -120,52 +123,12 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
     if (!trimmedQuery) return;
 
     await runSendToGptFlow({
+      ...buildCommonFlowArgs(),
       gptInput: `検索：${trimmedQuery}`,
-      gptLoading: args.gptLoading,
-      processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-      taskProtocolRuntime: args.taskProtocol.runtime,
-      findPendingRequest: (requestId) =>
-        args.taskProtocol.runtime.pendingRequests.find(
-          (item) => item.id === requestId || item.actionId === requestId
-        ) || null,
-      applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
-      buildSearchReferenceContext: args.buildSearchReferenceContext,
-      buildDocumentReferenceContext: args.buildDocumentReferenceContext,
-      buildLibraryReferenceContext: args.buildLibraryReferenceContext,
-      referenceLibraryItems: args.referenceLibraryItems,
-      libraryIndexResponseCount: args.libraryIndexResponseCount,
-      getProtocolLimitViolation,
-      shouldInjectTaskContextWithSettings: (userInput) =>
-        shouldInjectTaskContext({
-          userInput,
-          settings: args.chatBridgeSettings,
-        }),
-      parseWrappedSearchResponse,
-      getProvisionalMemory: args.getProvisionalMemory,
-      currentTaskTitle: undefined,
       searchMode: "ai",
       searchEngines: ["google_ai_mode"],
       searchLocation: args.searchLocation,
-      activeDocumentTitle: undefined,
-      lastSearchQuery: args.lastSearchContext?.query,
-      handleGptMemory: args.handleGptMemory,
-      chatRecentLimit: args.chatRecentLimit,
-      gptStateRef: args.gptStateRef,
-      setGptMessages: args.setGptMessages,
-      setGptInput: args.setGptInput,
-      setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
       instructionMode: "normal",
-      responseMode: args.responseMode,
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-      taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
-      ingestProtocolMessage: args.ingestProtocolMessage,
-      recordSearchContext: args.recordSearchContext,
-      getContinuationTokenForSeries: args.getContinuationTokenForSeries,
-      getAskAiModeLinkForQuery: args.getAskAiModeLinkForQuery,
-      applySearchUsage: args.applySearchUsage,
-      applyChatUsage: args.applyChatUsage,
-      applySummaryUsage: args.applySummaryUsage,
     });
   };
 

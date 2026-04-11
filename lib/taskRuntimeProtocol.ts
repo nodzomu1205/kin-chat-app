@@ -118,6 +118,8 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
       required: parseRequired(fields.REQUIRED),
       summary: fields.SUMMARY || undefined,
       query: fields.QUERY || undefined,
+      searchEngine: fields.ENGINE || undefined,
+      searchLocation: fields.LOCATION || undefined,
       outputMode: parseSearchOutputMode(fields.OUTPUT_MODE),
       rawResultId: fields.RAW_RESULT_ID || undefined,
       partIndex: parsedPart.partIndex,

@@ -27,6 +27,18 @@ function buildRuleLines(intent: TaskIntent): string[] {
   if (intent.workflow?.allowSearchRequest) {
     lines.push("- Use <<SYS_SEARCH_REQUEST>> when you want GPT to run a web search.");
     lines.push(
+      "- In <<SYS_SEARCH_REQUEST>>, always set QUERY and optionally set ENGINE and LOCATION."
+    );
+    lines.push(
+      "- Supported ENGINE values are google_search, google_ai_mode, google_news, and google_local."
+    );
+    lines.push(
+      "- Use LOCATION in natural place form such as Japan or Johannesburg, South Africa; GPT will resolve locale details such as gl/hl if needed."
+    );
+    lines.push(
+      "- When ENGINE is google_ai_mode and you are continuing the same research thread, keep the same query wording as much as possible so GPT can reuse prior AI-mode continuity."
+    );
+    lines.push(
       "- GPT should answer <<SYS_SEARCH_REQUEST>> with <<SYS_SEARCH_RESPONSE>> using the same TASK_ID and ACTION_ID."
     );
   }
@@ -42,6 +54,9 @@ function buildRuleLines(intent: TaskIntent): string[] {
     );
     lines.push(
       "- Both library index requests and library item requests consume the same library-reference allowance for the task."
+    );
+    lines.push(
+      "- Use <<SYS_LIBRARY_INDEX_REQUEST>> first when you need to discover available stored items, and <<SYS_LIBRARY_ITEM_REQUEST>> when you already know the ITEM_ID to inspect."
     );
   }
 
@@ -107,6 +122,8 @@ BODY: GPT's bounded answer here.
 TASK_ID: ${taskId}
 ACTION_ID: S001
 QUERY: Example search query here.
+ENGINE: google_search
+LOCATION: Japan
 SEARCH_GOAL: Explain what outside facts you want.
 OUTPUT_MODE: summary | summary_plus_raw
 <<END_SYS_SEARCH_REQUEST>>`);
@@ -115,6 +132,8 @@ OUTPUT_MODE: summary | summary_plus_raw
 TASK_ID: ${taskId}
 ACTION_ID: S001
 QUERY: Example search query here.
+ENGINE: google_search
+LOCATION: Japan
 OUTPUT_MODE: summary
 SUMMARY: Short search digest here.
 RAW_RESULT_AVAILABLE: YES
@@ -125,6 +144,8 @@ RAW_RESULT_ID: RAW-${taskId}-S001-001
 TASK_ID: ${taskId}
 ACTION_ID: S002
 QUERY: Example search query here.
+ENGINE: google_ai_mode
+LOCATION: Japan
 OUTPUT_MODE: summary_plus_raw
 SUMMARY: Short search digest here.
 RAW_EXCERPT: Key raw evidence excerpt here.

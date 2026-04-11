@@ -260,6 +260,8 @@ export function useKinTaskProtocol() {
               taskId: resolvedTaskId,
               actionId,
               query: event.query || "",
+              searchEngine: event.searchEngine,
+              searchLocation: event.searchLocation,
               mode: event.outputMode || "summary",
               rawResultId: event.rawResultId,
               resultText: event.summary || event.body || "",
