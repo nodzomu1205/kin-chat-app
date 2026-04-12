@@ -142,7 +142,7 @@ export function receiveLastKinResponseFlow({
 
   const multipartHandled = processMultipartTaskDoneText(last.text, { setGptTab: true });
   if (multipartHandled) {
-    setActiveTabToKin?.();
+    setActiveTabToGpt?.();
     return;
   }
 

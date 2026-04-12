@@ -285,9 +285,10 @@ export async function runUpdateTaskFromLastGptMessageFlow(
   }
 
   const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
+  const directionInstruction = parsedInput.freeText || args.gptInput.trim();
   const resolvedTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
-    freeText: parsedInput.freeText || args.gptInput.trim(),
+    freeText: directionInstruction,
     searchQuery: parsedInput.searchQuery,
     fallback: args.currentTaskDraft.title || "Task",
   });
@@ -295,7 +296,8 @@ export async function runUpdateTaskFromLastGptMessageFlow(
   const taskInput = buildTaskInput({
     title: resolvedTitle,
     userInstruction: parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
-    actionInstruction: parsedInput.freeText || args.gptInput.trim(),
+    actionInstruction:
+      directionInstruction || "最新のGPTレス内容を反映して、タスク内容を整理・更新してください。",
     body: currentTaskText,
     material: lastGptMessage.text.trim(),
   });
@@ -332,7 +334,9 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     const source = createTaskSource(
       "manual_note",
       "Latest GPT message",
-      lastGptMessage.text.trim()
+      directionInstruction
+        ? `Direction:\n${directionInstruction}\n\nLatest GPT response:\n${lastGptMessage.text.trim()}`
+        : lastGptMessage.text.trim()
     );
 
     args.setCurrentTaskDraft((prev) => ({
