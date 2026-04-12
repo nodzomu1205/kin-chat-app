@@ -117,10 +117,11 @@ CONTENT:
 -   - google_ai_mode: Google AI Mode
 -   - google_news: Google News
 -   - google_local: Google Local for places and map-like local results
-- If ENGINE is omitted, GPT may use the current panel search engine setting.
+- If ENGINE is omitted, GPT should default to the integrated search path that combines google_search + google_ai_mode.
 - If LOCATION is omitted, GPT may use the current panel location setting.
 - For google_news, still write LOCATION as a natural place name like Japan. GPT will resolve locale details such as gl / hl internally when needed.
-- For google_ai_mode follow-up searches, keep the same line of inquiry and reuse the prior follow-up wording when possible so GPT can preserve AI-mode continuity.
+- For google_ai_mode follow-up searches, keep the same line of inquiry under one stable SEARCH_GOAL label such as SEARCH_GOAL: Napoleon marshals #1, SEARCH_GOAL: Napoleon marshals #2, etc.
+- When continuing the same AI-mode thread, reuse the same SEARCH_GOAL family and keep the follow-up wording close to the prior turn so GPT can preserve AI-mode continuity.
 - ----------
 -
 - SEARCH_RESPONSE:

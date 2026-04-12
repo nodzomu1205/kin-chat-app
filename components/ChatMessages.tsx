@@ -2,12 +2,15 @@
 
 import React from "react";
 import MessageBubble from "@/components/message/MessageBubble";
-import type { Message } from "@/types/chat";
+import type { Message, SourceItem } from "@/types/chat";
 
 type Props = {
   messages: Message[];
   bottomRef: React.RefObject<HTMLDivElement | null>;
   loadingText?: string | null;
+  sourceDisplayCount?: number;
+  onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
+  onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
 };
 
 function TypingIndicator({ text }: { text: string }) {
@@ -62,7 +65,14 @@ function TypingIndicator({ text }: { text: string }) {
   );
 }
 
-export default function ChatMessages({ messages, bottomRef, loadingText }: Props) {
+export default function ChatMessages({
+  messages,
+  bottomRef,
+  loadingText,
+  sourceDisplayCount = 3,
+  onImportYouTubeTranscript,
+  onSendYouTubeTranscriptToKin,
+}: Props) {
   return (
     <div
       style={{
@@ -90,7 +100,14 @@ export default function ChatMessages({ messages, bottomRef, loadingText }: Props
               marginBottom: 12,
             }}
           >
-            <MessageBubble role={m.role} text={m.text} sources={m.sources} />
+            <MessageBubble
+              role={m.role}
+              text={m.text}
+              sources={m.sources}
+              sourceDisplayCount={sourceDisplayCount}
+              onImportYouTubeTranscript={onImportYouTubeTranscript}
+              onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
+            />
           </div>
         ))}
 

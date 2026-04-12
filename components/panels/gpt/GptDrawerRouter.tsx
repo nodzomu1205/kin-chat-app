@@ -107,9 +107,11 @@ export default function GptDrawerRouter({
     onMoveStoredDocument: props.onMoveStoredDocument,
     onMoveLibraryItem: props.onMoveLibraryItem,
     onSelectTaskLibraryItem: props.onSelectTaskLibraryItem,
-    onChangeLibraryItemMode: props.onChangeLibraryItemMode,
-    onStartAskAiModeSearch: props.onStartAskAiModeSearch,
-    onSaveStoredDocument: props.onSaveStoredDocument,
+      onChangeLibraryItemMode: props.onChangeLibraryItemMode,
+      onStartAskAiModeSearch: props.onStartAskAiModeSearch,
+      onImportYouTubeTranscript: props.onImportYouTubeTranscript,
+      onSendYouTubeTranscriptToKin: props.onSendYouTubeTranscriptToKin,
+      onSaveStoredDocument: props.onSaveStoredDocument,
   };
   const settings = props.settings ?? {
     memorySettings: props.memorySettings,
@@ -128,13 +130,7 @@ export default function GptDrawerRouter({
     searchMode: props.searchMode,
     searchEngines: props.searchEngines,
     searchLocation: props.searchLocation,
-    searchHistoryLimit: props.searchHistoryLimit,
-    searchHistoryStorageMB: props.searchHistoryStorageMB,
-    autoDocumentReferenceEnabled: props.autoDocumentReferenceEnabled,
-    documentReferenceMode: props.documentReferenceMode,
-    documentReferenceCount: props.documentReferenceCount,
-    documentStorageMB: props.documentStorageMB,
-    documentReferenceEstimatedTokens: props.documentReferenceEstimatedTokens,
+    sourceDisplayCount: props.sourceDisplayCount,
     autoLibraryReferenceEnabled: props.autoLibraryReferenceEnabled,
     libraryReferenceMode: props.libraryReferenceMode,
     libraryIndexResponseCount: props.libraryIndexResponseCount,
@@ -145,6 +141,10 @@ export default function GptDrawerRouter({
     autoCopyKinSysResponseToGpt: props.autoCopyKinSysResponseToGpt,
     autoSendGptSysInput: props.autoSendGptSysInput,
     autoCopyGptSysResponseToKin: props.autoCopyGptSysResponseToKin,
+    autoCopyFileIngestSysInfoToKin: props.autoCopyFileIngestSysInfoToKin,
+    memoryInterpreterSettings: props.memoryInterpreterSettings,
+    pendingMemoryRuleCandidates: props.pendingMemoryRuleCandidates,
+    approvedMemoryRules: props.approvedMemoryRules,
     onSaveMemorySettings: props.onSaveMemorySettings,
     onResetMemorySettings: props.onResetMemorySettings,
     onChangeResponseMode: props.onChangeResponseMode,
@@ -158,11 +158,7 @@ export default function GptDrawerRouter({
     onChangeSearchMode: props.onChangeSearchMode,
     onChangeSearchEngines: props.onChangeSearchEngines,
     onChangeSearchLocation: props.onChangeSearchLocation,
-    onChangeSearchHistoryLimit: props.onChangeSearchHistoryLimit,
-    onClearSearchHistory: props.onClearSearchHistory,
-    onChangeAutoDocumentReferenceEnabled: props.onChangeAutoDocumentReferenceEnabled,
-    onChangeDocumentReferenceMode: props.onChangeDocumentReferenceMode,
-    onChangeDocumentReferenceCount: props.onChangeDocumentReferenceCount,
+    onChangeSourceDisplayCount: props.onChangeSourceDisplayCount,
     onChangeAutoLibraryReferenceEnabled: props.onChangeAutoLibraryReferenceEnabled,
     onChangeLibraryReferenceMode: props.onChangeLibraryReferenceMode,
     onChangeLibraryIndexResponseCount: props.onChangeLibraryIndexResponseCount,
@@ -171,6 +167,12 @@ export default function GptDrawerRouter({
     onChangeAutoCopyKinSysResponseToGpt: props.onChangeAutoCopyKinSysResponseToGpt,
     onChangeAutoSendGptSysInput: props.onChangeAutoSendGptSysInput,
     onChangeAutoCopyGptSysResponseToKin: props.onChangeAutoCopyGptSysResponseToKin,
+    onChangeAutoCopyFileIngestSysInfoToKin:
+      props.onChangeAutoCopyFileIngestSysInfoToKin,
+    onChangeMemoryInterpreterSettings: props.onChangeMemoryInterpreterSettings,
+    onApproveMemoryRuleCandidate: props.onApproveMemoryRuleCandidate,
+    onRejectMemoryRuleCandidate: props.onRejectMemoryRuleCandidate,
+    onDeleteApprovedMemoryRule: props.onDeleteApprovedMemoryRule,
   };
 
   if (activeDrawer === "memory") {
@@ -251,12 +253,15 @@ export default function GptDrawerRouter({
         multipartAssemblies={references.multipartAssemblies}
         referenceLibraryItems={references.referenceLibraryItems}
         libraryReferenceCount={settings.libraryReferenceCount}
+        sourceDisplayCount={settings.sourceDisplayCount}
         selectedTaskLibraryItemId={references.selectedTaskLibraryItemId}
         onSelectTaskLibraryItem={references.onSelectTaskLibraryItem}
         onMoveLibraryItem={references.onMoveLibraryItem}
-        onChangeLibraryItemMode={references.onChangeLibraryItemMode}
-        onStartAskAiModeSearch={references.onStartAskAiModeSearch}
-        onDownloadMultipartAssembly={references.onDownloadMultipartAssembly}
+          onChangeLibraryItemMode={references.onChangeLibraryItemMode}
+          onStartAskAiModeSearch={references.onStartAskAiModeSearch}
+          onImportYouTubeTranscript={references.onImportYouTubeTranscript}
+          onSendYouTubeTranscriptToKin={references.onSendYouTubeTranscriptToKin}
+          onDownloadMultipartAssembly={references.onDownloadMultipartAssembly}
         onDeleteMultipartAssembly={references.onDeleteMultipartAssembly}
         onDownloadStoredDocument={references.onDownloadStoredDocument}
         onDeleteStoredDocument={references.onDeleteStoredDocument}
@@ -326,15 +331,9 @@ export default function GptDrawerRouter({
         searchMode={settings.searchMode}
         searchEngines={settings.searchEngines}
         searchLocation={settings.searchLocation}
-        searchHistoryLimit={settings.searchHistoryLimit}
-        searchHistoryStorageMB={settings.searchHistoryStorageMB}
-        autoDocumentReferenceEnabled={settings.autoDocumentReferenceEnabled}
-        documentReferenceMode={settings.documentReferenceMode}
-        documentReferenceCount={settings.documentReferenceCount}
-        documentStorageMB={settings.documentStorageMB}
-        documentReferenceEstimatedTokens={settings.documentReferenceEstimatedTokens}
-         autoLibraryReferenceEnabled={settings.autoLibraryReferenceEnabled}
-         libraryReferenceMode={settings.libraryReferenceMode}
+        sourceDisplayCount={settings.sourceDisplayCount}
+        autoLibraryReferenceEnabled={settings.autoLibraryReferenceEnabled}
+        libraryReferenceMode={settings.libraryReferenceMode}
          libraryIndexResponseCount={settings.libraryIndexResponseCount}
          libraryReferenceCount={settings.libraryReferenceCount}
          libraryStorageMB={settings.libraryStorageMB}
@@ -343,22 +342,29 @@ export default function GptDrawerRouter({
          autoCopyKinSysResponseToGpt={settings.autoCopyKinSysResponseToGpt}
          autoSendGptSysInput={settings.autoSendGptSysInput}
          autoCopyGptSysResponseToKin={settings.autoCopyGptSysResponseToKin}
+         autoCopyFileIngestSysInfoToKin={settings.autoCopyFileIngestSysInfoToKin}
+        memoryInterpreterSettings={settings.memoryInterpreterSettings}
+        pendingMemoryRuleCandidates={settings.pendingMemoryRuleCandidates}
+        approvedMemoryRules={settings.approvedMemoryRules}
         onChangeSearchMode={settings.onChangeSearchMode}
         onChangeSearchEngines={settings.onChangeSearchEngines}
         onChangeSearchLocation={settings.onChangeSearchLocation}
-        onChangeSearchHistoryLimit={settings.onChangeSearchHistoryLimit}
-        onClearSearchHistory={settings.onClearSearchHistory}
-        onChangeAutoDocumentReferenceEnabled={settings.onChangeAutoDocumentReferenceEnabled}
-        onChangeDocumentReferenceMode={settings.onChangeDocumentReferenceMode}
-        onChangeDocumentReferenceCount={settings.onChangeDocumentReferenceCount}
-         onChangeAutoLibraryReferenceEnabled={settings.onChangeAutoLibraryReferenceEnabled}
-         onChangeLibraryReferenceMode={settings.onChangeLibraryReferenceMode}
+        onChangeSourceDisplayCount={settings.onChangeSourceDisplayCount}
+        onChangeAutoLibraryReferenceEnabled={settings.onChangeAutoLibraryReferenceEnabled}
+        onChangeLibraryReferenceMode={settings.onChangeLibraryReferenceMode}
          onChangeLibraryIndexResponseCount={settings.onChangeLibraryIndexResponseCount}
          onChangeLibraryReferenceCount={settings.onChangeLibraryReferenceCount}
          onChangeAutoSendKinSysInput={settings.onChangeAutoSendKinSysInput}
          onChangeAutoCopyKinSysResponseToGpt={settings.onChangeAutoCopyKinSysResponseToGpt}
          onChangeAutoSendGptSysInput={settings.onChangeAutoSendGptSysInput}
          onChangeAutoCopyGptSysResponseToKin={settings.onChangeAutoCopyGptSysResponseToKin}
+         onChangeAutoCopyFileIngestSysInfoToKin={
+           settings.onChangeAutoCopyFileIngestSysInfoToKin
+         }
+        onChangeMemoryInterpreterSettings={settings.onChangeMemoryInterpreterSettings}
+        onApproveMemoryRuleCandidate={settings.onApproveMemoryRuleCandidate}
+        onRejectMemoryRuleCandidate={settings.onRejectMemoryRuleCandidate}
+        onDeleteApprovedMemoryRule={settings.onDeleteApprovedMemoryRule}
          protocolPrompt={protocol.protocolPrompt}
         protocolRulebook={protocol.protocolRulebook}
         onChangeProtocolPrompt={protocol.onChangeProtocolPrompt}

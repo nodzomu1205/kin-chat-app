@@ -1,9 +1,8 @@
 import type { PendingIntentCandidate } from "@/lib/taskIntent";
 
 export const toTransformResponseMode = (
-  mode: "strict" | "balanced" | "creative"
+  mode: "strict" | "creative"
 ): "strict" | "creative" => {
-  if (mode === "balanced") return "strict";
   return mode;
 };
 

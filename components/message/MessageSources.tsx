@@ -1,11 +1,7 @@
 "use client";
 
 import React from "react";
-
-type Source = {
-  title: string;
-  link: string;
-};
+import type { SourceItem } from "@/types/chat";
 
 type LinkPreview = {
   ok?: boolean;
@@ -44,10 +40,23 @@ function isGoogleMapsLink(url: string) {
   return normalized.includes("google.com/maps") || normalized.includes("maps.google");
 }
 
+function isYoutubeLink(source: SourceItem) {
+  const normalized = source.link.toLowerCase();
+  return (
+    normalized.includes("youtube.com/watch") ||
+    normalized.includes("youtu.be/") ||
+    source.sourceType === "youtube_video" ||
+    !!source.videoId
+  );
+}
+
 function getPreviewLabel(link: string) {
   const hostname = getHostname(link).toLowerCase();
   if (hostname.includes("google.") && hostname.includes("maps")) {
     return "Google Maps";
+  }
+  if (hostname.includes("youtube.") || hostname.includes("youtu.be")) {
+    return "YouTube";
   }
   if (hostname.includes("google.")) {
     return "Google";
@@ -63,21 +72,36 @@ function decodeMaybe(value: string) {
   }
 }
 
-function extractGoogleMapsSubtitle(source: Source) {
+function extractGoogleMapsSubtitle(source: SourceItem) {
   try {
     const url = new URL(source.link);
     const query = url.searchParams.get("query");
-    if (query?.trim()) {
-      return decodeMaybe(query).trim();
-    }
+    if (query?.trim()) return decodeMaybe(query).trim();
 
     const destination = url.searchParams.get("destination");
-    if (destination?.trim()) {
-      return decodeMaybe(destination).trim();
-    }
+    if (destination?.trim()) return decodeMaybe(destination).trim();
   } catch {}
 
   return source.title || "Open in Google Maps";
+}
+
+function formatYoutubeViews(value?: string) {
+  if (!value) return "";
+  const digits = value.replace(/[^\d]/g, "");
+  if (!digits) return value;
+  const numeric = Number(digits);
+  if (!Number.isFinite(numeric)) return value;
+  return `${numeric.toLocaleString("en-US")} views`;
+}
+
+function extractYoutubeSubtitle(source: SourceItem) {
+  return [
+    source.channelName,
+    source.duration,
+    formatYoutubeViews(source.viewCount),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function formatPublishedTime(value?: string) {
@@ -91,7 +115,7 @@ function formatPublishedTime(value?: string) {
   }).format(date);
 }
 
-function isNewsLikeSource(source: Source, preview?: LinkPreview) {
+function isNewsLikeSource(source: SourceItem, preview?: LinkPreview) {
   const hostname = getHostname(preview?.url || source.link).toLowerCase();
   const keywords = [
     "news",
@@ -161,7 +185,18 @@ function buildNewsBannerStyle(): React.CSSProperties {
   };
 }
 
-function MapPreviewBanner({ source }: { source: Source }) {
+function buildYoutubeBannerStyle(): React.CSSProperties {
+  return {
+    minHeight: 152,
+    borderRadius: 10,
+    border: "1px solid #fecaca",
+    background: "linear-gradient(135deg, #fff7ed 0%, #fee2e2 100%)",
+    overflow: "hidden",
+    position: "relative",
+  };
+}
+
+function MapPreviewBanner({ source }: { source: SourceItem }) {
   const subtitle = extractGoogleMapsSubtitle(source);
 
   return (
@@ -260,7 +295,7 @@ function NewsPreviewBanner({
   failedImage,
   onImageError,
 }: {
-  source: Source;
+  source: SourceItem;
   preview?: LinkPreview;
   failedImage: boolean;
   onImageError: () => void;
@@ -363,13 +398,106 @@ function NewsPreviewBanner({
   );
 }
 
+function YoutubePreviewBanner({ source }: { source: SourceItem }) {
+  const thumbnail =
+    source.thumbnailUrl ||
+    (source.videoId ? `https://i.ytimg.com/vi/${source.videoId}/hqdefault.jpg` : "");
+
+  return (
+    <div style={buildYoutubeBannerStyle()}>
+      {thumbnail ? (
+        <img
+          src={thumbnail}
+          alt=""
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+      ) : null}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(180deg, rgba(15,23,42,0.12) 0%, rgba(15,23,42,0.78) 100%)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          left: 12,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.16)",
+          border: "1px solid rgba(255,255,255,0.2)",
+          color: "#fff",
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: 0.35,
+          textTransform: "uppercase",
+        }}
+      >
+        YouTube
+      </div>
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "grid",
+          gap: 8,
+          alignContent: "end",
+          minHeight: 152,
+          padding: 14,
+          boxSizing: "border-box",
+          color: "#fff",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: 0.3,
+            textTransform: "uppercase",
+            opacity: 0.92,
+          }}
+        >
+          {source.channelName || "YouTube"}
+        </div>
+        <div
+          style={{
+            fontSize: 18,
+            fontWeight: 800,
+            lineHeight: 1.3,
+            maxWidth: "88%",
+          }}
+        >
+          {source.title || "YouTube Video"}
+        </div>
+        {extractYoutubeSubtitle(source) ? (
+          <div style={{ fontSize: 12, opacity: 0.92 }}>
+            {extractYoutubeSubtitle(source)}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function GenericPreviewBanner({
   source,
   preview,
   failedImage,
   onImageError,
 }: {
-  source: Source;
+  source: SourceItem;
   preview?: LinkPreview;
   failedImage: boolean;
   onImageError: () => void;
@@ -442,15 +570,29 @@ function GenericPreviewBanner({
   );
 }
 
-export default function MessageSources({ sources }: { sources: Source[] }) {
-  const visibleSources = React.useMemo(() => (sources || []).slice(0, 3), [sources]);
+export default function MessageSources({
+  sources,
+  sourceDisplayCount = 3,
+  onImportYouTubeTranscript,
+  onSendYouTubeTranscriptToKin,
+}: {
+  sources: SourceItem[];
+  sourceDisplayCount?: number;
+  onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
+  onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
+}) {
+  const visibleCount = Math.max(1, sourceDisplayCount || 1);
+  const visibleSources = React.useMemo(
+    () => (sources || []).slice(0, visibleCount),
+    [sources, visibleCount]
+  );
   const [previews, setPreviews] = React.useState<Record<string, LinkPreview>>({});
   const [failedImages, setFailedImages] = React.useState<Record<string, true>>({});
 
   React.useEffect(() => {
     let cancelled = false;
     const sourcesNeedingFetch = visibleSources.filter(
-      (source) => !isGoogleMapsLink(source.link)
+      (source) => !isGoogleMapsLink(source.link) && !isYoutubeLink(source)
     );
 
     async function load() {
@@ -521,7 +663,8 @@ export default function MessageSources({ sources }: { sources: Source[] }) {
         {visibleSources.map((source, index) => {
           const preview = previews[source.link];
           const isMap = isGoogleMapsLink(source.link);
-          const isNews = !isMap && isNewsLikeSource(source, preview);
+          const isYoutube = isYoutubeLink(source);
+          const isNews = !isMap && !isYoutube && isNewsLikeSource(source, preview);
 
           return (
             <a
@@ -533,6 +676,8 @@ export default function MessageSources({ sources }: { sources: Source[] }) {
             >
               {isMap ? (
                 <MapPreviewBanner source={source} />
+              ) : isYoutube ? (
+                <YoutubePreviewBanner source={source} />
               ) : isNews ? (
                 <NewsPreviewBanner
                   source={source}
@@ -569,9 +714,11 @@ export default function MessageSources({ sources }: { sources: Source[] }) {
                     letterSpacing: 0.3,
                   }}
                 >
-                  {isMap
-                    ? "maps.google.com"
-                    : preview?.siteName || getHostname(source.link)}
+                  {isYoutube
+                    ? "YouTube"
+                    : isMap
+                      ? "maps.google.com"
+                      : preview?.siteName || getHostname(source.link)}
                 </div>
                 <div
                   style={{
@@ -583,7 +730,17 @@ export default function MessageSources({ sources }: { sources: Source[] }) {
                 >
                   {source.title || preview?.title || source.link}
                 </div>
-                {isMap ? (
+                {isYoutube ? (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#475569",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {extractYoutubeSubtitle(source) || source.snippet || "YouTube video"}
+                  </div>
+                ) : isMap ? (
                   <div
                     style={{
                       fontSize: 12,
@@ -603,6 +760,16 @@ export default function MessageSources({ sources }: { sources: Source[] }) {
                   >
                     {preview.description}
                   </div>
+                ) : source.snippet ? (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#475569",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {source.snippet}
+                  </div>
                 ) : null}
                 <div
                   style={{
@@ -614,13 +781,65 @@ export default function MessageSources({ sources }: { sources: Source[] }) {
                 >
                   {source.link}
                 </div>
+
+                {isYoutube && (onImportYouTubeTranscript || onSendYouTubeTranscriptToKin) ? (
+                  <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {onImportYouTubeTranscript ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void onImportYouTubeTranscript(source);
+                        }}
+                        style={{
+                          height: 30,
+                          borderRadius: 999,
+                          border: "1px solid #fca5a5",
+                          background: "#fff",
+                          color: "#b91c1c",
+                          padding: "0 12px",
+                          fontSize: 12,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        文字起こし取込
+                      </button>
+                    ) : null}
+
+                    {onSendYouTubeTranscriptToKin ? (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          void onSendYouTubeTranscriptToKin(source);
+                        }}
+                        style={{
+                          height: 30,
+                          borderRadius: 999,
+                          border: "1px solid #c4b5fd",
+                          background: "#fff",
+                          color: "#7c3aed",
+                          padding: "0 12px",
+                          fontSize: 12,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        文字起こしKin送付
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </a>
           );
         })}
       </div>
 
-      {sources.length > 3 ? (
+      {sources.length > visibleCount ? (
         <div
           style={{
             marginTop: 8,
@@ -628,7 +847,7 @@ export default function MessageSources({ sources }: { sources: Source[] }) {
             color: "#666",
           }}
         >
-          他 {sources.length - 3} 件
+          残り {sources.length - visibleCount} 件
         </div>
       ) : null}
     </div>

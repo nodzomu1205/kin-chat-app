@@ -16,6 +16,7 @@ export function useTaskDraftHelpers(args: {
   gptMessages: Message[];
   setCurrentTaskDraft: React.Dispatch<React.SetStateAction<TaskDraft>>;
   resetTaskProtocolRuntime: () => void;
+  clearTaskScopedMemory: () => void;
   deleteSearchHistoryItemBase: (rawResultId: string) => void;
   currentTaskIntentConstraints: string[];
 }) {
@@ -38,6 +39,7 @@ export function useTaskDraftHelpers(args: {
   const resetCurrentTaskDraft = useCallback(() => {
     args.setCurrentTaskDraft(resetTaskDraft());
     args.resetTaskProtocolRuntime();
+    args.clearTaskScopedMemory();
   }, [args]);
 
   const getCurrentTaskCharConstraint = useCallback((): CharConstraint => {
@@ -130,9 +132,7 @@ export function useTaskDraftHelpers(args: {
     if (args.currentTaskDraft.mergedText.trim()) return args.currentTaskDraft.mergedText.trim();
     if (args.currentTaskDraft.deepenText.trim()) return args.currentTaskDraft.deepenText.trim();
     if (args.currentTaskDraft.prepText.trim()) return args.currentTaskDraft.prepText.trim();
-
-    const last = [...args.gptMessages].reverse().find((m) => m.role === "gpt");
-    return last?.text?.trim() || "";
+    return "";
   }, [args.currentTaskDraft, args.gptMessages]);
 
   const syncTaskDraftFromProtocol = useCallback(

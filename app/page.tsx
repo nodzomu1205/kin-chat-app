@@ -20,6 +20,8 @@ import { useReferenceLibrary } from "@/hooks/useReferenceLibrary";
 import { useMultipartUiActions } from "@/hooks/useMultipartUiActions";
 import { usePanelResetActions } from "@/hooks/usePanelResetActions";
 import { useProtocolIntentSettings } from "@/hooks/useProtocolIntentSettings";
+import { useMemoryInterpreterSettings } from "@/hooks/useMemoryInterpreterSettings";
+import { useMemoryRuleActions } from "@/hooks/useMemoryRuleActions";
 import { useProtocolAutomationEffects } from "@/hooks/useProtocolAutomationEffects";
 import { useChatPageLifecycle } from "@/hooks/useChatPageLifecycle";
 import { useStoredDocumentUiActions } from "@/hooks/useStoredDocumentUiActions";
@@ -65,15 +67,17 @@ import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import {
   type PendingIntentCandidate,
 } from "@/lib/taskIntent";
+import { getMemoryRuleSignature } from "@/lib/memoryInterpreterRules";
 import {
   buildTaskChatBridgeContext,
 } from "@/lib/taskChatBridge";
-import { buildUserResponseBlock, extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
+import { buildUserResponseBlock } from "@/lib/taskRuntimeProtocol";
 import {
   buildTaskRequestAnswerDraft,
 } from "@/lib/app/chatPageHelpers";
 import { buildGptPanelProps, buildKinPanelProps } from "@/lib/app/panelPropsBuilders";
 import { PROTOCOL_PROMPT_DEFAULT_KEY, PROTOCOL_RULEBOOK_DEFAULT_KEY } from "@/lib/app/chatPageStorageKeys";
+import { createProtocolEventIngestor } from "@/lib/app/protocolEventIngest";
 
 type MobileTab = "kin" | "gpt";
 
@@ -123,6 +127,16 @@ export default function ChatApp() {
     setFileReadPolicy,
   } = usePersistedGptOptions();
   const { autoBridgeSettings, updateAutoBridgeSettings } = useAutoBridgeSettings();
+  const {
+    memoryInterpreterSettings,
+    setMemoryInterpreterSettings,
+    pendingMemoryRuleCandidates,
+    setPendingMemoryRuleCandidates,
+    approvedMemoryRules,
+    setApprovedMemoryRules,
+    rejectedMemoryRuleCandidateSignatures,
+    setRejectedMemoryRuleCandidateSignatures,
+  } = useMemoryInterpreterSettings();
 
   const {
     tokenStats,
@@ -157,6 +171,8 @@ export default function ChatApp() {
     getProvisionalMemory,
     handleGptMemory,
     resetGptForCurrentKin,
+    persistCurrentGptState,
+    clearTaskScopedMemory,
     ensureKinState,
     removeKinState,
     chatRecentLimit,
@@ -164,7 +180,25 @@ export default function ChatApp() {
     updateMemorySettings,
     resetMemorySettings,
     defaultMemorySettings,
-  } = useGptMemory(currentKin);
+  } = useGptMemory(currentKin, {
+    memoryInterpreterSettings,
+    approvedMemoryRules,
+    rejectedMemoryRuleCandidateSignatures,
+    onAddPendingMemoryRuleCandidates: (candidates) => {
+      setPendingMemoryRuleCandidates((prev) => {
+        const seen = new Set(prev.map((item) => getMemoryRuleSignature(item)));
+        const next = [...prev];
+        candidates.forEach((candidate) => {
+          const signature = getMemoryRuleSignature(candidate);
+          if (!seen.has(signature)) {
+            seen.add(signature);
+            next.push(candidate);
+          }
+        });
+        return next.slice(-100);
+      });
+    },
+  });
 
   const {
     lastSearchContext,
@@ -179,6 +213,8 @@ export default function ChatApp() {
     setSearchEngines,
     searchLocation,
     setSearchLocation,
+    sourceDisplayCount,
+    setSourceDisplayCount,
     getTaskSearchContext,
     moveSearchHistoryItem,
     recordSearchContext,
@@ -198,20 +234,12 @@ export default function ChatApp() {
     } = useMultipartAssemblies();
   const {
     allDocuments,
-    autoDocumentReferenceEnabled,
-    setAutoDocumentReferenceEnabled,
-    documentReferenceMode,
-    setDocumentReferenceMode,
-    documentReferenceCount,
-    setDocumentReferenceCount,
     documentStorageMB,
     recordIngestedDocument,
     updateStoredDocument,
     deleteStoredDocument,
     moveStoredDocument,
     getStoredDocument,
-    buildDocumentReferenceContext,
-    estimateDocumentReferenceTokens,
   } = useStoredDocuments(multipartAssemblies);
   const {
     libraryItems,
@@ -236,8 +264,9 @@ export default function ChatApp() {
       searchHistory,
       searchHistoryStorageMB,
       documentStorageMB,
-      multipartStorageMB,
-    });
+    multipartStorageMB,
+    sourceDisplayCount,
+  });
   const {
     pendingIntentCandidates,
     setPendingIntentCandidates,
@@ -253,19 +282,27 @@ export default function ChatApp() {
 
   const taskProtocol = useKinTaskProtocol();
 
+  const {
+    updateMemoryInterpreterSettings,
+    approveMemoryRuleCandidate,
+    rejectMemoryRuleCandidate,
+    deleteApprovedMemoryRule,
+  } = useMemoryRuleActions({
+    setMemoryInterpreterSettings,
+    pendingMemoryRuleCandidates,
+    setPendingMemoryRuleCandidates,
+    setApprovedMemoryRules,
+    setRejectedMemoryRuleCandidateSignatures,
+  });
+
   const [chatBridgeSettings] = useState<ChatBridgeSettings>({
     injectTaskContextOnReference: true,
     alwaysShowCurrentTaskInChatContext: false,
   });
 
-  const ingestProtocolMessage = (
-    text: string,
-    direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
-  ) => {
-    const events = extractTaskProtocolEvents(text);
-    if (events.length === 0) return;
-    taskProtocol.ingestProtocolEvents({ text, direction, events });
-  };
+  const ingestProtocolMessage = createProtocolEventIngestor(
+    taskProtocol.ingestProtocolEvents
+  );
 
   useChatPageLifecycle({
     currentKin,
@@ -275,7 +312,6 @@ export default function ChatApp() {
     setCurrentSessionId,
   });
 
-  const documentReferenceEstimatedTokens = estimateDocumentReferenceTokens();
   const libraryReferenceEstimatedTokens = estimateLibraryReferenceTokens();
 
   const {
@@ -294,6 +330,7 @@ export default function ChatApp() {
     gptMessages,
     setCurrentTaskDraft,
     resetTaskProtocolRuntime: taskProtocol.resetRuntime,
+    clearTaskScopedMemory,
     deleteSearchHistoryItemBase,
     currentTaskIntentConstraints: taskProtocol.runtime.currentTaskIntent?.constraints || [],
   });
@@ -333,6 +370,8 @@ export default function ChatApp() {
     sendToKin,
     sendToGpt,
     startAskAiModeSearch,
+    importYouTubeTranscript,
+    sendYouTubeTranscriptToKin,
     runPrepTaskFromInput,
     runUpdateTaskFromInput,
     runUpdateTaskFromLastGptMessage,
@@ -374,6 +413,8 @@ export default function ChatApp() {
     protocolRulebook,
     responseMode,
     chatBridgeSettings,
+    autoCopyFileIngestSysInfoToKin:
+      autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
     gptMessages,
     kinMessages,
       gptState,
@@ -398,6 +439,7 @@ export default function ChatApp() {
     setPendingKinInjectionIndex,
     setCurrentTaskDraft,
     setGptState,
+    persistCurrentGptState,
     setUploadKind,
     setPendingIntentCandidates,
     setApprovedIntentPhrases,
@@ -417,7 +459,6 @@ export default function ChatApp() {
     getProvisionalMemory,
     handleGptMemory,
     chatRecentLimit,
-    buildDocumentReferenceContext,
     buildLibraryReferenceContext,
     referenceLibraryItems: libraryItems,
     libraryIndexResponseCount,
@@ -516,12 +557,12 @@ export default function ChatApp() {
 
   const gptPanel = (
     <GptPanel
-      {...buildGptPanelProps({
-        currentKin,
-        currentKinLabel,
-        kinStatus,
-        gptState,
-        gptMessages,
+        {...buildGptPanelProps({
+          currentKin,
+          currentKinLabel,
+          kinStatus,
+          gptState,
+          gptMessages,
         gptInput,
         setGptInput,
         sendToGpt,
@@ -564,50 +605,50 @@ export default function ChatApp() {
         searchMode,
         searchEngines,
         searchLocation,
-        searchHistoryLimit,
-        searchHistoryStorageMB,
-        autoDocumentReferenceEnabled,
-        documentReferenceMode,
-        documentReferenceCount,
-        documentStorageMB,
-        documentReferenceEstimatedTokens,
-          autoLibraryReferenceEnabled,
-          libraryReferenceMode,
-          libraryIndexResponseCount,
-          libraryReferenceCount,
-          libraryStorageMB,
-          libraryReferenceEstimatedTokens,
-          autoSendKinSysInput: autoBridgeSettings.autoSendKinSysInput,
-          autoCopyKinSysResponseToGpt:
-            autoBridgeSettings.autoCopyKinSysResponseToGpt,
-          autoSendGptSysInput: autoBridgeSettings.autoSendGptSysInput,
-          autoCopyGptSysResponseToKin:
-            autoBridgeSettings.autoCopyGptSysResponseToKin,
+        sourceDisplayCount,
+        autoLibraryReferenceEnabled,
+        libraryReferenceMode,
+        libraryIndexResponseCount,
+        libraryReferenceCount,
+        libraryStorageMB,
+        libraryReferenceEstimatedTokens,
+        autoSendKinSysInput: autoBridgeSettings.autoSendKinSysInput,
+        autoCopyKinSysResponseToGpt:
+          autoBridgeSettings.autoCopyKinSysResponseToGpt,
+        autoSendGptSysInput: autoBridgeSettings.autoSendGptSysInput,
+        autoCopyGptSysResponseToKin:
+          autoBridgeSettings.autoCopyGptSysResponseToKin,
+        autoCopyFileIngestSysInfoToKin:
+          autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+        memoryInterpreterSettings,
+        pendingMemoryRuleCandidates,
+        approvedMemoryRules,
         onChangeSearchMode: setSearchMode,
         onChangeSearchEngines: setSearchEngines,
         onChangeSearchLocation: setSearchLocation,
-        onChangeSearchHistoryLimit: (value) =>
-          setSearchHistoryLimit(Math.max(1, Math.min(100, Number(value) || 1))),
-        onClearSearchHistory: clearSearchHistory,
-        onChangeAutoDocumentReferenceEnabled: setAutoDocumentReferenceEnabled,
-        onChangeDocumentReferenceMode: setDocumentReferenceMode,
-        onChangeDocumentReferenceCount: (value) =>
-          setDocumentReferenceCount(Math.max(1, Math.min(10, Number(value) || 1))),
+        onChangeSourceDisplayCount: (value) =>
+          setSourceDisplayCount(Math.max(1, Math.min(20, Number(value) || 1))),
         onChangeAutoLibraryReferenceEnabled: setAutoLibraryReferenceEnabled,
         onChangeLibraryReferenceMode: setLibraryReferenceMode,
-          onChangeLibraryIndexResponseCount: (value) =>
-            setLibraryIndexResponseCount(Math.max(1, Math.min(50, Number(value) || 1))),
-          onChangeLibraryReferenceCount: (value) =>
-            setLibraryReferenceCount(Math.max(0, Math.min(20, Number(value) || 0))),
-          onChangeAutoSendKinSysInput: (value: boolean) =>
-            updateAutoBridgeSettings({ autoSendKinSysInput: value }),
-          onChangeAutoCopyKinSysResponseToGpt: (value: boolean) =>
-            updateAutoBridgeSettings({ autoCopyKinSysResponseToGpt: value }),
-          onChangeAutoSendGptSysInput: (value: boolean) =>
-            updateAutoBridgeSettings({ autoSendGptSysInput: value }),
-          onChangeAutoCopyGptSysResponseToKin: (value: boolean) =>
-            updateAutoBridgeSettings({ autoCopyGptSysResponseToKin: value }),
-          onDeleteSearchHistoryItem: deleteSearchHistoryItem,
+        onChangeLibraryIndexResponseCount: (value) =>
+          setLibraryIndexResponseCount(Math.max(1, Math.min(50, Number(value) || 1))),
+        onChangeLibraryReferenceCount: (value) =>
+          setLibraryReferenceCount(Math.max(0, Math.min(20, Number(value) || 0))),
+        onChangeAutoSendKinSysInput: (value: boolean) =>
+          updateAutoBridgeSettings({ autoSendKinSysInput: value }),
+        onChangeAutoCopyKinSysResponseToGpt: (value: boolean) =>
+          updateAutoBridgeSettings({ autoCopyKinSysResponseToGpt: value }),
+        onChangeAutoSendGptSysInput: (value: boolean) =>
+          updateAutoBridgeSettings({ autoSendGptSysInput: value }),
+        onChangeAutoCopyGptSysResponseToKin: (value: boolean) =>
+          updateAutoBridgeSettings({ autoCopyGptSysResponseToKin: value }),
+        onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) =>
+          updateAutoBridgeSettings({ autoCopyFileIngestSysInfoToKin: value }),
+        onChangeMemoryInterpreterSettings: updateMemoryInterpreterSettings,
+        onApproveMemoryRuleCandidate: approveMemoryRuleCandidate,
+        onRejectMemoryRuleCandidate: rejectMemoryRuleCandidate,
+        onDeleteApprovedMemoryRule: deleteApprovedMemoryRule,
+        onDeleteSearchHistoryItem: deleteSearchHistoryItem,
         pendingIntentCandidates,
         approvedIntentPhrases,
         multipartAssemblies,
@@ -625,6 +666,8 @@ export default function ChatApp() {
         onSelectTaskLibraryItem: setSelectedTaskLibraryItemId,
         onChangeLibraryItemMode: setLibraryItemModeOverride,
         onStartAskAiModeSearch: startAskAiModeSearch,
+        onImportYouTubeTranscript: importYouTubeTranscript,
+        onSendYouTubeTranscriptToKin: sendYouTubeTranscriptToKin,
         onSaveStoredDocument: updateStoredDocument,
         onUpdateIntentCandidate: updateIntentCandidate,
         onApproveIntentCandidate: approveIntentCandidate,

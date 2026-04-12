@@ -6,8 +6,12 @@ import {
   extractTaskProtocolEvents,
 } from "@/lib/taskRuntimeProtocol";
 import { shouldInjectTaskContext } from "@/lib/taskChatBridge";
-import { extractPreferredKinTransferText } from "@/lib/app/kinStructuredProtocol";
+import {
+  buildKinSysInfoBlock,
+  extractPreferredKinTransferText,
+} from "@/lib/app/kinStructuredProtocol";
 import type { UseChatPageActionsArgs } from "@/hooks/useChatPageActions";
+import type { SourceItem } from "@/types/chat";
 
 export function useGptMessageActions(args: UseChatPageActionsArgs) {
   const parseWrappedSearchResponse = (text: string) => {
@@ -73,7 +77,6 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
         (item) => item.id === requestId || item.actionId === requestId
       ) || null,
     applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
-    buildDocumentReferenceContext: args.buildDocumentReferenceContext,
     buildLibraryReferenceContext: args.buildLibraryReferenceContext,
     referenceLibraryItems: args.referenceLibraryItems,
     libraryIndexResponseCount: args.libraryIndexResponseCount,
@@ -132,6 +135,141 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
     });
   };
 
+  const importYouTubeTranscript = async (source: SourceItem) => {
+    const videoId = source.videoId?.trim();
+    if (!videoId) return;
+
+    try {
+      const response = await fetch("/api/youtube-transcript", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videoId,
+          title: source.title,
+          channelName: source.channelName,
+          duration: source.duration,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        title?: string;
+        filename?: string;
+        summary?: string;
+        text?: string;
+        cleanText?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !data.text) {
+        throw new Error(data.error || "transcript import failed");
+      }
+
+      args.recordIngestedDocument({
+        title: data.title || `${source.title} [Transcript]`,
+        filename: data.filename || `youtube-${videoId}.txt`,
+        text: data.text,
+        summary: data.summary || "",
+        taskId: args.currentTaskDraft.taskId || undefined,
+        charCount: data.text.length,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      args.setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: `YouTube の文字起こしをライブラリに保存しました: ${data.title || source.title}`,
+          meta: {
+            kind: "task_info",
+            sourceType: "file_ingest",
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error(error);
+      args.setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "YouTube の文字起こし取込に失敗しました。",
+          meta: {
+            kind: "task_info",
+            sourceType: "file_ingest",
+          },
+        },
+      ]);
+    }
+  };
+
+  const sendYouTubeTranscriptToKin = async (source: SourceItem) => {
+    const videoId = source.videoId?.trim();
+    if (!videoId) return;
+
+    try {
+      const response = await fetch("/api/youtube-transcript", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          videoId,
+          title: source.title,
+          channelName: source.channelName,
+          duration: source.duration,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        title?: string;
+        text?: string;
+        cleanText?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !(data.cleanText || data.text)) {
+        throw new Error(data.error || "transcript kin transfer failed");
+      }
+
+      const cleanTranscript =
+        (data.cleanText || data.text || "")
+          .replace(/^\[[^\]]+\]\s*/gm, "")
+          .trim();
+
+      const block = buildKinSysInfoBlock({
+        title: "YouTube Script",
+        content: [
+          source.title ? `Title: ${source.title}` : "",
+          source.channelName ? `Channel: ${source.channelName}` : "",
+          cleanTranscript,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      });
+
+      args.setKinInput(block);
+      if (args.isMobile) args.setActiveTab("kin");
+    } catch (error) {
+      console.error(error);
+      args.setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: "YouTube の文字起こしを Kin 送付用に整形できませんでした。",
+          meta: {
+            kind: "task_info",
+            sourceType: "manual",
+          },
+        },
+      ]);
+    }
+  };
+
   const sendLastKinToGptDraft = () => {
     const last = [...args.kinMessages].reverse().find((m) => m.role === "kin");
     if (!last) return;
@@ -169,6 +307,8 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
   return {
     sendToGpt,
     startAskAiModeSearch,
+    importYouTubeTranscript,
+    sendYouTubeTranscriptToKin,
     sendLastKinToGptDraft,
     receiveLastKinResponseToGptInput,
     sendLastGptToKinInfo,

@@ -2,6 +2,7 @@ import { generateId } from "@/lib/uuid";
 import {
   buildKinSysInfoBlock,
   buildKinSysTaskBlock,
+  summarizeTaskContentForKinInfo,
 } from "@/lib/app/kinStructuredProtocol";
 import { buildKinDirectiveLines } from "@/lib/app/transformIntent";
 import type { TransformIntent } from "@/lib/app/transformIntent";
@@ -182,7 +183,6 @@ export async function sendLatestGptContentToKinFlow({
   const block = buildKinSysInfoBlock({
     taskSlot: currentTaskSlot,
     title: currentTaskTitle || "Latest GPT response",
-    sourceLabel: "gpt_latest_response",
     content,
     directiveLines,
   });
@@ -302,7 +302,10 @@ export async function sendCurrentTaskContentToKinFlow({
   });
   applyTaskUsage(usage);
 
-  let content = sourceText.trim();
+  let content =
+    intent.mode === "sys_info"
+      ? summarizeTaskContentForKinInfo(sourceText, currentTaskTitle || "Current task")
+      : sourceText.trim();
 
   if (intent.mode === "sys_task") {
     const taskInstruction =
@@ -381,7 +384,6 @@ export async function sendCurrentTaskContentToKinFlow({
       ? buildKinSysInfoBlock({
           taskSlot: currentTaskSlot,
           title: currentTaskTitle || "Current task",
-          sourceLabel: "current_task",
           content,
           directiveLines,
         })

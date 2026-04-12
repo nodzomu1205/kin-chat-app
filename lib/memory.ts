@@ -26,7 +26,7 @@ export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
   maxPreferences: 8,
   chatRecentLimit: 10,
   summarizeThreshold: 8,
-  recentKeep: 6,
+  recentKeep: 4,
 };
 
 export function createEmptyMemory(): Memory {

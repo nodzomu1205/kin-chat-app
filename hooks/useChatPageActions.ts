@@ -2,7 +2,6 @@ import type React from "react";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import type { SearchContext, SearchEngine, SearchMode, TaskDraft } from "@/types/task";
 import type {
-  DocumentReferenceMode,
   GptInstructionMode,
   PostIngestAction,
   ResponseMode,
@@ -19,6 +18,13 @@ import { useTaskProtocolActions } from "@/hooks/useTaskProtocolActions";
 import { useFileIngestActions } from "@/hooks/useFileIngestActions";
 
 type TaskProtocolController = ReturnType<typeof useKinTaskProtocol>;
+
+export type MemoryUpdateOptions = {
+  topicSeed?: string;
+  lastUserIntent?: string;
+  activeDocument?: Record<string, unknown> | null;
+  previousCommittedTopic?: string;
+};
 
 export type UseChatPageActionsArgs = {
   gptInput: string;
@@ -37,6 +43,7 @@ export type UseChatPageActionsArgs = {
   protocolRulebook: string;
   responseMode: ResponseMode;
   chatBridgeSettings: ChatBridgeSettings;
+  autoCopyFileIngestSysInfoToKin: boolean;
   gptMessages: Message[];
   kinMessages: Message[];
   gptState: any;
@@ -61,6 +68,7 @@ export type UseChatPageActionsArgs = {
   setPendingKinInjectionIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentTaskDraft: React.Dispatch<React.SetStateAction<TaskDraft>>;
   setGptState: React.Dispatch<React.SetStateAction<any>>;
+  persistCurrentGptState: (state: any) => void;
   setUploadKind: React.Dispatch<React.SetStateAction<any>>;
   setPendingIntentCandidates: React.Dispatch<
     React.SetStateAction<PendingIntentCandidate[]>
@@ -112,10 +120,10 @@ export type UseChatPageActionsArgs = {
     }
   ) => any;
   handleGptMemory: (
-    recent: Message[]
+    recent: Message[],
+    options?: MemoryUpdateOptions
   ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
   chatRecentLimit: number;
-  buildDocumentReferenceContext: () => string;
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
@@ -176,6 +184,8 @@ export function useChatPageActions(args: UseChatPageActionsArgs) {
   const {
     sendToGpt,
     startAskAiModeSearch,
+    importYouTubeTranscript,
+    sendYouTubeTranscriptToKin,
     sendLastKinToGptDraft,
     receiveLastKinResponseToGptInput,
   } = useGptMessageActions(args);
@@ -221,6 +231,8 @@ export function useChatPageActions(args: UseChatPageActionsArgs) {
     sendToKin,
     sendToGpt,
     startAskAiModeSearch,
+    importYouTubeTranscript,
+    sendYouTubeTranscriptToKin,
     runPrepTaskFromInput,
     runUpdateTaskFromInput,
     runUpdateTaskFromLastGptMessage,

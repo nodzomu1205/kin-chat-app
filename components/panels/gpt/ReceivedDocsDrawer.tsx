@@ -18,11 +18,14 @@ type Props = Pick<
   | "multipartAssemblies"
   | "referenceLibraryItems"
   | "libraryReferenceCount"
+  | "sourceDisplayCount"
   | "selectedTaskLibraryItemId"
   | "onSelectTaskLibraryItem"
   | "onMoveLibraryItem"
   | "onChangeLibraryItemMode"
   | "onStartAskAiModeSearch"
+  | "onImportYouTubeTranscript"
+  | "onSendYouTubeTranscriptToKin"
   | "onDownloadMultipartAssembly"
   | "onDeleteMultipartAssembly"
   | "onDownloadStoredDocument"
@@ -59,19 +62,26 @@ function iconButton(tone: "default" | "danger" = "default"): React.CSSProperties
 
 function typeLabel(itemType: "search" | "kin_created" | "ingested_file") {
   if (itemType === "search") return "検索データ";
-  if (itemType === "kin_created") return "Kin作成書類";
-  return "注入書類";
+  if (itemType === "kin_created") return "Kin作成文書";
+  return "取込文書";
+}
+
+function sectionTitle(text: string) {
+  return <div style={{ fontWeight: 700, color: "#0f172a" }}>{text}</div>;
 }
 
 export default function ReceivedDocsDrawer({
   multipartAssemblies,
   referenceLibraryItems,
   libraryReferenceCount,
+  sourceDisplayCount,
   selectedTaskLibraryItemId,
   onSelectTaskLibraryItem,
   onMoveLibraryItem,
   onChangeLibraryItemMode,
   onStartAskAiModeSearch,
+  onImportYouTubeTranscript,
+  onSendYouTubeTranscriptToKin,
   onDownloadMultipartAssembly,
   onDeleteMultipartAssembly,
   onDownloadStoredDocument,
@@ -142,10 +152,10 @@ export default function ReceivedDocsDrawer({
           すべて
         </button>
         <button type="button" onClick={() => setActiveTab("kin")} style={tabButton(activeTab === "kin")}>
-          Kin作成書類
+          Kin作成文書
         </button>
         <button type="button" onClick={() => setActiveTab("ingest")} style={tabButton(activeTab === "ingest")}>
-          注入書類
+          取込文書
         </button>
         <button type="button" onClick={() => setActiveTab("search")} style={tabButton(activeTab === "search")}>
           検索データ
@@ -261,7 +271,7 @@ export default function ReceivedDocsDrawer({
                           padding: "2px 8px",
                         }}
                       >
-                        取込対象
+                        タスク選択中
                       </span>
                     ) : null}
                     <button
@@ -353,7 +363,7 @@ export default function ReceivedDocsDrawer({
                       padding: "0 10px",
                     }}
                   >
-                    <option value="default">全体設定に従う</option>
+                    <option value="default">全設定に従う</option>
                     <option value="summary_only">summary only</option>
                     <option value="summary_with_excerpt">summary + excerpt</option>
                   </select>
@@ -390,11 +400,11 @@ export default function ReceivedDocsDrawer({
                       gap: 8,
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: "#0f172a" }}>プレビュー</div>
+                    {sectionTitle("プレビュー")}
 
                     <div style={{ display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
                       <div>
-                        <strong>種類:</strong> {typeLabel(item.itemType)}
+                        <strong>種別:</strong> {typeLabel(item.itemType)}
                       </div>
                       <div>
                         <strong>Summary:</strong> {item.summary || "なし"}
@@ -406,7 +416,7 @@ export default function ReceivedDocsDrawer({
                       ) : null}
                       {multipartSource ? (
                         <div>
-                          <strong>構成:</strong> {multipartSource.parts.length}/
+                          <strong>分割:</strong> {multipartSource.parts.length}/
                           {multipartSource.totalParts}
                         </div>
                       ) : null}
@@ -416,9 +426,7 @@ export default function ReceivedDocsDrawer({
                       <>
                         {askAiModeCandidates.length > 0 ? (
                           <div style={{ display: "grid", gap: 8 }}>
-                            <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                              Ask AI Mode
-                            </div>
+                            {sectionTitle("Ask AI Mode")}
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                               {askAiModeCandidates.map((candidate) => (
                                 <button
@@ -441,13 +449,57 @@ export default function ReceivedDocsDrawer({
                           </div>
                         ) : null}
                         {item.sources?.length ? (
-                          <div style={{ display: "grid", gap: 4, fontSize: 12, color: "#475569" }}>
-                            {item.sources.map((source, sourceIndex) => (
-                              <div key={`${item.id}-${sourceIndex}`}>
-                                {sourceIndex + 1}. {source.title}
-                                {source.link ? ` | ${source.link}` : ""}
-                              </div>
-                            ))}
+                          <div style={{ display: "grid", gap: 6, fontSize: 12, color: "#475569" }}>
+                            {item.sources
+                              .slice(0, Math.max(1, sourceDisplayCount || 1))
+                              .map((source, sourceIndex) => (
+                                <div
+                                  key={`${item.id}-${sourceIndex}`}
+                                  style={{
+                                    display: "grid",
+                                    gap: 4,
+                                    border: "1px solid #e2e8f0",
+                                    borderRadius: 10,
+                                    background: "#fff",
+                                    padding: "8px 10px",
+                                  }}
+                                >
+                                  <div>
+                                    {sourceIndex + 1}. {source.title}
+                                    {source.link ? ` | ${source.link}` : ""}
+                                  </div>
+                                  {source.sourceType === "youtube_video" ? (
+                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => void onImportYouTubeTranscript(source)}
+                                        style={{
+                                          ...pillButton,
+                                          background: "#fff",
+                                          color: "#b91c1c",
+                                          border: "1px solid #fca5a5",
+                                        }}
+                                      >
+                                        文字起こし取込
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void onSendYouTubeTranscriptToKin(source)
+                                        }
+                                        style={{
+                                          ...pillButton,
+                                          background: "#fff",
+                                          color: "#7c3aed",
+                                          border: "1px solid #c4b5fd",
+                                        }}
+                                      >
+                                        文字起こしKin送付
+                                      </button>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
                           </div>
                         ) : null}
                         <textarea

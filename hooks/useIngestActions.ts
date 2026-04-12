@@ -91,7 +91,6 @@ function toTransformResponseMode(
   mode?: ResponseMode
 ): "strict" | "creative" | undefined {
   if (!mode) return undefined;
-  if (mode === "balanced") return "strict";
   return mode;
 }
 
@@ -129,7 +128,6 @@ function buildBlocksFromText(args: {
     buildKinSysInfoBlock({
       taskSlot: args.taskSlot,
       title: args.title,
-      sourceLabel: args.sourceLabel || 'file_ingest',
       content: chunk,
       directiveLines: args.directiveLines,
       partIndex: index + 1,
@@ -284,7 +282,6 @@ export function useIngestActions({
               mode: intent.mode,
               taskSlot: 1,
               title: title || file.name,
-              sourceLabel: 'file_ingest',
               content: effectiveContent,
               directiveLines,
             })

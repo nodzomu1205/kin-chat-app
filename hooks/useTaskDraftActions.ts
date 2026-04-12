@@ -31,10 +31,13 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
       setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
       gptStateRef: args.gptStateRef,
       chatRecentLimit: args.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
     });
   };
 
@@ -51,10 +54,13 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
       setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
       gptStateRef: args.gptStateRef,
       chatRecentLimit: args.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
     });
   };
 
@@ -72,10 +78,13 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
       setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
       gptStateRef: args.gptStateRef,
       chatRecentLimit: args.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
     });
   };
 
@@ -94,10 +103,13 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
       setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
       gptStateRef: args.gptStateRef,
       chatRecentLimit: args.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
     });
   };
 
@@ -114,10 +126,13 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
       setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
       gptStateRef: args.gptStateRef,
       chatRecentLimit: args.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
     });
   };
 

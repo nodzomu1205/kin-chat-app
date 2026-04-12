@@ -2,6 +2,10 @@ import type { Dispatch, SetStateAction } from "react";
 import { generateId } from "@/lib/uuid";
 import type { Message } from "@/types/chat";
 import type { KinConnectionState } from "@/hooks/useKinManager";
+import {
+  buildProgressAckResponseBlock,
+  extractTaskProtocolEvents,
+} from "@/lib/taskRuntimeProtocol";
 
 type RunSendKinMessageFlowArgs = {
   text: string;
@@ -91,6 +95,20 @@ export async function runSendKinMessageFlow({
         setKinInput(pendingKinInjectionBlocks[nextIndex]);
       } else {
         clearPendingKinInjection();
+      }
+    }
+
+    if (
+      typeof data.reply === "string" &&
+      pendingKinInjectionBlocks.length === 0
+    ) {
+      const events = extractTaskProtocolEvents(data.reply);
+      const progressOnly =
+        events.length > 0 && events.every((event) => event.type === "task_progress");
+      const taskId = events.find((event) => event.taskId)?.taskId;
+
+      if (progressOnly && taskId) {
+        setKinInput(buildProgressAckResponseBlock({ taskId }));
       }
     }
   } catch (error) {

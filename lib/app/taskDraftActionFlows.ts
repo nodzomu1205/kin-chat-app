@@ -1,4 +1,4 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+﻿import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { generateId } from "@/lib/uuid";
 import {
   buildMergedTaskInput,
@@ -9,6 +9,10 @@ import {
   runAutoPrepTask,
 } from "@/lib/app/gptTaskClient";
 import { createTaskSource } from "@/lib/app/taskDraftHelpers";
+import {
+  appendTaskInfoMessage,
+  applyTaskMemoryBridge,
+} from "@/lib/app/taskDraftFlowShared";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchContext, TaskDraft } from "@/types/task";
 import { normalizeUsage } from "@/lib/tokenStats";
@@ -38,34 +42,21 @@ type CommonTaskDraftFlowArgs = {
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
   setGptState: Dispatch<SetStateAction<any>>;
+  persistCurrentGptState?: (state: any) => void;
   setCurrentTaskDraft: SetTaskDraft;
   gptStateRef: MutableRefObject<{ recentMessages?: Message[] }>;
   chatRecentLimit: number;
   applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  handleGptMemory: (
+    recent: Message[],
+    options?: {
+      topicSeed?: string;
+      lastUserIntent?: string;
+      activeDocument?: Record<string, unknown> | null;
+    }
+  ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
 };
-
-function appendInfoMessage(
-  setGptMessages: Dispatch<SetStateAction<Message[]>>,
-  text: string,
-  sourceType: Message["meta"] extends infer M
-    ? M extends { sourceType?: infer S }
-      ? S
-      : never
-    : never = "manual"
-) {
-  setGptMessages((prev) => [
-    ...prev,
-    {
-      id: generateId(),
-      role: "gpt",
-      text,
-      meta: {
-        kind: "task_info",
-        sourceType: sourceType as any,
-      },
-    },
-  ]);
-}
 
 export async function runPrepTaskFromInputFlow(
   args: CommonTaskDraftFlowArgs & { gptInput: string }
@@ -116,10 +107,15 @@ export async function runPrepTaskFromInputFlow(
     const updatedRecent = [...newRecent, assistantMsg].slice(-args.chatRecentLimit);
 
     args.setGptMessages((prev) => [...prev, assistantMsg]);
-    args.setGptState((prev: any) => ({
-      ...prev,
+    applyTaskMemoryBridge({
+      setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
+      gptStateRef: args.gptStateRef,
       recentMessages: updatedRecent,
-    }));
+      topic: resolvedTitle,
+      taskTitle: resolvedTitle,
+      lastUserIntent: `タスク整理: ${resolvedTitle}`,
+    });
 
     const source = createTaskSource("gpt_chat", "GPT task prep", text);
     args.setCurrentTaskDraft((prev) => ({
@@ -140,9 +136,16 @@ export async function runPrepTaskFromInputFlow(
     }));
 
     args.applyTaskUsage(data?.usage);
+    const memoryResult = await args.handleGptMemory(updatedRecent, {
+      topicSeed: resolvedTitle,
+      lastUserIntent: `タスク整理: ${resolvedTitle}`,
+    });
+    if (memoryResult.summaryUsage) {
+      args.applySummaryUsage(memoryResult.summaryUsage);
+    }
   } catch (error) {
     console.error(error);
-    appendInfoMessage(args.setGptMessages, "Task preparation failed.");
+    appendTaskInfoMessage(args.setGptMessages, "Task preparation failed.");
   } finally {
     args.setGptLoading(false);
   }
@@ -155,7 +158,7 @@ export async function runUpdateTaskFromInputFlow(
 
   const currentTaskText = args.getTaskBaseText();
   if (!currentTaskText) {
-    appendInfoMessage(args.setGptMessages, "No current task content was found to update.");
+    appendTaskInfoMessage(args.setGptMessages, "No current task content was found to update.");
     return;
   }
 
@@ -211,10 +214,15 @@ export async function runUpdateTaskFromInputFlow(
     const updatedRecent = [...newRecent, assistantMsg].slice(-args.chatRecentLimit);
 
     args.setGptMessages((prev) => [...prev, assistantMsg]);
-    args.setGptState((prev: any) => ({
-      ...prev,
+    applyTaskMemoryBridge({
+      setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
+      gptStateRef: args.gptStateRef,
       recentMessages: updatedRecent,
-    }));
+      topic: resolvedTitle,
+      taskTitle: resolvedTitle,
+      lastUserIntent: `タスク更新: ${resolvedTitle}`,
+    });
 
     const source = createTaskSource(
       "manual_note",
@@ -238,9 +246,16 @@ export async function runUpdateTaskFromInputFlow(
     }));
 
     args.applyTaskUsage(data?.usage);
+    const memoryResult = await args.handleGptMemory(updatedRecent, {
+      topicSeed: resolvedTitle,
+      lastUserIntent: `タスク更新: ${resolvedTitle}`,
+    });
+    if (memoryResult.summaryUsage) {
+      args.applySummaryUsage(memoryResult.summaryUsage);
+    }
   } catch (error) {
     console.error(error);
-    appendInfoMessage(args.setGptMessages, "Task update failed.");
+    appendTaskInfoMessage(args.setGptMessages, "Task update failed.");
   } finally {
     args.setGptLoading(false);
   }
@@ -256,7 +271,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
 
   const currentTaskText = args.getTaskBaseText();
   if (!currentTaskText) {
-    appendInfoMessage(args.setGptMessages, "No current task content was found to update.");
+    appendTaskInfoMessage(args.setGptMessages, "No current task content was found to update.");
     return;
   }
 
@@ -265,7 +280,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
 
   if (!lastGptMessage) {
-    appendInfoMessage(args.setGptMessages, "No recent GPT message was found.");
+    appendTaskInfoMessage(args.setGptMessages, "No recent GPT message was found.");
     return;
   }
 
@@ -291,19 +306,28 @@ export async function runUpdateTaskFromLastGptMessageFlow(
   try {
     const data = await runAutoPrepTask(taskInput, "task-update-last-gpt");
     const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-    args.setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: ["Task updated from latest GPT message.", taskText].join("\n\n"),
-        meta: {
-          kind: "task_prep",
-          sourceType: "gpt_input",
-        },
+    const assistantMsg: Message = {
+      id: generateId(),
+      role: "gpt",
+      text: ["Task updated from latest GPT message.", taskText].join("\n\n"),
+      meta: {
+        kind: "task_prep",
+        sourceType: "gpt_input",
       },
-    ]);
+    };
+    const baseRecent = args.gptStateRef.current.recentMessages || [];
+    const updatedRecent = [...baseRecent, assistantMsg].slice(-args.chatRecentLimit);
+
+    args.setGptMessages((prev) => [...prev, assistantMsg]);
+    applyTaskMemoryBridge({
+      setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
+      gptStateRef: args.gptStateRef,
+      recentMessages: updatedRecent,
+      topic: resolvedTitle,
+      taskTitle: resolvedTitle,
+      lastUserIntent: `最新GPTレスからタスク更新: ${resolvedTitle}`,
+    });
 
     const source = createTaskSource(
       "manual_note",
@@ -326,9 +350,16 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     }));
 
     args.applyTaskUsage(data?.usage);
+    const memoryResult = await args.handleGptMemory(updatedRecent, {
+      topicSeed: resolvedTitle,
+      lastUserIntent: `最新GPTレスからタスク更新: ${resolvedTitle}`,
+    });
+    if (memoryResult.summaryUsage) {
+      args.applySummaryUsage(memoryResult.summaryUsage);
+    }
   } catch (error) {
     console.error(error);
-    appendInfoMessage(args.setGptMessages, "Updating the task from the latest GPT message failed.");
+    appendTaskInfoMessage(args.setGptMessages, "Updating the task from the latest GPT message failed.");
   } finally {
     args.setGptLoading(false);
   }
@@ -353,7 +384,7 @@ export async function runAttachSearchResultToTaskFlow(
       : taskLibraryItem?.excerptText.trim() || "";
 
   if (!materialText) {
-    appendInfoMessage(args.setGptMessages, "No library item is available to attach.");
+    appendTaskInfoMessage(args.setGptMessages, "No library item is available to attach.");
     return;
   }
 
@@ -387,19 +418,34 @@ export async function runAttachSearchResultToTaskFlow(
     try {
       const data = await runAutoPrepTask(prepInput, "attach-library-item");
       const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-      args.setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: ["Library item imported into a new task.", taskText].join("\n\n"),
-          meta: {
-            kind: "task_prep",
-            sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
-          },
+      const assistantMsg: Message = {
+        id: generateId(),
+        role: "gpt",
+        text: ["Library item imported into a new task.", taskText].join("\n\n"),
+        meta: {
+          kind: "task_prep",
+          sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
         },
-      ]);
+      };
+      const baseRecent = args.gptStateRef.current.recentMessages || [];
+      const updatedRecent = [...baseRecent, assistantMsg].slice(-args.chatRecentLimit);
+
+      args.setGptMessages((prev) => [...prev, assistantMsg]);
+      applyTaskMemoryBridge({
+        setGptState: args.setGptState,
+        persistCurrentGptState: args.persistCurrentGptState,
+        gptStateRef: args.gptStateRef,
+        recentMessages: updatedRecent,
+        topic: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+        taskTitle: resolvedTitle,
+        lastUserIntent: `ライブラリアイテム「${taskLibraryItem?.title || resolvedTitle}」を新規タスクに取込`,
+        activeReference: {
+          title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+          kind: taskLibraryItem?.itemType || "library",
+          sourceId: taskLibraryItem?.id,
+          excerpt: materialText.slice(0, 400),
+        },
+      });
 
       const source = createTaskSource(
         taskLibraryItem?.itemType === "search"
@@ -439,9 +485,23 @@ export async function runAttachSearchResultToTaskFlow(
       }));
 
       args.applyTaskUsage(data?.usage);
+      const memoryResult = await args.handleGptMemory(updatedRecent, {
+        topicSeed: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+        lastUserIntent: `ライブラリアイテム「${taskLibraryItem?.title || resolvedTitle}」を新規タスクに取込`,
+        activeDocument: {
+          title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+          kind: taskLibraryItem?.itemType || "library",
+          sourceId: taskLibraryItem?.id,
+          excerpt: materialText.slice(0, 400),
+          importedAt: new Date().toISOString(),
+        },
+      });
+      if (memoryResult.summaryUsage) {
+        args.applySummaryUsage(memoryResult.summaryUsage);
+      }
     } catch (error) {
       console.error(error);
-      appendInfoMessage(
+      appendTaskInfoMessage(
         args.setGptMessages,
         "Importing the library item into a new task failed."
       );
@@ -465,19 +525,34 @@ export async function runAttachSearchResultToTaskFlow(
   try {
     const data = await runAutoPrepTask(taskInput, "attach-search-result");
     const taskText = formatTaskResultText(data?.parsed, data?.raw);
-
-    args.setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: ["Library item attached to task.", taskText].join("\n\n"),
-        meta: {
-          kind: "task_prep",
-          sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
-        },
+    const assistantMsg: Message = {
+      id: generateId(),
+      role: "gpt",
+      text: ["Library item attached to task.", taskText].join("\n\n"),
+      meta: {
+        kind: "task_prep",
+        sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
       },
-    ]);
+    };
+    const baseRecent = args.gptStateRef.current.recentMessages || [];
+    const updatedRecent = [...baseRecent, assistantMsg].slice(-args.chatRecentLimit);
+
+    args.setGptMessages((prev) => [...prev, assistantMsg]);
+    applyTaskMemoryBridge({
+      setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
+      gptStateRef: args.gptStateRef,
+      recentMessages: updatedRecent,
+      topic: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+      taskTitle: resolvedTitle,
+      lastUserIntent: `ライブラリアイテム「${taskLibraryItem?.title || resolvedTitle}」をタスクに統合`,
+      activeReference: {
+        title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+        kind: taskLibraryItem?.itemType || "library",
+        sourceId: taskLibraryItem?.id,
+        excerpt: materialText.slice(0, 400),
+      },
+    });
 
     const source = createTaskSource(
       taskLibraryItem?.itemType === "search"
@@ -510,9 +585,23 @@ export async function runAttachSearchResultToTaskFlow(
     }));
 
     args.applyTaskUsage(data?.usage);
+    const memoryResult = await args.handleGptMemory(updatedRecent, {
+      topicSeed: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+      lastUserIntent: `ライブラリアイテム「${taskLibraryItem?.title || resolvedTitle}」をタスクに統合`,
+      activeDocument: {
+        title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
+        kind: taskLibraryItem?.itemType || "library",
+        sourceId: taskLibraryItem?.id,
+        excerpt: materialText.slice(0, 400),
+        importedAt: new Date().toISOString(),
+      },
+    });
+    if (memoryResult.summaryUsage) {
+      args.applySummaryUsage(memoryResult.summaryUsage);
+    }
   } catch (error) {
     console.error(error);
-    appendInfoMessage(args.setGptMessages, "Attaching the library item to the task failed.");
+    appendTaskInfoMessage(args.setGptMessages, "Attaching the library item to the task failed.");
   } finally {
     args.setGptLoading(false);
   }
@@ -525,7 +614,7 @@ export async function runDeepenTaskFromLastFlow(
 
   const text = args.getTaskBaseText();
   if (!text) {
-    appendInfoMessage(args.setGptMessages, "No task content was found to deepen.");
+    appendTaskInfoMessage(args.setGptMessages, "No task content was found to deepen.");
     return;
   }
 
@@ -575,10 +664,15 @@ export async function runDeepenTaskFromLastFlow(
     const updatedRecent = [...newRecent, assistantMsg].slice(-args.chatRecentLimit);
 
     args.setGptMessages((prev) => [...prev, assistantMsg]);
-    args.setGptState((prev: any) => ({
-      ...prev,
+    applyTaskMemoryBridge({
+      setGptState: args.setGptState,
+      persistCurrentGptState: args.persistCurrentGptState,
+      gptStateRef: args.gptStateRef,
       recentMessages: updatedRecent,
-    }));
+      topic: resolvedTitle,
+      taskTitle: resolvedTitle,
+      lastUserIntent: `タスク深掘り: ${resolvedTitle}`,
+    });
 
     args.setCurrentTaskDraft((prev) => ({
       ...prev,
@@ -594,9 +688,16 @@ export async function runDeepenTaskFromLastFlow(
     }));
 
     args.applyTaskUsage(data?.usage);
+    const memoryResult = await args.handleGptMemory(updatedRecent, {
+      topicSeed: resolvedTitle,
+      lastUserIntent: `タスク深掘り: ${resolvedTitle}`,
+    });
+    if (memoryResult.summaryUsage) {
+      args.applySummaryUsage(memoryResult.summaryUsage);
+    }
   } catch (error) {
     console.error(error);
-    appendInfoMessage(args.setGptMessages, "Deepening the task failed.");
+    appendTaskInfoMessage(args.setGptMessages, "Deepening the task failed.");
   } finally {
     args.setGptLoading(false);
   }

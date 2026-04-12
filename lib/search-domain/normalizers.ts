@@ -63,6 +63,22 @@ type AiModeTextBlock = {
 };
 
 type GenericRecord = Record<string, unknown>;
+type YoutubeVideoResult = {
+  title?: string;
+  link?: string;
+  snippet?: string;
+  published_date?: string;
+  channel?: {
+    name?: string;
+    link?: string;
+  };
+  views?: string | number;
+  length?: string;
+  thumbnail?: {
+    static?: string;
+    rich?: string;
+  };
+};
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -81,6 +97,41 @@ function normalizeSources(
       sourceType,
       publishedAt: item.date,
     }));
+}
+
+function normalizeYoutubeSources(items: YoutubeVideoResult[]): SearchSourceItem[] {
+  return items
+    .filter((item) => item.title && item.link)
+    .map((item) => {
+      const videoId =
+        typeof item.link === "string"
+          ? (() => {
+              try {
+                const url = new URL(item.link);
+                return url.searchParams.get("v") || "";
+              } catch {
+                return "";
+              }
+            })()
+          : "";
+
+      return {
+        title: item.title || "Untitled",
+        link: item.link || "",
+        snippet: item.snippet,
+        sourceType: "youtube_video",
+        publishedAt: item.published_date,
+        thumbnailUrl:
+          item.thumbnail?.rich ||
+          item.thumbnail?.static ||
+          (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : undefined),
+        channelName: item.channel?.name,
+        duration: item.length,
+        viewCount:
+          typeof item.views === "number" ? String(item.views) : item.views,
+        videoId: videoId || undefined,
+      };
+    });
 }
 
 function dedupeSources(items: SearchSourceItem[]) {
@@ -435,6 +486,40 @@ export function normalizeEngineResult(
           ? `${request.query} について、ニュース検索から ${sources.length} 件の関連記事を取得しました。`
           : `${request.query} についてニュース検索で関連記事を取得できませんでした。`,
       rawText: buildRawBlock("Google News", sources),
+      sources,
+      metadata: { engine: result.engine, resultCount: sources.length },
+    };
+  }
+
+  if (result.engine === "youtube_search") {
+    const videoResults = asArray<YoutubeVideoResult>(
+      (result.raw as { video_results?: unknown }).video_results
+    );
+    const sources = normalizeYoutubeSources(videoResults);
+
+    return {
+      summaryText:
+        sources.length > 0
+          ? `${request.query} について YouTube から ${sources.length} 件の動画候補を取得しました。`
+          : `${request.query} について YouTube 動画は見つかりませんでした。`,
+      rawText: [
+        "YouTube",
+        ...(sources.length > 0
+          ? sources.map((source) =>
+              [
+                `- ${source.title}`,
+                source.channelName ? `  Channel: ${source.channelName}` : "",
+                source.duration ? `  Duration: ${source.duration}` : "",
+                source.viewCount ? `  Views: ${source.viewCount}` : "",
+                source.publishedAt ? `  Published: ${source.publishedAt}` : "",
+                source.link ? `  URL: ${source.link}` : "",
+                source.snippet ? `  Snippet: ${source.snippet}` : "",
+              ]
+                .filter(Boolean)
+                .join("\n")
+            )
+          : ["- No videos found"]),
+      ].join("\n"),
       sources,
       metadata: { engine: result.engine, resultCount: sources.length },
     };

@@ -201,3 +201,13 @@ export function buildLimitExceededBlock(params: {
     "<<END_SYS_TASK_CONFIRM>>",
   ].join("\n");
 }
+
+export function buildProgressAckResponseBlock(params: { taskId: string }) {
+  return [
+    "<<SYS_GPT_RESPONSE>>",
+    `TASK_ID: ${params.taskId}`,
+    "ACTION_ID: PROGRESS_ACK",
+    "BODY: Noted. Continue the work.",
+    "<<END_SYS_GPT_RESPONSE>>",
+  ].join("\n");
+}

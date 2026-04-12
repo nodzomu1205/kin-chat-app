@@ -80,6 +80,7 @@ export type SearchEngine =
   | "google_news"
   | "google_maps"
   | "google_local"
+  | "youtube_search"
   | "google_flights"
   | "google_hotels"
   | "google_shopping"
@@ -91,6 +92,11 @@ export type SearchSourceItem = {
   snippet?: string;
   sourceType?: string;
   publishedAt?: string;
+  thumbnailUrl?: string;
+  channelName?: string;
+  duration?: string;
+  viewCount?: string;
+  videoId?: string;
 };
 
 export type SearchProductItem = {

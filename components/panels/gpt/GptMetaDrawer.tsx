@@ -234,10 +234,10 @@ export default function GptMetaDrawer({
           alignItems: "start",
         }}
       >
-        <div style={tokenCardStyle}>
-          <div
-            style={{
-              display: "flex",
+          <div style={tokenCardStyle}>
+            <div
+              style={{
+                display: "flex",
               justifyContent: "space-between",
               alignItems: "baseline",
               gap: 8,
@@ -370,23 +370,23 @@ export default function GptMetaDrawer({
             </button>
           </div>
 
-          {showMemoryContent && (
-            <pre
-              style={{
-                margin: 0,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                fontSize: 12,
-                lineHeight: 1.6,
-                color: "#0f172a",
-                maxHeight: isMobile ? "28dvh" : "32dvh",
-                overflowY: "auto",
-              }}
-            >
-              {JSON.stringify(gptState.memory ?? {}, null, 2)}
-            </pre>
-          )}
-        </div>
+            {showMemoryContent && (
+              <pre
+                style={{
+                  margin: 0,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  fontSize: 12,
+                  lineHeight: 1.6,
+                  color: "#0f172a",
+                  maxHeight: isMobile ? "28dvh" : "32dvh",
+                  overflowY: "auto",
+                }}
+              >
+                {JSON.stringify(gptState.memory ?? {}, null, 2)}
+              </pre>
+            )}
+          </div>
       </div>
     );
   }

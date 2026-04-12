@@ -20,7 +20,7 @@ const COMPACT_CHAR_LIMIT_KEY = "gpt_compact_char_limit";
 const SIMPLE_IMAGE_CHAR_LIMIT_KEY = "gpt_simple_image_char_limit";
 
 export function usePersistedGptOptions() {
-  const [responseMode, setResponseMode] = useState<ResponseMode>("strict");
+  const [responseMode, setResponseMode] = useState<ResponseMode>("creative");
   const [uploadKind, setUploadKind] = useState<UploadKind>("text");
   const [ingestMode, setIngestMode] = useState<IngestMode>("detailed");
   const [imageDetail, setImageDetail] = useState<ImageDetail>("detailed");
@@ -33,12 +33,10 @@ export function usePersistedGptOptions() {
 
   useEffect(() => {
     const savedMode = localStorage.getItem(RESPONSE_MODE_KEY);
-    if (
-      savedMode === "strict" ||
-      savedMode === "balanced" ||
-      savedMode === "creative"
-    ) {
+    if (savedMode === "strict" || savedMode === "creative") {
       setResponseMode(savedMode);
+    } else if (savedMode === "balanced") {
+      setResponseMode("strict");
     }
 
     const savedUploadKind = localStorage.getItem(UPLOAD_KIND_KEY);

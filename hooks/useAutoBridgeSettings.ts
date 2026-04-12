@@ -5,6 +5,7 @@ export type AutoBridgeSettings = {
   autoCopyKinSysResponseToGpt: boolean;
   autoSendGptSysInput: boolean;
   autoCopyGptSysResponseToKin: boolean;
+  autoCopyFileIngestSysInfoToKin: boolean;
 };
 
 const STORAGE_KEY = "auto_bridge_settings";
@@ -14,6 +15,7 @@ const DEFAULT_SETTINGS: AutoBridgeSettings = {
   autoCopyKinSysResponseToGpt: false,
   autoSendGptSysInput: false,
   autoCopyGptSysResponseToKin: false,
+  autoCopyFileIngestSysInfoToKin: true,
 };
 
 export function useAutoBridgeSettings() {
@@ -32,6 +34,8 @@ export function useAutoBridgeSettings() {
         autoCopyKinSysResponseToGpt: !!parsed.autoCopyKinSysResponseToGpt,
         autoSendGptSysInput: !!parsed.autoSendGptSysInput,
         autoCopyGptSysResponseToKin: !!parsed.autoCopyGptSysResponseToKin,
+        autoCopyFileIngestSysInfoToKin:
+          parsed.autoCopyFileIngestSysInfoToKin !== false,
       });
     } catch {
       setAutoBridgeSettings(DEFAULT_SETTINGS);

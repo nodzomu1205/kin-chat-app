@@ -4,6 +4,7 @@ import { runGoogleLocalEngine } from "@/lib/search-domain/engines/googleLocalEng
 import { runGoogleMapsEngine } from "@/lib/search-domain/engines/googleMapsEngine";
 import { runGoogleNewsEngine } from "@/lib/search-domain/engines/googleNewsEngine";
 import { runGoogleSearchEngine } from "@/lib/search-domain/engines/googleSearchEngine";
+import { runYoutubeSearchEngine } from "@/lib/search-domain/engines/youtubeSearchEngine";
 import { getPresetEnginesForMode } from "@/lib/search-domain/presets";
 import {
   mergeNormalizedPayloads,
@@ -37,6 +38,9 @@ async function runEngine(
     case "google_news":
       return runGoogleNewsEngine(request);
     case "google_search":
+      return runGoogleSearchEngine(request);
+    case "youtube_search":
+      return runYoutubeSearchEngine(request);
     default:
       return runGoogleSearchEngine(request);
   }

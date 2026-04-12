@@ -3,6 +3,14 @@ import type { Memory } from "@/lib/memory";
 export type SourceItem = {
   title: string;
   link: string;
+  snippet?: string;
+  sourceType?: string;
+  publishedAt?: string;
+  thumbnailUrl?: string;
+  channelName?: string;
+  duration?: string;
+  viewCount?: string;
+  videoId?: string;
 };
 
 export type MessageMeta = {

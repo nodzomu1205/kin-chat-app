@@ -1,22 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { DocumentReferenceMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { MultipartAssembly, StoredDocument } from "@/types/chat";
 
 const INGESTED_DOCUMENTS_KEY = "ingested_documents";
 const DOCUMENT_ORDER_KEY = "stored_document_order";
-const DOCUMENT_REFERENCE_COUNT_KEY = "document_reference_count";
-const DOCUMENT_AUTO_REFERENCE_ENABLED_KEY = "document_auto_reference_enabled";
-const DOCUMENT_REFERENCE_MODE_KEY = "document_reference_mode";
 const DOCUMENT_OVERRIDES_KEY = "stored_document_overrides";
-
-export const DEFAULT_DOCUMENT_REFERENCE_COUNT = 2;
-export const DEFAULT_DOCUMENT_REFERENCE_MODE: DocumentReferenceMode = "summary_only";
-
-function estimateTokenCount(text: string) {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return Math.max(1, Math.ceil(trimmed.length / 4));
-}
 
 function buildDocumentSummary(text: string, fallbackTitle: string) {
   const trimmed = text.trim();
@@ -53,12 +40,6 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
   const [ingestedDocuments, setIngestedDocuments] = useState<StoredDocument[]>([]);
   const [documentOverrides, setDocumentOverrides] = useState<Record<string, Partial<StoredDocument>>>({});
   const [documentOrder, setDocumentOrder] = useState<string[]>([]);
-  const [autoDocumentReferenceEnabled, setAutoDocumentReferenceEnabled] = useState(true);
-  const [documentReferenceMode, setDocumentReferenceMode] =
-    useState<DocumentReferenceMode>(DEFAULT_DOCUMENT_REFERENCE_MODE);
-  const [documentReferenceCount, setDocumentReferenceCount] = useState(
-    DEFAULT_DOCUMENT_REFERENCE_COUNT
-  );
 
   const kinDocuments = useMemo(
     () =>
@@ -73,15 +54,6 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
 
     const savedIngestedDocuments = window.localStorage.getItem(INGESTED_DOCUMENTS_KEY);
     const savedDocumentOrder = window.localStorage.getItem(DOCUMENT_ORDER_KEY);
-    const savedDocumentReferenceCount = window.localStorage.getItem(
-      DOCUMENT_REFERENCE_COUNT_KEY
-    );
-    const savedAutoDocumentReferenceEnabled = window.localStorage.getItem(
-      DOCUMENT_AUTO_REFERENCE_ENABLED_KEY
-    );
-    const savedDocumentReferenceMode = window.localStorage.getItem(
-      DOCUMENT_REFERENCE_MODE_KEY
-    );
     const savedDocumentOverrides = window.localStorage.getItem(DOCUMENT_OVERRIDES_KEY);
 
     if (savedIngestedDocuments) {
@@ -103,22 +75,6 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
         if (Array.isArray(parsed)) setDocumentOrder(parsed.filter(Boolean));
       } catch {}
     }
-
-    if (savedDocumentReferenceCount) {
-      const parsed = Number(savedDocumentReferenceCount);
-      if (Number.isFinite(parsed) && parsed > 0) setDocumentReferenceCount(parsed);
-    }
-
-    if (savedAutoDocumentReferenceEnabled) {
-      setAutoDocumentReferenceEnabled(savedAutoDocumentReferenceEnabled === "true");
-    }
-
-    if (
-      savedDocumentReferenceMode === "summary_only" ||
-      savedDocumentReferenceMode === "summary_with_excerpt"
-    ) {
-      setDocumentReferenceMode(savedDocumentReferenceMode);
-    }
     if (savedDocumentOverrides) {
       try {
         const parsed = JSON.parse(savedDocumentOverrides) as Record<string, Partial<StoredDocument>>;
@@ -139,27 +95,6 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(DOCUMENT_ORDER_KEY, JSON.stringify(documentOrder));
   }, [documentOrder]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      DOCUMENT_REFERENCE_COUNT_KEY,
-      String(documentReferenceCount)
-    );
-  }, [documentReferenceCount]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      DOCUMENT_AUTO_REFERENCE_ENABLED_KEY,
-      String(autoDocumentReferenceEnabled)
-    );
-  }, [autoDocumentReferenceEnabled]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(DOCUMENT_REFERENCE_MODE_KEY, documentReferenceMode);
-  }, [documentReferenceMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -286,58 +221,6 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
     });
   };
 
-  const buildDocumentReferenceContext = () => {
-    if (!autoDocumentReferenceEnabled || documentReferenceCount <= 0) return "";
-    const targets = allDocuments.slice(0, documentReferenceCount);
-    if (targets.length === 0) return "";
-
-    const lines = [
-      "<<STORED_DOCUMENT_CONTEXT>>",
-      "Use the stored documents below as supporting context when the current message relates to them.",
-      "If unrelated, ignore this block.",
-      "",
-    ];
-
-    targets.forEach((item, index) => {
-      lines.push(`[DOC ${index + 1}]`);
-      lines.push(`DOC_ID: ${item.id}`);
-      lines.push(`SOURCE_TYPE: ${item.sourceType}`);
-      lines.push(`TITLE: ${item.title}`);
-      lines.push(`FILENAME: ${item.filename}`);
-      if (item.summary?.trim()) {
-        lines.push(`SUMMARY: ${item.summary.trim()}`);
-      }
-      if (documentReferenceMode === "summary_with_excerpt" && item.text.trim()) {
-        lines.push(`EXCERPT: ${item.text.trim().slice(0, 1200)}`);
-      }
-      lines.push("");
-    });
-
-    lines.push("<<END_STORED_DOCUMENT_CONTEXT>>");
-    return lines.join("\n").trim();
-  };
-
-  const estimateDocumentReferenceTokens = () => {
-    const targets = allDocuments.slice(0, Math.max(1, documentReferenceCount));
-    if (targets.length === 0) return 0;
-    const text = targets
-      .map((item, index) => {
-        const parts = [
-          `[DOC ${index + 1}]`,
-          `DOC_ID: ${item.id}`,
-          `TITLE: ${item.title}`,
-          `FILENAME: ${item.filename}`,
-        ];
-        if (item.summary?.trim()) parts.push(`SUMMARY: ${item.summary.trim()}`);
-        if (documentReferenceMode === "summary_with_excerpt" && item.text.trim()) {
-          parts.push(`EXCERPT: ${item.text.trim().slice(0, 1200)}`);
-        }
-        return parts.join("\n");
-      })
-      .join("\n\n");
-    return estimateTokenCount(text);
-  };
-
   const documentStorageMB = useMemo(() => {
     try {
       const bytes = new TextEncoder().encode(
@@ -353,19 +236,11 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
     ingestedDocuments,
     allDocuments,
     documentOrder,
-    autoDocumentReferenceEnabled,
-    setAutoDocumentReferenceEnabled,
-    documentReferenceMode,
-    setDocumentReferenceMode,
-    documentReferenceCount,
-    setDocumentReferenceCount,
     documentStorageMB,
     recordIngestedDocument,
     updateStoredDocument,
     deleteStoredDocument,
     moveStoredDocument,
     getStoredDocument,
-    buildDocumentReferenceContext,
-    estimateDocumentReferenceTokens,
   };
 }

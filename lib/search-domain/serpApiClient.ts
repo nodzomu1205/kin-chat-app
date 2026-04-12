@@ -1,12 +1,13 @@
 type SerpApiRequest = {
   engine: string;
-  q: string;
+  q?: string;
   location?: string;
   gl?: string;
   hl?: string;
   num?: number;
   subsequent_request_token?: string;
   serpapiLink?: string;
+  extraParams?: Record<string, string | number | undefined>;
 };
 
 function buildSerpApiUrl(params: SerpApiRequest) {
@@ -25,7 +26,9 @@ function buildSerpApiUrl(params: SerpApiRequest) {
 
   const url = new URL("https://serpapi.com/search.json");
   url.searchParams.set("engine", params.engine);
-  url.searchParams.set("q", params.q);
+  if (params.q?.trim()) {
+    url.searchParams.set("q", params.q);
+  }
   url.searchParams.set("api_key", apiKey);
   if (params.location?.trim()) {
     url.searchParams.set("location", params.location.trim());
@@ -45,6 +48,12 @@ function buildSerpApiUrl(params: SerpApiRequest) {
       params.subsequent_request_token.trim()
     );
   }
+  Object.entries(params.extraParams || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    const normalized = String(value).trim();
+    if (!normalized) return;
+    url.searchParams.set(key, normalized);
+  });
 
   return url.toString();
 }

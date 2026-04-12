@@ -1,19 +1,25 @@
 import React from "react";
 import MessageContent from "./MessageContent";
 import MessageSources from "./MessageSources";
-
-type Source = {
-  title: string;
-  link: string;
-};
+import type { SourceItem } from "@/types/chat";
 
 type Props = {
   role: "user" | "gpt" | "kin";
   text: string;
-  sources?: Source[];
+  sources?: SourceItem[];
+  sourceDisplayCount?: number;
+  onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
+  onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
 };
 
-export default function MessageBubble({ role, text, sources = [] }: Props) {
+export default function MessageBubble({
+  role,
+  text,
+  sources = [],
+  sourceDisplayCount = 3,
+  onImportYouTubeTranscript,
+  onSendYouTubeTranscriptToKin,
+}: Props) {
   const isUser = role === "user";
   const isKin = role === "kin";
 
@@ -58,7 +64,12 @@ export default function MessageBubble({ role, text, sources = [] }: Props) {
       )}
 
       <MessageContent text={text} />
-      <MessageSources sources={sources} />
+      <MessageSources
+        sources={sources}
+        sourceDisplayCount={sourceDisplayCount}
+        onImportYouTubeTranscript={onImportYouTubeTranscript}
+        onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
+      />
     </div>
   );
 }

@@ -87,13 +87,7 @@ export default function GptPanel(props: GptPanelProps) {
     searchMode: props.searchMode,
     searchEngines: props.searchEngines,
     searchLocation: props.searchLocation,
-    searchHistoryLimit: props.searchHistoryLimit,
-    searchHistoryStorageMB: props.searchHistoryStorageMB,
-    autoDocumentReferenceEnabled: props.autoDocumentReferenceEnabled,
-    documentReferenceMode: props.documentReferenceMode,
-    documentReferenceCount: props.documentReferenceCount,
-    documentStorageMB: props.documentStorageMB,
-    documentReferenceEstimatedTokens: props.documentReferenceEstimatedTokens,
+    sourceDisplayCount: props.sourceDisplayCount,
     autoLibraryReferenceEnabled: props.autoLibraryReferenceEnabled,
     libraryReferenceMode: props.libraryReferenceMode,
     libraryIndexResponseCount: props.libraryIndexResponseCount,
@@ -104,6 +98,10 @@ export default function GptPanel(props: GptPanelProps) {
     autoCopyKinSysResponseToGpt: props.autoCopyKinSysResponseToGpt,
     autoSendGptSysInput: props.autoSendGptSysInput,
     autoCopyGptSysResponseToKin: props.autoCopyGptSysResponseToKin,
+    autoCopyFileIngestSysInfoToKin: props.autoCopyFileIngestSysInfoToKin,
+    memoryInterpreterSettings: props.memoryInterpreterSettings,
+    pendingMemoryRuleCandidates: props.pendingMemoryRuleCandidates,
+    approvedMemoryRules: props.approvedMemoryRules,
     onSaveMemorySettings: props.onSaveMemorySettings,
     onResetMemorySettings: props.onResetMemorySettings,
     onChangeResponseMode: props.onChangeResponseMode,
@@ -117,11 +115,7 @@ export default function GptPanel(props: GptPanelProps) {
     onChangeSearchMode: props.onChangeSearchMode,
     onChangeSearchEngines: props.onChangeSearchEngines,
     onChangeSearchLocation: props.onChangeSearchLocation,
-    onChangeSearchHistoryLimit: props.onChangeSearchHistoryLimit,
-    onClearSearchHistory: props.onClearSearchHistory,
-    onChangeAutoDocumentReferenceEnabled: props.onChangeAutoDocumentReferenceEnabled,
-    onChangeDocumentReferenceMode: props.onChangeDocumentReferenceMode,
-    onChangeDocumentReferenceCount: props.onChangeDocumentReferenceCount,
+    onChangeSourceDisplayCount: props.onChangeSourceDisplayCount,
     onChangeAutoLibraryReferenceEnabled: props.onChangeAutoLibraryReferenceEnabled,
     onChangeLibraryReferenceMode: props.onChangeLibraryReferenceMode,
     onChangeLibraryIndexResponseCount: props.onChangeLibraryIndexResponseCount,
@@ -130,6 +124,10 @@ export default function GptPanel(props: GptPanelProps) {
     onChangeAutoCopyKinSysResponseToGpt: props.onChangeAutoCopyKinSysResponseToGpt,
     onChangeAutoSendGptSysInput: props.onChangeAutoSendGptSysInput,
     onChangeAutoCopyGptSysResponseToKin: props.onChangeAutoCopyGptSysResponseToKin,
+    onChangeMemoryInterpreterSettings: props.onChangeMemoryInterpreterSettings,
+    onApproveMemoryRuleCandidate: props.onApproveMemoryRuleCandidate,
+    onRejectMemoryRuleCandidate: props.onRejectMemoryRuleCandidate,
+    onDeleteApprovedMemoryRule: props.onDeleteApprovedMemoryRule,
   };
 
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
@@ -387,6 +385,9 @@ export default function GptPanel(props: GptPanelProps) {
             messages={chat.gptMessages}
             bottomRef={chat.gptBottomRef}
             loadingText={chat.loading ? "ChatGPTが応答中…" : null}
+            sourceDisplayCount={settings.sourceDisplayCount}
+            onImportYouTubeTranscript={props.onImportYouTubeTranscript}
+            onSendYouTubeTranscriptToKin={props.onSendYouTubeTranscriptToKin}
           />
         </div>
       </div>

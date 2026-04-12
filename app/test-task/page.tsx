@@ -7,6 +7,7 @@ import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
 import { useGptMemory } from "@/hooks/useGptMemory";
+import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
 import { createEmptyTaskDraft } from "@/types/task";
 import type { Message } from "@/types/chat";
 
@@ -46,6 +47,8 @@ export default function TestTaskPage() {
   } = usePersistedGptOptions();
 
   const { tokenStats } = useTokenTracking();
+  const noopAsync = async () => {};
+  const noop = () => {};
 
   const {
     gptState,
@@ -54,10 +57,12 @@ export default function TestTaskPage() {
     updateMemorySettings,
     resetMemorySettings,
     defaultMemorySettings,
-  } = useGptMemory(null);
-
-  const noopAsync = async () => {};
-  const noop = () => {};
+  } = useGptMemory(null, {
+    memoryInterpreterSettings: DEFAULT_MEMORY_INTERPRETER_SETTINGS,
+    approvedMemoryRules: [],
+    rejectedMemoryRuleCandidateSignatures: [],
+    onAddPendingMemoryRuleCandidates: noop,
+  });
 
   return (
     <div
@@ -126,13 +131,7 @@ export default function TestTaskPage() {
             searchMode="normal"
             searchEngines={[]}
             searchLocation=""
-            searchHistoryLimit={20}
-            searchHistoryStorageMB={0}
-            autoDocumentReferenceEnabled={true}
-            documentReferenceMode="summary_only"
-            documentReferenceCount={2}
-            documentStorageMB={0}
-            documentReferenceEstimatedTokens={0}
+            sourceDisplayCount={3}
             autoLibraryReferenceEnabled={true}
             libraryReferenceMode="summary_only"
             libraryIndexResponseCount={12}
@@ -143,14 +142,14 @@ export default function TestTaskPage() {
             autoCopyKinSysResponseToGpt={false}
             autoSendGptSysInput={false}
             autoCopyGptSysResponseToKin={false}
+            autoCopyFileIngestSysInfoToKin={true}
+            memoryInterpreterSettings={DEFAULT_MEMORY_INTERPRETER_SETTINGS}
+            pendingMemoryRuleCandidates={[]}
+            approvedMemoryRules={[]}
             onChangeSearchMode={noop}
             onChangeSearchEngines={noop}
             onChangeSearchLocation={noop}
-            onChangeSearchHistoryLimit={noop}
-            onClearSearchHistory={noop}
-            onChangeAutoDocumentReferenceEnabled={noop}
-            onChangeDocumentReferenceMode={noop}
-            onChangeDocumentReferenceCount={noop}
+            onChangeSourceDisplayCount={noop}
             onChangeAutoLibraryReferenceEnabled={noop}
             onChangeLibraryReferenceMode={noop}
             onChangeLibraryIndexResponseCount={noop}
@@ -159,6 +158,11 @@ export default function TestTaskPage() {
             onChangeAutoCopyKinSysResponseToGpt={noop}
             onChangeAutoSendGptSysInput={noop}
             onChangeAutoCopyGptSysResponseToKin={noop}
+            onChangeAutoCopyFileIngestSysInfoToKin={noop}
+            onChangeMemoryInterpreterSettings={noop}
+            onApproveMemoryRuleCandidate={noop}
+            onRejectMemoryRuleCandidate={noop}
+            onDeleteApprovedMemoryRule={noop}
             onDeleteSearchHistoryItem={noop}
             multipartAssemblies={[]}
             storedDocuments={[]}
@@ -173,9 +177,11 @@ export default function TestTaskPage() {
             onMoveStoredDocument={noop}
             onMoveLibraryItem={noop}
             onSelectTaskLibraryItem={noop}
-            onChangeLibraryItemMode={noop}
-            onStartAskAiModeSearch={noopAsync}
-            onSaveStoredDocument={noop}
+              onChangeLibraryItemMode={noop}
+              onStartAskAiModeSearch={noopAsync}
+              onImportYouTubeTranscript={noopAsync}
+              onSendYouTubeTranscriptToKin={noopAsync}
+              onSaveStoredDocument={noop}
             pendingIntentCandidates={[]}
             approvedIntentPhrases={[]}
             onUpdateIntentCandidate={noop}

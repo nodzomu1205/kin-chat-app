@@ -86,6 +86,7 @@ export function useReferenceLibrary(params: {
   searchHistoryStorageMB: number;
   documentStorageMB: number;
   multipartStorageMB: number;
+  sourceDisplayCount?: number;
 }) {
   const {
     storedDocuments,
@@ -93,6 +94,7 @@ export function useReferenceLibrary(params: {
     searchHistoryStorageMB,
     documentStorageMB,
     multipartStorageMB,
+    sourceDisplayCount = 3,
   } = params;
 
   const [libraryOrder, setLibraryOrder] = useState<string[]>([]);
@@ -322,7 +324,7 @@ export function useReferenceLibrary(params: {
         item.sources?.length
       ) {
         lines.push("SOURCES:");
-        item.sources.slice(0, 3).forEach((source) => {
+        item.sources.slice(0, Math.max(1, sourceDisplayCount)).forEach((source) => {
           lines.push(`- ${source.title}${source.link ? ` | ${source.link}` : ""}`);
         });
       }
@@ -351,7 +353,7 @@ export function useReferenceLibrary(params: {
         if (effectiveMode === "summary_with_excerpt" && item.itemType === "search" && item.sources?.length) {
           parts.push(
             ...item.sources
-              .slice(0, 3)
+              .slice(0, Math.max(1, sourceDisplayCount))
               .map((source) => `SOURCE: ${source.title}${source.link ? ` | ${source.link}` : ""}`)
           );
         }

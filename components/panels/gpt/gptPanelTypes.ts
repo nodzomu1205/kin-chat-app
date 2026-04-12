@@ -4,6 +4,7 @@ import type {
   Message,
   MultipartAssembly,
   ReferenceLibraryItem,
+  SourceItem,
   StoredDocument,
 } from "@/types/chat";
 import type { SearchContext, SearchEngine, SearchMode, TaskDraft } from "@/types/task";
@@ -11,6 +12,11 @@ import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
+import type {
+  ApprovedMemoryRule,
+  MemoryInterpreterSettings,
+  PendingMemoryRuleCandidate,
+} from "@/lib/memoryInterpreterRules";
 import type {
   TaskRequirementProgress,
   TaskExecutionStatus,
@@ -23,11 +29,10 @@ export type GptInstructionMode =
   | "reply_only"
   | "polish";
 
-export type ResponseMode = "strict" | "balanced" | "creative";
+export type ResponseMode = "strict" | "creative";
 export type UploadKind = "auto" | "text" | "image" | "pdf" | "mixed";
 export type IngestMode = "compact" | "detailed" | "max";
 export type ImageDetail = "simple" | "detailed" | "max";
-export type DocumentReferenceMode = "summary_only" | "summary_with_excerpt";
 export type LibraryReferenceMode = "summary_only" | "summary_with_excerpt";
 export type LibraryItemModeOverride = "default" | LibraryReferenceMode;
 export type PostIngestAction =
@@ -179,6 +184,8 @@ export type GptPanelReferenceProps = {
     mode: LibraryItemModeOverride
   ) => void;
   onStartAskAiModeSearch: (query: string) => void | Promise<void>;
+  onImportYouTubeTranscript: (source: SourceItem) => void | Promise<void>;
+  onSendYouTubeTranscriptToKin: (source: SourceItem) => void | Promise<void>;
   onSaveStoredDocument: (
     documentId: string,
     patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
@@ -202,13 +209,7 @@ export type GptPanelSettingsProps = {
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
   searchLocation: string;
-  searchHistoryLimit: number;
-  searchHistoryStorageMB: number;
-  autoDocumentReferenceEnabled: boolean;
-  documentReferenceMode: DocumentReferenceMode;
-  documentReferenceCount: number;
-  documentStorageMB: number;
-  documentReferenceEstimatedTokens: number;
+  sourceDisplayCount: number;
   autoLibraryReferenceEnabled: boolean;
   libraryReferenceMode: LibraryReferenceMode;
   libraryIndexResponseCount: number;
@@ -219,6 +220,10 @@ export type GptPanelSettingsProps = {
   autoCopyKinSysResponseToGpt: boolean;
   autoSendGptSysInput: boolean;
   autoCopyGptSysResponseToKin: boolean;
+  autoCopyFileIngestSysInfoToKin: boolean;
+  memoryInterpreterSettings: MemoryInterpreterSettings;
+  pendingMemoryRuleCandidates: PendingMemoryRuleCandidate[];
+  approvedMemoryRules: ApprovedMemoryRule[];
   onSaveMemorySettings: (next: MemorySettings) => void;
   onResetMemorySettings: () => void;
   onChangeResponseMode: (value: ResponseMode) => void;
@@ -232,11 +237,7 @@ export type GptPanelSettingsProps = {
   onChangeSearchMode: (value: SearchMode) => void;
   onChangeSearchEngines: (value: SearchEngine[]) => void;
   onChangeSearchLocation: (value: string) => void;
-  onChangeSearchHistoryLimit: (value: number) => void;
-  onClearSearchHistory: () => void;
-  onChangeAutoDocumentReferenceEnabled: (value: boolean) => void;
-  onChangeDocumentReferenceMode: (value: DocumentReferenceMode) => void;
-  onChangeDocumentReferenceCount: (value: number) => void;
+  onChangeSourceDisplayCount: (value: number) => void;
   onChangeAutoLibraryReferenceEnabled: (value: boolean) => void;
   onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (value: number) => void;
@@ -245,6 +246,13 @@ export type GptPanelSettingsProps = {
   onChangeAutoCopyKinSysResponseToGpt: (value: boolean) => void;
   onChangeAutoSendGptSysInput: (value: boolean) => void;
   onChangeAutoCopyGptSysResponseToKin: (value: boolean) => void;
+  onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) => void;
+  onChangeMemoryInterpreterSettings: (
+    patch: Partial<MemoryInterpreterSettings>
+  ) => void;
+  onApproveMemoryRuleCandidate: (candidateId: string) => void;
+  onRejectMemoryRuleCandidate: (candidateId: string) => void;
+  onDeleteApprovedMemoryRule: (ruleId: string) => void;
 };
 
 export type GptPanelProps = {
@@ -306,13 +314,7 @@ export type GptPanelProps = {
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
   searchLocation: string;
-  searchHistoryLimit: number;
-  searchHistoryStorageMB: number;
-  autoDocumentReferenceEnabled: boolean;
-  documentReferenceMode: DocumentReferenceMode;
-  documentReferenceCount: number;
-  documentStorageMB: number;
-  documentReferenceEstimatedTokens: number;
+  sourceDisplayCount: number;
   autoLibraryReferenceEnabled: boolean;
   libraryReferenceMode: LibraryReferenceMode;
   libraryIndexResponseCount: number;
@@ -323,14 +325,14 @@ export type GptPanelProps = {
   autoCopyKinSysResponseToGpt: boolean;
   autoSendGptSysInput: boolean;
   autoCopyGptSysResponseToKin: boolean;
+  autoCopyFileIngestSysInfoToKin: boolean;
+  memoryInterpreterSettings: MemoryInterpreterSettings;
+  pendingMemoryRuleCandidates: PendingMemoryRuleCandidate[];
+  approvedMemoryRules: ApprovedMemoryRule[];
   onChangeSearchMode: (value: SearchMode) => void;
   onChangeSearchEngines: (value: SearchEngine[]) => void;
   onChangeSearchLocation: (value: string) => void;
-  onChangeSearchHistoryLimit: (value: number) => void;
-  onClearSearchHistory: () => void;
-  onChangeAutoDocumentReferenceEnabled: (value: boolean) => void;
-  onChangeDocumentReferenceMode: (value: DocumentReferenceMode) => void;
-  onChangeDocumentReferenceCount: (value: number) => void;
+  onChangeSourceDisplayCount: (value: number) => void;
   onChangeAutoLibraryReferenceEnabled: (value: boolean) => void;
   onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (value: number) => void;
@@ -339,6 +341,13 @@ export type GptPanelProps = {
   onChangeAutoCopyKinSysResponseToGpt: (value: boolean) => void;
   onChangeAutoSendGptSysInput: (value: boolean) => void;
   onChangeAutoCopyGptSysResponseToKin: (value: boolean) => void;
+  onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) => void;
+  onChangeMemoryInterpreterSettings: (
+    patch: Partial<MemoryInterpreterSettings>
+  ) => void;
+  onApproveMemoryRuleCandidate: (candidateId: string) => void;
+  onRejectMemoryRuleCandidate: (candidateId: string) => void;
+  onDeleteApprovedMemoryRule: (ruleId: string) => void;
   onDeleteSearchHistoryItem: (rawResultId: string) => void;
   multipartAssemblies: MultipartAssembly[];
   onLoadMultipartAssemblyToGptInput: (assemblyId: string) => void;
@@ -358,6 +367,8 @@ export type GptPanelProps = {
     mode: LibraryItemModeOverride
   ) => void;
   onStartAskAiModeSearch: (query: string) => void | Promise<void>;
+  onImportYouTubeTranscript: (source: SourceItem) => void | Promise<void>;
+  onSendYouTubeTranscriptToKin: (source: SourceItem) => void | Promise<void>;
   onSaveStoredDocument: (
     documentId: string,
     patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>

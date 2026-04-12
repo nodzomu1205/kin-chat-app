@@ -378,12 +378,13 @@ export async function POST(req: Request) {
             : "normal";
         const safeSearchEngines: SearchEngine[] = Array.isArray(searchEngines)
           ? searchEngines.filter((engine): engine is SearchEngine =>
-                [
+              [
                   "google_search",
                   "google_ai_mode",
                   "google_news",
                   "google_maps",
                   "google_local",
+                  "youtube_search",
                   "google_flights",
                 "google_hotels",
                 "google_shopping",
@@ -423,6 +424,14 @@ export async function POST(req: Request) {
         sources = (result.sources || []).map((source) => ({
           title: source.title,
           link: source.link,
+          snippet: source.snippet,
+          sourceType: source.sourceType,
+          publishedAt: source.publishedAt,
+          thumbnailUrl: source.thumbnailUrl,
+          channelName: source.channelName,
+          duration: source.duration,
+          viewCount: source.viewCount,
+          videoId: source.videoId,
         }));
 
         if (wantsGoogleMapsLink(input)) {
@@ -638,8 +647,6 @@ ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
 
       const data = await response.json();
 
-      console.log("🧠 MEMORY UPDATE RAW:", JSON.stringify(data, null, 2));
-
       const rawMemory =
         data.output?.[0]?.content?.[0]?.text ||
         data.output_text ||
@@ -647,10 +654,39 @@ ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
 
       const parsedMemory = safeParseMemory(extractJsonObjectText(rawMemory));
 
-      console.log("🧠 FINAL MEMORY:", JSON.stringify(parsedMemory, null, 2));
-
       return NextResponse.json({
         memory: parsedMemory,
+        usage: extractUsage(data),
+      });
+    }
+
+    if (mode === "memory_interpret") {
+      const { input } = body;
+
+      if (!input || typeof input !== "string") {
+        return NextResponse.json({ error: "input missing" }, { status: 400 });
+      }
+
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          input,
+        }),
+      });
+
+      const data = await response.json();
+      const reply =
+        data.output?.[0]?.content?.[0]?.text ||
+        data.output_text ||
+        "{}";
+
+      return NextResponse.json({
+        reply,
         usage: extractUsage(data),
       });
     }

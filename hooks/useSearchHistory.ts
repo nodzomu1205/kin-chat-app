@@ -8,9 +8,11 @@ const SEARCH_HISTORY_LIMIT_KEY = "search_history_limit";
 const SEARCH_MODE_KEY = "search_mode";
 const SEARCH_ENGINES_KEY = "search_engines";
 const SEARCH_LOCATION_KEY = "search_location";
+const SOURCE_DISPLAY_COUNT_KEY = "source_display_count";
 
 export const DEFAULT_SEARCH_HISTORY_LIMIT = 20;
 export const DEFAULT_SEARCH_MODE: SearchMode = "normal";
+export const DEFAULT_SOURCE_DISPLAY_COUNT = 3;
 
 const ALLOWED_SEARCH_ENGINES: SearchEngine[] = [
   "google_search",
@@ -18,6 +20,7 @@ const ALLOWED_SEARCH_ENGINES: SearchEngine[] = [
   "google_news",
   "google_maps",
   "google_local",
+  "youtube_search",
   "google_flights",
   "google_hotels",
   "google_shopping",
@@ -44,6 +47,9 @@ export function useSearchHistory() {
   const [searchMode, setSearchMode] = useState<SearchMode>(DEFAULT_SEARCH_MODE);
   const [searchEngines, setSearchEngines] = useState<SearchEngine[]>([]);
   const [searchLocation, setSearchLocation] = useState("");
+  const [sourceDisplayCount, setSourceDisplayCount] = useState(
+    DEFAULT_SOURCE_DISPLAY_COUNT
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -54,6 +60,9 @@ export function useSearchHistory() {
     const savedSearchMode = window.localStorage.getItem(SEARCH_MODE_KEY);
     const savedSearchEngines = window.localStorage.getItem(SEARCH_ENGINES_KEY);
     const savedSearchLocation = window.localStorage.getItem(SEARCH_LOCATION_KEY);
+    const savedSourceDisplayCount = window.localStorage.getItem(
+      SOURCE_DISPLAY_COUNT_KEY
+    );
 
     if (savedSearchHistoryLimit) {
       const parsed = Number(savedSearchHistoryLimit);
@@ -76,6 +85,12 @@ export function useSearchHistory() {
     }
     if (savedSearchLocation) {
       setSearchLocation(savedSearchLocation);
+    }
+    if (savedSourceDisplayCount) {
+      const parsed = Number(savedSourceDisplayCount);
+      if (Number.isFinite(parsed) && parsed >= 1) {
+        setSourceDisplayCount(parsed);
+      }
     }
     if (savedSearchContext) {
       try {
@@ -116,6 +131,14 @@ export function useSearchHistory() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(SEARCH_LOCATION_KEY, searchLocation);
   }, [searchLocation]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      SOURCE_DISPLAY_COUNT_KEY,
+      String(sourceDisplayCount)
+    );
+  }, [sourceDisplayCount]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -314,6 +337,8 @@ export function useSearchHistory() {
     setSearchEngines,
     searchLocation,
     setSearchLocation,
+    sourceDisplayCount,
+    setSourceDisplayCount,
     getTaskSearchContext,
     moveSearchHistoryItem,
     recordSearchContext,
