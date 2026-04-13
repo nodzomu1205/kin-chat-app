@@ -4,6 +4,10 @@ import {
   buildKinSysTaskBlock,
   summarizeTaskContentForKinInfo,
 } from "@/lib/app/kinStructuredProtocol";
+import {
+  buildPendingKinInjectionBlocks,
+  DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+} from "@/lib/app/kinMultipart";
 import { buildKinDirectiveLines } from "@/lib/app/transformIntent";
 import type { TransformIntent } from "@/lib/app/transformIntent";
 import { normalizeUsage } from "@/lib/tokenStats";
@@ -59,6 +63,8 @@ type SendLatestGptContentToKinArgs = {
   }) => Promise<{ text: string; usage?: Parameters<typeof normalizeUsage>[0] }>;
   setGptLoading: (value: boolean) => void;
   setGptMessages: (updater: (prev: Message[]) => Message[]) => void;
+  setPendingKinInjectionBlocks: (value: string[]) => void;
+  setPendingKinInjectionIndex: (value: number) => void;
   setKinInput: (value: string) => void;
   setGptInput: (value: string) => void;
   getTaskSlotLabel: () => string;
@@ -82,6 +88,8 @@ export async function sendLatestGptContentToKinFlow({
   transformTextWithIntent,
   setGptLoading,
   setGptMessages,
+  setPendingKinInjectionBlocks,
+  setPendingKinInjectionIndex,
   setKinInput,
   setGptInput,
   getTaskSlotLabel,
@@ -136,14 +144,24 @@ export async function sendLatestGptContentToKinFlow({
       compiledTaskPrompt: started.compiledTaskPrompt,
     });
 
-    setKinInput(started.compiledTaskPrompt);
+    const blocks = buildPendingKinInjectionBlocks(started.compiledTaskPrompt, {
+      noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+    });
+    const firstBlock = blocks[0] ?? started.compiledTaskPrompt;
+
+    setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
+    setPendingKinInjectionIndex(0);
+    setKinInput(firstBlock);
     setGptInput("");
     setGptMessages((prev) => [
       ...prev,
       {
         id: generateId(),
         role: "gpt",
-        text: `Latest GPT content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`,
+        text:
+          blocks.length > 1
+            ? `Latest GPT content was converted into a formal Kin task and split into ${blocks.length} Kin parts. TASK_ID: #${started.taskId}`
+            : `Latest GPT content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`,
         meta: {
           kind: "task_info",
           sourceType: "gpt_chat",
@@ -244,6 +262,8 @@ type SendCurrentTaskContentToKinArgs = {
   }) => Promise<{ text: string; usage?: Parameters<typeof normalizeUsage>[0] }>;
   setGptLoading: (value: boolean) => void;
   setGptMessages: (updater: (prev: Message[]) => Message[]) => void;
+  setPendingKinInjectionBlocks: (value: string[]) => void;
+  setPendingKinInjectionIndex: (value: number) => void;
   setKinInput: (value: string) => void;
   setGptInput: (value: string) => void;
   getTaskSlotLabel: () => string;
@@ -270,6 +290,8 @@ export async function sendCurrentTaskContentToKinFlow({
   transformTextWithIntent,
   setGptLoading,
   setGptMessages,
+  setPendingKinInjectionBlocks,
+  setPendingKinInjectionIndex,
   setKinInput,
   setGptInput,
   getTaskSlotLabel,
@@ -335,14 +357,24 @@ export async function sendCurrentTaskContentToKinFlow({
       compiledTaskPrompt: started.compiledTaskPrompt,
     });
 
-    setKinInput(started.compiledTaskPrompt);
+    const blocks = buildPendingKinInjectionBlocks(started.compiledTaskPrompt, {
+      noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+    });
+    const firstBlock = blocks[0] ?? started.compiledTaskPrompt;
+
+    setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
+    setPendingKinInjectionIndex(0);
+    setKinInput(firstBlock);
     setGptInput("");
     setGptMessages((prev) => [
       ...prev,
       {
         id: generateId(),
         role: "gpt",
-        text: `Current task content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`,
+        text:
+          blocks.length > 1
+            ? `Current task content was converted into a formal Kin task and split into ${blocks.length} Kin parts. TASK_ID: #${started.taskId}`
+            : `Current task content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`,
         meta: {
           kind: "task_info",
           sourceType: "manual",

@@ -1,6 +1,12 @@
 import type { SearchEngine, SearchMode } from "@/types/task";
 
-export type PrimarySearchMode = "normal" | "ai" | "integrated" | "news" | "geo";
+export type PrimarySearchMode =
+  | "normal"
+  | "ai"
+  | "integrated"
+  | "news"
+  | "geo"
+  | "youtube";
 
 export const SEARCH_MODE_PRESETS: Record<
   PrimarySearchMode,
@@ -26,6 +32,10 @@ export const SEARCH_MODE_PRESETS: Record<
     label: "Maps / Local",
     engines: ["google_maps", "google_local"],
   },
+  youtube: {
+    label: "YouTube",
+    engines: ["youtube_search"],
+  },
 };
 
 function sameEngines(left: SearchEngine[], right: SearchEngine[]) {
@@ -41,7 +51,8 @@ export function isPrimarySearchMode(value: string): value is PrimarySearchMode {
     value === "ai" ||
     value === "integrated" ||
     value === "news" ||
-    value === "geo"
+    value === "geo" ||
+    value === "youtube"
   );
 }
 
@@ -53,6 +64,7 @@ export function normalizeStoredSearchMode(value?: string): SearchMode {
     value === "integrated" ||
     value === "news" ||
     value === "geo" ||
+    value === "youtube" ||
     value === "travel" ||
     value === "product" ||
     value === "entity" ||
@@ -74,6 +86,8 @@ export function getPresetEnginesForMode(mode: SearchMode): SearchEngine[] {
       return [...SEARCH_MODE_PRESETS.news.engines];
     case "geo":
       return ["google_maps", "google_local"];
+    case "youtube":
+      return [...SEARCH_MODE_PRESETS.youtube.engines];
     case "entity":
     case "evidence":
       return ["google_search", "google_news"];

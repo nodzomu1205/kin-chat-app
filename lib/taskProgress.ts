@@ -78,6 +78,25 @@ export function buildInitialRequirementProgress(
     });
   }
 
+  if (intent.workflow?.allowYoutubeTranscriptRequest) {
+    const transcriptCount = intent.workflow?.youtubeTranscriptRequestCount ?? 1;
+    const transcriptRule =
+      intent.workflow?.youtubeTranscriptRequestCountRule ?? "exact";
+    items.push({
+      id: "youtube_transcript_request",
+      label: formatCountLabel(
+        "YouTube transcript取得",
+        transcriptCount,
+        transcriptRule
+      ),
+      category: transcriptRule === "up_to" ? "optional" : "required",
+      kind: "youtube_transcript_request",
+      targetCount: transcriptCount,
+      completedCount: 0,
+      status: "not_started",
+    });
+  }
+
   const libraryReferenceCount = intent.workflow?.libraryReferenceCount ?? 0;
   if (intent.workflow?.allowLibraryReference || libraryReferenceCount > 0) {
     const libraryRule = intent.workflow?.libraryReferenceCountRule ?? "exact";

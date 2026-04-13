@@ -269,12 +269,6 @@ export async function runUpdateTaskFromLastGptMessageFlow(
 ) {
   if (args.gptLoading) return;
 
-  const currentTaskText = args.getTaskBaseText();
-  if (!currentTaskText) {
-    appendTaskInfoMessage(args.setGptMessages, "No current task content was found to update.");
-    return;
-  }
-
   const lastGptMessage = [...args.gptMessages]
     .reverse()
     .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
@@ -286,21 +280,31 @@ export async function runUpdateTaskFromLastGptMessageFlow(
 
   const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
   const directionInstruction = parsedInput.freeText || args.gptInput.trim();
+  const currentTaskText = args.getTaskBaseText();
   const resolvedTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
     freeText: directionInstruction,
     searchQuery: parsedInput.searchQuery,
     fallback: args.currentTaskDraft.title || "Task",
   });
-
-  const taskInput = buildTaskInput({
-    title: resolvedTitle,
-    userInstruction: parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
-    actionInstruction:
-      directionInstruction || "最新のGPTレス内容を反映して、タスク内容を整理・更新してください。",
-    body: currentTaskText,
-    material: lastGptMessage.text.trim(),
-  });
+  const taskInput = currentTaskText
+    ? buildTaskInput({
+        title: resolvedTitle,
+        userInstruction: parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+        actionInstruction:
+          directionInstruction || "最新のGPTレス内容を反映して、タスク内容を整理・更新してください。",
+        body: currentTaskText,
+        material: lastGptMessage.text.trim(),
+      })
+    : buildTaskStructuredInput({
+        title: resolvedTitle,
+        userInstruction:
+          parsedInput.userInstruction ||
+          directionInstruction ||
+          "最新のGPTレス内容を反映して、タスク内容を整理してください。",
+        body: lastGptMessage.text.trim(),
+        searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
+      });
 
   args.setGptInput("");
   args.setGptLoading(true);
@@ -345,6 +349,8 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       taskName: resolvedTitle,
       userInstruction: parsedInput.userInstruction || prev.userInstruction,
       body: taskText,
+      objective:
+        (directionInstruction || lastGptMessage.text.trim()).slice(0, 120),
       deepenText: "",
       mergedText: taskText,
       kinTaskText: "",

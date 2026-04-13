@@ -16,7 +16,10 @@ For <<SYS_INFO>>, reply:
 Received.
 <<END_KIN_RESPONSE>>
 
-When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.`;
+When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.
+
+You may use youtube_search inside <<SYS_SEARCH_REQUEST>> when video discovery is needed.
+You may use <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> when a specific YouTube URL must be read in full via transcript.`;
 
 export const DEFAULT_PROTOCOL_RULEBOOK = `<<SYS_INFO>>
 TITLE: GPT protocol rulebook
@@ -104,7 +107,7 @@ CONTENT:
 - TASK_ID: [     ]
 - ACTION_ID: [     ]
 - QUERY: [     ]
-- ENGINE: [google_search / google_ai_mode / google_news / google_local]
+- ENGINE: [google_search / google_ai_mode / google_news / google_local / youtube_search]
 - LOCATION: [Japan / Johannesburg, South Africa / ...]
 - SEARCH_GOAL: [     ]
 - OUTPUT_MODE: [summary / summary_plus_raw]
@@ -117,6 +120,8 @@ CONTENT:
 -   - google_ai_mode: Google AI Mode
 -   - google_news: Google News
 -   - google_local: Google Local for places and map-like local results
+-   - youtube_search: YouTube video search
+- For youtube_search, use QUERY to find candidate videos and expect GPT to return identifying video details such as title, channel, duration, views, and URL.
 - If ENGINE is omitted, GPT should default to the integrated search path that combines google_search + google_ai_mode.
 - If LOCATION is omitted, GPT may use the current panel location setting.
 - For google_news, still write LOCATION as a natural place name like Japan. GPT will resolve locale details such as gl / hl internally when needed.
@@ -140,6 +145,38 @@ CONTENT:
 - Means GPT's response to your SEARCH_REQUEST.
 - Use the same TASK_ID and ACTION_ID as the related SEARCH_REQUEST block.
 - SEARCH_RESPONSE should echo ENGINE and LOCATION when they were specified or inferred for the search.
+- For youtube_search, review SOURCES to identify the exact video URL before sending a transcript request.
+- ----------
+-
+- YOUTUBE_TRANSCRIPT_REQUEST:
+- ----------
+- <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- URL: [https://www.youtube.com/watch?v=...]
+- BODY: [optional note about what to extract]
+- <<END_SYS_YOUTUBE_TRANSCRIPT_REQUEST>>
+- Means a YouTube transcript fetch request you send to GPT.
+- URL is required.
+- Use this when you already know the exact YouTube URL whose full transcript should be fetched.
+- After receiving a usable transcript response, continue the task using the transcript contents as evidence.
+- ----------
+-
+- YOUTUBE_TRANSCRIPT_RESPONSE:
+- ----------
+- <<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>
+- TASK_ID: [     ]
+- ACTION_ID: [     ]
+- URL: [     ]
+- TITLE: [     ]
+- CHANNEL: [     ]
+- SUMMARY: [     ]
+- LIBRARY_ITEM_ID: [optional]
+- <<END_SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>
+- Means GPT's response to your YOUTUBE_TRANSCRIPT_REQUEST.
+- Use the same TASK_ID and ACTION_ID as the related YOUTUBE_TRANSCRIPT_REQUEST block.
+- GPT returns the fetched transcript content to Kin as SYS_INFO multipart blocks, and may also store it in the library and return LIBRARY_ITEM_ID for later reuse.
+- If GPT cannot fetch the transcript, it may answer with <<SYS_GPT_RESPONSE>> asking you to re-run video discovery and provide a corrected URL.
 - ----------
 -
 - LIBRARY_INDEX_REQUEST:

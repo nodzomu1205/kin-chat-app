@@ -73,10 +73,11 @@ export function resolveFloatingLabel(args: {
     args.currentTaskDraft.taskName?.trim() ||
     args.currentTaskFromMemory?.trim() ||
     "";
+  const currentTopic = args.currentTopic?.trim() || "";
   const liveTopic =
     normalizePromptTopic(args.currentInput || "") ||
     normalizePromptTopic(args.latestUserText || "");
-  const topic = liveTopic || args.currentTopic?.trim() || "";
+  const topic = currentTopic || liveTopic || "";
   const taskFocused =
     args.bottomTab === "task_primary" ||
     args.bottomTab === "task_secondary" ||

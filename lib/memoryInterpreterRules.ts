@@ -27,9 +27,10 @@ export function getMemoryRuleSignature(candidate: {
   phrase: string;
   normalizedValue?: string;
 }) {
+  const normalizedKey =
+    candidate.normalizedValue?.trim() || candidate.phrase.trim();
   return [
     candidate.kind,
-    candidate.phrase.trim(),
-    candidate.normalizedValue?.trim() || "",
+    normalizedKey,
   ].join("|");
 }

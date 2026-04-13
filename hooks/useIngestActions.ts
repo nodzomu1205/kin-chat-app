@@ -24,6 +24,10 @@ import {
   buildKinSysTaskBlock,
 } from '@/lib/app/kinStructuredProtocol';
 import {
+  buildPendingKinInjectionBlocks,
+  DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+} from '@/lib/app/kinMultipart';
+import {
   buildKinDirectiveLines,
   buildTaskExecutionInstruction,
   parseTransformIntent,
@@ -111,14 +115,17 @@ function buildBlocksFromText(args: {
   directiveLines: string[];
 }): string[] {
   if (args.mode === 'sys_task') {
-    return [
+    return buildPendingKinInjectionBlocks(
       buildKinSysTaskBlock({
         taskSlot: args.taskSlot,
         title: args.title,
         content: args.content,
         directiveLines: args.directiveLines,
       }),
-    ];
+      {
+        noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+      }
+    );
   }
 
   const chunks = splitTextIntoKinChunks(args.content, 2200);

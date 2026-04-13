@@ -43,7 +43,12 @@ export type SearchSource = {
 };
 
 type ProtocolLimitEvent = {
-  type: "ask_gpt" | "search_request" | "user_question" | "library_reference";
+  type:
+    | "ask_gpt"
+    | "search_request"
+    | "user_question"
+    | "library_reference"
+    | "youtube_transcript_request";
   taskId?: string;
   actionId?: string;
 };
@@ -73,6 +78,9 @@ export function deriveProtocolSearchContext(params: {
   const askGptEvent = protocolEvents.find((event) => event.type === "ask_gpt");
   const searchRequestEvent = protocolEvents.find(
     (event) => event.type === "search_request"
+  );
+  const youtubeTranscriptRequestEvent = protocolEvents.find(
+    (event) => event.type === "youtube_transcript_request"
   );
   const libraryIndexRequestEvent = protocolEvents.find(
     (event) => event.type === "library_index_request"
@@ -135,6 +143,7 @@ export function deriveProtocolSearchContext(params: {
     protocolEvents,
     askGptEvent,
     searchRequestEvent,
+    youtubeTranscriptRequestEvent,
     libraryIndexRequestEvent,
     libraryItemRequestEvent,
     userQuestionEvent,
@@ -189,7 +198,7 @@ export function resolveProtocolSearchOverrides(params: {
       };
     case "youtube_search":
       return {
-        searchMode: "normal" as SearchMode,
+        searchMode: "youtube" as SearchMode,
         searchEngines: ["youtube_search"] as SearchEngine[],
         searchLocation: location,
       };
@@ -243,6 +252,7 @@ export function buildEffectiveRequestText(params: {
 export function resolveProtocolLimitViolation(params: {
   askGptEvent?: ProtocolTaskEventLike;
   searchRequestEvent?: ProtocolTaskEventLike;
+  youtubeTranscriptRequestEvent?: ProtocolTaskEventLike;
   userQuestionEvent?: ProtocolTaskEventLike;
   libraryIndexRequestEvent?: ProtocolTaskEventLike;
   libraryItemRequestEvent?: ProtocolTaskEventLike;
@@ -261,6 +271,12 @@ export function resolveProtocolLimitViolation(params: {
         type: "search_request",
         taskId: params.searchRequestEvent.taskId,
         actionId: params.searchRequestEvent.actionId,
+      })) ||
+    (params.youtubeTranscriptRequestEvent &&
+      params.getProtocolLimitViolation({
+        type: "youtube_transcript_request",
+        taskId: params.youtubeTranscriptRequestEvent.taskId,
+        actionId: params.youtubeTranscriptRequestEvent.actionId,
       })) ||
     (params.userQuestionEvent &&
       params.getProtocolLimitViolation({
@@ -536,7 +552,10 @@ export function buildSearchResponseBlock(params: {
     responseLines.push("SUMMARY:", "Raw-focused search response. See RAW_EXCERPT below.");
   }
 
-  if (params.requestedMode !== "summary") {
+  const shouldIncludeSources =
+    params.requestedMode !== "summary" || params.engine === "youtube_search";
+
+  if (shouldIncludeSources) {
     responseLines.push(
       "SOURCES:",
       ...(params.sourceLines.length > 0 ? params.sourceLines : ["- none"])
@@ -552,6 +571,62 @@ export function buildSearchResponseBlock(params: {
 
   responseLines.push("<<END_SYS_SEARCH_RESPONSE>>");
   return responseLines.join("\n");
+}
+
+export function buildProtocolSourceLines(
+  sources: SourceItem[],
+  engine: string
+): string[] {
+  return sources.slice(0, 5).map((source) => {
+    if (engine === "youtube_search") {
+      return [
+        `- ${source.title || "Untitled"}`,
+        source.channelName ? `  Channel: ${source.channelName}` : "",
+        source.duration ? `  Duration: ${source.duration}` : "",
+        source.viewCount ? `  Views: ${Number(source.viewCount).toLocaleString()} views` : "",
+        source.link ? `  URL: ${source.link}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    return `- ${source.title || "Untitled"}${source.link ? ` | ${source.link}` : ""}`;
+  });
+}
+
+export function buildYouTubeTranscriptResponseBlock(params: {
+  taskId: string;
+  actionId: string;
+  url: string;
+  outputMode: string;
+  title: string;
+  channel: string;
+  summary: string;
+  rawExcerpt?: string;
+  libraryItemId?: string;
+}) {
+  const lines = [
+    "<<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>",
+    `TASK_ID: ${params.taskId}`,
+    `ACTION_ID: ${params.actionId}`,
+    `URL: ${params.url}`,
+    `OUTPUT_MODE: ${params.outputMode}`,
+    `TITLE: ${params.title}`,
+    `CHANNEL: ${params.channel}`,
+    "SUMMARY:",
+    params.summary,
+  ];
+
+  if (params.rawExcerpt) {
+    lines.push("RAW_EXCERPT:", params.rawExcerpt);
+  }
+
+  if (params.libraryItemId) {
+    lines.push(`LIBRARY_ITEM_ID: ${params.libraryItemId}`);
+  }
+
+  lines.push("<<END_SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>");
+  return lines.join("\n");
 }
 
 export function toSourceItems(sources?: SearchSource[]): SourceItem[] {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requestSerpApi } from "@/lib/search-domain/serpApiClient";
+import { cleanYouTubeTranscriptText } from "@/lib/app/youtubeTranscriptText";
 
 type TranscriptResult = Record<string, unknown> & {
   transcript?: unknown;
@@ -169,7 +170,7 @@ export async function POST(req: Request) {
       title: `${resolvedTitle} [Transcript]`,
       filename: sanitizeFilename(resolvedTitle, videoId),
       text: transcriptText,
-      cleanText: cleanText || transcriptText.replace(/^\[[^\]]+\]\s*/gm, "").trim(),
+      cleanText: cleanYouTubeTranscriptText(cleanText || transcriptText),
       summary,
       raw,
     });

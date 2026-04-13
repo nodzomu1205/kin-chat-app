@@ -7,9 +7,12 @@ import {
 } from "@/lib/taskRuntimeProtocol";
 import { shouldInjectTaskContext } from "@/lib/taskChatBridge";
 import {
-  buildKinSysInfoBlock,
   extractPreferredKinTransferText,
 } from "@/lib/app/kinStructuredProtocol";
+import {
+  cleanYouTubeTranscriptText,
+} from "@/lib/app/youtubeTranscriptText";
+import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtubeTranscriptKinBlocks";
 import type { UseChatPageActionsArgs } from "@/hooks/useChatPageActions";
 import type { SourceItem } from "@/types/chat";
 
@@ -34,7 +37,12 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
   };
 
   const getProtocolLimitViolation = (event: {
-    type: "ask_gpt" | "search_request" | "user_question" | "library_reference";
+    type:
+      | "ask_gpt"
+      | "search_request"
+      | "user_question"
+      | "library_reference"
+      | "youtube_transcript_request";
     taskId?: string;
     actionId?: string;
   }) => {
@@ -43,6 +51,8 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
         ? "ask_gpt"
         : event.type === "search_request"
           ? "search_request"
+          : event.type === "youtube_transcript_request"
+            ? "youtube_transcript_request"
           : event.type === "library_reference"
             ? "library_reference"
             : "ask_user";
@@ -57,6 +67,8 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
         ? "GPT request"
         : kind === "search_request"
           ? "web search request"
+          : kind === "youtube_transcript_request"
+            ? "YouTube transcript request"
           : kind === "library_reference"
             ? "library reference request"
             : "user question";
@@ -80,6 +92,7 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
     buildLibraryReferenceContext: args.buildLibraryReferenceContext,
     referenceLibraryItems: args.referenceLibraryItems,
     libraryIndexResponseCount: args.libraryIndexResponseCount,
+    recordIngestedDocument: args.recordIngestedDocument,
     getProtocolLimitViolation,
     shouldInjectTaskContextWithSettings: (userInput: string) =>
       shouldInjectTaskContext({
@@ -94,12 +107,16 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
     handleGptMemory: args.handleGptMemory,
     chatRecentLimit: args.chatRecentLimit,
     gptStateRef: args.gptStateRef,
-    setGptMessages: args.setGptMessages,
-    setGptInput: args.setGptInput,
-    setGptLoading: args.setGptLoading,
-    setGptState: args.setGptState,
-    responseMode: args.responseMode,
-    currentTaskId: args.taskProtocol.runtime.currentTaskId,
+      setGptMessages: args.setGptMessages,
+      setGptInput: args.setGptInput,
+      setGptLoading: args.setGptLoading,
+      setGptState: args.setGptState,
+      setKinInput: args.setKinInput,
+      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      responseMode: args.responseMode,
+      currentTaskId: args.taskProtocol.runtime.currentTaskId,
     taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
     ingestProtocolMessage: args.ingestProtocolMessage,
     recordSearchContext: args.recordSearchContext,
@@ -169,10 +186,10 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
       args.recordIngestedDocument({
         title: data.title || `${source.title} [Transcript]`,
         filename: data.filename || `youtube-${videoId}.txt`,
-        text: data.text,
+        text: cleanYouTubeTranscriptText(data.cleanText || data.text),
         summary: data.summary || "",
         taskId: args.currentTaskDraft.taskId || undefined,
-        charCount: data.text.length,
+        charCount: cleanYouTubeTranscriptText(data.cleanText || data.text).length,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
@@ -235,23 +252,17 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
         throw new Error(data.error || "transcript kin transfer failed");
       }
 
-      const cleanTranscript =
-        (data.cleanText || data.text || "")
-          .replace(/^\[[^\]]+\]\s*/gm, "")
-          .trim();
-
-      const block = buildKinSysInfoBlock({
-        title: "YouTube Script",
-        content: [
-          source.title ? `Title: ${source.title}` : "",
-          source.channelName ? `Channel: ${source.channelName}` : "",
-          cleanTranscript,
-        ]
-          .filter(Boolean)
-          .join("\n"),
+      const cleanTranscript = cleanYouTubeTranscriptText(data.cleanText || data.text || "");
+      const blocks = buildYouTubeTranscriptKinBlocks({
+        cleanTranscript,
+        title: source.title,
+        channelName: source.channelName,
+        url: source.link,
       });
 
-      args.setKinInput(block);
+      args.setKinInput(blocks[0] || "");
+      args.setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
+      args.setPendingKinInjectionIndex(0);
       if (args.isMobile) args.setActiveTab("kin");
     } catch (error) {
       console.error(error);

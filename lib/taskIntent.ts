@@ -12,6 +12,7 @@ export type IntentPhraseKind =
   | "ask_gpt"
   | "ask_user"
   | "search_request"
+  | "youtube_transcript_request"
   | "library_reference"
   | "char_limit";
 
@@ -232,6 +233,31 @@ function normalizeFullWidthDigits(input: string) {
   );
 }
 
+function detectYouTubeTranscriptCount(text: string): ParsedRuleAndValue {
+  const normalized = normalizeFullWidthDigits(text);
+  const patterns = [
+    /(?:youtube|YouTube|動画|映像)(?:コンテンツ)?(?:の)?(?:文字起こし|transcript)(?:送付|取得|取込|読込|読み込み)?[^\d]{0,12}(\d+)\s*(?:回|件|本)/i,
+    /(?:文字起こし|transcript)(?:送付|取得|取込|読込|読み込み)?[^\d]{0,12}(\d+)\s*(?:回|件|本)/i,
+    /(?:youtube|YouTube)(?:コンテンツ|動画)?(?:取得|入手|読込|読み込み)[^\d]{0,12}(\d+)\s*(?:回|件|本)/i,
+    /(\d+)\s*(?:回|件|本)[^\n]{0,24}(?:youtube|YouTube|動画|映像)(?:コンテンツ)?(?:の)?(?:文字起こし|transcript)(?:送付|取得|取込|読込|読み込み)?/i,
+    /(\d+)\s*(?:回|件|本)[^\n]{0,24}(?:文字起こし|transcript)(?:送付|取得|取込|読込|読み込み)?/i,
+    /(\d+)\s*(?:回|件|本)[^\n]{0,24}(?:youtube|YouTube)(?:コンテンツ|動画)?(?:取得|入手|読込|読み込み)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match?.[1]) continue;
+    const count = Number(match[1]);
+    if (!Number.isFinite(count)) continue;
+    return {
+      count,
+      rule: detectRuleFromClause(match[0], "exact"),
+    };
+  }
+
+  return {};
+}
+
 function detectDirectCountOverride(
   text: string,
   kind: "ask_gpt" | "ask_user" | "search_request"
@@ -295,6 +321,14 @@ function applyDirectCountOverrides(intent: TaskIntent, text: string): TaskIntent
     next.workflow!.allowSearchRequest = true;
   }
 
+  const youtubeTranscript = detectYouTubeTranscriptCount(text);
+  if (youtubeTranscript.count) {
+    next.workflow!.youtubeTranscriptRequestCount = youtubeTranscript.count;
+    next.workflow!.youtubeTranscriptRequestCountRule =
+      youtubeTranscript.rule || "exact";
+    next.workflow!.allowYoutubeTranscriptRequest = true;
+  }
+
   const normalized = normalizeFullWidthDigits(text);
   const libraryMatch =
     normalized.match(/ライブラリ(?:参照|一覧|リスト|書類|データ)[^\d]{0,12}(\d+)\s*回/i) ||
@@ -311,6 +345,7 @@ function buildBaseTaskIntent(text: string): TaskIntent {
   const askGpt = parseCountClause(text, "ask_gpt");
   const askUser = parseCountClause(text, "ask_user");
   const searchRequest = parseCountClause(text, "search_request");
+  const youtubeTranscript = detectYouTubeTranscriptCount(text);
   const normalized = normalizeFullWidthDigits(text);
   const libraryMatch =
     normalized.match(/ライブラリ(?:参照|一覧|リスト|書類|データ)[^\d]{0,12}(\d+)\s*回/i) ||
@@ -332,6 +367,8 @@ function buildBaseTaskIntent(text: string): TaskIntent {
       askUserCountRule: askUser.rule,
       searchRequestCount: searchRequest.count,
       searchRequestCountRule: searchRequest.rule,
+      youtubeTranscriptRequestCount: youtubeTranscript.count,
+      youtubeTranscriptRequestCountRule: youtubeTranscript.rule,
       allowMaterialRequest: /(資料要求|資料請求|補足資料|document|pdf|source)/i.test(text),
       allowSearchRequest: /(検索|サーチ|search|google)/i.test(text) || Boolean(searchRequest.count),
       finalizationPolicy: detectFinalizationPolicy(text),
@@ -388,6 +425,12 @@ function applyApprovedIntentPhrases(
       next.workflow!.searchRequestCount = phrase.count;
       next.workflow!.searchRequestCountRule = phrase.rule || "exact";
       next.workflow!.allowSearchRequest = true;
+    }
+
+    if (phrase.kind === "youtube_transcript_request" && phrase.count) {
+      next.workflow!.youtubeTranscriptRequestCount = phrase.count;
+      next.workflow!.youtubeTranscriptRequestCountRule = phrase.rule || "exact";
+      next.workflow!.allowYoutubeTranscriptRequest = true;
     }
 
     if (phrase.kind === "library_reference" && phrase.count) {
@@ -460,6 +503,8 @@ function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
     '  "askUserCountRule": "exact" | "at_least" | "up_to" | "around" | null,',
     '  "searchRequestCount": number | null,',
     '  "searchRequestCountRule": "exact" | "at_least" | "up_to" | "around" | null,',
+    '  "youtubeTranscriptRequestCount": number | null,',
+    '  "youtubeTranscriptRequestCountRule": "exact" | "at_least" | "up_to" | "around" | null,',
     '  "libraryReferenceCount": number | null,',
     '  "libraryReferenceCountRule": "exact" | "at_least" | "up_to" | "around" | null,',
     '  "charLimit": number | null,',
@@ -467,7 +512,7 @@ function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
     '  "candidates": [',
     '    {',
     '      "phrase": string,',
-    '      "kind": "ask_gpt" | "ask_user" | "search_request" | "library_reference" | "char_limit",',
+    '      "kind": "ask_gpt" | "ask_user" | "search_request" | "youtube_transcript_request" | "library_reference" | "char_limit",',
     '      "count": number | null,',
     '      "rule": "exact" | "at_least" | "up_to" | "around" | null,',
     '      "charLimit": number | null',
@@ -480,6 +525,7 @@ function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
     `BASELINE_ASK_GPT_COUNT: ${baseline.workflow?.askGptCount ?? 0}`,
     `BASELINE_ASK_USER_COUNT: ${baseline.workflow?.askUserCount ?? 0}`,
     `BASELINE_SEARCH_REQUEST_COUNT: ${baseline.workflow?.searchRequestCount ?? 0}`,
+    `BASELINE_YOUTUBE_TRANSCRIPT_REQUEST_COUNT: ${baseline.workflow?.youtubeTranscriptRequestCount ?? 0}`,
     `BASELINE_LIBRARY_REFERENCE_COUNT: ${baseline.workflow?.libraryReferenceCount ?? 0}`,
     `BASELINE_HAS_CHAR_LIMIT: ${(baseline.constraints || []).some((item) => /Japanese characters/i.test(item)) ? "YES" : "NO"}`,
     "USER_TEXT_START",
@@ -510,6 +556,11 @@ function mergeFallbackIntent(base: TaskIntent, parsed: Record<string, unknown>):
     typeof parsed.searchRequestCount === "number" && parsed.searchRequestCount > 0
       ? parsed.searchRequestCount
       : null;
+  const youtubeTranscriptRequestCount =
+    typeof parsed.youtubeTranscriptRequestCount === "number" &&
+    parsed.youtubeTranscriptRequestCount > 0
+      ? parsed.youtubeTranscriptRequestCount
+      : null;
   const libraryReferenceCount =
     typeof parsed.libraryReferenceCount === "number" && parsed.libraryReferenceCount > 0
       ? parsed.libraryReferenceCount
@@ -529,6 +580,15 @@ function mergeFallbackIntent(base: TaskIntent, parsed: Record<string, unknown>):
     next.workflow!.searchRequestCount = searchRequestCount;
     next.workflow!.searchRequestCountRule = asRule(parsed.searchRequestCountRule) || "exact";
     next.workflow!.allowSearchRequest = true;
+  }
+  if (
+    (next.workflow?.youtubeTranscriptRequestCount ?? 0) === 0 &&
+    youtubeTranscriptRequestCount
+  ) {
+    next.workflow!.youtubeTranscriptRequestCount = youtubeTranscriptRequestCount;
+    next.workflow!.youtubeTranscriptRequestCountRule =
+      asRule(parsed.youtubeTranscriptRequestCountRule) || "exact";
+    next.workflow!.allowYoutubeTranscriptRequest = true;
   }
   if ((next.workflow?.libraryReferenceCount ?? 0) === 0 && libraryReferenceCount) {
     next.workflow!.libraryReferenceCount = libraryReferenceCount;
@@ -560,6 +620,7 @@ function buildPendingCandidates(
         item.kind === "ask_gpt" ||
         item.kind === "ask_user" ||
         item.kind === "search_request" ||
+        item.kind === "youtube_transcript_request" ||
         item.kind === "library_reference" ||
         item.kind === "char_limit"
         ? item.kind

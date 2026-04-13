@@ -30,7 +30,7 @@ function buildRuleLines(intent: TaskIntent): string[] {
       "- In <<SYS_SEARCH_REQUEST>>, always set QUERY and optionally set ENGINE and LOCATION."
     );
     lines.push(
-      "- Supported ENGINE values are google_search, google_ai_mode, google_news, and google_local."
+      "- Supported ENGINE values are google_search, google_ai_mode, google_news, google_local, and youtube_search."
     );
     lines.push(
       "- Use LOCATION in natural place form such as Japan or Johannesburg, South Africa; GPT will resolve locale details such as gl/hl if needed."
@@ -40,6 +40,22 @@ function buildRuleLines(intent: TaskIntent): string[] {
     );
     lines.push(
       "- GPT should answer <<SYS_SEARCH_REQUEST>> with <<SYS_SEARCH_RESPONSE>> using the same TASK_ID and ACTION_ID."
+    );
+  }
+
+  if (intent.workflow?.allowYoutubeTranscriptRequest) {
+    lines.push("- Use <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> when you want GPT to fetch a YouTube transcript by URL.");
+    lines.push(
+      "- In <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>, always set URL."
+    );
+    lines.push(
+      "- GPT should answer <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> with <<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>> using the same TASK_ID and ACTION_ID."
+    );
+    lines.push(
+      "- Before requesting transcripts, keep likely candidate video metadata in <<SYS_TASK_PROGRESS>> whenever possible, especially URL, TITLE, and CHANNEL."
+    );
+    lines.push(
+      "- When multiple YouTube candidates are being considered, use <<SYS_TASK_PROGRESS>> to keep the currently selected candidate URLs and short notes near the front of the conversation."
     );
   }
 
@@ -154,6 +170,36 @@ RAW_RESULT_ID: RAW-${taskId}-S002-001
 <<END_SYS_SEARCH_RESPONSE>>`);
   }
 
+  if (intent.workflow?.allowYoutubeTranscriptRequest) {
+    blocks.push(`<<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: Y001
+URL: https://www.youtube.com/watch?v=example
+BODY: Fetch the transcript for this YouTube content.
+<<END_SYS_YOUTUBE_TRANSCRIPT_REQUEST>>`);
+
+    blocks.push(`<<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: Y001
+URL: https://www.youtube.com/watch?v=example
+TITLE: Example video
+CHANNEL: Example channel
+SUMMARY: Short transcript digest here.
+RAW_EXCERPT: Key transcript excerpt here.
+LIBRARY_ITEM_ID: doc:example
+<<END_SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>`);
+
+    blocks.push(`<<SYS_TASK_PROGRESS>>
+TASK_ID: ${taskId}
+STATUS: IN_PROGRESS
+SUMMARY: Candidate YouTube videos shortlisted for transcript fetch.
+BODY:
+- TITLE: Example video
+  CHANNEL: Example channel
+  URL: https://www.youtube.com/watch?v=example
+<<END_SYS_TASK_PROGRESS>>`);
+  }
+
   if (intent.workflow?.allowLibraryReference) {
     blocks.push(`<<SYS_LIBRARY_INDEX_REQUEST>>
 TASK_ID: ${taskId}
@@ -262,6 +308,20 @@ function buildRequiredWorkflow(intent: TaskIntent): string[] {
     }
   }
 
+  if ((intent.workflow?.youtubeTranscriptRequestCount ?? 0) > 0) {
+    const transcriptRule =
+      intent.workflow?.youtubeTranscriptRequestCountRule ?? "exact";
+    if (transcriptRule !== "up_to") {
+      lines.push(
+        `- ${formatCountInstruction(
+          "Request YouTube transcript support",
+          intent.workflow!.youtubeTranscriptRequestCount!,
+          transcriptRule
+        )}`
+      );
+    }
+  }
+
   if ((intent.workflow?.libraryReferenceCount ?? 0) > 0) {
     const libraryRule = intent.workflow?.libraryReferenceCountRule ?? "exact";
     if (libraryRule !== "up_to") {
@@ -309,6 +369,18 @@ function buildOptionalWorkflow(intent: TaskIntent): string[] {
     }
   }
 
+  if (intent.workflow?.allowYoutubeTranscriptRequest) {
+    const count = intent.workflow?.youtubeTranscriptRequestCount ?? 0;
+    const rule = intent.workflow?.youtubeTranscriptRequestCountRule ?? "exact";
+    if (count > 0 && rule === "up_to") {
+      lines.push(`- You may request YouTube transcript support up to ${count} time(s).`);
+    } else if (count > 0 && rule === "around") {
+      lines.push(`- You may request YouTube transcript support around ${count} time(s).`);
+    } else if (count === 0) {
+      lines.push("- You may request YouTube transcript support when a YouTube source needs to be read in full.");
+    }
+  }
+
   if (intent.workflow?.allowLibraryReference) {
     const count = intent.workflow?.libraryReferenceCount ?? 0;
     const rule = intent.workflow?.libraryReferenceCountRule ?? "exact";
@@ -331,6 +403,8 @@ function buildOptionalWorkflow(intent: TaskIntent): string[] {
 function buildDeliveryLimits(intent: TaskIntent): string[] {
   const lines = [
     "- You may receive long GPT protocol messages in 3200-3600 character parts labeled as PART n/total.",
+    '- If this <<SYS_TASK>> arrives as multiple PART n/total messages, reply only with "Received." until the final part arrives.',
+    "- Do not begin execution or external actions until the final PART arrives.",
     "- Keep each outgoing message at or under 700 characters.",
     "- If a single outgoing message would exceed 700 characters, split it into 600-700 character parts before sending.",
     "- When splitting, label each part as PART n/total.",

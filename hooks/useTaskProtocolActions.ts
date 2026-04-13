@@ -8,7 +8,12 @@ import {
   sendProtocolRulebookToKinFlow,
   setProtocolRulebookToKinDraftFlow,
 } from "@/lib/app/miscUiFlows";
+import {
+  buildPendingKinInjectionBlocks,
+  DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+} from "@/lib/app/kinMultipart";
 import { getIntentCandidateSignature } from "@/lib/app/chatPageHelpers";
+import { resolveTaskIntentWithFallback } from "@/lib/taskIntent";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
@@ -61,13 +66,87 @@ export function useTaskProtocolActions(
     });
   };
 
-  const approveIntentCandidate = (candidateId: string) => {
+  const approveIntentCandidate = async (candidateId: string) => {
+    const candidate = args.pendingIntentCandidates.find(
+      (item) => item.id === candidateId
+    );
+    if (!candidate) return;
+
+    const exists = args.approvedIntentPhrases.some(
+      (item) =>
+        item.kind === candidate.kind &&
+        item.phrase === candidate.phrase &&
+        item.count === candidate.count &&
+        item.rule === candidate.rule &&
+        item.charLimit === candidate.charLimit
+    );
+
+    const nextApprovedIntentPhrases = exists
+      ? args.approvedIntentPhrases
+      : [
+          {
+            id: `approved-${Date.now()}-${Math.random()
+              .toString(36)
+              .slice(2, 8)}`,
+            phrase: candidate.phrase,
+            kind: candidate.kind,
+            count: candidate.count,
+            rule: candidate.rule,
+            charLimit: candidate.charLimit,
+            createdAt: new Date().toISOString(),
+          },
+          ...args.approvedIntentPhrases,
+        ].slice(0, 100);
+
     approveIntentCandidateFlow({
       candidateId,
       pendingIntentCandidates: args.pendingIntentCandidates,
       setApprovedIntentPhrases: args.setApprovedIntentPhrases,
       setPendingIntentCandidates: args.setPendingIntentCandidates,
     });
+
+    const sourceInstruction =
+      args.currentTaskDraft.userInstruction?.trim() ||
+      args.taskProtocol.runtime.currentTaskIntent?.goal?.trim() ||
+      "";
+
+    if (
+      !sourceInstruction ||
+      !args.taskProtocol.runtime.currentTaskId ||
+      !args.taskProtocol.replaceCurrentTaskIntent
+    ) {
+      return;
+    }
+
+    const resolved = await resolveTaskIntentWithFallback({
+      input: sourceInstruction,
+      approvedPhrases: nextApprovedIntentPhrases,
+      responseMode: args.responseMode === "creative" ? "creative" : "strict",
+    });
+
+    args.applyTaskUsage(resolved.usage);
+
+    const replaced = args.taskProtocol.replaceCurrentTaskIntent({
+      intent: resolved.intent,
+      title:
+        args.taskProtocol.runtime.currentTaskTitle || args.currentTaskDraft.title,
+      originalInstruction: sourceInstruction,
+    });
+
+    if (!replaced) return;
+
+    args.syncTaskDraftFromProtocol({
+      taskId: replaced.taskId,
+      title: replaced.title,
+      goal: resolved.intent.goal,
+      compiledTaskPrompt: replaced.compiledTaskPrompt,
+    });
+    const blocks = buildPendingKinInjectionBlocks(replaced.compiledTaskPrompt, {
+      noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+    });
+    args.setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
+    args.setPendingKinInjectionIndex(0);
+    args.setKinInput(blocks[0] ?? replaced.compiledTaskPrompt);
   };
 
   const updateIntentCandidate = (

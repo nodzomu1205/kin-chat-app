@@ -133,7 +133,7 @@ export function SearchSettingsSection(props: {
       <div style={sectionCard}>
         <div style={{ ...labelStyle, marginBottom: 8 }}>検索プリセット</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["normal", "ai", "integrated", "news", "geo"] as PrimarySearchMode[]).map(
+          {(["normal", "ai", "integrated", "news", "geo", "youtube"] as PrimarySearchMode[]).map(
             (mode) => (
               <button
                 key={mode}
@@ -149,7 +149,9 @@ export function SearchSettingsSection(props: {
                       ? "統合"
                       : mode === "news"
                         ? "News"
-                        : "Maps / Local"}
+                        : mode === "geo"
+                          ? "Maps / Local"
+                          : "YouTube"}
               </button>
             )
           )}
@@ -384,6 +386,10 @@ export function RulesSettingsSection(props: {
 
       <div style={sectionCard}>
         <div style={{ ...labelStyle, marginBottom: 8 }}>Memory ルール候補</div>
+        <div style={{ ...labelStyle, marginBottom: 8 }}>Memory 精査候補</div>
+        <div style={{ ...helpTextStyle, marginBottom: 8 }}>
+          曖昧な文面について、今後この表現を LLM 補助で精査してよいかを確認します。
+        </div>
         {props.pendingMemoryRuleCandidates.length === 0 ? (
           <div style={helpTextStyle}>
             現在、承認待ちの Memory ルール候補はありません。
@@ -392,7 +398,12 @@ export function RulesSettingsSection(props: {
           props.pendingMemoryRuleCandidates.map((candidate) => (
             <div key={candidate.id} style={{ ...subtleCard, marginTop: 8 }}>
               <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {candidate.kind} / {candidate.phrase}
+                {candidate.kind === "topic_alias"
+                  ? "topic 精査候補"
+                  : "closing reply 精査候補"}
+              </div>
+              <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                入力文: {candidate.phrase}
               </div>
               {candidate.normalizedValue ? (
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
@@ -437,6 +448,9 @@ export function RulesSettingsSection(props: {
       </div>
 
       <div style={sectionCard}>
+        <div style={{ ...helpTextStyle, marginBottom: 8 }}>
+          許可すると、似た表現が来た時に LLM 補助で topic や facts の整理を改善します。
+        </div>
         <button
           type="button"
           style={tabButton(props.showApprovedMemoryRules)}
@@ -451,7 +465,12 @@ export function RulesSettingsSection(props: {
             {props.approvedMemoryRules.map((rule) => (
               <div key={rule.id} style={subtleCard}>
                 <div style={{ fontSize: 12, fontWeight: 800 }}>
-                  {rule.kind} / {rule.phrase}
+                  {rule.kind === "topic_alias"
+                    ? "topic 精査"
+                    : "closing reply 精査"}
+                </div>
+                <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                  入力文: {rule.phrase}
                 </div>
                 {rule.normalizedValue ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>
@@ -487,6 +506,9 @@ export function RulesSettingsSection(props: {
       <div style={sectionCard}>
         <div style={{ ...labelStyle, marginBottom: 8 }}>
           SYSフォーマットルール候補
+        </div>
+        <div style={{ ...helpTextStyle, marginBottom: 8 }}>
+          こちらは SYS フォーマット自動生成の候補です。Memory 精査候補とは役割が別です。
         </div>
         {props.pendingIntentCandidates.length === 0 ? (
           <div style={helpTextStyle}>

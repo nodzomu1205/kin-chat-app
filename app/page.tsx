@@ -171,6 +171,8 @@ export default function ChatApp() {
     getProvisionalMemory,
     handleGptMemory,
     resetGptForCurrentKin,
+    reapplyCurrentMemoryWithApprovedRules,
+    reapplyCurrentMemoryWithApprovedCandidate,
     persistCurrentGptState,
     clearTaskScopedMemory,
     ensureKinState,
@@ -290,9 +292,16 @@ export default function ChatApp() {
   } = useMemoryRuleActions({
     setMemoryInterpreterSettings,
     pendingMemoryRuleCandidates,
+    approvedMemoryRules,
     setPendingMemoryRuleCandidates,
     setApprovedMemoryRules,
     setRejectedMemoryRuleCandidateSignatures,
+    onApproveCandidateApplied: async (candidate, nextApprovedRules) => {
+      await reapplyCurrentMemoryWithApprovedCandidate(
+        candidate,
+        nextApprovedRules
+      );
+    },
   });
 
   const [chatBridgeSettings] = useState<ChatBridgeSettings>({

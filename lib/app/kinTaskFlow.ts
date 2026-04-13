@@ -1,5 +1,9 @@
 import { generateId } from "@/lib/uuid";
 import { extractPreferredKinTransferText } from "@/lib/app/kinStructuredProtocol";
+import {
+  buildPendingKinInjectionBlocks,
+  DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+} from "@/lib/app/kinMultipart";
 import { resolveTaskIntentWithFallback, type ApprovedIntentPhrase, type PendingIntentCandidate } from "@/lib/taskIntent";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
@@ -38,6 +42,8 @@ type StartKinTaskArgs = {
     goal: string;
     compiledTaskPrompt: string;
   }) => void;
+  setPendingKinInjectionBlocks: (value: string[]) => void;
+  setPendingKinInjectionIndex: (value: number) => void;
   setKinInput: (value: string) => void;
   setGptInput: (value: string) => void;
   appendGptMessage: (message: Message) => void;
@@ -54,6 +60,8 @@ export async function runStartKinTaskFlow({
   mergePendingIntentCandidates,
   startTask,
   syncTaskDraftFromProtocol,
+  setPendingKinInjectionBlocks,
+  setPendingKinInjectionIndex,
   setKinInput,
   setGptInput,
   appendGptMessage,
@@ -92,12 +100,22 @@ export async function runStartKinTaskFlow({
     compiledTaskPrompt: started.compiledTaskPrompt,
   });
 
-  setKinInput(started.compiledTaskPrompt);
+  const blocks = buildPendingKinInjectionBlocks(started.compiledTaskPrompt, {
+    noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+  });
+  const firstBlock = blocks[0] ?? started.compiledTaskPrompt;
+
+  setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
+  setPendingKinInjectionIndex(0);
+  setKinInput(firstBlock);
   setGptInput("");
   appendGptMessage({
     id: generateId(),
     role: "gpt",
-    text: `New Kin task generated and set to Kin input. TASK_ID: #${started.taskId}`,
+    text:
+      blocks.length > 1
+        ? `New Kin task generated and split into ${blocks.length} Kin parts. TASK_ID: #${started.taskId}`
+        : `New Kin task generated and set to Kin input. TASK_ID: #${started.taskId}`,
     meta: {
       kind: "task_info",
       sourceType: "manual",

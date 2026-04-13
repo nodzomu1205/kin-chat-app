@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const KINDROID_TIMEOUT_MS = 45000;
+const KINDROID_TIMEOUT_MS = 90000;
 
 export async function POST(req: Request) {
   try {

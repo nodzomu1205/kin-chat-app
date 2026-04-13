@@ -20,6 +20,10 @@ function normalizeEventType(raw: string): TaskProtocolEvent["type"] | null {
       return "search_request";
     case "SEARCH_RESPONSE":
       return "search_response";
+    case "YOUTUBE_TRANSCRIPT_REQUEST":
+      return "youtube_transcript_request";
+    case "YOUTUBE_TRANSCRIPT_RESPONSE":
+      return "youtube_transcript_response";
     case "LIBRARY_INDEX_REQUEST":
       return "library_index_request";
     case "LIBRARY_INDEX_RESPONSE":
@@ -118,10 +122,12 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
       required: parseRequired(fields.REQUIRED),
       summary: fields.SUMMARY || undefined,
       query: fields.QUERY || undefined,
+      url: fields.URL || undefined,
       searchEngine: fields.ENGINE || undefined,
       searchLocation: fields.LOCATION || undefined,
       outputMode: parseSearchOutputMode(fields.OUTPUT_MODE),
       rawResultId: fields.RAW_RESULT_ID || undefined,
+      libraryItemId: fields.LIBRARY_ITEM_ID || undefined,
       partIndex: parsedPart.partIndex,
       totalParts: parsedPart.totalParts,
       characters: fields.CHARACTERS ? Number(fields.CHARACTERS) || undefined : undefined,
@@ -208,6 +214,31 @@ export function buildProgressAckResponseBlock(params: { taskId: string }) {
     `TASK_ID: ${params.taskId}`,
     "ACTION_ID: PROGRESS_ACK",
     "BODY: Noted. Continue the work.",
+    "<<END_SYS_GPT_RESPONSE>>",
+  ].join("\n");
+}
+
+export function buildResendLastMessageBlock(params?: { taskId?: string }) {
+  return [
+    "<<SYS_GPT_RESPONSE>>",
+    ...(params?.taskId ? [`TASK_ID: ${params.taskId}`] : []),
+    "ACTION_ID: RESEND_LAST_MESSAGE",
+    "BODY: The last message didn't successfully come through. Resend the message. If your message is over 600 characters, split it into 600-700 character parts labeled as PART n/total, and clearly mark the final part.",
+    "<<END_SYS_GPT_RESPONSE>>",
+  ].join("\n");
+}
+
+export function buildYoutubeTranscriptRetryBlock(params: {
+  taskId?: string;
+  actionId?: string;
+  url?: string;
+}) {
+  return [
+    "<<SYS_GPT_RESPONSE>>",
+    ...(params.taskId ? [`TASK_ID: ${params.taskId}`] : []),
+    `ACTION_ID: ${params.actionId || "YOUTUBE_TRANSCRIPT_RETRY"}`,
+    "BODY: The requested YouTube transcript could not be fetched because the URL was invalid or did not lead to a usable transcript. Request a new YouTube search if needed, identify the correct video URL, and retry with a valid YouTube link.",
+    ...(params.url ? [`DETAIL: Failed URL: ${params.url}`] : []),
     "<<END_SYS_GPT_RESPONSE>>",
   ].join("\n");
 }

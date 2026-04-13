@@ -231,6 +231,8 @@ export function buildKinSysTaskBlock(args: {
   content: string;
   directive?: string;
   directiveLines?: string[];
+  partIndex?: number;
+  partTotal?: number;
 }): string {
   const taskId = formatTaskSlot(args.taskSlot);
   const title = sanitizeLine(args.title || "GPTタスク");
@@ -244,6 +246,16 @@ export function buildKinSysTaskBlock(args: {
 
   return [
     "<<SYS_TASK>>",
+    args.partTotal && args.partTotal > 1
+      ? `PART: ${Math.max(1, args.partIndex || 1)}/${args.partTotal}`
+      : "",
+    args.partTotal && args.partTotal > 1 ? "TRANSFER_NOTICE:" : "",
+    ...(args.partTotal && args.partTotal > 1
+      ? [
+          '- This task is still arriving in multiple parts. Reply only with "Received." until the final PART arrives.',
+          "- Do not begin execution until the final PART arrives.",
+        ]
+      : []),
     `TASK_ID: ${taskId}`,
     `TITLE: ${title}`,
     "GOAL: Use the material below as the active task context and act on it.",

@@ -362,13 +362,13 @@ export async function POST(req: Request) {
       let returnedSearchContinuationToken = "";
 
       if (useSearch && searchQuery) {
-        console.log("🔍 SEARCH:", searchQuery);
         const safeSearchMode: SearchMode =
           searchMode === "ai" ||
           searchMode === "integrated" ||
           searchMode === "ai_first" ||
           searchMode === "news" ||
           searchMode === "geo" ||
+          searchMode === "youtube" ||
           searchMode === "travel" ||
           searchMode === "product" ||
           searchMode === "entity" ||
@@ -530,12 +530,6 @@ export async function POST(req: Request) {
         content: buildInstructionWrappedInput(input, safeInstructionMode),
       });
 
-      console.log("🧠 REASONING MODE:", safeReasoningMode);
-      console.log("🧠 USING MEMORY:", JSON.stringify(normalizedMemory, null, 2));
-      console.log("🧠 RECENT COUNT:", trimmedRecent.length);
-      console.log("🧠 INPUT COUNT:", messages.length);
-      console.log("🧠 FINAL MESSAGES:", JSON.stringify(messages, null, 2));
-
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
@@ -550,12 +544,10 @@ export async function POST(req: Request) {
 
       const data = await response.json();
 
-      console.log("🧠 OPENAI RAW:", JSON.stringify(data, null, 2));
-
       const reply =
         data.output?.[0]?.content?.[0]?.text ||
         data.output_text ||
-        "⚠️ reply not found";
+        "GPT reply not found.";
 
         return NextResponse.json({
           reply,

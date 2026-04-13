@@ -4,6 +4,7 @@ import type { Message } from "@/types/chat";
 import type { KinConnectionState } from "@/hooks/useKinManager";
 import {
   buildProgressAckResponseBlock,
+  buildResendLastMessageBlock,
   extractTaskProtocolEvents,
 } from "@/lib/taskRuntimeProtocol";
 
@@ -29,6 +30,16 @@ type RunSendKinMessageFlowArgs = {
 type KindroidApiResponse = {
   reply?: string;
 };
+
+function extractTaskIdFromOutboundText(text: string): string | undefined {
+  const directMatch = text.match(/TASK_ID:\s*([^\n\r]+)/);
+  if (directMatch?.[1]?.trim()) return directMatch[1].trim();
+
+  const sysTaskMatch = text.match(/<<SYS_TASK>>[\s\S]*?#(\d{3,})/);
+  if (sysTaskMatch?.[1]) return sysTaskMatch[1];
+
+  return undefined;
+}
 
 export async function runSendKinMessageFlow({
   text,
@@ -66,18 +77,20 @@ export async function runSendKinMessageFlow({
 
     const data = (await res.json()) as KindroidApiResponse;
 
+    const replyText =
+      typeof data.reply === "string" && data.reply.trim()
+        ? data.reply
+        : "Kin did not return a usable response.";
+
     setKinMessages((prev) => [
       ...prev,
       {
         id: generateId(),
         role: "kin",
-        text:
-          typeof data.reply === "string" && data.reply.trim()
-            ? data.reply
-            : "Kin did not return a usable response.",
+        text: replyText,
       },
     ]);
-    if (typeof data.reply === "string") {
+    if (typeof data.reply === "string" && data.reply.trim()) {
       ingestProtocolMessage(data.reply, "kin_to_gpt");
       processMultipartTaskDoneText(data.reply);
     }
@@ -98,22 +111,44 @@ export async function runSendKinMessageFlow({
       }
     }
 
-    if (
-      typeof data.reply === "string" &&
-      pendingKinInjectionBlocks.length === 0
-    ) {
-      const events = extractTaskProtocolEvents(data.reply);
-      const progressOnly =
-        events.length > 0 && events.every((event) => event.type === "task_progress");
+    if (pendingKinInjectionBlocks.length === 0) {
+      const events = extractTaskProtocolEvents(replyText);
+      const hasProgress = events.some((event) => event.type === "task_progress");
+      const hasOtherRequestLikeEvent = events.some(
+        (event) =>
+          event.type !== "task_progress" &&
+          event.type !== "task_confirm"
+      );
       const taskId = events.find((event) => event.taskId)?.taskId;
 
-      if (progressOnly && taskId) {
+      if (hasProgress && taskId && !hasOtherRequestLikeEvent) {
         setKinInput(buildProgressAckResponseBlock({ taskId }));
+      } else if (replyText === "Kin did not return a usable response.") {
+        setKinInput(
+          buildResendLastMessageBlock({
+            taskId: extractTaskIdFromOutboundText(text),
+          })
+        );
       }
     }
   } catch (error) {
     console.error(error);
     setKinConnectionState("error");
+    if (pendingKinInjectionBlocks.length === 0) {
+      setKinMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "kin",
+          text: "Kin did not return a usable response.",
+        },
+      ]);
+      setKinInput(
+        buildResendLastMessageBlock({
+          taskId: extractTaskIdFromOutboundText(text),
+        })
+      );
+    }
   } finally {
     setKinLoading(false);
   }

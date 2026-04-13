@@ -4,17 +4,25 @@ import { generateId } from "@/lib/uuid";
 import { buildTaskChatBridgeContext, shouldInjectTaskContext } from "@/lib/taskChatBridge";
 import {
   buildUserResponseBlock,
+  buildYoutubeTranscriptRetryBlock,
 } from "@/lib/taskRuntimeProtocol";
 import {
   buildEffectiveRequestText,
+  buildProtocolSourceLines,
   buildProtocolOverrideRequestText,
   buildSearchResponseBlock as buildSearchResponseBlockHelper,
+  buildYouTubeTranscriptResponseBlock,
   deriveProtocolSearchContext,
   resolveProtocolLimitViolation,
   toSourceItems as toSourceItemsHelper,
   type ParsedInputLike,
   type PendingRequestLike,
 } from "@/lib/app/sendToGptFlowHelpers";
+import {
+  buildYouTubeTranscriptExcerpt,
+  cleanYouTubeTranscriptText,
+} from "@/lib/app/youtubeTranscriptText";
+import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtubeTranscriptKinBlocks";
 import {
   extractInlineUrlTarget as extractInlineUrlTargetHelper,
   runInlineUrlShortcut,
@@ -27,7 +35,12 @@ import type { GptInstructionMode, ResponseMode } from "@/components/panels/gpt/g
 import type { SearchEngine, SearchMode } from "@/types/task";
 
 type ProtocolLimitEvent = {
-  type: "ask_gpt" | "search_request" | "user_question" | "library_reference";
+  type:
+    | "ask_gpt"
+    | "search_request"
+    | "user_question"
+    | "library_reference"
+    | "youtube_transcript_request";
   taskId?: string;
   actionId?: string;
 };
@@ -86,6 +99,15 @@ type SearchSource = {
   link?: string;
 };
 
+type YouTubeTranscriptApiResponse = {
+  title?: string;
+  filename?: string;
+  text?: string;
+  cleanText?: string;
+  summary?: string;
+  error?: string;
+};
+
 type ChatApiResponse = {
   reply?: string;
   usage?: Parameters<typeof normalizeUsage>[0];
@@ -137,9 +159,23 @@ type RunSendToGptFlowArgs = {
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
   setGptState: Dispatch<SetStateAction<any>>;
+  setKinInput: Dispatch<SetStateAction<string>>;
+  setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
+  setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
+  setActiveTabToKin?: () => void;
   instructionMode?: GptInstructionMode;
   responseMode: ResponseMode;
   currentTaskId: string | null;
+  recordIngestedDocument: (document: {
+    title: string;
+    filename: string;
+    text: string;
+    summary?: string;
+    taskId?: string;
+    charCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }) => { id: string };
   taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
   ingestProtocolMessage: (
     text: string,
@@ -195,9 +231,14 @@ export async function runSendToGptFlow({
   setGptInput,
   setGptLoading,
   setGptState,
+  setKinInput,
+  setPendingKinInjectionBlocks,
+  setPendingKinInjectionIndex,
+  setActiveTabToKin,
   instructionMode = "normal",
   responseMode,
   currentTaskId,
+  recordIngestedDocument,
   taskProtocolAnswerPendingRequest,
   ingestProtocolMessage,
   recordSearchContext,
@@ -210,6 +251,20 @@ export async function runSendToGptFlow({
   if (!gptInput.trim() || gptLoading) return;
 
   const rawText = gptInput.trim();
+  const parseYouTubeVideoId = (urlText: string) => {
+    const trimmed = urlText.trim();
+    if (!trimmed) return "";
+    try {
+      const url = new URL(trimmed);
+      if (/youtu\.be$/i.test(url.hostname)) {
+        return url.pathname.replace(/^\/+/, "").trim();
+      }
+      if (/youtube\.com$/i.test(url.hostname) || /www\.youtube\.com$/i.test(url.hostname)) {
+        return url.searchParams.get("v")?.trim() || "";
+      }
+    } catch {}
+    return "";
+  };
   const multipartHandled = processMultipartTaskDoneText(rawText, { setGptTab: true });
   if (multipartHandled) {
     const importedMessage: Message = {
@@ -283,6 +338,7 @@ export async function runSendToGptFlow({
   const {
     askGptEvent,
     searchRequestEvent,
+    youtubeTranscriptRequestEvent,
     libraryIndexRequestEvent,
     libraryItemRequestEvent,
     userQuestionEvent,
@@ -369,6 +425,7 @@ export async function runSendToGptFlow({
   const limitViolation = resolveProtocolLimitViolation({
     askGptEvent,
     searchRequestEvent,
+    youtubeTranscriptRequestEvent,
     userQuestionEvent,
     libraryIndexRequestEvent,
     libraryItemRequestEvent,
@@ -391,6 +448,139 @@ export async function runSendToGptFlow({
       },
     ]);
     setGptInput("");
+    return;
+  }
+
+  if (youtubeTranscriptRequestEvent?.url?.trim()) {
+    const transcriptUrl = youtubeTranscriptRequestEvent.url.trim();
+    const videoId = parseYouTubeVideoId(transcriptUrl);
+    const outputMode = youtubeTranscriptRequestEvent.outputMode || "summary_plus_raw";
+
+    setGptMessages((prev) => [...prev, userMsg]);
+    setGptInput("");
+    setGptLoading(true);
+
+    try {
+      if (!videoId) {
+        throw new Error("Invalid YouTube URL");
+      }
+
+      const response = await fetch("/api/youtube-transcript", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ videoId }),
+      });
+      const data = (await response.json()) as YouTubeTranscriptApiResponse;
+
+      if (!response.ok || !data.text || !videoId) {
+        throw new Error(data.error || "YouTube transcript fetch failed");
+      }
+
+        const now = new Date().toISOString();
+        const cleanTranscript = cleanYouTubeTranscriptText(
+          data.cleanText || data.text
+        );
+        const storedDocument = recordIngestedDocument({
+          title: data.title || `YouTube Transcript ${videoId}`,
+          filename: data.filename || `youtube-${videoId}.txt`,
+          text: cleanTranscript,
+          summary: data.summary || "",
+          taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || undefined,
+          charCount: cleanTranscript.length,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        const transcriptExcerpt = buildYouTubeTranscriptExcerpt(
+          cleanTranscript,
+          outputMode === "summary" ? 0 : 2800
+        );
+        const kinBlocks = buildYouTubeTranscriptKinBlocks({
+          cleanTranscript,
+          title: data.title || `YouTube Transcript ${videoId}`,
+          url: transcriptUrl,
+        });
+        const assistantText = buildYouTubeTranscriptResponseBlock({
+          taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || "",
+          actionId: youtubeTranscriptRequestEvent.actionId || "",
+          url: transcriptUrl,
+          outputMode,
+          title: data.title || `YouTube Transcript ${videoId}`,
+          channel: "",
+          summary:
+            data.summary ||
+            "Transcript fetched and stored in the library for downstream use.",
+          rawExcerpt: outputMode === "summary" ? undefined : transcriptExcerpt,
+          libraryItemId: `doc:${storedDocument.id}`,
+        });
+
+      const assistantMsg: Message = {
+        id: generateId(),
+        role: "gpt",
+        text: assistantText,
+        meta: {
+          kind: "task_info",
+          sourceType: "file_ingest",
+        },
+        };
+
+        ingestProtocolMessage(assistantText, "gpt_to_kin");
+        setKinInput(kinBlocks[0] || "");
+        setPendingKinInjectionBlocks(kinBlocks.length > 1 ? kinBlocks : []);
+        setPendingKinInjectionIndex(0);
+        setActiveTabToKin?.();
+        const baseRecent = gptStateRef.current.recentMessages || [];
+      const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
+      const previousCommittedTopic =
+        typeof gptStateRef.current?.memory?.context?.currentTopic === "string"
+          ? gptStateRef.current.memory.context.currentTopic
+          : undefined;
+      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
+
+      setGptMessages((prev) => [...prev, assistantMsg]);
+      const memoryResult = await handleGptMemory(updatedRecent, {
+        previousCommittedTopic,
+      });
+      applySummaryUsage(memoryResult.summaryUsage);
+    } catch (error) {
+      console.error(error);
+      const failureText = buildYouTubeTranscriptResponseBlock({
+        taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || "",
+        actionId: youtubeTranscriptRequestEvent.actionId || "",
+        url: transcriptUrl,
+        outputMode,
+        title: "Unknown video",
+        channel: "",
+        summary: "Transcript could not be fetched for the requested YouTube content.",
+      });
+      const retryBlock = buildYoutubeTranscriptRetryBlock({
+        taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || "",
+        actionId: youtubeTranscriptRequestEvent.actionId || "",
+        url: transcriptUrl,
+      });
+      setGptMessages((prev) => [
+        ...prev,
+        {
+          id: generateId(),
+          role: "gpt",
+          text: failureText,
+          meta: {
+            kind: "task_info",
+            sourceType: "manual",
+          },
+        },
+      ]);
+      ingestProtocolMessage(failureText, "gpt_to_kin");
+      setPendingKinInjectionBlocks([]);
+      setPendingKinInjectionIndex(0);
+      setKinInput(retryBlock);
+      setActiveTabToKin?.();
+    } finally {
+      setGptLoading(false);
+    }
+
     return;
   }
 
@@ -480,6 +670,7 @@ export async function runSendToGptFlow({
       typeof data.reply === "string" && data.reply.trim()
         ? data.reply.trim()
         : "GPT did not return a usable response.";
+    let normalizedSources: SourceItem[] = [];
 
     if (askGptEvent && !assistantText.includes("<<SYS_GPT_RESPONSE>>")) {
       assistantText = [
@@ -563,11 +754,11 @@ export async function runSendToGptFlow({
               .trim()
               .slice(0, requestedMode === "raw" ? 2400 : 1200)
           : "");
-      const sourceLines = Array.isArray(data.sources)
-        ? data.sources.slice(0, 5).map((source) =>
-            `- ${source.title || "Untitled"}${source.link ? ` | ${source.link}` : ""}`
-          )
-        : [];
+      normalizedSources = toSourceItemsHelper(data.sources);
+      const sourceLines = buildProtocolSourceLines(
+        normalizedSources,
+        searchRequestEvent.searchEngine || effectiveSearchEngines[0] || ""
+      );
 
       assistantText = buildSearchResponseBlockHelper({
         taskId: searchRequestEvent.taskId || currentTaskId || "",
@@ -600,7 +791,7 @@ export async function runSendToGptFlow({
       id: generateId(),
       role: "gpt",
       text: assistantText,
-      sources: toSourceItemsHelper(data.sources),
+      sources: normalizedSources,
       meta: {
         kind: "normal",
         sourceType: data.searchUsed ? "search" : "gpt_input",

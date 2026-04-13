@@ -46,6 +46,10 @@ const getEmptyKinState = (): KinMemoryState => ({
   recentMessages: [],
 });
 
+function normalizeMemoryText(text: string) {
+  return text.normalize("NFKC").replace(/\s+/g, " ").trim();
+}
+
 type UseGptMemoryOptions = {
   memoryInterpreterSettings: MemoryInterpreterSettings;
   approvedMemoryRules: ApprovedMemoryRule[];
@@ -195,22 +199,27 @@ export function useGptMemory(
     [settings]
   );
 
-  const handleGptMemory = useCallback(
+  const runMemoryUpdate = useCallback(
     async (
       updatedRecent: Message[],
-      options?: MemoryUpdateOptions
+      options: MemoryUpdateOptions | undefined,
+      runtimeConfig?: {
+        approvedMemoryRules?: ApprovedMemoryRule[];
+      }
     ): Promise<{ summaryUsage: TokenUsage | null }> => {
       const current = gptStateRef.current;
       const latestUser = [...updatedRecent]
         .reverse()
         .find((message) => message.role === "user");
       const latestUserText = typeof latestUser?.text === "string" ? latestUser.text : "";
+      const activeApprovedRules =
+        runtimeConfig?.approvedMemoryRules ?? config.approvedMemoryRules;
       const fallbackResult = latestUserText
         ? await resolveMemoryFallbackOptions({
             latestUserText,
             currentMemory: current.memory,
             settings: config.memoryInterpreterSettings,
-            approvedRules: config.approvedMemoryRules,
+            approvedRules: activeApprovedRules,
           })
         : { optionsPatch: {}, pendingCandidates: [], usedFallback: false };
       if (fallbackResult.pendingCandidates.length > 0) {
@@ -308,12 +317,132 @@ export function useGptMemory(
     },
     [
       applyPersistedState,
-      config.approvedMemoryRules,
       config.memoryInterpreterSettings,
       config.onAddPendingMemoryRuleCandidates,
       config.rejectedMemoryRuleCandidateSignatures,
       settings,
     ]
+  );
+
+  const handleGptMemory = useCallback(
+    async (
+      updatedRecent: Message[],
+      options?: MemoryUpdateOptions
+    ): Promise<{ summaryUsage: TokenUsage | null }> => {
+      return runMemoryUpdate(updatedRecent, options);
+    },
+    [runMemoryUpdate]
+  );
+
+  const reapplyCurrentMemoryWithApprovedRules = useCallback(
+    async (
+      approvedMemoryRules: ApprovedMemoryRule[]
+    ): Promise<{ summaryUsage: TokenUsage | null }> => {
+      const current = gptStateRef.current;
+      const recent = Array.isArray(current.recentMessages)
+        ? current.recentMessages
+        : [];
+      if (recent.length === 0) {
+        return { summaryUsage: null };
+      }
+      return runMemoryUpdate(recent, undefined, { approvedMemoryRules });
+    },
+    [runMemoryUpdate]
+  );
+
+  const reapplyCurrentMemoryWithApprovedCandidate = useCallback(
+    async (
+      candidate: PendingMemoryRuleCandidate,
+      approvedMemoryRules: ApprovedMemoryRule[]
+    ): Promise<{ summaryUsage: TokenUsage | null }> => {
+      const current = gptStateRef.current;
+      const recent = Array.isArray(current.recentMessages)
+        ? current.recentMessages
+        : [];
+      if (recent.length === 0) {
+        return { summaryUsage: null };
+      }
+
+      const optionsPatch =
+        candidate.kind === "closing_reply"
+          ? { closingReplyOverride: true }
+          : {
+              topicSeed: candidate.normalizedValue || candidate.phrase,
+              trackedEntityOverride: candidate.normalizedValue || candidate.phrase,
+            };
+
+      if (candidate.kind === "topic_alias") {
+        const approvedTopic = normalizeMemoryText(
+          candidate.normalizedValue || candidate.phrase
+        );
+        if (approvedTopic) {
+          const currentTracked = Array.isArray(current.memory?.lists?.trackedEntities)
+            ? (current.memory?.lists?.trackedEntities as string[])
+            : [];
+          applyPersistedState({
+            memory: {
+              ...current.memory,
+              context: {
+                ...current.memory.context,
+                currentTopic: approvedTopic,
+                currentTask: `ユーザーは${approvedTopic}について知りたい`,
+                followUpRule: `短い追質問は、直前の${approvedTopic}トピックを引き継いで解釈する`,
+              },
+              lists: {
+                ...current.memory.lists,
+                trackedEntities: Array.from(
+                  new Set(
+                    [approvedTopic, ...currentTracked]
+                      .map((item) => normalizeMemoryText(item))
+                      .filter(Boolean)
+                  )
+                ).slice(-8),
+              },
+            },
+            recentMessages: recent,
+          });
+        }
+      }
+
+      const { trimmedRecent, candidateMemory } = buildCandidateMemoryState({
+        currentMemory: current.memory,
+        updatedRecent: recent,
+        settings,
+        options: optionsPatch as MemoryUpdateOptions,
+      });
+
+      if (candidate.kind === "topic_alias") {
+        const approvedTopic = normalizeMemoryText(
+          candidate.normalizedValue || candidate.phrase
+        );
+        if (approvedTopic) {
+          candidateMemory.context.currentTopic = approvedTopic;
+          candidateMemory.context.currentTask = `ユーザーは${approvedTopic}について知りたい`;
+          candidateMemory.context.followUpRule = `短い追質問は、直前の${approvedTopic}トピックを引き継いで解釈する`;
+          candidateMemory.lists = {
+            ...candidateMemory.lists,
+            trackedEntities: Array.from(
+              new Set(
+                [
+                  approvedTopic,
+                  ...((Array.isArray(candidateMemory.lists?.trackedEntities)
+                    ? (candidateMemory.lists?.trackedEntities as string[])
+                    : []) || []),
+                ].map((item) => normalizeMemoryText(item)).filter(Boolean)
+              )
+            ).slice(-8),
+          };
+        }
+      }
+
+      applyPersistedState({
+        memory: candidateMemory,
+        recentMessages: trimmedRecent,
+      });
+
+      return { summaryUsage: null };
+    },
+    [applyPersistedState, settings]
   );
 
   const resetGptForCurrentKin = useCallback(() => {
@@ -367,6 +496,8 @@ export function useGptMemory(
     getProvisionalMemory,
     handleGptMemory,
     resetGptForCurrentKin,
+    reapplyCurrentMemoryWithApprovedRules,
+    reapplyCurrentMemoryWithApprovedCandidate,
     persistCurrentGptState,
     clearTaskScopedMemory,
     ensureKinState,

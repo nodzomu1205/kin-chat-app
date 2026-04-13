@@ -290,6 +290,8 @@ export async function runFileIngestFlow({
             title: fileTitle,
             content: chunk,
             directiveLines,
+            partIndex: index + 1,
+            partTotal: chunks.length,
           })
         : buildKinSysInfoBlock({
             taskSlot: currentTaskDraft.slot,

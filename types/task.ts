@@ -66,6 +66,7 @@ export type SearchMode =
   | "normal"
   | "ai"
   | "integrated"
+  | "youtube"
   | "ai_first"
   | "news"
   | "geo"

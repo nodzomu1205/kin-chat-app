@@ -27,10 +27,13 @@ export type TaskIntent = {
     askUserCountRule?: TaskCountRule;
     searchRequestCount?: number;
     searchRequestCountRule?: TaskCountRule;
+    youtubeTranscriptRequestCount?: number;
+    youtubeTranscriptRequestCountRule?: TaskCountRule;
     libraryReferenceCount?: number;
     libraryReferenceCountRule?: TaskCountRule;
     allowMaterialRequest?: boolean;
     allowSearchRequest?: boolean;
+    allowYoutubeTranscriptRequest?: boolean;
     allowLibraryReference?: boolean;
     finalizationPolicy?:
       | "auto_when_ready"
@@ -64,6 +67,7 @@ export type TaskRequirementProgress = {
     | "ask_user"
     | "request_material"
     | "search_request"
+    | "youtube_transcript_request"
     | "library_reference"
     | "finalize";
   targetCount?: number;
@@ -98,6 +102,8 @@ export type TaskProtocolEventType =
   | "gpt_response"
   | "search_request"
   | "search_response"
+  | "youtube_transcript_request"
+  | "youtube_transcript_response"
   | "library_index_request"
   | "library_index_response"
   | "library_item_request"
@@ -116,10 +122,12 @@ export type TaskProtocolEvent = {
   required?: boolean;
   summary?: string;
   query?: string;
+  url?: string;
   searchEngine?: string;
   searchLocation?: string;
   outputMode?: SearchResultMode;
   rawResultId?: string;
+  libraryItemId?: string;
   partIndex?: number;
   totalParts?: number;
   characters?: number;

@@ -74,6 +74,19 @@ function stripTopicTail(text: string) {
     .trim();
 }
 
+function countSentenceMarkers(text: string) {
+  return (text.match(/[。！？!?]/gu) || []).length;
+}
+
+function looksLikeLongNarrativeText(text: string) {
+  const normalized = normalizeText(text);
+  if (!normalized) return false;
+  if (normalized.length >= 80) return true;
+  if (countSentenceMarkers(normalized) >= 2) return true;
+  if (/\r?\n/.test(text)) return true;
+  return false;
+}
+
 export function isClosingReplyText(text: string) {
   const normalized = normalizeText(text);
   if (!normalized) return true;
@@ -124,18 +137,41 @@ function normalizeTopicCandidate(text: string) {
   if (!normalized) return "";
   if (isClosingReplyText(normalized)) return "";
 
-  return stripTopicTail(
-    extractQuestionSubject(normalized) ||
-      normalizePromptTopic(normalized) ||
-      normalized.replace(/[!！。?？]+$/u, "").trim()
-  );
+  const questionSubject = extractQuestionSubject(normalized);
+  if (questionSubject) {
+    return stripTopicTail(questionSubject);
+  }
+
+  const promptTopic = stripTopicTail(normalizePromptTopic(normalized) || "");
+  if (promptTopic) {
+    if (
+      promptTopic.length > 48 ||
+      countSentenceMarkers(promptTopic) >= 2 ||
+      (looksLikeLongNarrativeText(normalized) && promptTopic.length > 24)
+    ) {
+      return "";
+    }
+    return promptTopic;
+  }
+
+  if (looksLikeLongNarrativeText(normalized)) {
+    return "";
+  }
+
+  return stripTopicTail(normalized.replace(/[!！。?？]+$/u, "").trim());
 }
 
 function applyApprovedMemoryRule(text: string, approvedRules: ApprovedMemoryRule[]) {
   const normalized = normalizeText(text);
-  const matched = approvedRules.find(
-    (rule) => normalizeText(rule.phrase) === normalized
-  );
+  const matched = [...approvedRules]
+    .sort(
+      (a, b) => normalizeText(b.phrase).length - normalizeText(a.phrase).length
+    )
+    .find((rule) => {
+      const phrase = normalizeText(rule.phrase);
+      if (!phrase) return false;
+      return normalized === phrase || normalized.includes(phrase);
+    });
 
   if (!matched) return {};
   if (matched.kind === "closing_reply") {
@@ -569,10 +605,12 @@ function shouldUseMemoryFallback(text: string) {
   if (!normalized) return false;
   if (isSearchDirectiveText(normalized)) return false;
   if (isClosingReplyText(normalized)) return false;
+  if (looksLikeLongNarrativeText(text)) return true;
 
   const candidate = normalizeTopicCandidate(normalized);
   return (
     !candidate ||
+    candidate.length > 40 ||
     candidate === normalized.replace(/[!！。?？]+$/u, "").trim() ||
     /^(?:次は|では|今度は|一番興味があるのは)/u.test(normalized) ||
     /(?:について知っていますか|を知っていますか|のことを知っていますか|とは\?|は\?)$/u.test(

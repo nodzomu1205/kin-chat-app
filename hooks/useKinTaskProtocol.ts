@@ -44,6 +44,29 @@ export function useKinTaskProtocol() {
     return `A${String(Date.now()).slice(-6)}`;
   }
 
+  // Progress counting principle:
+  // - External execution / retrieval steps are counted on successful completion,
+  //   not when the request is merely issued. This keeps retries and failures
+  //   from inflating task progress.
+  // - Human-facing requests (ask_user / request_material) are counted when the
+  //   request is actually created, because the progress being tracked there is
+  //   "how many times we asked", not "how many times we got a usable artifact".
+  function isSuccessfulTaskArtifact(event: TaskProtocolEvent) {
+    switch (event.type) {
+      case "gpt_response":
+        return !!event.body?.trim();
+      case "search_response":
+        return !!(event.rawResultId || event.summary || event.body);
+      case "youtube_transcript_response":
+        return !!event.libraryItemId;
+      case "library_index_response":
+      case "library_item_response":
+        return !!(event.body || event.summary);
+      default:
+        return false;
+    }
+  }
+
   function resolveStatusFromEvent(
     current: TaskExecutionStatus,
     event: TaskProtocolEvent
@@ -63,7 +86,9 @@ export function useKinTaskProtocol() {
       event.type === "task_progress" ||
       event.type === "ask_gpt" ||
       event.type === "search_request" ||
-      event.type === "search_response"
+      event.type === "search_response" ||
+      event.type === "youtube_transcript_request" ||
+      event.type === "youtube_transcript_response"
     ) {
       return "running";
     }
@@ -134,6 +159,69 @@ export function useKinTaskProtocol() {
         userFacingRequests: toUserFacingRequests(nextPending),
       };
     });
+  }
+
+  function mergeRequirementProgressForIntent(intent: TaskIntent) {
+    const nextRequirements = buildInitialRequirementProgress(intent);
+    return nextRequirements.map((item) => {
+      const existing = runtime.requirementProgress.find(
+        (current) => current.kind === item.kind
+      );
+      if (!existing) return item;
+      const completedCount = existing.completedCount ?? 0;
+      const targetCount = item.targetCount;
+      const status =
+        typeof targetCount === "number" && completedCount >= targetCount
+          ? "done"
+          : completedCount > 0
+            ? "in_progress"
+            : item.status;
+      return {
+        ...item,
+        completedCount,
+        status,
+      };
+    });
+  }
+
+  function replaceCurrentTaskIntent(params: {
+    intent: TaskIntent;
+    title?: string;
+    originalInstruction?: string;
+  }) {
+    if (!runtime.currentTaskId) return null;
+
+    const taskId = runtime.currentTaskId;
+    const title =
+      params.title?.trim() ||
+      runtime.currentTaskTitle ||
+      generateTaskTitle({
+        goal: params.intent.goal,
+        outputType: params.intent.output.type,
+        entities: params.intent.entities,
+      });
+    const compiledTaskPrompt = compileKinTaskPrompt({
+      taskId,
+      title,
+      originalInstruction: params.originalInstruction,
+      intent: params.intent,
+    });
+    const requirementProgress = mergeRequirementProgressForIntent(params.intent);
+
+    setRuntime((prev) => ({
+      ...prev,
+      currentTaskTitle: title,
+      currentTaskIntent: params.intent,
+      compiledTaskPrompt,
+      latestSummary: params.intent.goal,
+      requirementProgress,
+    }));
+
+    return {
+      taskId,
+      title,
+      compiledTaskPrompt,
+    };
   }
 
   function answerPendingRequest(requestId: string, answerText: string) {
@@ -222,10 +310,22 @@ export function useKinTaskProtocol() {
         };
 
         const getRequirement = (
-          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request" | "library_reference"
+          kind:
+            | "ask_gpt"
+            | "ask_user"
+            | "request_material"
+            | "search_request"
+            | "youtube_transcript_request"
+            | "library_reference"
         ) => next.requirementProgress.find((item) => item.kind === kind);
         const isOverLimit = (
-          kind: "ask_gpt" | "ask_user" | "request_material" | "search_request" | "library_reference"
+          kind:
+            | "ask_gpt"
+            | "ask_user"
+            | "request_material"
+            | "search_request"
+            | "youtube_transcript_request"
+            | "library_reference"
         ) => {
           const requirement = getRequirement(kind);
           if (!requirement || typeof requirement.targetCount !== "number") return false;
@@ -233,6 +333,11 @@ export function useKinTaskProtocol() {
         };
 
         if (event.type === "ask_gpt") {
+          continue;
+        }
+
+        if (event.type === "gpt_response") {
+          if (!isSuccessfulTaskArtifact(event)) continue;
           if (isOverLimit("ask_gpt")) continue;
           next.requirementProgress = markRequirementProgress(
             next.requirementProgress,
@@ -241,20 +346,17 @@ export function useKinTaskProtocol() {
           continue;
         }
 
-        if (event.type === "gpt_response") {
-          continue;
-        }
-
         if (event.type === "search_request") {
-          if (isOverLimit("search_request")) continue;
-          next.requirementProgress = markRequirementProgress(
-            next.requirementProgress,
-            "search_request"
-          );
           continue;
         }
 
         if (event.type === "search_response") {
+          if (isSuccessfulTaskArtifact(event) && !isOverLimit("search_request")) {
+            next.requirementProgress = markRequirementProgress(
+              next.requirementProgress,
+              "search_request"
+            );
+          }
           next.completedSearches = [
             {
               taskId: resolvedTaskId,
@@ -272,15 +374,24 @@ export function useKinTaskProtocol() {
           continue;
         }
 
+        if (event.type === "youtube_transcript_request") {
+          continue;
+        }
+
+        if (event.type === "youtube_transcript_response") {
+          if (!event.libraryItemId) continue;
+          if (isOverLimit("youtube_transcript_request")) continue;
+          next.requirementProgress = markRequirementProgress(
+            next.requirementProgress,
+            "youtube_transcript_request"
+          );
+          continue;
+        }
+
         if (
           event.type === "library_index_request" ||
           event.type === "library_item_request"
         ) {
-          if (isOverLimit("library_reference")) continue;
-          next.requirementProgress = markRequirementProgress(
-            next.requirementProgress,
-            "library_reference"
-          );
           continue;
         }
 
@@ -288,6 +399,12 @@ export function useKinTaskProtocol() {
           event.type === "library_index_response" ||
           event.type === "library_item_response"
         ) {
+          if (!isSuccessfulTaskArtifact(event)) continue;
+          if (isOverLimit("library_reference")) continue;
+          next.requirementProgress = markRequirementProgress(
+            next.requirementProgress,
+            "library_reference"
+          );
           continue;
         }
 
@@ -406,6 +523,7 @@ export function useKinTaskProtocol() {
     runtime,
     progressView,
     startTask,
+    replaceCurrentTaskIntent,
     addPendingRequest,
     answerPendingRequest,
     setFinalizeReviewed,
