@@ -38,6 +38,7 @@ Current risk:
 
 - `app/page.tsx` still acts as a broad orchestration point
 - panel prop wiring is still heavier than ideal
+- memory-rule candidate merging is still page-level glue instead of a narrower controller boundary
 
 ### App flows
 
@@ -58,6 +59,7 @@ Current role:
 
 Current risk:
 
+- `sendToGptFlowHelpers.ts` has become a new large coordination surface
 - `sendToGptFlow.ts` still holds too many responsibilities
 
 ### Memory
@@ -84,8 +86,8 @@ Current role:
 
 Current risk:
 
-- `memoryInterpreter.ts` remains a large core file
-- `useGptMemory.ts` is much better than before, but still central enough to deserve careful changes
+- `memoryInterpreter.ts` remains central, but is now much smaller and clearer
+- `useGptMemory.ts` is now primarily an orchestration hook and is in a reasonable stopping state
 
 ### Task / protocol runtime
 
@@ -173,15 +175,17 @@ The current refactor order is:
 
 Based on the current repository state, the best remaining cleanup order is:
 
-1. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
-   - still the heaviest remaining app-flow file
-2. [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
-   - large and central
-3. [`app/page.tsx`](../app/page.tsx)
-   - still broad orchestration
+1. [`app/page.tsx`](../app/page.tsx)
+   - still the broadest remaining UI orchestration point
+2. [`lib/app/sendToGptFlowHelpers.ts`](../lib/app/sendToGptFlowHelpers.ts)
+   - now the largest remaining GPT flow coordination surface
+3. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+   - still a large execution path even after helper extraction
 4. [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
-   - large UI composition file
-5. finish controller extraction around page-level orchestration
+   - large UI composition file with many field variants
+   - likely needs section-level information architecture redesign, not only component splitting
+5. [`app/api/ingest/route.ts`](../app/api/ingest/route.ts) / [`hooks/useIngestActions.ts`](../hooks/useIngestActions.ts)
+   - likely next ingest-side integration point once page / GPT flow cleanup settles
 
 ## Current Working Rule
 

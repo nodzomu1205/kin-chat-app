@@ -1,42 +1,40 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  createEmptyKinMemoryState,
-  normalizeMemoryTextValue,
-} from "@/lib/app/gptMemoryCore";
+import { createEmptyKinMemoryState } from "@/lib/app/gptMemoryCore";
 import {
   type Memory,
   type MemorySettings,
-  mergeMemory,
-  normalizeMemoryShape,
-  normalizeMemorySettings,
   DEFAULT_MEMORY_SETTINGS,
 } from "@/lib/memory";
 import {
-  buildCandidateMemoryState,
-  hasMeaningfulMemoryState,
-  mergeSummarizedMemoryState,
-  normalizeRecentMessagesState,
-  normalizeTokenUsage,
-  trimMemoryState,
   type TokenUsage,
 } from "@/lib/app/gptMemoryStateHelpers";
-import { shouldSummarizeMemoryUpdate } from "@/lib/app/gptMemorySummarizePolicy";
+import { resolveSummarizedMemoryState } from "@/lib/app/gptMemoryUpdateFlow";
+import { prepareMemoryUpdate } from "@/lib/app/gptMemoryUpdatePreparation";
 import {
   buildProvisionalMemoryState,
-  normalizeKinMemoryStateForSettings,
   type ProvisionalMemoryOptions,
 } from "@/lib/app/gptMemoryPersistence";
 import {
-  applyApprovedTopicToKinState,
-  applyApprovedTopicToMemory,
-  buildApprovedCandidateOptionsPatch,
-  resolveApprovedTopicFromCandidate,
-} from "@/lib/app/gptMemoryApproval";
+  clearTaskScopedMemoryState,
+  loadKinMemoryMapFromStorage,
+  loadMemorySettingsFromStorage,
+  resolveCurrentKinState,
+  saveKinMemoryMapToStorage,
+  saveMemorySettingsToStorage,
+} from "@/lib/app/gptMemoryStorage";
 import {
-  buildMemoryUpdateOptionsFromFallback,
-  filterPendingMemoryRuleCandidates,
+  ensureKinMemoryMapState,
+  normalizeNextMemorySettings,
+  removeKinMemoryMapState,
+  upsertKinMemoryMapState,
+} from "@/lib/app/gptMemoryRegistry";
+import {
+  getReapplicableRecentMessages,
+  mergeApprovedRulesWithCandidate,
+} from "@/lib/app/gptMemoryReapply";
+import {
   resolveApprovedMemoryRules,
 } from "@/lib/app/gptMemoryFallback";
 import type {
@@ -44,14 +42,10 @@ import type {
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
-import { resolveMemoryFallbackOptions } from "@/lib/app/memoryInterpreter";
 import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
 import type { KinMemoryState, Message } from "@/types/chat";
 
 export type { TokenUsage } from "@/lib/app/gptMemoryStateHelpers";
-
-const KIN_MEMORY_MAP_KEY = "kin_memory_map";
-const MEMORY_SETTINGS_KEY = "gpt_memory_settings";
 
 type UseGptMemoryOptions = {
   memoryInterpreterSettings: MemoryInterpreterSettings;
@@ -71,54 +65,31 @@ export function useGptMemory(
   const kinMemoryMapRef = useRef<Record<string, KinMemoryState>>({});
 
   useEffect(() => {
-    const saved = localStorage.getItem(MEMORY_SETTINGS_KEY);
-    if (!saved) return;
-
-    try {
-      setSettings(normalizeMemorySettings(JSON.parse(saved)));
-    } catch {
-      console.warn("memory settings parse failed");
+    const saved = loadMemorySettingsFromStorage();
+    if (saved) {
+      setSettings(saved);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(MEMORY_SETTINGS_KEY, JSON.stringify(settings));
+    saveMemorySettingsToStorage(settings);
   }, [settings]);
 
   useEffect(() => {
-    const saved = localStorage.getItem(KIN_MEMORY_MAP_KEY);
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved) as Record<string, KinMemoryState>;
-      const normalized: Record<string, KinMemoryState> = {};
-
-      Object.entries(parsed).forEach(([key, value]) => {
-        normalized[key] = normalizeKinMemoryStateForSettings(value, settings);
-      });
-
-      setKinMemoryMap(normalized);
-      kinMemoryMapRef.current = normalized;
-    } catch {
-      console.warn("kin_memory_map parse failed");
+    const saved = loadKinMemoryMapFromStorage(settings);
+    if (saved) {
+      setKinMemoryMap(saved);
+      kinMemoryMapRef.current = saved;
     }
   }, [settings]);
 
   useEffect(() => {
     kinMemoryMapRef.current = kinMemoryMap;
-    localStorage.setItem(KIN_MEMORY_MAP_KEY, JSON.stringify(kinMemoryMap));
+    saveKinMemoryMapToStorage(kinMemoryMap);
   }, [kinMemoryMap]);
 
   useEffect(() => {
-    if (!currentKin) {
-      const empty = createEmptyKinMemoryState();
-      setGptState(empty);
-      gptStateRef.current = empty;
-      return;
-    }
-
-    const saved = kinMemoryMapRef.current[currentKin] ?? createEmptyKinMemoryState();
-    const nextState = normalizeKinMemoryStateForSettings(saved, settings);
+    const nextState = resolveCurrentKinState(currentKin, kinMemoryMapRef.current, settings);
 
     setGptState(nextState);
     gptStateRef.current = nextState;
@@ -130,33 +101,33 @@ export function useGptMemory(
 
   const persistKinState = useCallback(
     (kin: string | null, state: KinMemoryState) => {
-      if (!kin) return;
-
-      const cleanedState = normalizeKinMemoryStateForSettings(state, settings);
-
-      setKinMemoryMap((prev) => ({
-        ...prev,
-        [kin]: cleanedState,
-      }));
+      setKinMemoryMap((prev) =>
+        upsertKinMemoryMapState({
+          prev,
+          kin,
+          state,
+          settings,
+        })
+      );
     },
     [settings]
   );
 
   const removeKinState = useCallback((kin: string) => {
-    setKinMemoryMap((prev) => {
-      const next = { ...prev };
-      delete next[kin];
-      return next;
-    });
+    setKinMemoryMap((prev) => removeKinMemoryMapState(prev, kin));
   }, []);
 
   const ensureKinState = useCallback(
     (kin: string | null) => {
-      if (!kin) return;
-      if (kinMemoryMapRef.current[kin]) return;
-      persistKinState(kin, createEmptyKinMemoryState());
+      setKinMemoryMap((prev) =>
+        ensureKinMemoryMapState({
+          prev,
+          kin,
+          settings,
+        })
+      );
     },
-    [persistKinState]
+    [settings]
   );
 
   const applyPersistedState = useCallback(
@@ -189,46 +160,25 @@ export function useGptMemory(
       }
     ): Promise<{ summaryUsage: TokenUsage | null }> => {
       const current = gptStateRef.current;
-      const latestUser = [...updatedRecent]
-        .reverse()
-        .find((message) => message.role === "user");
-      const latestUserText = typeof latestUser?.text === "string" ? latestUser.text : "";
       const activeApprovedRules = resolveApprovedMemoryRules(
         runtimeConfig?.approvedMemoryRules,
         config.approvedMemoryRules
       );
-      const fallbackResult = latestUserText
-        ? await resolveMemoryFallbackOptions({
-            latestUserText,
-            currentMemory: current.memory,
-            settings: config.memoryInterpreterSettings,
-            approvedRules: activeApprovedRules,
-          })
-        : { optionsPatch: {}, pendingCandidates: [], usedFallback: false };
-      if (fallbackResult.pendingCandidates.length > 0) {
-        const filtered = filterPendingMemoryRuleCandidates(
-          fallbackResult.pendingCandidates,
-          config.rejectedMemoryRuleCandidateSignatures
-        );
-        if (filtered.length > 0) {
-          config.onAddPendingMemoryRuleCandidates(filtered);
-        }
-      }
-      const memoryUpdateOptions = buildMemoryUpdateOptionsFromFallback(
-        options,
-        fallbackResult
-      );
-      const { trimmedRecent, candidateMemory } = buildCandidateMemoryState({
+      const { trimmedRecent, candidateMemory, needsSummary, filteredPendingCandidates } =
+        await prepareMemoryUpdate({
         currentMemory: current.memory,
         updatedRecent,
         settings,
-        options: memoryUpdateOptions,
+        options,
+        memoryInterpreterSettings: config.memoryInterpreterSettings,
+        approvedRules: activeApprovedRules,
+        rejectedMemoryRuleCandidateSignatures:
+          config.rejectedMemoryRuleCandidateSignatures,
       });
-      const needsSummary = shouldSummarizeMemoryUpdate({
-        trimmedRecent,
-        candidateMemory,
-        settings,
-      });
+
+      if (filteredPendingCandidates.length > 0) {
+        config.onAddPendingMemoryRuleCandidates(filteredPendingCandidates);
+      }
 
       if (!needsSummary) {
         const nextState: KinMemoryState = {
@@ -239,58 +189,15 @@ export function useGptMemory(
         applyPersistedState(nextState);
         return { summaryUsage: null };
       }
-
-      try {
-        const response = await fetch("/api/chatgpt", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mode: "summarize",
-            memory: candidateMemory,
-            messages: trimmedRecent,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`summarize failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const summarizedCandidate = trimMemoryState(
-          normalizeMemoryShape(data?.memory),
-          settings
-        );
-        const nextMemory = hasMeaningfulMemoryState(summarizedCandidate)
-          ? mergeSummarizedMemoryState({
-              candidateMemory,
-              summarizedCandidate,
-              settings,
-              recentMessages: trimmedRecent,
-            })
-          : candidateMemory;
-
-        const nextState: KinMemoryState = {
-          memory: nextMemory,
-          recentMessages: trimmedRecent.slice(-settings.recentKeep),
-        };
-
-        applyPersistedState(nextState);
-        return {
-          summaryUsage: normalizeTokenUsage(data?.usage),
-        };
-      } catch (error) {
-        console.error("gpt memory summarize failed", error);
-
-        const fallbackState: KinMemoryState = {
-          memory: candidateMemory,
-          recentMessages: trimmedRecent,
-        };
-
-        applyPersistedState(fallbackState);
-        return { summaryUsage: null };
-      }
+      const result = await resolveSummarizedMemoryState({
+        candidateMemory,
+        trimmedRecent,
+        settings,
+      });
+      applyPersistedState(result.nextState);
+      return {
+        summaryUsage: result.summaryUsage,
+      };
     },
     [
       applyPersistedState,
@@ -316,9 +223,7 @@ export function useGptMemory(
       approvedMemoryRules: ApprovedMemoryRule[]
     ): Promise<{ summaryUsage: TokenUsage | null }> => {
       const current = gptStateRef.current;
-      const recent = Array.isArray(current.recentMessages)
-        ? current.recentMessages
-        : [];
+      const recent = getReapplicableRecentMessages(current);
       if (recent.length === 0) {
         return { summaryUsage: null };
       }
@@ -333,81 +238,19 @@ export function useGptMemory(
       approvedMemoryRules: ApprovedMemoryRule[]
     ): Promise<{ summaryUsage: TokenUsage | null }> => {
       const current = gptStateRef.current;
-      const recent = Array.isArray(current.recentMessages)
-        ? current.recentMessages
-        : [];
+      const recent = getReapplicableRecentMessages(current);
       if (recent.length === 0) {
         return { summaryUsage: null };
       }
-
-      const optionsPatch = buildApprovedCandidateOptionsPatch(candidate);
-      const approvedTopic =
-        candidate.kind === "topic_alias"
-          ? resolveApprovedTopicFromCandidate(candidate)
-          : "";
-
-      if (approvedTopic) {
-          const currentTracked = Array.isArray(current.memory?.lists?.trackedEntities)
-            ? (current.memory?.lists?.trackedEntities as string[])
-            : [];
-          applyPersistedState({
-            memory: {
-              ...current.memory,
-              context: {
-                ...current.memory.context,
-                currentTopic: approvedTopic,
-                currentTask: `ユーザーは${approvedTopic}について知りたい`,
-                followUpRule: `短い追質問は、直前の${approvedTopic}トピックを引き継いで解釈する`,
-              },
-              lists: {
-                ...current.memory.lists,
-                trackedEntities: Array.from(
-                  new Set(
-                    [approvedTopic, ...currentTracked]
-                      .map((item) => normalizeMemoryTextValue(item))
-                      .filter(Boolean)
-                  )
-                ).slice(-8),
-              },
-            },
-            recentMessages: recent,
-          });
-      }
-
-      const { trimmedRecent, candidateMemory } = buildCandidateMemoryState({
-        currentMemory: current.memory,
-        updatedRecent: recent,
-        settings,
-        options: optionsPatch as MemoryUpdateOptions,
+      const mergedApprovedRules = mergeApprovedRulesWithCandidate(
+        candidate,
+        approvedMemoryRules
+      );
+      return runMemoryUpdate(recent, undefined, {
+        approvedMemoryRules: mergedApprovedRules,
       });
-
-      if (approvedTopic) {
-          candidateMemory.context.currentTopic = approvedTopic;
-          candidateMemory.context.currentTask = `ユーザーは${approvedTopic}について知りたい`;
-          candidateMemory.context.followUpRule = `短い追質問は、直前の${approvedTopic}トピックを引き継いで解釈する`;
-          candidateMemory.lists = {
-            ...candidateMemory.lists,
-            trackedEntities: Array.from(
-              new Set(
-                [
-                  approvedTopic,
-                  ...((Array.isArray(candidateMemory.lists?.trackedEntities)
-                    ? (candidateMemory.lists?.trackedEntities as string[])
-                    : []) || []),
-                ].map((item) => normalizeMemoryTextValue(item)).filter(Boolean)
-              )
-            ).slice(-8),
-          };
-      }
-
-      applyPersistedState({
-        memory: candidateMemory,
-        recentMessages: trimmedRecent,
-      });
-
-      return { summaryUsage: null };
     },
-    [applyPersistedState, settings]
+    [runMemoryUpdate]
   );
 
   const resetGptForCurrentKin = useCallback(() => {
@@ -415,39 +258,13 @@ export function useGptMemory(
   }, [applyPersistedState]);
 
   const clearTaskScopedMemory = useCallback(() => {
-    const current = gptStateRef.current;
-    const currentMemory = normalizeMemoryShape(current.memory);
-    const currentLists =
-      currentMemory.lists && typeof currentMemory.lists === "object"
-        ? { ...currentMemory.lists }
-        : {};
-
-    delete currentLists.activeDocument;
-    delete currentLists.worksByEntity;
-    delete currentLists.trackedEntities;
-
-    const nextState: KinMemoryState = {
-      ...current,
-      memory: {
-        ...currentMemory,
-        lists: currentLists,
-        context: {
-          ...currentMemory.context,
-          currentTopic: undefined,
-          currentTask: undefined,
-          followUpRule: undefined,
-          lastUserIntent: undefined,
-        },
-      },
-    };
-
-    applyPersistedState(nextState);
+    applyPersistedState(clearTaskScopedMemoryState(gptStateRef.current));
   }, [applyPersistedState]);
 
   const persistCurrentGptState = applyPersistedState;
 
   const updateMemorySettings = useCallback((next: MemorySettings) => {
-    setSettings(normalizeMemorySettings(next));
+    setSettings(normalizeNextMemorySettings(next));
   }, []);
 
   const resetMemorySettings = useCallback(() => {

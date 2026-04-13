@@ -26,6 +26,20 @@ export function resolveApprovedTopicFromCandidate(
   return normalizeMemoryTextValue(candidate.normalizedValue || candidate.phrase);
 }
 
+export function buildApprovedRuleFromCandidate(
+  candidate: PendingMemoryRuleCandidate
+): ApprovedMemoryRule {
+  return {
+    id: candidate.id,
+    phrase: normalizeMemoryTextValue(candidate.phrase),
+    kind: candidate.kind,
+    normalizedValue: candidate.normalizedValue
+      ? normalizeMemoryTextValue(candidate.normalizedValue)
+      : undefined,
+    createdAt: candidate.createdAt,
+  };
+}
+
 export function applyApprovedTopicToMemory(memory: Memory, approvedTopic: string): Memory {
   return {
     ...memory,

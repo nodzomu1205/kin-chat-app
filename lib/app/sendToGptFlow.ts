@@ -233,22 +233,6 @@ export async function runSendToGptFlow({
       setGptLoading,
     });
     return;
-    /*
-    } catch (error) {
-      console.error(error);
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "URL からカードを作成できませんでした。",
-        },
-      ]);
-    } finally {
-      setGptLoading(false);
-    }
-    */
-
   }
 
   const {

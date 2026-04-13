@@ -231,4 +231,22 @@ describe("gptMemoryStateHelpers", () => {
     });
     expect(merged.facts).toEqual(["candidate fact", "summary fact"]);
   });
+
+  it("treats interpreter-defined closing replies as non-meaningful last intent", () => {
+    const merged = mergeSummarizedMemoryState({
+      candidateMemory: buildMemory({
+        context: {
+          currentTopic: "Move Preparation",
+          currentTask: "Find a new home",
+          followUpRule: "Carry the move topic",
+          lastUserIntent: "Previous intent",
+        },
+      }),
+      summarizedCandidate: buildMemory(),
+      settings: DEFAULT_MEMORY_SETTINGS,
+      recentMessages: [buildMessage("m1", "user", "了解です")],
+    });
+
+    expect(merged.context.lastUserIntent).toBe("Previous intent");
+  });
 });

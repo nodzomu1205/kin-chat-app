@@ -74,8 +74,16 @@ Recent progress includes:
 - `chatgpt/route` service extraction
 - growing unit test coverage
 - low-risk helper extraction from `useKinTaskProtocol`
-- low-risk helper extraction from `useGptMemory`
+- staged helper extraction from `useGptMemory`
+- staged helper extraction from `memoryInterpreter.ts`
+- inline URL dead-code cleanup in `sendToGptFlow.ts`
 - roadmap and architecture docs
+
+The current verification baseline is:
+
+- `npx tsc --noEmit` passes
+- `npm test` passes
+- current test count: `35 files / 144 tests`
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -117,8 +125,12 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. docs and design visibility
-2. route/service extraction
-3. controller thinning
-4. protocol / task / memory test hardening
-5. ingest pipeline groundwork
+1. `app/page.tsx` orchestration thinning
+2. `lib/app/sendToGptFlowHelpers.ts` / `lib/app/sendToGptFlow.ts` flow-surface thinning
+3. `components/panels/gpt/GptSettingsSections.tsx` settings information architecture redesign
+4. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts` ingest-flow cleanup
+5. protocol / task / ingest test hardening around the next touched area
+
+`hooks/useGptMemory.ts` and `lib/app/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
+
+For the GPT settings surface, the next step is not just helper extraction. We expect a broader section-level reorganization so that search, memory, protocol, and ingest controls are easier to scan and maintain.

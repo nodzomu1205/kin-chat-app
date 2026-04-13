@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyApprovedTopicToKinState,
   applyApprovedTopicToMemory,
+  buildApprovedRuleFromCandidate,
   buildApprovedCandidateOptionsPatch,
   resolveApprovedTopicFromCandidate,
 } from "@/lib/app/gptMemoryApproval";
@@ -47,6 +48,25 @@ describe("gptMemoryApproval", () => {
         createdAt: "2026-04-13T00:00:00.000Z",
       })
     ).toBe("Move Preparation");
+  });
+
+  it("builds a normalized approved rule from a candidate", () => {
+    expect(
+      buildApprovedRuleFromCandidate({
+        id: "cand-4",
+        kind: "topic_alias",
+        phrase: " Move planning ",
+        normalizedValue: " Move Preparation ",
+        createdAt: "2026-04-13T00:00:00.000Z",
+        sourceText: "We need to move soon.",
+      })
+    ).toEqual({
+      id: "cand-4",
+      kind: "topic_alias",
+      phrase: "Move planning",
+      normalizedValue: "Move Preparation",
+      createdAt: "2026-04-13T00:00:00.000Z",
+    });
   });
 
   it("applies approved topic metadata to memory", () => {

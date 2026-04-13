@@ -6,6 +6,10 @@ import {
 import {
   interpretMemoryPatch,
 } from "@/lib/app/memoryInterpreter";
+import {
+  isClosingReplyText,
+  normalizeText,
+} from "@/lib/app/memoryInterpreterText";
 import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
 import type { Message } from "@/types/chat";
 
@@ -15,25 +19,12 @@ export type TokenUsage = {
   totalTokens: number;
 };
 
-function normalizeText(text: string) {
-  return text.normalize("NFKC").replace(/\s+/g, " ").trim();
-}
-
-function isClosingLikeUserText(text: string) {
-  const normalized = normalizeText(text);
-  if (!normalized) return true;
-
-  return /(?:ありがとう|有難う|一旦大丈夫|一旦いい|そこは一旦|もう大丈夫|もういい|結構です|へー、そうなんですね|そうなんですね)/u.test(
-    normalized
-  );
-}
-
 function getLatestMeaningfulUserText(recentMessages: Message[]) {
   const latestUser = [...recentMessages]
     .reverse()
     .find((message) => message.role === "user");
   const text = normalizeText(latestUser?.text || "");
-  if (!text || isClosingLikeUserText(text)) return "";
+  if (!text || isClosingReplyText(text)) return "";
   return text;
 }
 
