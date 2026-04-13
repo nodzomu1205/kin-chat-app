@@ -9,6 +9,11 @@ import {
   safeParseMemory,
   memoryToPrompt,
 } from "@/lib/memory";
+import {
+  extractJsonObjectText,
+  extractResponseText,
+  extractUsage,
+} from "@/lib/server/chatgpt/openaiResponse";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
 // 検索コマンド解析
@@ -70,12 +75,6 @@ type InstructionMode =
 
 type ReasoningMode = "strict" | "creative";
 
-type UsageSummary = {
-  inputTokens: number;
-  outputTokens: number;
-  totalTokens: number;
-};
-
 function wantsGoogleMapsLink(text: string) {
   if (!text) return false;
   const normalized = text.normalize("NFKC").toLowerCase();
@@ -88,27 +87,6 @@ function wantsGoogleMapsLink(text: string) {
     (normalized.includes("地図") && normalized.includes("リンク")) ||
     (normalized.includes("マップ") && normalized.includes("リンク"))
   );
-}
-
-function extractUsage(data: any): UsageSummary {
-  const inputTokens =
-    typeof data?.usage?.input_tokens === "number" ? data.usage.input_tokens : 0;
-
-  const outputTokens =
-    typeof data?.usage?.output_tokens === "number"
-      ? data.usage.output_tokens
-      : 0;
-
-  const totalTokens =
-    typeof data?.usage?.total_tokens === "number"
-      ? data.usage.total_tokens
-      : inputTokens + outputTokens;
-
-  return {
-    inputTokens,
-    outputTokens,
-    totalTokens,
-  };
 }
 
 function buildInstructionWrappedInput(
@@ -282,24 +260,6 @@ SEARCH EVIDENCE START
 ${searchText}
 SEARCH EVIDENCE END
   `.trim();
-}
-
-function extractJsonObjectText(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fencedMatch?.[1]?.trim()) {
-    return fencedMatch[1].trim();
-  }
-
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    return trimmed.slice(start, end + 1);
-  }
-
-  return trimmed;
 }
 
 export async function POST(req: Request) {
@@ -544,10 +504,7 @@ export async function POST(req: Request) {
 
       const data = await response.json();
 
-      const reply =
-        data.output?.[0]?.content?.[0]?.text ||
-        data.output_text ||
-        "GPT reply not found.";
+      const reply = extractResponseText(data);
 
         return NextResponse.json({
           reply,
@@ -639,10 +596,10 @@ ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
 
       const data = await response.json();
 
-      const rawMemory =
-        data.output?.[0]?.content?.[0]?.text ||
-        data.output_text ||
-        JSON.stringify(normalizedMemory);
+      const rawMemory = extractResponseText(
+        data,
+        JSON.stringify(normalizedMemory)
+      );
 
       const parsedMemory = safeParseMemory(extractJsonObjectText(rawMemory));
 
@@ -672,10 +629,7 @@ ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
       });
 
       const data = await response.json();
-      const reply =
-        data.output?.[0]?.content?.[0]?.text ||
-        data.output_text ||
-        "{}";
+      const reply = extractResponseText(data, "{}");
 
       return NextResponse.json({
         reply,
