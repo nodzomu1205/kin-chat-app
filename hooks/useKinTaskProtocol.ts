@@ -3,18 +3,23 @@
 import { useMemo, useState } from "react";
 import type {
   PendingExternalRequest,
-  TaskExecutionStatus,
   TaskIntent,
   TaskProtocolEvent,
   TaskRuntimeState,
 } from "@/types/taskProtocol";
-import { generateTaskTitle } from "@/lib/taskTitle";
-import { compileKinTaskPrompt } from "@/lib/taskCompiler";
+import { toUserFacingRequests } from "@/lib/taskProgress";
+import { ingestTaskProtocolEventsState } from "@/lib/taskProtocolIngest";
 import {
-  buildInitialRequirementProgress,
-  markRequirementProgress,
-  toUserFacingRequests,
-} from "@/lib/taskProgress";
+  answerPendingTaskRequestState,
+  applyFinalizeReviewedState,
+} from "@/lib/taskProtocolMutations";
+import {
+  createEmptyTaskRuntime,
+} from "@/lib/taskProtocolState";
+import {
+  buildReplacedTaskIntentState,
+  buildStartedTaskState,
+} from "@/lib/taskProtocolTaskState";
 import {
   buildTaskConfirmBlock,
   buildWaitingAckBlock,
@@ -25,74 +30,10 @@ function createTaskId() {
 }
 
 export function useKinTaskProtocol() {
-  const createEmptyRuntime = (): TaskRuntimeState => ({
-    currentTaskId: null,
-    currentTaskTitle: "",
-    currentTaskIntent: null,
-    compiledTaskPrompt: "",
-    taskStatus: "idle",
-    latestSummary: "",
-    requirementProgress: [],
-    pendingRequests: [],
-    userFacingRequests: [],
-    completedSearches: [],
-    protocolLog: [],
-  });
-  const [runtime, setRuntime] = useState<TaskRuntimeState>(createEmptyRuntime);
+  const [runtime, setRuntime] = useState<TaskRuntimeState>(createEmptyTaskRuntime);
 
   function createActionId() {
     return `A${String(Date.now()).slice(-6)}`;
-  }
-
-  // Progress counting principle:
-  // - External execution / retrieval steps are counted on successful completion,
-  //   not when the request is merely issued. This keeps retries and failures
-  //   from inflating task progress.
-  // - Human-facing requests (ask_user / request_material) are counted when the
-  //   request is actually created, because the progress being tracked there is
-  //   "how many times we asked", not "how many times we got a usable artifact".
-  function isSuccessfulTaskArtifact(event: TaskProtocolEvent) {
-    switch (event.type) {
-      case "gpt_response":
-        return !!event.body?.trim();
-      case "search_response":
-        return !!(event.rawResultId || event.summary || event.body);
-      case "youtube_transcript_response":
-        return !!event.libraryItemId;
-      case "library_index_response":
-      case "library_item_response":
-        return !!(event.body || event.summary);
-      default:
-        return false;
-    }
-  }
-
-  function resolveStatusFromEvent(
-    current: TaskExecutionStatus,
-    event: TaskProtocolEvent
-  ): TaskExecutionStatus {
-    if (event.type === "task_done") return "completed";
-    if (event.type === "material_request") return "waiting_material";
-    if (event.type === "user_question") return "waiting_user";
-    if (event.type === "task_confirm") {
-      const normalized = (event.status || "").toLowerCase();
-      if (normalized.includes("waiting_user")) return "waiting_user";
-      if (normalized.includes("waiting_material")) return "waiting_material";
-      if (normalized.includes("ready")) return "ready_to_resume";
-      if (normalized.includes("complete") || normalized.includes("done")) return "completed";
-      if (normalized.includes("run") || normalized.includes("progress")) return "running";
-    }
-    if (
-      event.type === "task_progress" ||
-      event.type === "ask_gpt" ||
-      event.type === "search_request" ||
-      event.type === "search_response" ||
-      event.type === "youtube_transcript_request" ||
-      event.type === "youtube_transcript_response"
-    ) {
-      return "running";
-    }
-    return current;
   }
 
   function startTask(params: {
@@ -100,48 +41,29 @@ export function useKinTaskProtocol() {
     intent: TaskIntent;
   }) {
     const taskId = createTaskId();
-    const title = generateTaskTitle({
-      goal: params.intent.goal,
-      outputType: params.intent.output.type,
-      entities: params.intent.entities,
-    });
-
-    const compiled = compileKinTaskPrompt({
-      taskId,
-      title,
-      originalInstruction: params.originalInstruction,
-      intent: params.intent,
-    });
-
-    const requirementProgress = buildInitialRequirementProgress(params.intent);
 
     setRuntime((prev) => ({
-      ...prev,
-      currentTaskId: taskId,
-      currentTaskTitle: title,
-      currentTaskIntent: params.intent,
-      compiledTaskPrompt: compiled,
-      taskStatus: "running",
-      latestSummary: params.intent.goal,
-      requirementProgress,
-      pendingRequests: [],
-      userFacingRequests: [],
-      protocolLog: [
-        ...prev.protocolLog,
-        {
-          taskId,
-          direction: "system",
-          type: "task_started",
-          body: params.intent.goal,
-          createdAt: Date.now(),
-        },
-      ],
+      ...buildStartedTaskState({
+        prev,
+        taskId,
+        originalInstruction: params.originalInstruction,
+        intent: params.intent,
+        now: Date.now(),
+      }).nextState,
     }));
+
+    const started = buildStartedTaskState({
+      prev: createEmptyTaskRuntime(),
+      taskId,
+      originalInstruction: params.originalInstruction,
+      intent: params.intent,
+      now: Date.now(),
+    });
 
     return {
       taskId,
-      title,
-      compiledTaskPrompt: compiled,
+      title: started.title,
+      compiledTaskPrompt: started.compiledTaskPrompt,
     };
   }
 
@@ -161,29 +83,6 @@ export function useKinTaskProtocol() {
     });
   }
 
-  function mergeRequirementProgressForIntent(intent: TaskIntent) {
-    const nextRequirements = buildInitialRequirementProgress(intent);
-    return nextRequirements.map((item) => {
-      const existing = runtime.requirementProgress.find(
-        (current) => current.kind === item.kind
-      );
-      if (!existing) return item;
-      const completedCount = existing.completedCount ?? 0;
-      const targetCount = item.targetCount;
-      const status =
-        typeof targetCount === "number" && completedCount >= targetCount
-          ? "done"
-          : completedCount > 0
-            ? "in_progress"
-            : item.status;
-      return {
-        ...item,
-        completedCount,
-        status,
-      };
-    });
-  }
-
   function replaceCurrentTaskIntent(params: {
     intent: TaskIntent;
     title?: string;
@@ -192,75 +91,38 @@ export function useKinTaskProtocol() {
     if (!runtime.currentTaskId) return null;
 
     const taskId = runtime.currentTaskId;
-    const title =
-      params.title?.trim() ||
-      runtime.currentTaskTitle ||
-      generateTaskTitle({
-        goal: params.intent.goal,
-        outputType: params.intent.output.type,
-        entities: params.intent.entities,
-      });
-    const compiledTaskPrompt = compileKinTaskPrompt({
+    const next = buildReplacedTaskIntentState({
+      prev: runtime,
       taskId,
-      title,
-      originalInstruction: params.originalInstruction,
       intent: params.intent,
+      title: params.title,
+      originalInstruction: params.originalInstruction,
     });
-    const requirementProgress = mergeRequirementProgressForIntent(params.intent);
 
     setRuntime((prev) => ({
       ...prev,
-      currentTaskTitle: title,
-      currentTaskIntent: params.intent,
-      compiledTaskPrompt,
-      latestSummary: params.intent.goal,
-      requirementProgress,
+      ...next.nextState,
     }));
 
     return {
       taskId,
-      title,
-      compiledTaskPrompt,
+      title: next.title,
+      compiledTaskPrompt: next.compiledTaskPrompt,
     };
   }
 
   function answerPendingRequest(requestId: string, answerText: string) {
-    setRuntime((prev) => {
-      const nextPending = prev.pendingRequests.map((r) =>
-        r.id === requestId
-          ? {
-              ...r,
-              status: "answered" as const,
-              answeredAt: Date.now(),
-              answerText,
-            }
-          : r
-      );
-
-      return {
-        ...prev,
-        taskStatus: "ready_to_resume",
-        pendingRequests: nextPending,
-        userFacingRequests: toUserFacingRequests(nextPending),
-      };
-    });
+    setRuntime((prev) =>
+      answerPendingTaskRequestState(prev, {
+        requestId,
+        answerText,
+        answeredAt: Date.now(),
+      })
+    );
   }
 
   function setFinalizeReviewed(params: { accepted: boolean; summary?: string }) {
-    setRuntime((prev) => ({
-      ...prev,
-      latestSummary: params.summary || prev.latestSummary,
-      taskStatus: params.accepted ? "completed" : "running",
-      requirementProgress: prev.requirementProgress.map((item) =>
-        item.kind !== "finalize"
-          ? item
-          : {
-              ...item,
-              completedCount: params.accepted ? item.targetCount ?? 1 : 0,
-              status: params.accepted ? "done" : "in_progress",
-            }
-      ),
-    }));
+    setRuntime((prev) => applyFinalizeReviewedState(prev, params));
   }
 
   function ingestProtocolEvents(params: {
@@ -271,225 +133,12 @@ export function useKinTaskProtocol() {
     if (params.events.length === 0) return;
 
     setRuntime((prev) => {
-      let next = { ...prev };
-
-      for (const event of params.events) {
-        const resolvedTaskId =
-          event.taskId || next.currentTaskId || prev.currentTaskId || "";
-        const actionId = event.actionId || createActionId();
-        const existingLog = next.protocolLog.find((entry) => {
-          if (entry.taskId !== resolvedTaskId || entry.type !== event.type) return false;
-          if (event.actionId) {
-            return entry.body.includes(event.actionId);
-          }
-          return entry.body === (event.body || event.summary || "");
-        });
-
-        if (existingLog) {
-          continue;
-        }
-        const logBodyParts = [event.actionId ? `ACTION_ID:${event.actionId}` : "", event.body || event.summary || ""]
-          .filter(Boolean)
-          .join("\n");
-
-        next = {
-          ...next,
-          currentTaskId: next.currentTaskId ?? resolvedTaskId,
-          latestSummary: event.summary || event.body || next.latestSummary,
-          taskStatus: resolveStatusFromEvent(next.taskStatus, event),
-          protocolLog: [
-            ...next.protocolLog,
-            {
-              taskId: resolvedTaskId,
-              direction: params.direction,
-              type: event.type,
-              body: logBodyParts,
-              createdAt: Date.now(),
-            },
-          ],
-        };
-
-        const getRequirement = (
-          kind:
-            | "ask_gpt"
-            | "ask_user"
-            | "request_material"
-            | "search_request"
-            | "youtube_transcript_request"
-            | "library_reference"
-        ) => next.requirementProgress.find((item) => item.kind === kind);
-        const isOverLimit = (
-          kind:
-            | "ask_gpt"
-            | "ask_user"
-            | "request_material"
-            | "search_request"
-            | "youtube_transcript_request"
-            | "library_reference"
-        ) => {
-          const requirement = getRequirement(kind);
-          if (!requirement || typeof requirement.targetCount !== "number") return false;
-          return (requirement.completedCount ?? 0) >= requirement.targetCount;
-        };
-
-        if (event.type === "ask_gpt") {
-          continue;
-        }
-
-        if (event.type === "gpt_response") {
-          if (!isSuccessfulTaskArtifact(event)) continue;
-          if (isOverLimit("ask_gpt")) continue;
-          next.requirementProgress = markRequirementProgress(
-            next.requirementProgress,
-            "ask_gpt"
-          );
-          continue;
-        }
-
-        if (event.type === "search_request") {
-          continue;
-        }
-
-        if (event.type === "search_response") {
-          if (isSuccessfulTaskArtifact(event) && !isOverLimit("search_request")) {
-            next.requirementProgress = markRequirementProgress(
-              next.requirementProgress,
-              "search_request"
-            );
-          }
-          next.completedSearches = [
-            {
-              taskId: resolvedTaskId,
-              actionId,
-              query: event.query || "",
-              searchEngine: event.searchEngine,
-              searchLocation: event.searchLocation,
-              mode: event.outputMode || "summary",
-              rawResultId: event.rawResultId,
-              resultText: event.summary || event.body || "",
-              createdAt: Date.now(),
-            },
-            ...next.completedSearches,
-          ].slice(0, 20);
-          continue;
-        }
-
-        if (event.type === "youtube_transcript_request") {
-          continue;
-        }
-
-        if (event.type === "youtube_transcript_response") {
-          if (!event.libraryItemId) continue;
-          if (isOverLimit("youtube_transcript_request")) continue;
-          next.requirementProgress = markRequirementProgress(
-            next.requirementProgress,
-            "youtube_transcript_request"
-          );
-          continue;
-        }
-
-        if (
-          event.type === "library_index_request" ||
-          event.type === "library_item_request"
-        ) {
-          continue;
-        }
-
-        if (
-          event.type === "library_index_response" ||
-          event.type === "library_item_response"
-        ) {
-          if (!isSuccessfulTaskArtifact(event)) continue;
-          if (isOverLimit("library_reference")) continue;
-          next.requirementProgress = markRequirementProgress(
-            next.requirementProgress,
-            "library_reference"
-          );
-          continue;
-        }
-
-        if (event.type === "user_question" || event.type === "material_request") {
-          const targetKind =
-            event.type === "material_request" ? "request_material" : "ask_user";
-          if (isOverLimit(targetKind)) continue;
-
-          const kind =
-            event.type === "material_request" ? "request_material" : "question";
-          const target = event.type === "material_request" ? "material" : "user";
-          const existingIndex = next.pendingRequests.findIndex(
-            (request) => request.actionId === actionId
-          );
-
-          const pending: PendingExternalRequest = {
-            id: event.actionId || actionId,
-            actionId,
-            taskId: resolvedTaskId,
-            target,
-            kind,
-            body: event.body || event.summary || "",
-            status: "pending",
-            createdAt: Date.now(),
-            required: event.required ?? false,
-          };
-
-          if (existingIndex >= 0) {
-            const copied = [...next.pendingRequests];
-            copied[existingIndex] = {
-              ...copied[existingIndex],
-              ...pending,
-              createdAt: copied[existingIndex].createdAt,
-            };
-            next.pendingRequests = copied;
-          } else {
-            next.pendingRequests = [...next.pendingRequests, pending];
-          }
-
-          next.requirementProgress = markRequirementProgress(
-            next.requirementProgress,
-            targetKind
-          );
-          next.userFacingRequests = toUserFacingRequests(next.pendingRequests);
-          continue;
-        }
-
-        if (event.type === "task_done") {
-          if (
-            typeof event.partIndex === "number" &&
-            typeof event.totalParts === "number"
-          ) {
-            continue;
-          }
-          next.requirementProgress = next.requirementProgress.map((item) =>
-            item.kind === "finalize"
-              ? {
-                  ...item,
-                  completedCount: item.targetCount ?? 1,
-                  status: "done",
-                }
-              : item
-          );
-        }
-
-        if (event.type === "task_confirm" && event.actionId) {
-          const normalizedStatus = (event.status || "").toLowerCase();
-          next.pendingRequests = next.pendingRequests.map((request) =>
-            request.actionId !== event.actionId
-              ? request
-              : {
-                  ...request,
-                  status: normalizedStatus.includes("cancel")
-                    ? "cancelled"
-                    : normalizedStatus.includes("answer") ||
-                        normalizedStatus.includes("resolved")
-                      ? "answered"
-                      : request.status,
-                }
-          );
-        }
-      }
-
-      next.userFacingRequests = toUserFacingRequests(next.pendingRequests);
-      return next;
+      return ingestTaskProtocolEventsState(prev, {
+        direction: params.direction,
+        events: params.events,
+        createActionId,
+        now: () => Date.now(),
+      });
     });
   }
 
@@ -504,7 +153,7 @@ export function useKinTaskProtocol() {
   }
 
   function resetRuntime() {
-    setRuntime(createEmptyRuntime());
+    setRuntime(createEmptyTaskRuntime());
   }
 
   const progressView = useMemo(() => {

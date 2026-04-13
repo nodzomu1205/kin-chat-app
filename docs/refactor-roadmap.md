@@ -3,18 +3,24 @@
 Updated: 2026-04-13
 
 ## Purpose
-この roadmap は、既存機能を壊さずに保守性と拡張性を上げていくための段階的工事計画です。
+This roadmap tracks the maintainability work for the repository.
+We use it to keep three things visible at all times:
 
-基本原則は次の 2 点です。
+1. what has already been stabilized
+2. what is being refactored now
+3. what should be tackled next
 
-1. 次に追加する 3 機能に耐えられる構造へ、少しずつ寄せる  
-2. 毎回の変更前に対象ファイルを明示し、変更後に docs と進捗を更新する
+The goal is not to rewrite everything at once. The goal is to keep shipping while reducing hidden coupling and future regressions.
+
+Current verification baseline:
+- `npx tsc --noEmit` passes
+- `npm test` passes
+- test status: `25 files / 110 tests`
 
 ## Current Assessment
-現状は、機能面ではかなり強い一方で、統合ポイントに責務が集まりやすい状態です。
+The repository is already functionally strong, but a few integration points remain riskier than the rest.
 
-特に注意して見るべき場所:
-
+Primary review points:
 - `app/api/chatgpt/route.ts`
 - `lib/app/sendToGptFlow.ts`
 - `hooks/useGptMemory.ts`
@@ -22,66 +28,64 @@ Updated: 2026-04-13
 - `hooks/useKinTaskProtocol.ts`
 - `lib/app/kinMultipart.ts`
 
+Current cleanup priority:
+1. `lib/app/sendToGptFlow.ts`
+2. `lib/app/memoryInterpreter.ts`
+3. `app/page.tsx`
+4. `components/panels/gpt/GptSettingsSections.tsx`
+5. remaining low-risk helper extraction around `useGptMemory.ts`
+
 ## Phase Plan
 
 ### Phase 1: Foundation
-目的:
+Goal:
+- reduce change impact
+- extract services from oversized files
+- introduce tests around brittle protocol and memory logic
 
-- 既存挙動を壊さずに、構造整理の足場を作る
-- 巨大な統合地点を少しずつ薄くする
-
-対象:
-
-- docs 整備
-- `app/api/chatgpt/route.ts` の service 抽出
-- `app/page.tsx` / action hook / controller の整理
-- protocol / task / multipart / memory のテスト観点整理
+Current scope:
+- docs
+- `app/api/chatgpt/route.ts` service extraction
+- `app/page.tsx` / controller thinning
+- protocol / task / multipart / memory test coverage
 
 ### Phase 2: Ingest Generalization
-目的:
+Goal:
+- evolve ad-hoc ingest flows into a reusable ingest pipeline
 
-- YouTube 以外にも広げられる ingest pipeline の土台を作る
-
-対象:
-
+Planned scope:
 - `IngestJob`
 - `IngestItem`
-- source adapter
+- source adapters
 - progress UI
 
 ### Phase 3: Proposal Workflow Hardening
-目的:
+Goal:
+- make Kin-originated task / knowledge proposals safer and easier to audit
 
-- Kin 起点の task / knowledge proposal を安全に運用できるようにする
-
-対象:
-
+Planned scope:
 - `ProtocolAction`
 - `ExecutionBudget`
 - approval workflow
 - audit log
 
 ### Phase 4: Shared Workspace
-目的:
+Goal:
+- prepare shared state for future multi-Kin collaboration
 
-- 将来の複数 Kin 協調に耐えられる shared state を導入する
-
-対象:
-
+Planned scope:
 - `Workspace`
 - `SharedArtifact`
 - `HandoffRecord`
-- role / handoff 管理
+- role / handoff rules
 
 ### Phase 5: Kin-first UI
-目的:
+Goal:
+- move toward a Kin-first workspace with GPT as a backoffice layer
 
-- Kin 主 UI / GPT バックオフィス化の足場を整える
-
-対象:
-
-- Kin workspace 中心 UI
-- GPT の設定 / 監査 / 運用画面化
+Planned scope:
+- Kin-centered workspace UI
+- GPT settings / audit / operations backoffice
 
 ## Progress
 
@@ -89,14 +93,12 @@ Updated: 2026-04-13
 Status: In progress
 
 Done:
-
-- `README.md` 更新
-- `docs/architecture.md` 作成
-- `docs/domain-model.md` 作成
-- `docs/refactor-roadmap.md` 作成
+- `README.md`
+- `docs/architecture.md`
+- `docs/domain-model.md`
+- `docs/refactor-roadmap.md`
 
 Next:
-
 - `docs/protocol-actions.md`
 - `docs/ingest-pipeline.md`
 - `docs/workspace-model.md`
@@ -105,82 +107,153 @@ Next:
 Status: Partially done
 
 Done:
-
-- `GptSettingsDrawer` の分割
-- `ReceivedDocsDrawer` の clean 化
-- `app/page.tsx` の一部 orchestration 抽出
+- `GptSettingsDrawer` split
+- `ReceivedDocsDrawer` cleanup
+- part of `app/page.tsx` orchestration extraction
 
 Next:
+- introduce `useChatAppController`
+- move more panel prop assembly out of `app/page.tsx`
 
-- `useChatAppController` 導入
-- panel props / top-level orchestration の更なる整理
+### 2.5. Task Protocol Hook Thinning
+Status: In progress
+
+Primary file:
+- [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
+
+Done:
+- protocol ingest extraction
+- empty runtime / requirement merge extraction
+- pending-answer / finalize mutation extraction
+- task start / replace-current-intent state builder extraction
+- test coverage for parser, runtime, ingest, state, mutations, and task-state helpers
+
+Next:
+- evaluate whether `addPendingRequest` should also move to a pure helper
+- decide whether to continue thinning here or shift effort to `useGptMemory`
 
 ### 3. Server Route Service Extraction
 Status: In progress
 
 Primary file:
-
 - [`app/api/chatgpt/route.ts`](../app/api/chatgpt/route.ts)
 
 Done:
-
-- OpenAI response helper を [`lib/server/chatgpt/openaiResponse.ts`](../lib/server/chatgpt/openaiResponse.ts) へ抽出
+- [`lib/server/chatgpt/openaiResponse.ts`](../lib/server/chatgpt/openaiResponse.ts)
   - `extractUsage`
   - `extractJsonObjectText`
   - `extractResponseText`
-- request 正規化 helper を [`lib/server/chatgpt/requestNormalization.ts`](../lib/server/chatgpt/requestNormalization.ts) へ抽出
+- [`lib/server/chatgpt/requestNormalization.ts`](../lib/server/chatgpt/requestNormalization.ts)
   - `resolveChatRouteMode`
   - `normalizeInstructionMode`
   - `normalizeReasoningMode`
   - `normalizeMemoryInput`
   - `normalizeChatMessages`
-- prompt builder を [`lib/server/chatgpt/promptBuilders.ts`](../lib/server/chatgpt/promptBuilders.ts) へ抽出
+- [`lib/server/chatgpt/promptBuilders.ts`](../lib/server/chatgpt/promptBuilders.ts)
   - `buildInstructionWrappedInput`
   - `buildBaseSystemPrompt`
   - `buildSearchSystemPrompt`
-- OpenAI call wrapper を [`lib/server/chatgpt/openaiClient.ts`](../lib/server/chatgpt/openaiClient.ts) へ抽出
+- [`lib/server/chatgpt/openaiClient.ts`](../lib/server/chatgpt/openaiClient.ts)
   - `callOpenAIResponses`
   - `extractOpenAIJsonObjectText`
-- search request resolve を [`lib/server/chatgpt/searchRequest.ts`](../lib/server/chatgpt/searchRequest.ts) へ抽出
+- [`lib/server/chatgpt/searchRequest.ts`](../lib/server/chatgpt/searchRequest.ts)
   - `resolveSearchRequest`
+- [`lib/server/chatgpt/searchExecution.ts`](../lib/server/chatgpt/searchExecution.ts)
+  - `executeSearchRequest`
+  - normalization helpers
+- [`lib/server/chatgpt/responseBuilders.ts`](../lib/server/chatgpt/responseBuilders.ts)
+  - `buildChatRouteResponse`
+  - `buildMapLinkShortcutResponse`
+- [`lib/app/sendToGptTranscriptHelpers.ts`](../lib/app/sendToGptTranscriptHelpers.ts)
+  - YouTube transcript request helper extraction
+- [`lib/app/sendToGptFlowHelpers.ts`](../lib/app/sendToGptFlowHelpers.ts)
+  - protocol assistant response wrapping helper
+  - search response shaping helper
+  - implicit search usage / context helper
+  - protocol post-response side-effect helper
+- [`lib/app/sendToGptShortcutFlows.ts`](../lib/app/sendToGptShortcutFlows.ts)
+  - inline URL shortcut helper is now on the main execution path
+- redundant library response post-processing branches removed from `sendToGptFlow.ts`
+- dead local inline search / URL helper functions removed from `sendToGptFlow.ts`
+- low-risk unused imports in `sendToGptFlow.ts` cleaned as part of iterative polishing
+- remaining dead inline URL fallback block in `sendToGptFlow.ts` is now isolated/commented and no longer affects the live path
+- legacy local helper block removed from `route.ts`
 
 Next:
-
-- route.ts 内の重複 local helper を整理
-- route.ts を request/response の薄い入口へ近づける
+- extract summarize / memory_interpret shaping further
+- continue reducing branching weight inside `route.ts`
+- keep thinning `sendToGptFlow.ts` by moving protocol / transcript / inline URL helper logic out in small slices
+- remove now-unreachable legacy inline URL branch safely once mojibake cleanup is less risky
+- after that, shift the main cleanup focus to `memoryInterpreter.ts`
 
 ### 4. Test Readiness
-Status: Not started
+Status: In progress
 
 Priority targets:
-
 - protocol parser
+- protocol runtime
 - task intent parser
 - multipart chunking
-- YouTube URL handling
 - progress counting principle
+- YouTube URL / transcript handling
+- prompt / response helpers
+- memory helpers
+
+Done:
+- `Vitest` foundation
+- [`vitest.config.ts`](../vitest.config.ts)
+- [`lib/server/chatgpt/requestNormalization.test.ts`](../lib/server/chatgpt/requestNormalization.test.ts)
+- [`lib/server/chatgpt/searchRequest.test.ts`](../lib/server/chatgpt/searchRequest.test.ts)
+- [`lib/server/chatgpt/searchExecution.test.ts`](../lib/server/chatgpt/searchExecution.test.ts)
+- [`lib/server/chatgpt/promptBuilders.test.ts`](../lib/server/chatgpt/promptBuilders.test.ts)
+- [`lib/server/chatgpt/openaiResponse.test.ts`](../lib/server/chatgpt/openaiResponse.test.ts)
+- [`lib/app/kinMultipart.test.ts`](../lib/app/kinMultipart.test.ts)
+- [`lib/taskIntent.test.ts`](../lib/taskIntent.test.ts)
+- [`lib/taskProgress.test.ts`](../lib/taskProgress.test.ts)
+- [`lib/taskProgressPolicy.test.ts`](../lib/taskProgressPolicy.test.ts)
+- [`lib/server/youtubeTranscriptHelpers.test.ts`](../lib/server/youtubeTranscriptHelpers.test.ts)
+- [`lib/taskProtocolParser.test.ts`](../lib/taskProtocolParser.test.ts)
+- [`lib/taskProtocolRuntime.test.ts`](../lib/taskProtocolRuntime.test.ts)
+- [`lib/taskProtocolIngest.test.ts`](../lib/taskProtocolIngest.test.ts)
+- [`lib/taskProtocolState.test.ts`](../lib/taskProtocolState.test.ts)
+- [`lib/taskProtocolMutations.test.ts`](../lib/taskProtocolMutations.test.ts)
+- [`lib/taskProtocolTaskState.test.ts`](../lib/taskProtocolTaskState.test.ts)
+- [`lib/taskCompiler.test.ts`](../lib/taskCompiler.test.ts)
+- [`lib/memory.test.ts`](../lib/memory.test.ts)
+- [`lib/app/gptMemoryStateHelpers.test.ts`](../lib/app/gptMemoryStateHelpers.test.ts)
+- [`lib/app/gptMemorySummarizePolicy.test.ts`](../lib/app/gptMemorySummarizePolicy.test.ts)
+- [`lib/app/gptMemoryPersistence.test.ts`](../lib/app/gptMemoryPersistence.test.ts)
+- [`lib/app/gptMemoryFallback.test.ts`](../lib/app/gptMemoryFallback.test.ts)
+- [`lib/app/gptMemoryApproval.test.ts`](../lib/app/gptMemoryApproval.test.ts)
+
+Next:
+- task budget tests
+- more pure-helper extraction around `useKinTaskProtocol` / `useGptMemory`
+- continue moving low-risk `useGptMemory` core helpers out of the hook
+- add docs for protocol actions and ingest pipeline before larger phase-2 work
 
 ## Next Review Points
-次回の事前チェックでは、まずこの 3 つを確認します。
+At the start of each new refactor step, review these files first:
 
 1. `app/api/chatgpt/route.ts`
 2. `lib/app/sendToGptFlow.ts`
 3. `hooks/useGptMemory.ts` / `lib/app/memoryInterpreter.ts`
 
 ## Working Agreement
-今後の工事は次のルールで進めます。
+For each refactor step:
 
-1. 先に触るファイルを共有する
-2. 触らないファイルも必要に応じて明示する
-3. 1 フェーズずつ止める
-4. 型チェックを通す
-5. docs と roadmap を更新する
+1. share the files to be touched before editing
+2. keep the change small and phase-based
+3. stop after each mini-phase
+4. run typecheck and tests
+5. update docs / roadmap as progress changes
 
 ## Success Condition
-この roadmap の目的は、一気に全面改修することではありません。
+This roadmap is successful when future contributors can answer, at any time:
 
-- 今動いている機能を壊さない
-- 次の機能追加がしやすくなる
-- 問題が起きた時に、どこを見ればよいか分かる
+- what has already been stabilized
+- what is currently being refactored
+- what remains risky
+- what should be done next
 
-この 3 点を継続的に満たすことを成功条件とします。
+That visibility is part of the maintainability work itself.

@@ -1,82 +1,98 @@
 # Domain Model
 
-この文書は、repo にすでに存在している主要概念を、今後の保守と拡張のために整理したものです。
+This document names the main concepts that already exist in the repository and should remain explicit as refactors continue.
 
-## Core actors
+## Core Actors
 
 ### User
 
-アプリの利用者です。Kin との会話、GPT バックオフィスの設定、承認、タスク投入を行います。
+The human operator of the workspace.
+
+The user:
+
+- chats with GPT
+- works with Kin
+- reviews protocol outputs
+- approves or rejects suggested refinements
+- manages task direction and ingest sources
 
 ### Kin
 
-主にユーザー対話の前面に立つ actor です。
+Kin is the main execution-side actor.
 
-主な役割:
-- 対話
+Kin is responsible for:
+
 - task execution
-- progress reporting
-- GPT への protocol request
+- task progress reporting
+- requesting GPT support through structured protocol blocks
+- consuming structured information injected from GPT
 
 ### GPT
 
-主にバックオフィス側の actor です。
+GPT is the backoffice-side actor.
 
-主な役割:
+GPT is responsible for:
+
 - memory interpretation
-- search
+- search execution
+- transcript fetches
 - library management
-- transcript fetching
-- protocol response
+- protocol response formatting
 - task compilation support
 
-## Core domains
+## Core Domains
 
 ### Conversation
 
-通常の会話ログと、その周辺の表示・送信フローです。
+The live user/GPT conversational layer.
 
-主な関係ファイル:
-- [app/page.tsx](../app/page.tsx)
-- [lib/app/sendToGptFlow.ts](../lib/app/sendToGptFlow.ts)
+Current main files:
+
+- [`app/page.tsx`](../app/page.tsx)
+- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
 
 ### Memory
 
-GPT 側の短期作業記憶です。
+GPT-side working memory used to keep context stable across turns.
 
-主な構成:
+Current memory shape includes:
+
 - `recentMessages`
 - `facts`
 - `preferences`
 - `lists`
 - `context`
 
-主な関係ファイル:
-- [hooks/useGptMemory.ts](../hooks/useGptMemory.ts)
-- [lib/app/memoryInterpreter.ts](../lib/app/memoryInterpreter.ts)
-- [lib/app/gptMemoryStateHelpers.ts](../lib/app/gptMemoryStateHelpers.ts)
+Current main files:
+
+- [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
+- [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
+- [`lib/app/gptMemoryStateHelpers.ts`](../lib/app/gptMemoryStateHelpers.ts)
 
 ### Task
 
-Kin に渡す構造化タスクと、その進捗・制約・成果条件です。
+The task domain describes what Kin should do, with what limits, and how progress is tracked.
 
-主な構成:
+Important concepts:
+
 - `TaskIntent`
 - compiled task prompt
 - `requirementProgress`
 - `pendingRequests`
 - `protocolLog`
 
-主な関係ファイル:
-- [lib/taskIntent.ts](../lib/taskIntent.ts)
-- [lib/taskCompiler.ts](../lib/taskCompiler.ts)
-- [hooks/useKinTaskProtocol.ts](../hooks/useKinTaskProtocol.ts)
+Current main files:
+
+- [`lib/taskIntent.ts`](../lib/taskIntent.ts)
+- [`lib/taskCompiler.ts`](../lib/taskCompiler.ts)
+- [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
 
 ### Protocol
 
-Kin と GPT の間でやり取りする構造化 block です。
+The structured message layer between Kin and GPT.
 
-代表 block:
+Current protocol blocks:
+
 - `SYS_TASK`
 - `SYS_TASK_PROGRESS`
 - `SYS_SEARCH_REQUEST / RESPONSE`
@@ -84,77 +100,79 @@ Kin と GPT の間でやり取りする構造化 block です。
 - `SYS_GPT_RESPONSE`
 - `SYS_INFO`
 
-主な関係ファイル:
-- [lib/taskRuntimeProtocol.ts](../lib/taskRuntimeProtocol.ts)
-- [lib/app/kinProtocolDefaults.ts](../lib/app/kinProtocolDefaults.ts)
-- [lib/app/kinMultipart.ts](../lib/app/kinMultipart.ts)
+Current main files:
+
+- [`lib/taskRuntimeProtocol.ts`](../lib/taskRuntimeProtocol.ts)
+- [`lib/app/kinProtocolDefaults.ts`](../lib/app/kinProtocolDefaults.ts)
+- [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
 
 ### Search
 
-GPT 側の検索実行と結果正規化です。
+The domain for GPT-side external retrieval.
 
-主な構成:
+Important concepts:
+
 - search engine
 - search mode
-- raw result
+- raw result id
 - summarized response
 - source cards
 
-主な関係ファイル:
-- [lib/app/sendToGptFlow.ts](../lib/app/sendToGptFlow.ts)
-- [lib/app/sendToGptFlowHelpers.ts](../lib/app/sendToGptFlowHelpers.ts)
-- [lib/search-domain/](../lib/search-domain)
+Current main files:
+
+- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+- [`lib/app/sendToGptFlowHelpers.ts`](../lib/app/sendToGptFlowHelpers.ts)
+- [`lib/search-domain/`](../lib/search-domain)
 
 ### Library
 
-検索結果、文書、transcript、Kin 注入素材などを一つの参照資産として扱う層です。
+Stored search results, ingested documents, transcripts, and other reusable references.
 
-主な関係ファイル:
-- [hooks/useReferenceLibrary.ts](../hooks/useReferenceLibrary.ts)
-- [hooks/useStoredDocuments.ts](../hooks/useStoredDocuments.ts)
+Current main files:
+
+- [`hooks/useReferenceLibrary.ts`](../hooks/useReferenceLibrary.ts)
+- [`hooks/useStoredDocuments.ts`](../hooks/useStoredDocuments.ts)
 
 ### Ingest
 
-外部情報を取り込み、保存し、必要なら Kin / GPT に注入する流れです。
+The domain for taking external content and turning it into reusable workspace material.
 
-現在の source:
+Current sources:
+
 - file ingest
 - YouTube transcript
 
-今後の候補:
-- zip
+Planned future sources:
+
+- zip archive
 - local folder
 - Google Drive folder
 
-主な関係ファイル:
-- [lib/app/fileIngestFlow.ts](../lib/app/fileIngestFlow.ts)
-- [app/api/youtube-transcript/route.ts](../app/api/youtube-transcript/route.ts)
+Current main files:
 
-## Current source of truth
+- [`lib/app/fileIngestFlow.ts`](../lib/app/fileIngestFlow.ts)
+- [`app/api/youtube-transcript/route.ts`](../app/api/youtube-transcript/route.ts)
 
-今の repo では、少なくとも次の source of truth を毎回意識する必要があります。
+## Current Source-Of-Truth Notes
 
-### Memory interpretation
+The current most important source-of-truth locations are:
 
-- [lib/app/memoryInterpreter.ts](../lib/app/memoryInterpreter.ts)
+- memory interpretation:
+  - [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
+- memory persistence:
+  - [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
+- task progress counting:
+  - [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
+- multipart structured delivery:
+  - [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
 
-### Memory persistence / merge
+## Progress Counting Principle
 
-- [hooks/useGptMemory.ts](../hooks/useGptMemory.ts)
+The repository now follows this rule:
 
-### Task progress counting
+### Count on success / completion
 
-- [hooks/useKinTaskProtocol.ts](../hooks/useKinTaskProtocol.ts)
-
-### Multipart protocol delivery
-
-- [lib/app/kinMultipart.ts](../lib/app/kinMultipart.ts)
-
-## Progress counting principle
-
-この repo では、進捗カウントは次の原則に揃えていきます。
-
-### 成功時 / 完了時に加算するもの
+For external execution and retrieval style requirements:
 
 - `ask_gpt`
 - `search_request`
@@ -162,18 +180,21 @@ GPT 側の検索実行と結果正規化です。
 - `library_reference`
 - `finalize`
 
-### 依頼成立時に加算するもの
+### Count on request issuance
+
+For human-facing requests:
 
 - `ask_user`
 - `request_material`
 
-意図:
-- 外部取得や実行系は、request だけで加算すると retry や失敗でぶれやすい
-- 人への問い合わせは、「依頼したこと」自体に意味がある
+Why:
 
-## 今後、明示したい概念
+- external retrieval can fail or be retried
+- user/material asks represent a completed outward action at the moment they are issued
 
-今はまだコード上で完全には独立していませんが、今後は次の概念を型として育てたいです。
+## Emerging Future Concepts
+
+These are not yet fully modeled, but should remain explicit in future phases:
 
 - `ProtocolAction`
 - `ExecutionBudget`
@@ -183,13 +204,11 @@ GPT 側の検索実行と結果正規化です。
 - `SharedArtifact`
 - `HandoffRecord`
 
-## この文書の使い方
+## Current Refactor Interpretation
 
-新しい大きな機能を入れる前に、まず次を決めます。
+The maintainability work so far suggests this boundary direction:
 
-1. これはどの domain に属するか
-2. source of truth はどこか
-3. 既存 domain に追加するか、新しい概念として切り出すか
-4. docs も一緒に更新すべきか
-
-この確認を先に入れるだけで、バナナの皮をかなり減らせます。
+1. UI should not own domain behavior
+2. protocol parsing and runtime should stay testable and pure where possible
+3. memory logic should keep moving from hook-internal logic toward pure helpers
+4. new concepts should be documented before they spread through multiple files

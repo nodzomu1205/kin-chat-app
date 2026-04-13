@@ -1,8 +1,13 @@
 # Architecture
 
-## 目的
+## Overview
 
-`kin-chat-app` は、Kin と GPT を組み合わせた作業支援ワークスペースです。単なるチャット UI ではなく、次のドメインが協調して動く構成を目指しています。
+`kin-chat-app` is a workspace application built around two primary actors:
+
+- Kin: the execution-side conversational agent
+- GPT: the backoffice-side support layer for memory, search, protocol handling, library, and transcript fetches
+
+This is not just a single chat screen. The app now contains several cooperating domains:
 
 - conversation
 - memory
@@ -12,165 +17,177 @@
 - library
 - ingest
 
-この文書は、今の構造をどう理解し、どこをどう薄くしていくかを確認するための基準です。
-
-## 現在の主要構造
+## Current Main Integration Points
 
 ### UI / orchestration
 
-- [app/page.tsx](../app/page.tsx)
-- [components/panels/gpt/GptSettingsSections.tsx](../components/panels/gpt/GptSettingsSections.tsx)
-- [components/panels/gpt/ReceivedDocsDrawer.tsx](../components/panels/gpt/ReceivedDocsDrawer.tsx)
+Primary files:
 
-役割:
-- top-level state
+- [`app/page.tsx`](../app/page.tsx)
+- [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
+- [`components/panels/gpt/ReceivedDocsDrawer.tsx`](../components/panels/gpt/ReceivedDocsDrawer.tsx)
+
+Current role:
+
+- top-level state wiring
 - panel coordination
-- layout
-- final props wiring
+- layout composition
+- final prop assembly
 
-課題:
-- orchestration がまだ厚い
-- 今後 controller 化を進めたい
+Current risk:
+
+- `app/page.tsx` still acts as a broad orchestration point
+- panel prop wiring is still heavier than ideal
 
 ### App flows
 
-- [lib/app/sendToGptFlow.ts](../lib/app/sendToGptFlow.ts)
-- [lib/app/fileIngestFlow.ts](../lib/app/fileIngestFlow.ts)
-- [lib/app/taskDraftActionFlows.ts](../lib/app/taskDraftActionFlows.ts)
-- [lib/app/kinMultipart.ts](../lib/app/kinMultipart.ts)
+Primary files:
 
-役割:
-- 対話送信
-- protocol 応答
-- 文書取り込み
-- タスク整理
-- multipart 組み立て
+- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+- [`lib/app/fileIngestFlow.ts`](../lib/app/fileIngestFlow.ts)
+- [`lib/app/taskDraftActionFlows.ts`](../lib/app/taskDraftActionFlows.ts)
+- [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
 
-課題:
-- `sendToGptFlow.ts` はまだ責務が多い
-- flow ごとの service 分離余地が大きい
+Current role:
+
+- user-to-GPT conversation flow
+- protocol request / response handling
+- ingest routing
+- task draft actions
+- multipart delivery
+
+Current risk:
+
+- `sendToGptFlow.ts` still holds too many responsibilities
 
 ### Memory
 
-- [hooks/useGptMemory.ts](../hooks/useGptMemory.ts)
-- [lib/app/memoryInterpreter.ts](../lib/app/memoryInterpreter.ts)
-- [lib/app/gptMemoryStateHelpers.ts](../lib/app/gptMemoryStateHelpers.ts)
+Primary files:
 
-役割:
-- recent / facts / preferences / collections / context の整理
-- deterministic 判定
+- [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
+- [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
+- [`lib/app/gptMemoryStateHelpers.ts`](../lib/app/gptMemoryStateHelpers.ts)
+- [`lib/app/gptMemoryCore.ts`](../lib/app/gptMemoryCore.ts)
+- [`lib/app/gptMemoryPersistence.ts`](../lib/app/gptMemoryPersistence.ts)
+- [`lib/app/gptMemoryFallback.ts`](../lib/app/gptMemoryFallback.ts)
+- [`lib/app/gptMemoryApproval.ts`](../lib/app/gptMemoryApproval.ts)
+- [`lib/app/gptMemorySummarizePolicy.ts`](../lib/app/gptMemorySummarizePolicy.ts)
+
+Current role:
+
+- recent / facts / preferences / collections / context management
+- deterministic interpretation
 - LLM fallback
-- 承認候補からの再整理
+- approval-based refinement
+- persistence normalization
+- summarize threshold policy
 
-課題:
-- `memoryInterpreter.ts` が重くなりやすい
-- 今後は `topic/goal`, `facts`, `entities/collections` に分けられるとよい
+Current risk:
+
+- `memoryInterpreter.ts` remains a large core file
+- `useGptMemory.ts` is much better than before, but still central enough to deserve careful changes
 
 ### Task / protocol runtime
 
-- [hooks/useKinTaskProtocol.ts](../hooks/useKinTaskProtocol.ts)
-- [lib/taskIntent.ts](../lib/taskIntent.ts)
-- [lib/taskCompiler.ts](../lib/taskCompiler.ts)
-- [lib/taskRuntimeProtocol.ts](../lib/taskRuntimeProtocol.ts)
+Primary files:
 
-役割:
-- タスク意図抽出
-- protocol prompt 生成
-- 進捗管理
-- protocol event parsing
+- [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
+- [`lib/taskIntent.ts`](../lib/taskIntent.ts)
+- [`lib/taskCompiler.ts`](../lib/taskCompiler.ts)
+- [`lib/taskRuntimeProtocol.ts`](../lib/taskRuntimeProtocol.ts)
+- [`lib/taskProtocolParser.ts`](../lib/taskProtocolParser.ts)
+- [`lib/taskProtocolRuntime.ts`](../lib/taskProtocolRuntime.ts)
+- [`lib/taskProtocolIngest.ts`](../lib/taskProtocolIngest.ts)
+- [`lib/taskProtocolState.ts`](../lib/taskProtocolState.ts)
+- [`lib/taskProtocolMutations.ts`](../lib/taskProtocolMutations.ts)
+- [`lib/taskProtocolTaskState.ts`](../lib/taskProtocolTaskState.ts)
 
-課題:
-- execution budget の型整理がまだ弱い
-- 将来的には `ProtocolAction` / `ExecutionBudget` を明示したい
+Current role:
+
+- task intent parsing
+- compiled task prompt generation
+- runtime progress tracking
+- protocol event parsing and application
+- task runtime state transitions
+
+Current risk:
+
+- execution budget is implemented, but not yet modeled as a first-class domain object
 
 ### Server routes
 
-- [app/api/chatgpt/route.ts](../app/api/chatgpt/route.ts)
-- [app/api/youtube-transcript/route.ts](../app/api/youtube-transcript/route.ts)
-- [app/api/kindroid/route.ts](../app/api/kindroid/route.ts)
+Primary files:
 
-役割:
-- request entrypoint
-- OpenAI / SerpApi / Kindroid 接続
+- [`app/api/chatgpt/route.ts`](../app/api/chatgpt/route.ts)
+- [`app/api/youtube-transcript/route.ts`](../app/api/youtube-transcript/route.ts)
+- [`app/api/kindroid/route.ts`](../app/api/kindroid/route.ts)
 
-課題:
-- `chatgpt/route.ts` はまだ厚い
-- route は薄くし、service 層に寄せたい
+Supporting extracted services:
 
-## 現在の問題意識
+- [`lib/server/chatgpt/requestNormalization.ts`](../lib/server/chatgpt/requestNormalization.ts)
+- [`lib/server/chatgpt/promptBuilders.ts`](../lib/server/chatgpt/promptBuilders.ts)
+- [`lib/server/chatgpt/openaiClient.ts`](../lib/server/chatgpt/openaiClient.ts)
+- [`lib/server/chatgpt/openaiResponse.ts`](../lib/server/chatgpt/openaiResponse.ts)
+- [`lib/server/chatgpt/searchRequest.ts`](../lib/server/chatgpt/searchRequest.ts)
+- [`lib/server/chatgpt/searchExecution.ts`](../lib/server/chatgpt/searchExecution.ts)
+- [`lib/server/chatgpt/responseBuilders.ts`](../lib/server/chatgpt/responseBuilders.ts)
+- [`lib/server/youtubeTranscriptHelpers.ts`](../lib/server/youtubeTranscriptHelpers.ts)
 
-### 1. 巨大統合地点
+Current role:
 
-今も次のファイルは、変更の波及が大きいです。
+- thin request entrypoints
+- OpenAI / search / transcript execution boundaries
 
-- `app/page.tsx`
-- `lib/app/sendToGptFlow.ts`
-- `lib/app/memoryInterpreter.ts`
-- `app/api/chatgpt/route.ts`
+Current progress:
 
-### 2. 多重 state write の再発リスク
+- `app/api/chatgpt/route.ts` is already much thinner than before
+- local dead helper blocks were removed
+- key route logic has been extracted into service modules
 
-以前の「バナナの皮」の多くは、同じ state を複数経路が直接更新していたことから起きました。今後も次を守る必要があります。
+## Current Source Of Truth
 
-- state の source of truth を一つに寄せる
-- provisional と persisted をずらさない
-- protocol 表示と内部 state の優先順位を揃える
+Important current source-of-truth locations:
 
-### 3. UI 主導ではなく domain 主導へ
+- memory interpretation:
+  - [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
+- memory state shaping and persistence:
+  - [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
+- task progress and protocol runtime:
+  - [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
+- multipart protocol delivery:
+  - [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
 
-今後の拡張は、画面単位で積むのではなく、domain ごとに controller / service / domain へ寄せる必要があります。
+## Maintainability Strategy
 
-## 目指す段階移行
+We are intentionally using staged refactors instead of a full rewrite.
 
-全面リネームはしません。既存構造を活かしながら、次の順で移行します。
+The current refactor order is:
 
-### Phase 1
+1. docs and shared visibility
+2. route/service extraction
+3. controller thinning
+4. protocol / task / memory test hardening
+5. future ingest pipeline groundwork
 
-- docs 整備
-- `route.ts` の service 抽出
-- `page.tsx` と action hook の controller 分離
+## Current Cleanup Priority
 
-### Phase 2
+Based on the current repository state, the best remaining cleanup order is:
 
-- protocol / task / memory の型とテスト強化
-- ingest pipeline の抽象を定義
+1. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+   - still the heaviest remaining app-flow file
+2. [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
+   - large and central
+3. [`app/page.tsx`](../app/page.tsx)
+   - still broad orchestration
+4. [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
+   - large UI composition file
+5. finish controller extraction around page-level orchestration
 
-### Phase 3
+## Current Working Rule
 
-- shared workspace 導入
-- 複数 Kin 協調の最小構造
+For every new maintainability step:
 
-## 今後の target structure
-
-最終的には、次のような方向に寄せたいです。
-
-```text
-features/
-  chat/
-  kin/
-  task/
-  ingest/
-  library/
-  workspace/
-
-lib/
-  server/
-  shared/
-```
-
-ただし今は、いきなり全面移行するより、
-- docs
-- controller
-- server services
-- tests
-を先に整えるのが安全です。
-
-## 次に着手すべき点
-
-現在のおすすめ優先順位は次です。
-
-1. `app/api/chatgpt/route.ts` の service 抽出
-2. `app/page.tsx` の controller 化
-3. protocol / task / memory の純粋関数テスト導入
-
-この 3 つが、今後の機能追加を一番安定させます。
+1. touch a small, pre-declared file set
+2. prefer pure helper extraction first
+3. run typecheck and tests
+4. update docs immediately after the change

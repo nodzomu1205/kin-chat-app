@@ -1,6 +1,7 @@
 import { parseTaskInput } from "@/lib/taskInputParser";
 import { parseSearchContinuation } from "@/lib/search-domain/continuations";
 import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
+import { buildUserResponseBlock } from "@/lib/taskRuntimeProtocol";
 import type { ReferenceLibraryItem, SourceItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
@@ -42,6 +43,17 @@ export type SearchSource = {
   videoId?: string;
 };
 
+export type ChatApiSearchLike = {
+  reply?: string;
+  usage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
+  searchUsed?: boolean;
+  searchQuery?: string;
+  searchSeriesId?: string;
+  searchContinuationToken?: string;
+  searchEvidence?: string;
+  sources?: SearchSource[];
+};
+
 type ProtocolLimitEvent = {
   type:
     | "ask_gpt"
@@ -54,6 +66,17 @@ type ProtocolLimitEvent = {
 };
 
 type ProtocolTaskEventLike = {
+  taskId?: string;
+  actionId?: string;
+  body?: string;
+  summary?: string;
+  query?: string;
+  searchEngine?: string;
+  searchLocation?: string;
+  outputMode?: string;
+};
+
+type SearchResponseEventLike = {
   taskId?: string;
   actionId?: string;
   body?: string;
@@ -247,6 +270,260 @@ export function buildEffectiveRequestText(params: {
     .join("\n");
 
   return effectiveRequestText || normalizedRequestText || requestText || params.rawText;
+}
+
+export function wrapProtocolAssistantText(params: {
+  assistantText: string;
+  askGptEvent?: ProtocolTaskEventLike;
+  currentTaskId?: string | null;
+  requestToAnswer?: PendingRequestLike | null;
+  requestAnswerBody?: string;
+}) {
+  let nextAssistantText = params.assistantText;
+
+  if (params.askGptEvent && !nextAssistantText.includes("<<SYS_GPT_RESPONSE>>")) {
+    nextAssistantText = [
+      "<<SYS_GPT_RESPONSE>>",
+      `TASK_ID: ${params.askGptEvent.taskId || params.currentTaskId || ""}`,
+      `ACTION_ID: ${params.askGptEvent.actionId || ""}`,
+      `BODY: ${nextAssistantText}`,
+      "<<END_SYS_GPT_RESPONSE>>",
+    ].join("\n");
+  }
+
+  if (
+    params.requestToAnswer &&
+    params.requestAnswerBody &&
+    !nextAssistantText.includes("<<SYS_USER_RESPONSE>>")
+  ) {
+    nextAssistantText = buildUserResponseBlock({
+      taskId: params.requestToAnswer.taskId,
+      actionId: params.requestToAnswer.actionId,
+      body: nextAssistantText,
+    });
+  }
+
+  return nextAssistantText;
+}
+
+export function buildProtocolSearchResponseArtifacts(params: {
+  data: ChatApiSearchLike;
+  searchRequestEvent: SearchResponseEventLike;
+  currentTaskId?: string | null;
+  wrappedSearchResponse: WrappedSearchResponse;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  searchSeriesId?: string;
+  cleanQuery?: string;
+  recordSearchContext: (args: {
+    mode?: SearchMode;
+    engines?: SearchEngine[];
+    location?: string;
+    seriesId?: string;
+    continuationToken?: string;
+    metadata?: Record<string, unknown>;
+    taskId?: string;
+    actionId?: string;
+    query: string;
+    goal?: string;
+    outputMode?: "summary" | "raw_and_summary";
+    summaryText?: string;
+    rawText: string;
+    sources: SourceItem[];
+  }) => SearchRecord;
+}) {
+  const requestedMode = params.searchRequestEvent.outputMode || "summary";
+  const normalizedSources = toSourceItems(params.data.sources);
+  const recordedSearch = params.data.searchUsed
+    ? params.recordSearchContext({
+        mode: params.effectiveSearchMode,
+        engines: params.effectiveSearchEngines,
+        location: params.effectiveSearchLocation || undefined,
+        seriesId:
+          typeof params.data.searchSeriesId === "string"
+            ? params.data.searchSeriesId
+            : params.searchSeriesId,
+        continuationToken:
+          typeof params.data.searchContinuationToken === "string"
+            ? params.data.searchContinuationToken
+            : undefined,
+        taskId: params.searchRequestEvent.taskId || params.currentTaskId || undefined,
+        actionId: params.searchRequestEvent.actionId || undefined,
+        query:
+          params.cleanQuery ||
+          params.searchRequestEvent.query ||
+          (typeof params.data.searchQuery === "string" ? params.data.searchQuery : "") ||
+          "",
+        goal: params.searchRequestEvent.body || params.searchRequestEvent.summary || "",
+        outputMode:
+          requestedMode === "raw" || requestedMode === "summary_plus_raw"
+            ? "raw_and_summary"
+            : "summary",
+        summaryText:
+          typeof params.data.reply === "string" && params.data.reply.trim()
+            ? params.data.reply.trim()
+            : "",
+        rawText:
+          typeof params.data.searchEvidence === "string" ? params.data.searchEvidence : "",
+        metadata:
+          typeof params.data.searchSeriesId === "string" ||
+          typeof params.data.searchContinuationToken === "string"
+            ? {
+                seriesId:
+                  typeof params.data.searchSeriesId === "string"
+                    ? params.data.searchSeriesId
+                    : params.searchSeriesId,
+                subsequentRequestToken:
+                  typeof params.data.searchContinuationToken === "string"
+                    ? params.data.searchContinuationToken
+                    : undefined,
+              }
+            : undefined,
+        sources: normalizedSources,
+      })
+    : null;
+
+  const summaryText =
+    params.wrappedSearchResponse?.summary ||
+    (typeof params.data.reply === "string" && params.data.reply.trim()
+      ? params.data.reply.trim()
+      : "Search completed, but no summary text was returned.");
+  const rawExcerpt =
+    params.wrappedSearchResponse?.rawExcerpt ||
+    (typeof params.data.searchEvidence === "string" && params.data.searchEvidence.trim()
+      ? params.data.searchEvidence
+          .trim()
+          .slice(0, requestedMode === "raw" ? 2400 : 1200)
+      : "");
+  const sourceLines = buildProtocolSourceLines(
+    normalizedSources,
+    params.searchRequestEvent.searchEngine || params.effectiveSearchEngines[0] || ""
+  );
+  const assistantText = buildSearchResponseBlock({
+    taskId: params.searchRequestEvent.taskId || params.currentTaskId || "",
+    actionId: params.searchRequestEvent.actionId || "",
+    query:
+      params.wrappedSearchResponse?.query ||
+      params.searchRequestEvent.query ||
+      (typeof params.data.searchQuery === "string" ? params.data.searchQuery : "") ||
+      "",
+    engine:
+      params.searchRequestEvent.searchEngine || params.effectiveSearchEngines[0] || "",
+    location:
+      params.searchRequestEvent.searchLocation || params.effectiveSearchLocation || "",
+    requestedMode,
+    recordedSearch,
+    summaryText,
+    rawExcerpt,
+    wrappedOutputMode: params.wrappedSearchResponse?.outputMode,
+    sourceLines,
+  });
+
+  return {
+    assistantText,
+    normalizedSources,
+    recordedSearch,
+    requestedMode,
+  };
+}
+
+export function handleImplicitSearchArtifacts(params: {
+  data: ChatApiSearchLike;
+  searchRequestEvent?: SearchResponseEventLike;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  searchSeriesId?: string;
+  cleanQuery?: string;
+  effectiveParsedSearchQuery?: string;
+  finalRequestText: string;
+  applySearchUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applyChatUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  recordSearchContext: (args: {
+    mode?: SearchMode;
+    engines?: SearchEngine[];
+    location?: string;
+    seriesId?: string;
+    continuationToken?: string;
+    metadata?: Record<string, unknown>;
+    taskId?: string;
+    actionId?: string;
+    query: string;
+    goal?: string;
+    outputMode?: "summary" | "raw_and_summary";
+    summaryText?: string;
+    rawText: string;
+    sources: SourceItem[];
+  }) => SearchRecord;
+}) {
+  if (params.data.searchUsed && !params.searchRequestEvent) {
+    params.applySearchUsage(params.data.usage);
+    params.recordSearchContext({
+      mode: params.effectiveSearchMode,
+      engines: params.effectiveSearchEngines,
+      location: params.effectiveSearchLocation || undefined,
+      seriesId:
+        typeof params.data.searchSeriesId === "string"
+          ? params.data.searchSeriesId
+          : params.searchSeriesId,
+      continuationToken:
+        typeof params.data.searchContinuationToken === "string"
+          ? params.data.searchContinuationToken
+          : undefined,
+      query:
+        (typeof params.data.searchQuery === "string" && params.data.searchQuery.trim()) ||
+        params.cleanQuery ||
+        params.effectiveParsedSearchQuery ||
+        params.finalRequestText,
+      summaryText:
+        typeof params.data.reply === "string" && params.data.reply.trim()
+          ? params.data.reply
+          : "",
+      rawText:
+        typeof params.data.searchEvidence === "string" ? params.data.searchEvidence : "",
+      metadata:
+        typeof params.data.searchSeriesId === "string" ||
+        typeof params.data.searchContinuationToken === "string"
+          ? {
+              seriesId:
+                typeof params.data.searchSeriesId === "string"
+                  ? params.data.searchSeriesId
+                  : params.searchSeriesId,
+              subsequentRequestToken:
+                typeof params.data.searchContinuationToken === "string"
+                  ? params.data.searchContinuationToken
+                  : undefined,
+            }
+          : undefined,
+      sources: toSourceItems(params.data.sources),
+    });
+    return;
+  }
+
+  if (!params.searchRequestEvent) {
+    params.applyChatUsage(params.data.usage);
+  }
+}
+
+export function applyProtocolAssistantSideEffects(params: {
+  assistantText: string;
+  ingestProtocolMessage: (
+    text: string,
+    direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
+  ) => void;
+  requestToAnswer?: PendingRequestLike | null;
+  requestAnswerBody?: string;
+  taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
+}) {
+  params.ingestProtocolMessage(params.assistantText, "gpt_to_kin");
+
+  if (params.requestToAnswer && params.requestAnswerBody) {
+    params.taskProtocolAnswerPendingRequest(
+      params.requestToAnswer.id,
+      params.requestAnswerBody
+    );
+  }
 }
 
 export function resolveProtocolLimitViolation(params: {

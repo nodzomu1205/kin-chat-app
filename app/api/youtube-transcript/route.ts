@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { requestSerpApi } from "@/lib/search-domain/serpApiClient";
-import { cleanYouTubeTranscriptText } from "@/lib/app/youtubeTranscriptText";
+import {
+  buildCleanTranscriptText,
+  buildTranscriptSummary,
+  sanitizeTranscriptFilename,
+  toTranscriptText,
+} from "@/lib/server/youtubeTranscriptHelpers";
 
 type TranscriptResult = Record<string, unknown> & {
   transcript?: unknown;
@@ -11,84 +16,6 @@ type TranscriptResult = Record<string, unknown> & {
     title?: string;
   }>;
 };
-
-function buildTranscriptSummary(params: {
-  title: string;
-  channelName?: string;
-  duration?: string;
-  transcriptText: string;
-}) {
-  const firstSentence = params.transcriptText
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(/(?<=[。.!?])/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 2)
-    .join(" ");
-
-  const meta = [params.channelName, params.duration].filter(Boolean).join(" / ");
-  const titleLine = meta
-    ? `YouTube transcript for ${params.title} (${meta}).`
-    : `YouTube transcript for ${params.title}.`;
-
-  return [titleLine, firstSentence].filter(Boolean).join(" ").trim();
-}
-
-function sanitizeFilename(title: string, videoId: string) {
-  const base = title.replace(/[^\w\-ぁ-んァ-ヶ一-龯 ]+/g, " ").replace(/\s+/g, " ").trim();
-  return `${base || "youtube_transcript"}-${videoId}.txt`;
-}
-
-function toTranscriptText(transcript: unknown) {
-  if (!Array.isArray(transcript)) return "";
-
-  return transcript
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") return "";
-      const row = entry as Record<string, unknown>;
-      const text =
-        typeof row.text === "string"
-          ? row.text.trim()
-          : typeof row.snippet === "string"
-            ? row.snippet.trim()
-            : "";
-      if (!text) return "";
-      const start =
-        typeof row.start === "string"
-          ? row.start.trim()
-          : typeof row.start === "number"
-            ? String(row.start)
-            : typeof row.start_time_text === "string"
-              ? row.start_time_text.trim()
-            : typeof row.timestamp === "string"
-              ? row.timestamp.trim()
-              : "";
-
-      return start ? `[${start}] ${text}` : text;
-    })
-    .filter(Boolean)
-    .join("\n");
-}
-
-function toCleanTranscriptText(transcript: unknown) {
-  if (!Array.isArray(transcript)) return "";
-
-  return transcript
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") return "";
-      const row = entry as Record<string, unknown>;
-      const text =
-        typeof row.text === "string"
-          ? row.text.trim()
-          : typeof row.snippet === "string"
-            ? row.snippet.trim()
-            : "";
-      return text;
-    })
-    .filter(Boolean)
-    .join("\n");
-}
 
 async function fetchTranscriptRaw(videoId: string) {
   const base = (await requestSerpApi({
@@ -147,9 +74,7 @@ export async function POST(req: Request) {
     }
 
     const raw = await fetchTranscriptRaw(videoId);
-
     const transcriptText = toTranscriptText(raw.transcript);
-    const cleanText = toCleanTranscriptText(raw.transcript);
 
     if (!transcriptText.trim()) {
       return NextResponse.json(
@@ -168,9 +93,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       title: `${resolvedTitle} [Transcript]`,
-      filename: sanitizeFilename(resolvedTitle, videoId),
+      filename: sanitizeTranscriptFilename(resolvedTitle, videoId),
       text: transcriptText,
-      cleanText: cleanYouTubeTranscriptText(cleanText || transcriptText),
+      cleanText: buildCleanTranscriptText(raw.transcript),
       summary,
       raw,
     });

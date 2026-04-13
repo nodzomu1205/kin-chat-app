@@ -1,100 +1,81 @@
 # Next Session Handover
 
-Updated: 2026-04-07
+Updated: 2026-04-13
 
-## Names
-- User: Noz
-- Assistant: Mira
+## Current State
 
-## Product Direction
-- Left panel: Kindroid as personality, emotion, judgment, and executive actor.
-- Right panel: GPT as secretary / support tool for organizing, summarizing, researching, formatting, and protocol mediation.
-- SYS protocol is the bridge layer between Kin, GPT, and the user.
+The repository is in a good stopping state.
 
-## Major Work Completed
-- Cleaned settings UI for text / image compression controls.
-- Fixed ingest char-limit bugs and made `detailed` behave as an intermediate mode.
-- Added char counts to file-ingest summaries.
-- Bridged injected file context into GPT memory so follow-up chat like "これどう思う？" works.
-- Fixed task auto-generation behavior so `inject_only` does not start a task.
-- Added task protocol runtime with:
-  - `SYS_TASK_PROGRESS`
-  - `SYS_USER_QUESTION`
-  - `SYS_MATERIAL_REQUEST`
-  - `SYS_ASK_GPT`
-  - `SYS_TASK_DONE`
-  - `SYS_TASK_CONFIRM`
-- Added `ACTION_ID` support for per-request tracking.
-- Added task progress UI support for:
-  - status
-  - latest summary
-  - user-facing requests
-  - waiting ack generation
-  - task resync message generation
-- Improved natural-language task detection so Kin-tab task instructions trigger the structured task flow.
-- Reworked structured task output to include:
-  - `COMPLETION_CRITERIA`
-  - `REQUIRED_WORKFLOW`
-  - `OPTIONAL_WORKFLOW`
-  - `DELIVERY_LIMITS`
-- Added Protocol drawer in GPT panel:
-  - editable persistent prompt text
-  - editable persistent rulebook text
-  - reset to defaults
-  - set rulebook to Kin draft
-  - send rulebook to Kin as `SYS_INFO`
-- Fixed mobile composer / toolbar alignment issues so Kin and GPT input areas now match.
+- `npx tsc --noEmit` passes
+- `npm test` passes
+- current test count: `25 files / 110 tests`
 
-## Current Protocol Defaults
-- Kindroid prompt and rulebook are now editable in the GPT `Protocol` drawer.
-- Stored locally via localStorage keys:
-  - `kin_protocol_prompt`
-  - `kin_protocol_rulebook`
+Recent work has focused on maintainability, not feature expansion. The codebase now has much better coverage around protocol parsing, task runtime, multipart delivery, task intent, task compiler, YouTube transcript helpers, memory helpers, and the `chatgpt/route` service layer.
 
-## Important Known Design Decisions
-- Kin and GPT messages may be limited to about 4000 chars in practice.
-- Safe sending target is 3200-3600 chars.
-- Long messages should eventually be auto-split with `PART n/total` and clear final-part marking.
-- This rule is already written into structured task instructions, but automatic split/send is not fully implemented yet.
-- Kindroid should interpret `<<SYS...>>` as trusted protocol from GPT, not as an intruder or ordinary dialogue.
-- If a `<<SYS...>>` message is received, Kin should reply in `<<...>>` form, not ordinary dialogue.
+## What Was Stabilized Recently
 
-## Important Files
-- `app/page.tsx`
-- `lib/taskIntent.ts`
-- `lib/taskCompiler.ts`
-- `lib/taskRuntimeProtocol.ts`
-- `hooks/useKinTaskProtocol.ts`
-- `lib/taskChatBridge.ts`
-- `components/panels/gpt/GptPanel.tsx`
-- `components/panels/gpt/gptPanelTypes.ts`
-- `components/ChatTextarea.tsx`
+- `app/api/chatgpt/route.ts` was thinned by moving logic into `lib/server/chatgpt/`
+- `hooks/useKinTaskProtocol.ts` was thinned through pure helper extraction
+- `hooks/useGptMemory.ts` was partially thinned through low-risk helper extraction
+- `lib/app/sendToGptFlow.ts` was reduced in small slices
+  - transcript helper extraction
+  - protocol wrapping helper extraction
+  - search response shaping helper extraction
+  - implicit search helper extraction
+  - protocol side-effect helper extraction
+  - inline URL shortcut now runs through `runInlineUrlShortcut(...)` on the live path
 
-## Immediate Next Steps
-1. Real-device Kin test using the new structured task flow.
-2. Observe actual Kin behavior for:
-   - `SYS_TASK_PROGRESS`
-   - `SYS_ASK_GPT`
-   - `SYS_USER_QUESTION`
-   - `SYS_MATERIAL_REQUEST`
-   - `SYS_TASK_DONE`
-3. Implement shared Kin message chunking / split-send for long SYS messages.
-4. Add automation toggles later:
-   - auto-send SYS in Kin draft
-   - auto-transfer SYS Kin->GPT
-   - auto-send SYS in GPT draft
-   - auto-transfer SYS GPT->Kin
-5. Improve GPT-side handling for incoming SYS requests during manual-control phase.
+## Current Review Priorities
 
-## Open Concerns
-- Need actual split-send implementation, not just prompt-side rules.
-- Need to verify whether Kin obeys protocol consistently across task runs.
-- Need to verify if per-request `ACTION_ID` tracking is sufficient or needs stronger state recovery.
-- May later need multi-task runtime instead of single active task runtime.
+Review these first before starting new work:
 
-## Suggested Restart Context
-When resuming, start by checking:
-- the Protocol drawer contents
-- the current structured `SYS_TASK` output
-- results from Noz's mobile Kin tests
-- whether automatic split-send should be the next implementation step
+1. `lib/app/sendToGptFlow.ts`
+2. `lib/app/memoryInterpreter.ts`
+3. `app/page.tsx`
+4. `hooks/useGptMemory.ts`
+5. `components/panels/gpt/GptSettingsSections.tsx`
+
+## Known Safe Stopping Point
+
+`sendToGptFlow.ts` is materially better than before, and the live execution path is stable.
+
+One cosmetic cleanup item still remains:
+
+- a commented-out dead inline URL fallback block is still present in `lib/app/sendToGptFlow.ts`
+
+Important:
+
+- it is no longer on the live path
+- TypeScript passes
+- tests pass
+- this is a cleanup target, not a current runtime bug
+
+Because that area contains mojibake-tainted legacy text, it should be removed only as a dedicated small cleanup step.
+
+## Recommended Next Step
+
+Resume with a very small cleanup pass on:
+
+- `lib/app/sendToGptFlow.ts`
+- `docs/refactor-roadmap.md`
+
+Goal:
+
+- safely remove the remaining commented dead inline URL fallback block
+- keep behavior unchanged
+
+If that proves brittle, stop and move to the next planned area instead:
+
+- `lib/app/memoryInterpreter.ts` split planning
+
+## Working Rule For The Next Session
+
+When resuming:
+
+1. inspect `sendToGptFlow.ts`
+2. make one small cleanup only
+3. run `npx tsc --noEmit`
+4. run `npm test`
+5. update `docs/refactor-roadmap.md`
+
+This keeps the repo in the current low-risk, high-visibility mode.
