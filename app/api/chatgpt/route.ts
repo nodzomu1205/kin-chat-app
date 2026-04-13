@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { searchWithMode } from "@/lib/search";
-import { parseSearchContinuation } from "@/lib/search-domain/continuations";
 import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
 import { parseTaskInput } from "@/lib/taskInputParser";
 import {
@@ -10,10 +9,25 @@ import {
   memoryToPrompt,
 } from "@/lib/memory";
 import {
-  extractJsonObjectText,
-  extractResponseText,
-  extractUsage,
-} from "@/lib/server/chatgpt/openaiResponse";
+  callOpenAIResponses,
+  extractOpenAIJsonObjectText,
+} from "@/lib/server/chatgpt/openaiClient";
+import {
+  buildBaseSystemPrompt as buildBaseSystemPromptFromService,
+  buildInstructionWrappedInput as buildInstructionWrappedInputFromService,
+  buildSearchSystemPrompt as buildSearchSystemPromptFromService,
+} from "@/lib/server/chatgpt/promptBuilders";
+import { resolveSearchRequest } from "@/lib/server/chatgpt/searchRequest";
+import {
+  type ChatMessage,
+  type InstructionMode,
+  type ReasoningMode,
+  normalizeChatMessages,
+  normalizeInstructionMode,
+  normalizeMemoryInput,
+  normalizeReasoningMode,
+  resolveChatRouteMode,
+} from "@/lib/server/chatgpt/requestNormalization";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
 // 検索コマンド解析
@@ -57,23 +71,10 @@ function parsePolishInput(input: string) {
   };
 }
 
-type ChatMessage = {
-  role: "user" | "gpt" | "kin" | "assistant";
-  text: string;
-};
-
 type OpenAIMessage = {
   role: "system" | "user" | "assistant";
   content: string;
 };
-
-type InstructionMode =
-  | "normal"
-  | "translate_explain"
-  | "reply_only"
-  | "polish";
-
-type ReasoningMode = "strict" | "creative";
 
 function wantsGoogleMapsLink(text: string) {
   if (!text) return false;
@@ -265,7 +266,7 @@ SEARCH EVIDENCE END
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { mode } = body;
+    const mode = resolveChatRouteMode(body);
 
     if (mode === "chat") {
       const {
@@ -291,31 +292,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "input missing" }, { status: 400 });
       }
 
-      const normalizedMemory =
-        typeof memory === "string"
-          ? safeParseMemory(memory)
-          : memory && typeof memory === "object"
-            ? normalizeMemoryShape(memory)
-            : createEmptyMemory();
+      const normalizedMemory = normalizeMemoryInput(memory);
+      const safeInstructionMode = normalizeInstructionMode(instructionMode);
+      const safeReasoningMode = normalizeReasoningMode(reasoningMode);
 
-      const safeInstructionMode: InstructionMode =
-        instructionMode === "translate_explain" ||
-        instructionMode === "reply_only" ||
-        instructionMode === "polish"
-          ? instructionMode
-          : "normal";
-
-      const safeReasoningMode: ReasoningMode =
-        reasoningMode === "strict" ? "strict" : "creative";
-
-      const searchQuery =
-        typeof forcedSearchQuery === "string" && forcedSearchQuery.trim()
-          ? forcedSearchQuery.trim()
-          : parseSearchCommandStable(input);
-      const parsedContinuation = searchQuery
-        ? parseSearchContinuation(searchQuery)
-        : { cleanQuery: "", seriesId: undefined };
-      const useSearch = !!searchQuery;
+      const resolvedSearch = resolveSearchRequest({
+        input,
+        forcedSearchQuery,
+        searchSeriesId,
+      });
+      const searchQuery = resolvedSearch.searchQuery;
+      const parsedContinuation = resolvedSearch.continuation;
+      const useSearch = resolvedSearch.useSearch;
 
       let searchText = "";
       let sources: { title: string; link: string }[] = [];
@@ -356,10 +344,7 @@ export async function POST(req: Request) {
           query: parsedContinuation.cleanQuery || searchQuery,
           mode: safeSearchMode,
           engines: safeSearchEngines.length > 0 ? safeSearchEngines : undefined,
-          seriesId:
-            typeof searchSeriesId === "string" && searchSeriesId.trim()
-              ? searchSeriesId.trim()
-              : parsedContinuation.seriesId,
+          seriesId: resolvedSearch.effectiveSeriesId || undefined,
           continuationToken:
             typeof searchContinuationToken === "string" &&
             searchContinuationToken.trim()
@@ -427,7 +412,7 @@ export async function POST(req: Request) {
 
       messages.push({
         role: "system",
-        content: buildBaseSystemPrompt({
+        content: buildBaseSystemPromptFromService({
           normalizedMemory,
           reasoningMode: safeReasoningMode,
         }),
@@ -466,7 +451,7 @@ export async function POST(req: Request) {
       if (useSearch && searchQuery && searchText) {
           messages.push({
             role: "system",
-            content: buildSearchSystemPrompt(
+            content: buildSearchSystemPromptFromService(
               parsedContinuation.cleanQuery || searchQuery,
               searchText,
               safeReasoningMode
@@ -474,9 +459,7 @@ export async function POST(req: Request) {
         });
       }
 
-      const trimmedRecent: ChatMessage[] = Array.isArray(recentMessages)
-        ? recentMessages.slice(-16)
-        : [];
+      const trimmedRecent = normalizeChatMessages(recentMessages).slice(-16);
 
       const recentOpenAIMessages: OpenAIMessage[] = trimmedRecent.map((m) => ({
         role: m.role === "user" ? "user" : "assistant",
@@ -487,35 +470,24 @@ export async function POST(req: Request) {
 
       messages.push({
         role: "user",
-        content: buildInstructionWrappedInput(input, safeInstructionMode),
+        content: buildInstructionWrappedInputFromService(
+          input,
+          safeInstructionMode
+        ),
       });
 
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          input: messages,
-        }),
-      });
-
-      const data = await response.json();
-
-      const reply = extractResponseText(data);
+      const { reply, usage } = await callOpenAIResponses(
+        { input: messages },
+        "GPT reply not found."
+      ).then(({ text, usage }) => ({ reply: text, usage }));
 
         return NextResponse.json({
           reply,
           sources,
-          usage: extractUsage(data),
+          usage,
           searchUsed: useSearch,
           searchQuery: parsedContinuation.cleanQuery || searchQuery || "",
-          searchSeriesId:
-            typeof searchSeriesId === "string" && searchSeriesId.trim()
-              ? searchSeriesId.trim()
-              : parsedContinuation.seriesId || "",
+          searchSeriesId: resolvedSearch.effectiveSeriesId,
           searchContinuationToken: returnedSearchContinuationToken,
           searchEvidence: searchText,
         });
@@ -524,14 +496,8 @@ export async function POST(req: Request) {
     if (mode === "summarize") {
       const { memory, messages } = body;
 
-      const normalizedMemory =
-        typeof memory === "string"
-          ? safeParseMemory(memory)
-          : memory && typeof memory === "object"
-            ? normalizeMemoryShape(memory)
-            : createEmptyMemory();
-
-      const safeMessages: ChatMessage[] = Array.isArray(messages) ? messages : [];
+      const normalizedMemory = normalizeMemoryInput(memory);
+      const safeMessages = normalizeChatMessages(messages);
 
       const prompt = `
 You are a memory updater for a chat system.
@@ -582,30 +548,18 @@ New conversation messages:
 ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
       `.trim();
 
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          input: prompt,
-        }),
-      });
-
-      const data = await response.json();
-
-      const rawMemory = extractResponseText(
-        data,
+      const { text: rawMemory, usage } = await callOpenAIResponses(
+        { input: prompt },
         JSON.stringify(normalizedMemory)
       );
 
-      const parsedMemory = safeParseMemory(extractJsonObjectText(rawMemory));
+      const parsedMemory = safeParseMemory(
+        extractOpenAIJsonObjectText(rawMemory, JSON.stringify(normalizedMemory))
+      );
 
       return NextResponse.json({
         memory: parsedMemory,
-        usage: extractUsage(data),
+        usage,
       });
     }
 
@@ -616,24 +570,14 @@ ${safeMessages.map((m) => `${m.role}: ${m.text}`).join("\n")}
         return NextResponse.json({ error: "input missing" }, { status: 400 });
       }
 
-      const response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          input,
-        }),
-      });
-
-      const data = await response.json();
-      const reply = extractResponseText(data, "{}");
+      const { text: reply, usage } = await callOpenAIResponses(
+        { input },
+        "{}"
+      );
 
       return NextResponse.json({
         reply,
-        usage: extractUsage(data),
+        usage,
       });
     }
 
