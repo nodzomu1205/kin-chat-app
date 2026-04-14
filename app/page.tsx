@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ChatPanelsLayout from "@/components/ChatPanelsLayout";
 import KinPanel from "@/components/panels/kin/KinPanel";
 import GptPanel from "@/components/panels/gpt/GptPanel";
@@ -76,6 +76,13 @@ import {
   buildTaskRequestAnswerDraft,
 } from "@/lib/app/chatPageHelpers";
 import { buildGptPanelProps, buildKinPanelProps } from "@/lib/app/panelPropsBuilders";
+import { buildStoredDocumentFromTaskDraft } from "@/lib/app/taskDraftLibrary";
+import {
+  appendTaskDraftSlot,
+  createTaskDraftSlot,
+  normalizeTaskDraftSlots,
+  updateTaskDraftAtIndex,
+} from "@/lib/app/taskDraftCollection";
 import { PROTOCOL_PROMPT_DEFAULT_KEY, PROTOCOL_RULEBOOK_DEFAULT_KEY } from "@/lib/app/chatPageStorageKeys";
 import { createProtocolEventIngestor } from "@/lib/app/protocolEventIngest";
 
@@ -97,13 +104,41 @@ export default function ChatApp() {
   const [pendingKinInjectionIndex, setPendingKinInjectionIndex] = useState(0);
   const [, setCurrentSessionId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<MobileTab>("kin");
-  const [currentTaskDraft, setCurrentTaskDraft] = useState<TaskDraft>(
-    createEmptyTaskDraft()
-  );
+  const [taskDrafts, setTaskDrafts] = useState<TaskDraft[]>([
+    createTaskDraftSlot(1),
+  ]);
+  const [activeTaskDraftIndex, setActiveTaskDraftIndex] = useState(0);
 
   const isMobile = useResponsive(MOBILE_BREAKPOINT);
   const kinBottomRef = useRef<HTMLDivElement>(null);
   const gptBottomRef = useRef<HTMLDivElement>(null);
+  const currentTaskDraft =
+    taskDrafts[activeTaskDraftIndex] || taskDrafts[0] || createEmptyTaskDraft();
+
+  const setCurrentTaskDraft = useCallback<
+    React.Dispatch<React.SetStateAction<TaskDraft>>
+  >(
+    (updater) => {
+      setTaskDrafts((prev) =>
+        updateTaskDraftAtIndex(prev, activeTaskDraftIndex, updater)
+      );
+    },
+    [activeTaskDraftIndex]
+  );
+
+  const selectPreviousTaskDraft = useCallback(() => {
+    setActiveTaskDraftIndex((prev) => Math.max(prev - 1, 0));
+  }, []);
+
+  const selectNextTaskDraft = useCallback(() => {
+    setTaskDrafts((prev) => {
+      const normalizedDrafts = normalizeTaskDraftSlots(prev);
+      return activeTaskDraftIndex >= normalizedDrafts.length - 1
+        ? appendTaskDraftSlot(normalizedDrafts)
+        : normalizedDrafts;
+    });
+    setActiveTaskDraftIndex((prev) => prev + 1);
+  }, [activeTaskDraftIndex]);
 
   useAutoScroll(kinBottomRef, [kinMessages, kinLoading]);
   useAutoScroll(gptBottomRef, [gptMessages, gptLoading]);
@@ -163,6 +198,8 @@ export default function ChatApp() {
     removeKin,
     renameKin,
   } = useKinManager();
+  const currentKinDisplayLabel =
+    kinList.find((kin) => kin.id === currentKin)?.label ?? null;
 
   const {
     gptState,
@@ -352,6 +389,8 @@ export default function ChatApp() {
     multipartAssemblies,
     setMultipartAssemblies,
     currentTaskId: taskProtocol.runtime.currentTaskId || undefined,
+    currentTaskTitle: taskProtocol.runtime.currentTaskTitle || undefined,
+    currentKinLabel: currentKinDisplayLabel,
     getCurrentTaskCharConstraint: () => getCurrentTaskCharConstraint() as TaskCharConstraint | null,
     setKinInput,
     setGptMessages,
@@ -370,6 +409,35 @@ export default function ChatApp() {
       isMobile,
       setActiveTab,
     });
+
+  useEffect(() => {
+    const completedTaskIds = allDocuments
+      .filter(
+        (document) =>
+          document.artifactType === "task_result" && !!document.taskId
+      )
+      .map((document) => document.taskId as string);
+
+    if (completedTaskIds.length === 0) return;
+
+    const activeTaskIds = new Set(
+      taskProtocol.progressViews
+        .map((view) => view.taskId)
+        .filter((taskId): taskId is string => !!taskId)
+    );
+
+    completedTaskIds.forEach((taskId) => {
+      if (activeTaskIds.has(taskId)) {
+        taskProtocol.archiveTask(taskId);
+      }
+    });
+  }, [allDocuments, taskProtocol]);
+
+  const handleSaveTaskSnapshot = () => {
+    const nextDocument = buildStoredDocumentFromTaskDraft(currentTaskDraft);
+    if (!nextDocument) return;
+    recordIngestedDocument(nextDocument);
+  };
 
   const {
     currentKinLabel,
@@ -394,6 +462,7 @@ export default function ChatApp() {
     injectFileToKinDraft,
     prepareTaskRequestAck,
     prepareTaskSync,
+    prepareTaskSuspend,
     resetProtocolDefaults,
     saveProtocolDefaults,
     approveIntentCandidate,
@@ -553,9 +622,10 @@ export default function ChatApp() {
         sendToKin,
         sendLastKinToGptDraft: sendLastKinToGptDraft,
         resetKinMessages,
-        pendingInjectionCurrentPart:
-          pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0,
-        pendingInjectionTotalParts: pendingKinInjectionBlocks.length,
+        pendingInjection: {
+          blocks: pendingKinInjectionBlocks,
+          index: pendingKinInjectionIndex,
+        },
         kinBottomRef,
         isMobile,
         onSwitchPanel: () => setActiveTab("gpt"),
@@ -635,14 +705,11 @@ export default function ChatApp() {
         onChangeSearchMode: setSearchMode,
         onChangeSearchEngines: setSearchEngines,
         onChangeSearchLocation: setSearchLocation,
-        onChangeSourceDisplayCount: (value) =>
-          setSourceDisplayCount(Math.max(1, Math.min(20, Number(value) || 1))),
+        onChangeSourceDisplayCount: setSourceDisplayCount,
         onChangeAutoLibraryReferenceEnabled: setAutoLibraryReferenceEnabled,
         onChangeLibraryReferenceMode: setLibraryReferenceMode,
-        onChangeLibraryIndexResponseCount: (value) =>
-          setLibraryIndexResponseCount(Math.max(1, Math.min(50, Number(value) || 1))),
-        onChangeLibraryReferenceCount: (value) =>
-          setLibraryReferenceCount(Math.max(0, Math.min(20, Number(value) || 0))),
+        onChangeLibraryIndexResponseCount: setLibraryIndexResponseCount,
+        onChangeLibraryReferenceCount: setLibraryReferenceCount,
         onChangeAutoSendKinSysInput: (value: boolean) =>
           updateAutoBridgeSettings({ autoSendKinSysInput: value }),
         onChangeAutoCopyKinSysResponseToGpt: (value: boolean) =>
@@ -688,33 +755,32 @@ export default function ChatApp() {
         selectedTaskSearchResultId,
         onSelectTaskSearchResult: setSelectedTaskSearchResultId,
         onMoveSearchHistoryItem: moveSearchHistoryItem,
-        pendingInjectionCurrentPart:
-          pendingKinInjectionBlocks.length > 0 ? pendingKinInjectionIndex + 1 : 0,
-        pendingInjectionTotalParts: pendingKinInjectionBlocks.length,
+        pendingInjection: {
+          blocks: pendingKinInjectionBlocks,
+          index: pendingKinInjectionIndex,
+        },
         onSwitchPanel: () => setActiveTab("kin"),
         isMobile,
         taskProgressView: taskProtocol.progressView,
+        taskProgressCount: taskProtocol.progressViews.length,
+        activeTaskProgressIndex: taskProtocol.activeProgressIndex,
         pendingRequests: taskProtocol.runtime.pendingRequests,
         buildTaskRequestAnswerDraft,
         onPrepareTaskRequestAck: prepareTaskRequestAck,
         onPrepareTaskSync: prepareTaskSync,
+        onPrepareTaskSuspend: prepareTaskSuspend,
+        onUpdateTaskProgressCounts: taskProtocol.updateRequirementProgressCounts,
+        onSelectPreviousTaskProgress: taskProtocol.selectPreviousProgressView,
+        onSelectNextTaskProgress: taskProtocol.selectNextProgressView,
         onStartKinTask: runStartKinTaskFromInput,
         onResetTaskContext: resetCurrentTaskDraft,
+        onSaveTaskSnapshot: handleSaveTaskSnapshot,
+        taskDraftCount: taskDrafts.length,
+        activeTaskDraftIndex,
+        onSelectPreviousTaskDraft: selectPreviousTaskDraft,
+        onSelectNextTaskDraft: selectNextTaskDraft,
         currentTaskDraft,
-        onChangeTaskTitle: (value) =>
-          updateTaskDraftFields({
-            title: value,
-            taskName: value.trim() || currentTaskDraft.taskName,
-          }),
-        onChangeTaskUserInstruction: (value) =>
-          updateTaskDraftFields({
-            userInstruction: value,
-          }),
-        onChangeTaskBody: (value) =>
-          updateTaskDraftFields({
-            body: value,
-            mergedText: value,
-          }),
+        updateTaskDraftFields,
         protocolPrompt,
         protocolRulebook,
         onChangeProtocolPrompt: setProtocolPrompt,

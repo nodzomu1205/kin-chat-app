@@ -172,6 +172,16 @@ export function useChatPageActions(args: UseChatPageActionsArgs) {
     args.kinList.find((kin) => kin.id === args.currentKin) ?? null;
   const currentKinLabel = currentKinProfile?.label ?? null;
   const {
+    sendToGpt,
+    continueQueuedYouTubeTranscriptBatch,
+    startAskAiModeSearch,
+    importYouTubeTranscript,
+    sendYouTubeTranscriptToKin,
+    sendLastKinToGptDraft,
+    receiveLastKinResponseToGptInput,
+  } = useGptMessageActions(args);
+
+  const {
     clearPendingKinInjection,
     runStartKinTaskFromInput,
     sendKinMessage,
@@ -179,16 +189,9 @@ export function useChatPageActions(args: UseChatPageActionsArgs) {
     sendLastGptToKinDraft,
     sendLatestGptContentToKin,
     sendCurrentTaskContentToKin,
-  } = useKinTransferActions(args);
-
-  const {
-    sendToGpt,
-    startAskAiModeSearch,
-    importYouTubeTranscript,
-    sendYouTubeTranscriptToKin,
-    sendLastKinToGptDraft,
-    receiveLastKinResponseToGptInput,
-  } = useGptMessageActions(args);
+  } = useKinTransferActions(args, {
+    onPendingKinAck: continueQueuedYouTubeTranscriptBatch,
+  });
 
   const {
     runPrepTaskFromInput,
@@ -201,6 +204,7 @@ export function useChatPageActions(args: UseChatPageActionsArgs) {
   const {
     prepareTaskRequestAck,
     prepareTaskSync,
+    prepareTaskSuspend,
     resetProtocolDefaults,
     saveProtocolDefaults,
     approveIntentCandidate,
@@ -246,6 +250,7 @@ export function useChatPageActions(args: UseChatPageActionsArgs) {
     injectFileToKinDraft,
     prepareTaskRequestAck,
     prepareTaskSync,
+    prepareTaskSuspend,
     resetProtocolDefaults,
     saveProtocolDefaults,
     approveIntentCandidate,

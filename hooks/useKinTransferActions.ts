@@ -21,7 +21,10 @@ import {
 } from "@/lib/app/transformIntent";
 import type { UseChatPageActionsArgs } from "@/hooks/useChatPageActions";
 
-export function useKinTransferActions(args: UseChatPageActionsArgs) {
+export function useKinTransferActions(
+  args: UseChatPageActionsArgs,
+  deps?: { onPendingKinAck?: () => void | Promise<void> }
+) {
   const clearPendingKinInjection = () => {
     args.setPendingKinInjectionBlocks([]);
     args.setPendingKinInjectionIndex(0);
@@ -78,6 +81,7 @@ export function useKinTransferActions(args: UseChatPageActionsArgs) {
         args.processMultipartTaskDoneText(replyText),
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
       clearPendingKinInjection,
+      onPendingKinAck: deps?.onPendingKinAck,
     });
   };
 

@@ -25,6 +25,7 @@ type RunSendKinMessageFlowArgs = {
   processMultipartTaskDoneText: (text: string) => unknown;
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
   clearPendingKinInjection: () => void;
+  onPendingKinAck?: () => void | Promise<void>;
 };
 
 type KindroidApiResponse = {
@@ -41,6 +42,12 @@ function extractTaskIdFromOutboundText(text: string): string | undefined {
   return undefined;
 }
 
+function hasKinReceivedAck(text: string) {
+  return /<<SYS_KIN_RESPONSE>>[\s\S]*?Received\.\s*Send the next part\.[\s\S]*?<<END_SYS_KIN_RESPONSE>>/i.test(
+    text
+  );
+}
+
 export async function runSendKinMessageFlow({
   text,
   currentKin,
@@ -55,6 +62,7 @@ export async function runSendKinMessageFlow({
   processMultipartTaskDoneText,
   setPendingKinInjectionIndex,
   clearPendingKinInjection,
+  onPendingKinAck,
 }: RunSendKinMessageFlowArgs) {
   if (!text.trim() || !currentKin || kinLoading) return;
 
@@ -100,7 +108,7 @@ export async function runSendKinMessageFlow({
     const sentPendingPart =
       typeof currentPendingBlock === "string" && text === currentPendingBlock.trim();
 
-    if (sentPendingPart) {
+    if (sentPendingPart && hasKinReceivedAck(replyText)) {
       const nextIndex = pendingKinInjectionIndex + 1;
 
       if (nextIndex < pendingKinInjectionBlocks.length) {
@@ -108,6 +116,7 @@ export async function runSendKinMessageFlow({
         setKinInput(pendingKinInjectionBlocks[nextIndex]);
       } else {
         clearPendingKinInjection();
+        await onPendingKinAck?.();
       }
     }
 

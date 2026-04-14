@@ -46,10 +46,13 @@ function buildRuleLines(intent: TaskIntent): string[] {
   if (intent.workflow?.allowYoutubeTranscriptRequest) {
     lines.push("- Use <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> when you want GPT to fetch a YouTube transcript by URL.");
     lines.push(
-      "- In <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>, always set URL."
+      "- In <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>, always set URL. You may set URLS with up to 3 YouTube URLs when you want GPT to fetch multiple transcripts in sequence."
     );
     lines.push(
       "- GPT should answer <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> with <<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>> using the same TASK_ID and ACTION_ID."
+    );
+    lines.push(
+      '- When GPT sends transcript parts or queued transcript deliveries, reply each time with <<SYS_KIN_RESPONSE>> Received. Send the next part. <<END_SYS_KIN_RESPONSE>> so GPT can continue safely.'
     );
     lines.push(
       "- Before requesting transcripts, keep likely candidate video metadata in <<SYS_TASK_PROGRESS>> whenever possible, especially URL, TITLE, and CHANNEL."
@@ -174,8 +177,11 @@ RAW_RESULT_ID: RAW-${taskId}-S002-001
     blocks.push(`<<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>
 TASK_ID: ${taskId}
 ACTION_ID: Y001
-URL: https://www.youtube.com/watch?v=example
-BODY: Fetch the transcript for this YouTube content.
+URLS:
+- https://www.youtube.com/watch?v=exampleA
+- https://www.youtube.com/watch?v=exampleB
+- https://www.youtube.com/watch?v=exampleC
+BODY: Fetch these transcripts in order. Up to 3 URLs may be requested at once. Each time GPT sends a transcript part or finishes one transcript delivery, reply with <<SYS_KIN_RESPONSE>> Received. Send the next part. <<END_SYS_KIN_RESPONSE>>.
 <<END_SYS_YOUTUBE_TRANSCRIPT_REQUEST>>`);
 
     blocks.push(`<<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>
@@ -379,6 +385,7 @@ function buildOptionalWorkflow(intent: TaskIntent): string[] {
     } else if (count === 0) {
       lines.push("- You may request YouTube transcript support when a YouTube source needs to be read in full.");
     }
+    lines.push("- One YouTube transcript request may include up to 3 URLs when they should be fetched and delivered in sequence.");
   }
 
   if (intent.workflow?.allowLibraryReference) {

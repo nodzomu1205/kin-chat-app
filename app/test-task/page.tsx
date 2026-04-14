@@ -199,6 +199,10 @@ export default function TestTaskPage() {
             onSwitchPanel={noop}
             isMobile={isMobile}
             currentTaskDraft={taskDraft}
+            taskDraftCount={1}
+            activeTaskDraftIndex={0}
+            taskProgressCount={0}
+            activeTaskProgressIndex={0}
             onChangeTaskTitle={(value) =>
               setTaskDraft((prev) => ({
                 ...prev,

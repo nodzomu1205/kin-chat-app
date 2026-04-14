@@ -662,7 +662,7 @@ export function ProtocolSettingsSection(props: {
       </div>
 
       <div style={sectionCard}>
-        <div style={labelStyle}>Prompt</div>
+        <div style={labelStyle}>プロンプト</div>
         <textarea
           value={props.protocolPrompt}
           onChange={(e) => props.onChangeProtocolPrompt(e.target.value)}
@@ -671,7 +671,7 @@ export function ProtocolSettingsSection(props: {
       </div>
 
       <div style={sectionCard}>
-        <div style={labelStyle}>Rulebook</div>
+        <div style={labelStyle}>ルールブック</div>
         <textarea
           value={props.protocolRulebook}
           onChange={(e) => props.onChangeProtocolRulebook(e.target.value)}

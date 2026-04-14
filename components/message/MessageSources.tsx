@@ -50,6 +50,31 @@ function isYoutubeLink(source: SourceItem) {
   );
 }
 
+function extractYoutubeEmbedId(source: SourceItem) {
+  if (source.videoId?.trim()) return source.videoId.trim();
+
+  try {
+    const url = new URL(source.link);
+    const host = url.hostname.toLowerCase();
+    if (host.includes("youtu.be")) {
+      return url.pathname.replace(/^\/+/, "").split("/")[0] || "";
+    }
+    if (host.includes("youtube.com")) {
+      const watchId = url.searchParams.get("v");
+      if (watchId?.trim()) return watchId.trim();
+      const segments = url.pathname.split("/").filter(Boolean);
+      const markerIndex = segments.findIndex((segment) =>
+        ["embed", "shorts", "live"].includes(segment)
+      );
+      if (markerIndex >= 0 && segments[markerIndex + 1]) {
+        return segments[markerIndex + 1];
+      }
+    }
+  } catch {}
+
+  return "";
+}
+
 function getPreviewLabel(link: string) {
   const hostname = getHostname(link).toLowerCase();
   if (hostname.includes("google.") && hostname.includes("maps")) {
@@ -95,13 +120,9 @@ function formatYoutubeViews(value?: string) {
 }
 
 function extractYoutubeSubtitle(source: SourceItem) {
-  return [
-    source.channelName,
-    source.duration,
-    formatYoutubeViews(source.viewCount),
-  ]
+  return [source.channelName, source.duration, formatYoutubeViews(source.viewCount)]
     .filter(Boolean)
-    .join(" · ");
+    .join(" | ");
 }
 
 function formatPublishedTime(value?: string) {
@@ -187,7 +208,7 @@ function buildNewsBannerStyle(): React.CSSProperties {
 
 function buildYoutubeBannerStyle(): React.CSSProperties {
   return {
-    minHeight: 152,
+    minHeight: 220,
     borderRadius: 10,
     border: "1px solid #fecaca",
     background: "linear-gradient(135deg, #fff7ed 0%, #fee2e2 100%)",
@@ -399,13 +420,31 @@ function NewsPreviewBanner({
 }
 
 function YoutubePreviewBanner({ source }: { source: SourceItem }) {
+  const videoId = extractYoutubeEmbedId(source);
   const thumbnail =
     source.thumbnailUrl ||
-    (source.videoId ? `https://i.ytimg.com/vi/${source.videoId}/hqdefault.jpg` : "");
+    (videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "");
+  const autoplaySrc = videoId
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&playsinline=1&rel=0&modestbranding=1`
+    : "";
 
   return (
     <div style={buildYoutubeBannerStyle()}>
-      {thumbnail ? (
+      {videoId ? (
+        <iframe
+          src={autoplaySrc}
+          title={source.title || "YouTube Video"}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            border: 0,
+          }}
+        />
+      ) : thumbnail ? (
         <img
           src={thumbnail}
           alt=""
@@ -423,7 +462,8 @@ function YoutubePreviewBanner({ source }: { source: SourceItem }) {
           position: "absolute",
           inset: 0,
           background:
-            "linear-gradient(180deg, rgba(15,23,42,0.12) 0%, rgba(15,23,42,0.78) 100%)",
+            "linear-gradient(180deg, rgba(15,23,42,0.04) 0%, rgba(15,23,42,0.48) 100%)",
+          pointerEvents: "none",
         }}
       />
       <div
@@ -443,49 +483,11 @@ function YoutubePreviewBanner({ source }: { source: SourceItem }) {
           fontWeight: 800,
           letterSpacing: 0.35,
           textTransform: "uppercase",
+          zIndex: 1,
+          pointerEvents: "none",
         }}
       >
         YouTube
-      </div>
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          display: "grid",
-          gap: 8,
-          alignContent: "end",
-          minHeight: 152,
-          padding: 14,
-          boxSizing: "border-box",
-          color: "#fff",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: 0.3,
-            textTransform: "uppercase",
-            opacity: 0.92,
-          }}
-        >
-          {source.channelName || "YouTube"}
-        </div>
-        <div
-          style={{
-            fontSize: 18,
-            fontWeight: 800,
-            lineHeight: 1.3,
-            maxWidth: "88%",
-          }}
-        >
-          {source.title || "YouTube Video"}
-        </div>
-        {extractYoutubeSubtitle(source) ? (
-          <div style={{ fontSize: 12, opacity: 0.92 }}>
-            {extractYoutubeSubtitle(source)}
-          </div>
-        ) : null}
       </div>
     </div>
   );
@@ -566,6 +568,64 @@ function GenericPreviewBanner({
           {preview?.title || source.title || getHostname(source.link)}
         </div>
       </div>
+    </div>
+  );
+}
+
+function renderYoutubeActions(params: {
+  source: SourceItem;
+  onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
+  onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
+}) {
+  if (!params.onImportYouTubeTranscript && !params.onSendYouTubeTranscriptToKin) {
+    return null;
+  }
+
+  return (
+    <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {params.onImportYouTubeTranscript ? (
+        <button
+          type="button"
+          onClick={() => {
+            void params.onImportYouTubeTranscript?.(params.source);
+          }}
+          style={{
+            height: 30,
+            borderRadius: 999,
+            border: "1px solid #fca5a5",
+            background: "#fff",
+            color: "#b91c1c",
+            padding: "0 12px",
+            fontSize: 12,
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          文字起こしを取込
+        </button>
+      ) : null}
+
+      {params.onSendYouTubeTranscriptToKin ? (
+        <button
+          type="button"
+          onClick={() => {
+            void params.onSendYouTubeTranscriptToKin?.(params.source);
+          }}
+          style={{
+            height: 30,
+            borderRadius: 999,
+            border: "1px solid #c4b5fd",
+            background: "#fff",
+            color: "#7c3aed",
+            padding: "0 12px",
+            fontSize: 12,
+            fontWeight: 800,
+            cursor: "pointer",
+          }}
+        >
+          文字起こしをKin転送
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -656,7 +716,7 @@ export default function MessageSources({
           color: "#555",
         }}
       >
-        参考リンク
+        参照リンク
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -665,6 +725,68 @@ export default function MessageSources({
           const isMap = isGoogleMapsLink(source.link);
           const isYoutube = isYoutubeLink(source);
           const isNews = !isMap && !isYoutube && isNewsLikeSource(source, preview);
+
+          if (isYoutube) {
+            return (
+              <div key={`${source.link}-${index}`} style={previewCardStyle()}>
+                <YoutubePreviewBanner source={source} />
+                <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    YouTube
+                  </div>
+                  <a
+                    href={source.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#0f172a",
+                      lineHeight: 1.4,
+                      textDecoration: "none",
+                    }}
+                  >
+                    {source.title || source.link}
+                  </a>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#475569",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {extractYoutubeSubtitle(source) || source.snippet || "YouTube video"}
+                  </div>
+                  <a
+                    href={source.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: 11,
+                      color: "#2563eb",
+                      textDecoration: "underline",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {source.link}
+                  </a>
+                  {renderYoutubeActions({
+                    source,
+                    onImportYouTubeTranscript,
+                    onSendYouTubeTranscriptToKin,
+                  })}
+                </div>
+              </div>
+            );
+          }
 
           return (
             <a
@@ -676,8 +798,6 @@ export default function MessageSources({
             >
               {isMap ? (
                 <MapPreviewBanner source={source} />
-              ) : isYoutube ? (
-                <YoutubePreviewBanner source={source} />
               ) : isNews ? (
                 <NewsPreviewBanner
                   source={source}
@@ -714,11 +834,9 @@ export default function MessageSources({
                     letterSpacing: 0.3,
                   }}
                 >
-                  {isYoutube
-                    ? "YouTube"
-                    : isMap
-                      ? "maps.google.com"
-                      : preview?.siteName || getHostname(source.link)}
+                  {isMap
+                    ? "maps.google.com"
+                    : preview?.siteName || getHostname(source.link)}
                 </div>
                 <div
                   style={{
@@ -730,17 +848,7 @@ export default function MessageSources({
                 >
                   {source.title || preview?.title || source.link}
                 </div>
-                {isYoutube ? (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "#475569",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {extractYoutubeSubtitle(source) || source.snippet || "YouTube video"}
-                  </div>
-                ) : isMap ? (
+                {isMap ? (
                   <div
                     style={{
                       fontSize: 12,
@@ -781,58 +889,6 @@ export default function MessageSources({
                 >
                   {source.link}
                 </div>
-
-                {isYoutube && (onImportYouTubeTranscript || onSendYouTubeTranscriptToKin) ? (
-                  <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {onImportYouTubeTranscript ? (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          void onImportYouTubeTranscript(source);
-                        }}
-                        style={{
-                          height: 30,
-                          borderRadius: 999,
-                          border: "1px solid #fca5a5",
-                          background: "#fff",
-                          color: "#b91c1c",
-                          padding: "0 12px",
-                          fontSize: 12,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                        }}
-                      >
-                        文字起こし取込
-                      </button>
-                    ) : null}
-
-                    {onSendYouTubeTranscriptToKin ? (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          void onSendYouTubeTranscriptToKin(source);
-                        }}
-                        style={{
-                          height: 30,
-                          borderRadius: 999,
-                          border: "1px solid #c4b5fd",
-                          background: "#fff",
-                          color: "#7c3aed",
-                          padding: "0 12px",
-                          fontSize: 12,
-                          fontWeight: 800,
-                          cursor: "pointer",
-                        }}
-                      >
-                        文字起こしKin送付
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
             </a>
           );

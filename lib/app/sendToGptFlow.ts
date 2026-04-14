@@ -1,18 +1,21 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Memory } from "@/lib/memory";
 import { generateId } from "@/lib/uuid";
-import { buildTaskChatBridgeContext, shouldInjectTaskContext } from "@/lib/taskChatBridge";
+import { buildTaskChatBridgeContext } from "@/lib/taskChatBridge";
 import {
   buildYoutubeTranscriptRetryBlock,
 } from "@/lib/taskRuntimeProtocol";
 import {
+  appendRecentAssistantMessage,
   applyProtocolAssistantSideEffects,
   buildEffectiveRequestText,
   handleImplicitSearchArtifacts,
   buildProtocolOverrideRequestText,
   buildProtocolSearchResponseArtifacts,
   deriveProtocolSearchContext,
+  resolveMemoryUpdateContext,
   resolveProtocolLimitViolation,
+  toSourceItems,
   wrapProtocolAssistantText,
   type ParsedInputLike,
   type PendingRequestLike,
@@ -31,6 +34,7 @@ import { normalizeUsage } from "@/lib/tokenStats";
 import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
 import type { Message, ReferenceLibraryItem, SourceItem } from "@/types/chat";
 import type { TaskRuntimeState } from "@/types/taskProtocol";
+import type { TaskProtocolEvent } from "@/types/taskProtocol";
 import type { GptInstructionMode, ResponseMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
@@ -162,6 +166,11 @@ type RunSendToGptFlowArgs = {
   applySearchUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applyChatUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  onHandleYoutubeTranscriptRequest?: (params: {
+    userMessage: Message;
+    youtubeTranscriptRequestEvent: TaskProtocolEvent;
+    currentTaskId: string | null;
+  }) => Promise<boolean>;
 };
 
 export async function runSendToGptFlow({
@@ -207,6 +216,7 @@ export async function runSendToGptFlow({
   applySearchUsage,
   applyChatUsage,
   applySummaryUsage,
+  onHandleYoutubeTranscriptRequest,
 }: RunSendToGptFlowArgs) {
   if (!gptInput.trim() || gptLoading) return;
 
@@ -352,6 +362,14 @@ export async function runSendToGptFlow({
   }
 
   if (youtubeTranscriptRequestEvent?.url?.trim()) {
+    if (onHandleYoutubeTranscriptRequest) {
+      const handled = await onHandleYoutubeTranscriptRequest({
+        userMessage: userMsg,
+        youtubeTranscriptRequestEvent,
+        currentTaskId,
+      });
+      if (handled) return;
+    }
     const transcriptUrl = youtubeTranscriptRequestEvent.url.trim();
     const videoId = extractYouTubeVideoIdFromUrl(transcriptUrl);
     const outputMode = youtubeTranscriptRequestEvent.outputMode || "summary_plus_raw";
@@ -425,17 +443,20 @@ export async function runSendToGptFlow({
         setPendingKinInjectionBlocks(kinBlocks.length > 1 ? kinBlocks : []);
         setPendingKinInjectionIndex(0);
         setActiveTabToKin?.();
-        const baseRecent = gptStateRef.current.recentMessages || [];
-      const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-      const previousCommittedTopic =
-        typeof gptStateRef.current?.memory?.context?.currentTopic === "string"
-          ? gptStateRef.current.memory.context.currentTopic
-          : undefined;
-      const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
+      const memoryContext = resolveMemoryUpdateContext({
+        gptState: gptStateRef.current,
+        userMessage: userMsg,
+        chatRecentLimit,
+      });
+      const updatedRecent = appendRecentAssistantMessage({
+        recentMessages: memoryContext.recentWithUser,
+        assistantMessage: assistantMsg,
+        chatRecentLimit,
+      });
 
       setGptMessages((prev) => [...prev, assistantMsg]);
       const memoryResult = await handleGptMemory(updatedRecent, {
-        previousCommittedTopic,
+        previousCommittedTopic: memoryContext.previousCommittedTopic,
       });
       applySummaryUsage(memoryResult.summaryUsage);
     } catch (error) {
@@ -499,12 +520,11 @@ export async function runSendToGptFlow({
     finalRequestText = `${taskContext}\n\n${finalRequestText}`;
   }
 
-  const baseRecent = gptStateRef.current.recentMessages || [];
-  const newRecent = [...baseRecent, userMsg].slice(-chatRecentLimit);
-  const previousCommittedTopic =
-    typeof gptStateRef.current?.memory?.context?.currentTopic === "string"
-      ? gptStateRef.current.memory.context.currentTopic
-      : undefined;
+  const memoryContext = resolveMemoryUpdateContext({
+    gptState: gptStateRef.current,
+    userMessage: userMsg,
+    chatRecentLimit,
+  });
   const provisionalMemory = getProvisionalMemory(finalRequestText, {
     currentTaskTitle: shouldInjectTaskContext ? currentTaskTitle : undefined,
     activeDocumentTitle: undefined,
@@ -535,7 +555,7 @@ export async function runSendToGptFlow({
       body: JSON.stringify({
         mode: "chat",
         memory: provisionalMemory,
-        recentMessages: newRecent,
+        recentMessages: memoryContext.recentWithUser,
         input: finalRequestText,
         storedSearchContext: "",
         storedDocumentContext: effectiveDocumentReferenceContext,
@@ -590,6 +610,8 @@ export async function runSendToGptFlow({
       });
       normalizedSources = searchArtifacts.normalizedSources;
       assistantText = searchArtifacts.assistantText;
+    } else if (data.searchUsed) {
+      normalizedSources = toSourceItems(data.sources);
     }
 
     const assistantMsg: Message = {
@@ -610,7 +632,11 @@ export async function runSendToGptFlow({
       taskProtocolAnswerPendingRequest,
     });
 
-    const updatedRecent = [...newRecent, assistantMsg].slice(-chatRecentLimit);
+    const updatedRecent = appendRecentAssistantMessage({
+      recentMessages: memoryContext.recentWithUser,
+      assistantMessage: assistantMsg,
+      chatRecentLimit,
+    });
 
     setGptMessages((prev) => [...prev, assistantMsg]);
 
@@ -634,7 +660,7 @@ export async function runSendToGptFlow({
     }
 
     const memoryResult = await handleGptMemory(updatedRecent, {
-      previousCommittedTopic,
+      previousCommittedTopic: memoryContext.previousCommittedTopic,
     });
     applySummaryUsage(memoryResult.summaryUsage);
   } catch (error) {

@@ -6,6 +6,7 @@ import {
   parseProtocolPart,
   parseProtocolRequired,
   parseProtocolSearchOutputMode,
+  parseProtocolUrls,
 } from "@/lib/taskProtocolParser";
 
 describe("taskProtocolParser", () => {
@@ -38,6 +39,17 @@ describe("taskProtocolParser", () => {
   it("parses multipart markers", () => {
     expect(parseProtocolPart("2/5")).toEqual({ partIndex: 2, totalParts: 5 });
     expect(parseProtocolPart(undefined)).toEqual({});
+  });
+
+  it("parses multiple youtube transcript urls", () => {
+    expect(
+      parseProtocolUrls(
+        "- https://www.youtube.com/watch?v=aaa\n- https://youtu.be/bbb"
+      )
+    ).toEqual([
+      "https://www.youtube.com/watch?v=aaa",
+      "https://youtu.be/bbb",
+    ]);
   });
 
   it("extracts protocol events while ignoring SYS_TASK and SYS_INFO blocks", () => {
@@ -89,5 +101,27 @@ SEARCH_GOAL: find sources
 
     expect(bodyEvent[0]?.body).toBe("hello");
     expect(searchGoalEvent[0]?.body).toBe("find sources");
+  });
+
+  it("extracts URLS from youtube transcript request blocks", () => {
+    const events = extractTaskProtocolEvents(`<<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>
+TASK_ID: 1
+ACTION_ID: YT001
+URLS:
+- https://www.youtube.com/watch?v=aaa
+- https://youtu.be/bbb
+BODY: fetch both
+<<END_SYS_YOUTUBE_TRANSCRIPT_REQUEST>>`);
+
+    expect(events[0]).toMatchObject({
+      type: "youtube_transcript_request",
+      taskId: "1",
+      actionId: "YT001",
+      url: "https://www.youtube.com/watch?v=aaa",
+      urls: [
+        "https://www.youtube.com/watch?v=aaa",
+        "https://youtu.be/bbb",
+      ],
+    });
   });
 });

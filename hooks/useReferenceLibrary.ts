@@ -41,18 +41,45 @@ function buildFallbackSummary(text: string, fallbackTitle: string) {
 }
 
 function toDocumentLibraryItem(item: StoredDocument): ReferenceLibraryItem {
+  const detailPrefix =
+    item.artifactType === "task_result"
+      ? "成果物"
+      : item.artifactType === "task_snapshot"
+        ? "タスク保存"
+        : item.sourceType === "kin_created"
+          ? "Kin作成"
+          : "取込";
+
+  const subtitleParts = [
+    detailPrefix,
+    item.taskTitle || item.filename,
+    item.kinName || "",
+    item.completedAt
+      ? new Date(item.completedAt).toLocaleString("ja-JP", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "",
+  ].filter(Boolean);
+
   return {
     id: `doc:${item.id}`,
     sourceId: item.id,
     itemType: item.sourceType,
+    artifactType: item.artifactType,
     title: item.title,
-    subtitle: item.filename,
+    subtitle: subtitleParts.join(" / "),
     summary: item.summary?.trim() || buildFallbackSummary(item.text, item.title),
     excerptText: item.text,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     filename: item.filename,
     taskId: item.taskId,
+    taskTitle: item.taskTitle,
+    kinName: item.kinName,
+    completedAt: item.completedAt,
   };
 }
 
@@ -223,7 +250,7 @@ export function useReferenceLibrary(params: {
   }, [selectedTaskLibraryItemId]);
 
   const baseItems = useMemo(() => {
-    const documentItems = storedDocuments.map(toDocumentLibraryItem);
+  const documentItems = storedDocuments.map(toDocumentLibraryItem);
     const searchItems = searchHistory.map(toSearchLibraryItem);
     return [...documentItems, ...searchItems].sort(
       (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)

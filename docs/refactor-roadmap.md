@@ -15,7 +15,7 @@ The goal is not to rewrite everything at once. The goal is to keep shipping whil
 Current verification baseline:
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- test status: `35 files / 144 tests`
+- test status: `36 files / 149 tests`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -110,6 +110,8 @@ Done:
 - `GptSettingsDrawer` split
 - `ReceivedDocsDrawer` cleanup
 - part of `app/page.tsx` orchestration extraction
+- `panelPropsBuilders.ts` now absorbs pending-injection progress, task-draft field callbacks, and settings count clamping
+- GPT settings now have a separate full-area workspace path with 3 icon entry points while the existing hanging drawers remain in place
 - `useGptMemory.ts` reduced to a smaller orchestration hook
 - `memoryInterpreter.ts` reduced through staged helper extraction
 
@@ -174,6 +176,7 @@ Done:
   - search response shaping helper
   - implicit search usage / context helper
   - protocol post-response side-effect helper
+  - shared recent-message / previous-topic memory-update helpers
 - [`lib/app/memoryInterpreterText.ts`](../lib/app/memoryInterpreterText.ts)
   - shared text normalization / topic candidate helpers extracted from `memoryInterpreter.ts`
 - [`lib/app/memoryInterpreterFacts.ts`](../lib/app/memoryInterpreterFacts.ts)
@@ -208,8 +211,8 @@ Next:
 - keep `memoryInterpreter.ts` and `useGptMemory.ts` stable unless a correctness issue is found
 - thin `app/page.tsx` by moving panel prop assembly and orchestration glue outward
 - keep thinning `sendToGptFlowHelpers.ts` / `sendToGptFlow.ts` by moving protocol / search / transcript shaping logic out in small slices
-- treat `GptSettingsSections.tsx` as an information-architecture redesign candidate, not just a file-splitting target
-- decide the new section model for search / memory / protocol / ingest controls before the next major UI pass
+- consider the next `sendToGptFlow` slice around transcript request handling or request-payload assembly
+- continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
 - review `app/api/ingest/route.ts` and `hooks/useIngestActions.ts` as the next ingest-side integration point
 
 ### 4. Test Readiness
@@ -228,6 +231,7 @@ Priority targets:
 Done:
 - `Vitest` foundation
 - [`vitest.config.ts`](../vitest.config.ts)
+- [`lib/app/panelPropsBuilders.test.ts`](../lib/app/panelPropsBuilders.test.ts)
 - [`lib/server/chatgpt/requestNormalization.test.ts`](../lib/server/chatgpt/requestNormalization.test.ts)
 - [`lib/server/chatgpt/searchRequest.test.ts`](../lib/server/chatgpt/searchRequest.test.ts)
 - [`lib/server/chatgpt/searchExecution.test.ts`](../lib/server/chatgpt/searchExecution.test.ts)

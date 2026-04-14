@@ -5,8 +5,7 @@ import React from "react";
 export type TopTabKey =
   | "memory"
   | "tokens"
-  | "task_draft"
-  | "task_progress"
+  | "task"
   | "received_docs";
 
 export type DrawerMode = TopTabKey | "settings" | null;
@@ -71,25 +70,26 @@ export default function DrawerTabs({
           WebkitOverflowScrolling: "touch",
         }}
       >
-        <button type="button" onClick={() => toggle("memory")} style={topTabStyle(activeDrawer === "memory", isMobile)}>
+        <button
+          type="button"
+          onClick={() => toggle("memory")}
+          style={topTabStyle(activeDrawer === "memory", isMobile)}
+        >
           メモリ
         </button>
-        <button type="button" onClick={() => toggle("tokens")} style={topTabStyle(activeDrawer === "tokens", isMobile)}>
+        <button
+          type="button"
+          onClick={() => toggle("tokens")}
+          style={topTabStyle(activeDrawer === "tokens", isMobile)}
+        >
           トークン
         </button>
         <button
           type="button"
-          onClick={() => toggle("task_draft")}
-          style={topTabStyle(activeDrawer === "task_draft", isMobile)}
+          onClick={() => toggle("task")}
+          style={topTabStyle(activeDrawer === "task", isMobile)}
         >
-          タスク形成
-        </button>
-        <button
-          type="button"
-          onClick={() => toggle("task_progress")}
-          style={topTabStyle(activeDrawer === "task_progress", isMobile)}
-        >
-          タスク進捗
+          タスク
         </button>
         <button
           type="button"

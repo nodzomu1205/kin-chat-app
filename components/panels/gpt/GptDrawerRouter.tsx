@@ -4,9 +4,8 @@ import React from "react";
 import type { DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import GptMetaDrawer from "@/components/panels/gpt/GptMetaDrawer";
 import GptSettingsDrawer from "@/components/panels/gpt/GptSettingsDrawer";
-import GptTaskStatusDrawer from "@/components/panels/gpt/GptTaskStatusDrawer";
+import GptTaskDrawer from "@/components/panels/gpt/GptTaskDrawer";
 import ReceivedDocsDrawer from "@/components/panels/gpt/ReceivedDocsDrawer";
-import TaskProgressPanel from "@/components/panels/gpt/TaskProgressPanel";
 import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
 import type { LocalMemorySettingsInput } from "@/components/panels/gpt/gptPanelHelpers";
 
@@ -49,7 +48,11 @@ export default function GptDrawerRouter({
 }: Props) {
   const task = props.task ?? {
     currentTaskDraft: props.currentTaskDraft,
+    taskDraftCount: props.taskDraftCount,
+    activeTaskDraftIndex: props.activeTaskDraftIndex,
     taskProgressView: props.taskProgressView,
+    taskProgressCount: props.taskProgressCount,
+    activeTaskProgressIndex: props.activeTaskProgressIndex,
     pendingInjectionCurrentPart: props.pendingInjectionCurrentPart,
     pendingInjectionTotalParts: props.pendingInjectionTotalParts,
     runPrepTaskFromInput: props.runPrepTaskFromInput,
@@ -64,9 +67,16 @@ export default function GptDrawerRouter({
     onChangeTaskTitle: props.onChangeTaskTitle,
     onChangeTaskUserInstruction: props.onChangeTaskUserInstruction,
     onChangeTaskBody: props.onChangeTaskBody,
+    onSaveTaskSnapshot: props.onSaveTaskSnapshot,
+    onSelectPreviousTaskDraft: props.onSelectPreviousTaskDraft,
+    onSelectNextTaskDraft: props.onSelectNextTaskDraft,
     onAnswerTaskRequest: props.onAnswerTaskRequest,
     onPrepareTaskRequestAck: props.onPrepareTaskRequestAck,
     onPrepareTaskSync: props.onPrepareTaskSync,
+    onPrepareTaskSuspend: props.onPrepareTaskSuspend,
+    onUpdateTaskProgressCounts: props.onUpdateTaskProgressCounts,
+    onSelectPreviousTaskProgress: props.onSelectPreviousTaskProgress,
+    onSelectNextTaskProgress: props.onSelectNextTaskProgress,
     onStartKinTask: props.onStartKinTask,
     onResetTaskContext: props.onResetTaskContext,
   };
@@ -223,27 +233,31 @@ export default function GptDrawerRouter({
     );
   }
 
-  if (activeDrawer === "task_draft") {
+  if (activeDrawer === "task") {
     return (
-      <GptTaskStatusDrawer
-        taskDraft={task.currentTaskDraft}
-        onChangeTaskTitle={task.onChangeTaskTitle}
+        <GptTaskDrawer
+          currentTaskDraft={task.currentTaskDraft}
+          taskDraftCount={task.taskDraftCount}
+          activeTaskDraftIndex={task.activeTaskDraftIndex}
+          taskProgressView={task.taskProgressView}
+          taskProgressCount={task.taskProgressCount}
+          activeTaskProgressIndex={task.activeTaskProgressIndex}
+          onChangeTaskTitle={task.onChangeTaskTitle}
         onChangeTaskUserInstruction={task.onChangeTaskUserInstruction}
         onChangeTaskBody={task.onChangeTaskBody}
-        onResetTaskContext={task.onResetTaskContext}
-        isMobile={props.isMobile}
-      />
-    );
-  }
-
-  if (activeDrawer === "task_progress") {
-    return (
-      <TaskProgressPanel
-        taskProgressView={task.taskProgressView}
+          onSaveTaskSnapshot={task.onSaveTaskSnapshot}
+          onSelectPreviousTaskDraft={task.onSelectPreviousTaskDraft}
+          onSelectNextTaskDraft={task.onSelectNextTaskDraft}
+          onResetTaskContext={task.onResetTaskContext}
         onAnswerTaskRequest={task.onAnswerTaskRequest}
-        onPrepareTaskRequestAck={task.onPrepareTaskRequestAck}
-        onPrepareTaskSync={task.onPrepareTaskSync}
-      />
+          onPrepareTaskRequestAck={task.onPrepareTaskRequestAck}
+          onPrepareTaskSync={task.onPrepareTaskSync}
+          onPrepareTaskSuspend={task.onPrepareTaskSuspend}
+          onUpdateTaskProgressCounts={task.onUpdateTaskProgressCounts}
+          onSelectPreviousTaskProgress={task.onSelectPreviousTaskProgress}
+          onSelectNextTaskProgress={task.onSelectNextTaskProgress}
+          isMobile={props.isMobile}
+        />
     );
   }
 

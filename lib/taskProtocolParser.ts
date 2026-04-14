@@ -99,6 +99,14 @@ export function parseProtocolPart(value: string | undefined) {
   };
 }
 
+export function parseProtocolUrls(value: string | undefined) {
+  if (!value) return [];
+  return value
+    .split("\n")
+    .map((line) => line.replace(/^-+\s*/, "").trim())
+    .filter(Boolean);
+}
+
 export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
   if (!text.trim()) return [];
 
@@ -113,6 +121,7 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
 
     const fields = parseProtocolBlockFields(match[2] ?? "");
     const parsedPart = parseProtocolPart(fields.PART);
+    const parsedUrls = parseProtocolUrls(fields.URLS);
     const body =
       fields.BODY || fields.SEARCH_GOAL || fields.SUMMARY || "";
 
@@ -125,7 +134,8 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
       required: parseProtocolRequired(fields.REQUIRED),
       summary: fields.SUMMARY || undefined,
       query: fields.QUERY || undefined,
-      url: fields.URL || undefined,
+      url: fields.URL || parsedUrls[0] || undefined,
+      urls: parsedUrls.length > 0 ? parsedUrls : undefined,
       searchEngine: fields.ENGINE || undefined,
       searchLocation: fields.LOCATION || undefined,
       outputMode: parseProtocolSearchOutputMode(fields.OUTPUT_MODE),

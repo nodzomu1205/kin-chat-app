@@ -19,7 +19,12 @@ Received.
 When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.
 
 You may use youtube_search inside <<SYS_SEARCH_REQUEST>> when video discovery is needed.
-You may use <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> when a specific YouTube URL must be read in full via transcript.`;
+You may use <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> when a specific YouTube URL must be read in full via transcript.
+One transcript request may contain up to 3 YouTube URLs in URLS when GPT should fetch and deliver them in sequence.
+Whenever GPT sends a transcript part or asks to continue queued delivery, reply with:
+<<SYS_KIN_RESPONSE>>
+Received. Send the next part.
+<<END_SYS_KIN_RESPONSE>>`;
 
 export const DEFAULT_PROTOCOL_RULEBOOK = `<<SYS_INFO>>
 TITLE: GPT protocol rulebook
@@ -74,6 +79,20 @@ CONTENT:
 - <<END_SYS_TASK_PROGRESS>>
 - Means your current progress on the task.
 - Use this to report progress clearly and briefly.
+- ----------
+- TASK_CONFIRM:
+- ----------
+- <<SYS_TASK_CONFIRM>>
+- TASK_ID: [     ]
+- ACTION_ID: [optional]
+- STATUS: [RUNNING / WAITING_USER_RESPONSE / WAITING_MATERIAL / READY_TO_RESUME / SUSPENDED / DONE]
+- SUMMARY: [     ]
+- BODY: [optional]
+- <<END_SYS_TASK_CONFIRM>>
+- Means a control/status confirmation for an already active task.
+- Use TASK_CONFIRM only for a task that is already in progress and already has a valid TASK_ID.
+- Do not use TASK_CONFIRM before a task has started.
+- Use STATUS: SUSPENDED when the task should be held without losing its current progress.
 - ----------
 -
 - ASK_GPT:
@@ -154,11 +173,20 @@ CONTENT:
 - TASK_ID: [     ]
 - ACTION_ID: [     ]
 - URL: [https://www.youtube.com/watch?v=...]
+- URLS:
+-   - [https://www.youtube.com/watch?v=...]
+-   - [https://www.youtube.com/watch?v=...]
+-   - [https://www.youtube.com/watch?v=...]
 - BODY: [optional note about what to extract]
 - <<END_SYS_YOUTUBE_TRANSCRIPT_REQUEST>>
 - Means a YouTube transcript fetch request you send to GPT.
-- URL is required.
+- URL is required when requesting one transcript.
+- URLS may be used instead of URL when requesting up to 3 transcripts in one sequential batch.
 - Use this when you already know the exact YouTube URL whose full transcript should be fetched.
+- When GPT sends transcript parts or moves to the next transcript in the queued batch, reply each time with:
+- <<SYS_KIN_RESPONSE>>
+- Received. Send the next part.
+- <<END_SYS_KIN_RESPONSE>>
 - After receiving a usable transcript response, continue the task using the transcript contents as evidence.
 - ----------
 -

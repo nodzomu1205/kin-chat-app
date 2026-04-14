@@ -43,3 +43,36 @@ export function applyFinalizeReviewedState(
     ),
   };
 }
+
+export function updateRequirementProgressCountsState(
+  prev: TaskRuntimeState,
+  params: {
+    requirementId: string;
+    completedCount: number;
+    targetCount?: number;
+  }
+): TaskRuntimeState {
+  return {
+    ...prev,
+    requirementProgress: prev.requirementProgress.map((item) => {
+      if (item.id !== params.requirementId) return item;
+      const nextCompleted = Math.max(0, params.completedCount);
+      const nextTarget =
+        typeof params.targetCount === "number"
+          ? Math.max(0, params.targetCount)
+          : item.targetCount;
+      const normalizedTarget = typeof nextTarget === "number" ? nextTarget : 1;
+      return {
+        ...item,
+        completedCount: nextCompleted,
+        targetCount: nextTarget,
+        status:
+          nextCompleted >= normalizedTarget
+            ? "done"
+            : nextCompleted > 0
+              ? "in_progress"
+              : "not_started",
+      };
+    }),
+  };
+}

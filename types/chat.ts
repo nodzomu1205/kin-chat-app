@@ -46,6 +46,10 @@ export type KinProfile = {
 export type MultipartAssembly = {
   id: string;
   taskId?: string;
+  artifactType?: "task_result";
+  taskTitle?: string;
+  kinName?: string;
+  completedAt?: string;
   status?: string;
   summary?: string;
   totalParts: number;
@@ -62,11 +66,15 @@ export type MultipartAssembly = {
 export type StoredDocument = {
   id: string;
   sourceType: "kin_created" | "ingested_file";
+  artifactType?: "task_result" | "task_snapshot" | "reference_note";
   title: string;
   filename: string;
   text: string;
   summary?: string;
   taskId?: string;
+  taskTitle?: string;
+  kinName?: string;
+  completedAt?: string;
   charCount: number;
   createdAt: string;
   updatedAt: string;
@@ -76,6 +84,7 @@ export type ReferenceLibraryItem = {
   id: string;
   sourceId: string;
   itemType: "search" | "kin_created" | "ingested_file";
+  artifactType?: "task_result" | "task_snapshot" | "reference_note";
   title: string;
   subtitle: string;
   summary: string;
@@ -84,6 +93,9 @@ export type ReferenceLibraryItem = {
   updatedAt: string;
   filename?: string;
   taskId?: string;
+  taskTitle?: string;
+  kinName?: string;
+  completedAt?: string;
   rawResultId?: string;
   sources?: SourceItem[];
   askAiModeItems?: Array<{

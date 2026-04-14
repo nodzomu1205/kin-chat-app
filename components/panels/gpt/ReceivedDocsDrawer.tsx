@@ -409,9 +409,24 @@ export default function ReceivedDocsDrawer({
                       <div>
                         <strong>Summary:</strong> {item.summary || "なし"}
                       </div>
+                      {item.taskTitle ? (
+                        <div>
+                          <strong>タスク名:</strong> {item.taskTitle}
+                        </div>
+                      ) : null}
                       {item.taskId ? (
                         <div>
-                          <strong>タスク:</strong> #{item.taskId}
+                          <strong>タスクID:</strong> #{item.taskId}
+                        </div>
+                      ) : null}
+                      {item.kinName ? (
+                        <div>
+                          <strong>Kin:</strong> {item.kinName}
+                        </div>
+                      ) : null}
+                      {item.completedAt ? (
+                        <div suppressHydrationWarning>
+                          <strong>完了日時:</strong> {formatUpdatedAt(item.completedAt)}
                         </div>
                       ) : null}
                       {multipartSource ? (

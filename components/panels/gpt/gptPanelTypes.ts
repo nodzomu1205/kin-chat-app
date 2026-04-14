@@ -110,7 +110,11 @@ export type GptPanelChatProps = {
 
 export type GptPanelTaskProps = {
   currentTaskDraft: TaskDraft;
+  taskDraftCount: number;
+  activeTaskDraftIndex: number;
   taskProgressView?: TaskProgressView;
+  taskProgressCount: number;
+  activeTaskProgressIndex: number;
   pendingInjectionCurrentPart: number;
   pendingInjectionTotalParts: number;
   runPrepTaskFromInput: () => void | Promise<void>;
@@ -125,9 +129,20 @@ export type GptPanelTaskProps = {
   onChangeTaskTitle: (value: string) => void;
   onChangeTaskUserInstruction: (value: string) => void;
   onChangeTaskBody: (value: string) => void;
+  onSaveTaskSnapshot?: () => void;
+  onSelectPreviousTaskDraft?: () => void;
+  onSelectNextTaskDraft?: () => void;
   onAnswerTaskRequest?: (requestId: string) => void;
   onPrepareTaskRequestAck?: (requestId: string) => void;
   onPrepareTaskSync?: (note: string) => void;
+  onPrepareTaskSuspend?: (note: string) => void;
+  onUpdateTaskProgressCounts?: (params: {
+    requirementId: string;
+    completedCount: number;
+    targetCount?: number;
+  }) => void;
+  onSelectPreviousTaskProgress?: () => void;
+  onSelectNextTaskProgress?: () => void;
   onStartKinTask?: () => void | Promise<void>;
   onResetTaskContext?: () => void;
 };
@@ -399,9 +414,14 @@ export type GptPanelProps = {
   onSwitchPanel: () => void;
   isMobile: boolean;
   currentTaskDraft: TaskDraft;
+  taskDraftCount: number;
+  activeTaskDraftIndex: number;
   onChangeTaskTitle: (value: string) => void;
   onChangeTaskUserInstruction: (value: string) => void;
   onChangeTaskBody: (value: string) => void;
+  onSaveTaskSnapshot?: () => void;
+  onSelectPreviousTaskDraft?: () => void;
+  onSelectNextTaskDraft?: () => void;
   protocolPrompt: string;
   protocolRulebook: string;
   onChangeProtocolPrompt: (value: string) => void;
@@ -411,9 +431,19 @@ export type GptPanelProps = {
   onSetProtocolRulebookToKinDraft: () => void | Promise<void>;
   onSendProtocolRulebookToKin: () => void | Promise<void>;
   taskProgressView?: TaskProgressView;
+  taskProgressCount: number;
+  activeTaskProgressIndex: number;
   onAnswerTaskRequest?: (requestId: string) => void;
   onPrepareTaskRequestAck?: (requestId: string) => void;
   onPrepareTaskSync?: (note: string) => void;
+  onPrepareTaskSuspend?: (note: string) => void;
+  onUpdateTaskProgressCounts?: (params: {
+    requirementId: string;
+    completedCount: number;
+    targetCount?: number;
+  }) => void;
+  onSelectPreviousTaskProgress?: () => void;
+  onSelectNextTaskProgress?: () => void;
   onStartKinTask?: () => void | Promise<void>;
   onResetTaskContext?: () => void;
   header?: GptPanelHeaderProps;

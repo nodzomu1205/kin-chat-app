@@ -1,6 +1,7 @@
 import {
   approveIntentCandidateFlow,
   prepareTaskRequestAckFlow,
+  prepareTaskSuspendFlow,
   prepareTaskSyncFlow,
   rejectIntentCandidateFlow,
   resetProtocolDefaultsFlow,
@@ -39,6 +40,17 @@ export function useTaskProtocolActions(
     prepareTaskSyncFlow({
       note,
       prepareTaskSyncMessage: args.taskProtocol.prepareTaskSyncMessage,
+      setKinInput: args.setKinInput,
+      appendGptMessage: (message) =>
+        args.setGptMessages((prev) => [...prev, message]),
+      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+    });
+  };
+
+  const prepareTaskSuspend = (note: string) => {
+    prepareTaskSuspendFlow({
+      note,
+      prepareTaskSuspendMessage: args.taskProtocol.prepareTaskSuspendMessage,
       setKinInput: args.setKinInput,
       appendGptMessage: (message) =>
         args.setGptMessages((prev) => [...prev, message]),
@@ -221,6 +233,7 @@ export function useTaskProtocolActions(
   return {
     prepareTaskRequestAck,
     prepareTaskSync,
+    prepareTaskSuspend,
     resetProtocolDefaults,
     saveProtocolDefaults,
     approveIntentCandidate,

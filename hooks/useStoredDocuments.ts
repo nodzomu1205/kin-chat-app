@@ -25,11 +25,15 @@ function toKinStoredDocument(item: MultipartAssembly): StoredDocument {
   return {
     id: `kin:${item.id}`,
     sourceType: "kin_created",
+    artifactType: item.artifactType,
     title: item.filename,
     filename: item.filename,
     text: item.assembledText,
     summary: item.summary || buildDocumentSummary(item.assembledText, item.filename),
     taskId: item.taskId,
+    taskTitle: item.taskTitle,
+    kinName: item.kinName,
+    completedAt: item.completedAt,
     charCount: item.assembledText.length,
     createdAt: item.updatedAt,
     updatedAt: item.updatedAt,
@@ -62,7 +66,11 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
         if (Array.isArray(parsed)) {
           setIngestedDocuments(
             parsed.filter(
-              (item) => item?.id && item?.filename && item?.text && item?.sourceType === "ingested_file"
+              (item) =>
+                item?.id &&
+                item?.filename &&
+                item?.text &&
+                item?.sourceType === "ingested_file"
             )
           );
         }

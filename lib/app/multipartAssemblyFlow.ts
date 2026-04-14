@@ -143,6 +143,9 @@ export function applyMultipartPart(
     taskId?: string;
     status?: string;
     summary?: string;
+    taskTitle?: string;
+    kinName?: string;
+    completedAt?: string;
     partIndex: number;
     totalParts: number;
     content: string;
@@ -153,6 +156,10 @@ export function applyMultipartPart(
     assemblies.find((item) => item.id === id) || {
       id,
       taskId: part.taskId,
+      artifactType: "task_result",
+      taskTitle: part.taskTitle,
+      kinName: part.kinName,
+      completedAt: part.completedAt,
       status: part.status,
       summary: part.summary,
       totalParts: part.totalParts,
@@ -173,6 +180,8 @@ export function applyMultipartPart(
   const assembly: MultipartAssembly = {
     ...existing,
     taskId: part.taskId || existing.taskId,
+    taskTitle: part.taskTitle || existing.taskTitle,
+    kinName: part.kinName || existing.kinName,
     status: part.status || existing.status,
     summary: part.summary || existing.summary,
     totalParts: part.totalParts,
@@ -180,6 +189,8 @@ export function applyMultipartPart(
     assembledText,
     isComplete,
     updatedAt: new Date().toISOString(),
+    completedAt:
+      isComplete ? part.completedAt || new Date().toISOString() : existing.completedAt,
   };
 
   return {
@@ -192,6 +203,8 @@ export function processMultipartTaskDoneText(params: {
   text: string;
   assemblies: MultipartAssembly[];
   currentTaskId?: string;
+  currentTaskTitle?: string;
+  kinName?: string;
   constraint: TaskCharConstraint | null;
 }) {
   const parts = extractTaskDoneParts(params.text);
@@ -206,9 +219,23 @@ export function processMultipartTaskDoneText(params: {
 
   for (const multipart of parts) {
     const updated = applyMultipartPart(workingAssemblies, multipart);
-    workingAssemblies = updated.assemblies;
+    const enriched = applyMultipartPart(workingAssemblies, {
+      ...multipart,
+      taskTitle:
+        multipart.taskId && multipart.taskId === params.currentTaskId
+          ? params.currentTaskTitle
+          : undefined,
+      kinName:
+        multipart.taskId && multipart.taskId === params.currentTaskId
+          ? params.kinName
+          : undefined,
+      completedAt: multipart.partIndex >= multipart.totalParts
+        ? new Date().toISOString()
+        : undefined,
+    });
+    workingAssemblies = enriched.assemblies;
     assembliesChanged = true;
-    const assembly = updated.assembly;
+    const assembly = enriched.assembly;
     const isFinalPart = multipart.partIndex >= multipart.totalParts;
 
     if (!assembly.isComplete || !isFinalPart) {

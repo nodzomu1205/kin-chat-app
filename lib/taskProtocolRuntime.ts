@@ -20,6 +20,9 @@ export function resolveTaskExecutionStatus(
   if (event.type === "user_question") return "waiting_user";
   if (event.type === "task_confirm") {
     const normalized = (event.status || "").toLowerCase();
+    if (normalized.includes("suspend") || normalized.includes("hold")) {
+      return "suspended";
+    }
     if (normalized.includes("waiting_user")) return "waiting_user";
     if (normalized.includes("waiting_material")) return "waiting_material";
     if (normalized.includes("ready")) return "ready_to_resume";

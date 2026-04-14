@@ -2,7 +2,7 @@ import { parseTaskInput } from "@/lib/taskInputParser";
 import { parseSearchContinuation } from "@/lib/search-domain/continuations";
 import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
 import { buildUserResponseBlock } from "@/lib/taskRuntimeProtocol";
-import type { ReferenceLibraryItem, SourceItem } from "@/types/chat";
+import type { Message, ReferenceLibraryItem, SourceItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
 export type ParsedInputLike = {
@@ -85,6 +85,15 @@ type SearchResponseEventLike = {
   searchEngine?: string;
   searchLocation?: string;
   outputMode?: string;
+};
+
+type GptStateSnapshotLike = {
+  recentMessages?: Message[];
+  memory?: {
+    context?: {
+      currentTopic?: string;
+    };
+  };
 };
 
 export function deriveProtocolSearchContext(params: {
@@ -270,6 +279,37 @@ export function buildEffectiveRequestText(params: {
     .join("\n");
 
   return effectiveRequestText || normalizedRequestText || requestText || params.rawText;
+}
+
+export function resolveMemoryUpdateContext(params: {
+  gptState: GptStateSnapshotLike;
+  userMessage: Message;
+  chatRecentLimit: number;
+}) {
+  const baseRecent = params.gptState.recentMessages || [];
+  const recentWithUser = [...baseRecent, params.userMessage].slice(
+    -params.chatRecentLimit
+  );
+  const previousCommittedTopic =
+    typeof params.gptState.memory?.context?.currentTopic === "string"
+      ? params.gptState.memory.context.currentTopic
+      : undefined;
+
+  return {
+    baseRecent,
+    recentWithUser,
+    previousCommittedTopic,
+  };
+}
+
+export function appendRecentAssistantMessage(params: {
+  recentMessages: Message[];
+  assistantMessage: Message;
+  chatRecentLimit: number;
+}) {
+  return [...params.recentMessages, params.assistantMessage].slice(
+    -params.chatRecentLimit
+  );
 }
 
 export function wrapProtocolAssistantText(params: {

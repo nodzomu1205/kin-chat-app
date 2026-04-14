@@ -91,6 +91,7 @@ export type UserFacingTaskRequest = {
 export type TaskExecutionStatus =
   | "idle"
   | "running"
+  | "suspended"
   | "waiting_user"
   | "waiting_material"
   | "ready_to_resume"
@@ -123,6 +124,7 @@ export type TaskProtocolEvent = {
   summary?: string;
   query?: string;
   url?: string;
+  urls?: string[];
   searchEngine?: string;
   searchLocation?: string;
   outputMode?: SearchResultMode;

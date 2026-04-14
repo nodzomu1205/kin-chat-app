@@ -81,8 +81,7 @@ export function resolveFloatingLabel(args: {
   const taskFocused =
     args.bottomTab === "task_primary" ||
     args.bottomTab === "task_secondary" ||
-    args.activeDrawer === "task_draft" ||
-    args.activeDrawer === "task_progress";
+    args.activeDrawer === "task";
 
   if (taskFocused && taskName) {
     return {

@@ -10,6 +10,8 @@ export function useMultipartUiActions(args: {
   multipartAssemblies: MultipartAssembly[];
   setMultipartAssemblies: React.Dispatch<React.SetStateAction<MultipartAssembly[]>>;
   currentTaskId: string | undefined;
+  currentTaskTitle?: string;
+  currentKinLabel?: string | null;
   getCurrentTaskCharConstraint: () => TaskCharConstraint | null;
   setKinInput: React.Dispatch<React.SetStateAction<string>>;
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -26,6 +28,8 @@ export function useMultipartUiActions(args: {
         text,
         assemblies: args.multipartAssemblies,
         currentTaskId: args.currentTaskId,
+        currentTaskTitle: args.currentTaskTitle,
+        kinName: args.currentKinLabel || undefined,
         constraint: args.getCurrentTaskCharConstraint(),
       });
       if (!result) return null;

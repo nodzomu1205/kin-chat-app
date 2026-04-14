@@ -40,14 +40,64 @@ export function prepareTaskSyncFlow(args: {
   appendGptMessage: (message: Message) => void;
   setActiveTabToKin?: () => void;
 }) {
-  const syncMessage = args.prepareTaskSyncMessage(args.note);
-  if (!syncMessage) return;
+  const note = args.note.trim();
+  const syncMessage = note.startsWith("<<SYS_")
+    ? note
+    : args.prepareTaskSyncMessage(args.note);
+  if (!syncMessage) {
+    args.appendGptMessage({
+      id: generateId(),
+      role: "gpt",
+      text: "進行中のタスクが無いため、再同期メッセージは作成できません。",
+      meta: {
+        kind: "task_info",
+        sourceType: "manual",
+      },
+    });
+    return;
+  }
 
   args.setKinInput(syncMessage);
   args.appendGptMessage({
     id: generateId(),
     role: "gpt",
-    text: "Prepared a task sync message for Kin.",
+    text: note.startsWith("<<SYS_")
+      ? "Set the prepared task progress message to the Kin input box."
+      : "Prepared a task sync message for Kin.",
+    meta: {
+      kind: "task_info",
+      sourceType: "manual",
+    },
+  });
+  args.setActiveTabToKin?.();
+}
+
+export function prepareTaskSuspendFlow(args: {
+  note: string;
+  prepareTaskSuspendMessage: (note: string) => string | null;
+  setKinInput: (value: string) => void;
+  appendGptMessage: (message: Message) => void;
+  setActiveTabToKin?: () => void;
+}) {
+  const suspendMessage = args.prepareTaskSuspendMessage(args.note);
+  if (!suspendMessage) {
+    args.appendGptMessage({
+      id: generateId(),
+      role: "gpt",
+      text: "進行中のタスクが無いため、中断メッセージは作成できません。",
+      meta: {
+        kind: "task_info",
+        sourceType: "manual",
+      },
+    });
+    return;
+  }
+
+  args.setKinInput(suspendMessage);
+  args.appendGptMessage({
+    id: generateId(),
+    role: "gpt",
+    text: "Prepared a task suspend message for Kin.",
     meta: {
       kind: "task_info",
       sourceType: "manual",

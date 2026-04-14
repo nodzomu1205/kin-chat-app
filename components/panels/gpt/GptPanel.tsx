@@ -5,6 +5,9 @@ import ChatMessages from "@/components/ChatMessages";
 import DrawerTabs, { type DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import GptDrawerRouter from "@/components/panels/gpt/GptDrawerRouter";
 import GptComposer from "@/components/panels/gpt/GptComposer";
+import GptSettingsWorkspace, {
+  type SettingsWorkspaceView,
+} from "@/components/panels/gpt/GptSettingsWorkspace";
 import GptToolbar from "@/components/panels/gpt/GptToolbar";
 import type {
   GptInstructionMode,
@@ -24,11 +27,131 @@ import {
   drawerWrapStyle,
   footerStyle,
   panelShellStyle,
-  pillButton,
   statusDotStyle,
 } from "@/components/panels/gpt/gptPanelStyles";
 import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
+
+function headerIconButtonStyle(params: {
+  active: boolean;
+  hasPending: boolean;
+}): React.CSSProperties {
+  return {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    border: params.active
+      ? "1px solid rgba(255,255,255,0.72)"
+      : "1px solid rgba(255,255,255,0.35)",
+    background: params.active
+      ? "rgba(255,255,255,0.24)"
+      : "rgba(255,255,255,0.12)",
+    color: "#fff",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxSizing: "border-box",
+    position: "relative",
+    boxShadow: params.hasPending
+      ? "0 0 0 2px rgba(250,204,21,0.22), 0 0 16px rgba(250,204,21,0.55)"
+      : params.active
+        ? "0 8px 18px rgba(15,23,42,0.18)"
+        : "none",
+  };
+}
+
+function HeaderIconButton(props: {
+  label: string;
+  active: boolean;
+  hasPending: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={props.label}
+      title={props.label}
+      style={headerIconButtonStyle({
+        active: props.active,
+        hasPending: props.hasPending,
+      })}
+      onClick={props.onClick}
+    >
+      {props.children}
+      {props.hasPending ? (
+        <span
+          style={{
+            position: "absolute",
+            top: 5,
+            right: 5,
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: "#facc15",
+            boxShadow: "0 0 10px rgba(250,204,21,0.9)",
+          }}
+        />
+      ) : null}
+    </button>
+  );
+}
+
+function ChatSettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5 6.5C5 5.12 6.12 4 7.5 4h9C17.88 4 19 5.12 19 6.5v6C19 13.88 17.88 15 16.5 15H10l-4 3v-3H7.5A2.5 2.5 0 0 1 5 12.5v-6Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="9" cy="9.5" r="1" fill="currentColor" />
+      <circle cx="12" cy="9.5" r="1" fill="currentColor" />
+      <circle cx="15" cy="9.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TaskSettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9 4.75h6a1.5 1.5 0 0 1 1.5 1.5v.75h1.25A1.75 1.75 0 0 1 19.5 8.75v9.5A1.75 1.75 0 0 1 17.75 20h-11A1.75 1.75 0 0 1 5 18.25v-9.5A1.75 1.75 0 0 1 6.75 7h1.25v-.75A1.5 1.5 0 0 1 9.5 4.75Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M9 10h6M9 13.5h6M9 17h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M9 7.5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function LibrarySettingsIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M5.5 6.25A2.25 2.25 0 0 1 7.75 4h5.5A2.25 2.25 0 0 1 15.5 6.25V18a2 2 0 0 0-2-2h-6A2 2 0 0 0 5.5 18V6.25Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.5 9.5h1a3 3 0 1 1-1.54 5.58"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <circle cx="17.5" cy="12.5" r="1.6" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M18.7 13.7 20 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export default function GptPanel(props: GptPanelProps) {
   const header = props.header ?? {
@@ -48,10 +171,14 @@ export default function GptPanel(props: GptPanelProps) {
     loading: props.loading,
     gptBottomRef: props.gptBottomRef,
   };
-  const task = props.task ?? {
-    currentTaskDraft: props.currentTaskDraft,
-    taskProgressView: props.taskProgressView,
-    pendingInjectionCurrentPart: props.pendingInjectionCurrentPart,
+    const task = props.task ?? {
+      currentTaskDraft: props.currentTaskDraft,
+      taskDraftCount: props.taskDraftCount,
+      activeTaskDraftIndex: props.activeTaskDraftIndex,
+      taskProgressView: props.taskProgressView,
+      taskProgressCount: props.taskProgressCount,
+      activeTaskProgressIndex: props.activeTaskProgressIndex,
+      pendingInjectionCurrentPart: props.pendingInjectionCurrentPart,
     pendingInjectionTotalParts: props.pendingInjectionTotalParts,
     runPrepTaskFromInput: props.runPrepTaskFromInput,
     runDeepenTaskFromLast: props.runDeepenTaskFromLast,
@@ -65,10 +192,35 @@ export default function GptPanel(props: GptPanelProps) {
     onChangeTaskTitle: props.onChangeTaskTitle,
     onChangeTaskUserInstruction: props.onChangeTaskUserInstruction,
     onChangeTaskBody: props.onChangeTaskBody,
-    onPrepareTaskRequestAck: props.onPrepareTaskRequestAck,
-    onPrepareTaskSync: props.onPrepareTaskSync,
-    onStartKinTask: props.onStartKinTask,
+      onSaveTaskSnapshot: props.onSaveTaskSnapshot,
+      onSelectPreviousTaskDraft: props.onSelectPreviousTaskDraft,
+      onSelectNextTaskDraft: props.onSelectNextTaskDraft,
+      onAnswerTaskRequest: props.onAnswerTaskRequest,
+      onPrepareTaskRequestAck: props.onPrepareTaskRequestAck,
+      onPrepareTaskSync: props.onPrepareTaskSync,
+      onPrepareTaskSuspend: props.onPrepareTaskSuspend,
+      onUpdateTaskProgressCounts: props.onUpdateTaskProgressCounts,
+      onSelectPreviousTaskProgress: props.onSelectPreviousTaskProgress,
+      onSelectNextTaskProgress: props.onSelectNextTaskProgress,
+      onStartKinTask: props.onStartKinTask,
     onResetTaskContext: props.onResetTaskContext,
+  };
+  const protocol = props.protocol ?? {
+    protocolPrompt: props.protocolPrompt,
+    protocolRulebook: props.protocolRulebook,
+    pendingIntentCandidates: props.pendingIntentCandidates,
+    approvedIntentPhrases: props.approvedIntentPhrases,
+    onChangeProtocolPrompt: props.onChangeProtocolPrompt,
+    onChangeProtocolRulebook: props.onChangeProtocolRulebook,
+    onResetProtocolDefaults: props.onResetProtocolDefaults,
+    onSaveProtocolDefaults: props.onSaveProtocolDefaults,
+    onSetProtocolRulebookToKinDraft: props.onSetProtocolRulebookToKinDraft,
+    onSendProtocolRulebookToKin: props.onSendProtocolRulebookToKin,
+    onUpdateIntentCandidate: props.onUpdateIntentCandidate,
+    onApproveIntentCandidate: props.onApproveIntentCandidate,
+    onRejectIntentCandidate: props.onRejectIntentCandidate,
+    onUpdateApprovedIntentPhrase: props.onUpdateApprovedIntentPhrase,
+    onDeleteApprovedIntentPhrase: props.onDeleteApprovedIntentPhrase,
   };
   const settings = props.settings ?? {
     memorySettings: props.memorySettings,
@@ -124,6 +276,8 @@ export default function GptPanel(props: GptPanelProps) {
     onChangeAutoCopyKinSysResponseToGpt: props.onChangeAutoCopyKinSysResponseToGpt,
     onChangeAutoSendGptSysInput: props.onChangeAutoSendGptSysInput,
     onChangeAutoCopyGptSysResponseToKin: props.onChangeAutoCopyGptSysResponseToKin,
+    onChangeAutoCopyFileIngestSysInfoToKin:
+      props.onChangeAutoCopyFileIngestSysInfoToKin,
     onChangeMemoryInterpreterSettings: props.onChangeMemoryInterpreterSettings,
     onApproveMemoryRuleCandidate: props.onApproveMemoryRuleCandidate,
     onRejectMemoryRuleCandidate: props.onRejectMemoryRuleCandidate,
@@ -131,6 +285,8 @@ export default function GptPanel(props: GptPanelProps) {
   };
 
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
+  const [activeSettingsWorkspace, setActiveSettingsWorkspace] =
+    useState<SettingsWorkspaceView | null>(null);
   const [bottomTab, setBottomTab] = useState<BottomTabKey>("chat");
   const [showMemoryContent, setShowMemoryContent] = useState(false);
   const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(() =>
@@ -198,9 +354,22 @@ export default function GptPanel(props: GptPanelProps) {
     outputTokens: settings.tokenStats.cumulativeOutput ?? 0,
     totalTokens: settings.tokenStats.cumulativeTotal ?? 0,
   };
+  const hasPendingMemoryApprovals =
+    settings.pendingMemoryRuleCandidates.length > 0;
+  const hasPendingSysApprovals = protocol.pendingIntentCandidates.length > 0;
 
   const handleToolbarAction = (mode: GptInstructionMode) => {
     void chat.sendToGpt(mode);
+  };
+
+  const handleDrawerChange = (next: DrawerMode) => {
+    setActiveSettingsWorkspace(null);
+    setActiveDrawer(next);
+  };
+
+  const toggleSettingsWorkspace = (next: SettingsWorkspaceView) => {
+    setActiveDrawer(null);
+    setActiveSettingsWorkspace((prev) => (prev === next ? null : next));
   };
 
   return (
@@ -263,25 +432,42 @@ export default function GptPanel(props: GptPanelProps) {
 
           <div style={{ flex: 1 }} />
 
-          <button
-            type="button"
-            style={{
-              ...pillButton,
-              background:
-                activeDrawer === "settings"
-                  ? "rgba(255,255,255,0.22)"
-                  : (pillButton.background as string),
-            }}
-            onClick={() => setActiveDrawer((prev) => (prev === "settings" ? null : "settings"))}
-          >
-            設定
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <HeaderIconButton
+              label="チャット設定"
+              active={activeSettingsWorkspace === "chat"}
+              hasPending={hasPendingMemoryApprovals}
+              onClick={() => toggleSettingsWorkspace("chat")}
+            >
+              <ChatSettingsIcon />
+            </HeaderIconButton>
+            <HeaderIconButton
+              label="タスク設定"
+              active={activeSettingsWorkspace === "task"}
+              hasPending={hasPendingSysApprovals}
+              onClick={() => toggleSettingsWorkspace("task")}
+            >
+              <TaskSettingsIcon />
+            </HeaderIconButton>
+            <HeaderIconButton
+              label="ライブラリ設定"
+              active={activeSettingsWorkspace === "library"}
+              hasPending={false}
+              onClick={() => toggleSettingsWorkspace("library")}
+            >
+              <LibrarySettingsIcon />
+            </HeaderIconButton>
+          </div>
         </div>
 
-        <DrawerTabs activeDrawer={activeDrawer} isMobile={header.isMobile} onChange={setActiveDrawer} />
+        <DrawerTabs
+          activeDrawer={activeDrawer}
+          isMobile={header.isMobile}
+          onChange={handleDrawerChange}
+        />
       </div>
 
-      {activeDrawer ? (
+      {activeDrawer && !activeSettingsWorkspace ? (
         <div style={drawerWrapStyle(header.isMobile)}>
           <GptDrawerRouter
             activeDrawer={activeDrawer}
@@ -304,6 +490,20 @@ export default function GptPanel(props: GptPanelProps) {
         </div>
       ) : null}
 
+      {activeSettingsWorkspace ? (
+        <GptSettingsWorkspace
+          activeView={activeSettingsWorkspace}
+          settings={settings}
+          protocol={protocol}
+          localSettings={localSettings}
+          setLocalSettings={setLocalSettings}
+          memoryCapacityPreview={memoryCapacityPreview}
+          toPositiveInt={toPositiveInt}
+          isMobile={header.isMobile}
+          onClose={() => setActiveSettingsWorkspace(null)}
+        />
+      ) : (
+        <>
       <div
         style={{
           ...chatBodyStyle(header.isMobile),
@@ -457,6 +657,8 @@ export default function GptPanel(props: GptPanelProps) {
           isMobile={header.isMobile}
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -46,6 +46,28 @@ export function buildWaitingAckBlock(request: PendingExternalRequest): string {
   ].join("\n");
 }
 
+export function buildTaskSuspendBlock(
+  runtime: TaskRuntimeState,
+  note = ""
+): string | null {
+  if (!runtime.currentTaskId) return null;
+
+  return [
+    "<<SYS_TASK_CONFIRM>>",
+    `TASK_ID: ${runtime.currentTaskId}`,
+    "STATUS: SUSPENDED",
+    `SUMMARY: ${
+      note.trim() ||
+      runtime.latestSummary ||
+      runtime.currentTaskIntent?.goal ||
+      runtime.currentTaskTitle ||
+      "Suspend this task for now and keep the current progress for later resume."
+    }`,
+    "BODY: Hold this task without discarding current progress. Resume after the blocking condition is resolved.",
+    "<<END_SYS_TASK_CONFIRM>>",
+  ].join("\n");
+}
+
 export function buildUserResponseBlock(params: {
   taskId: string;
   actionId: string;

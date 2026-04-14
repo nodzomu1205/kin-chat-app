@@ -77,13 +77,19 @@ Recent progress includes:
 - staged helper extraction from `useGptMemory`
 - staged helper extraction from `memoryInterpreter.ts`
 - inline URL dead-code cleanup in `sendToGptFlow.ts`
+- panel-prop builder extraction for `app/page.tsx`
+- shared recent-message / memory-update helper extraction for `sendToGptFlow`
+- GPT settings workspace split from the old hanging-drawer UI
+- task drawer unification plus multi-draft / multi-progress task workflow support
+- task suspend / hold support through `TASK_CONFIRM`
+- transcript queue support for up to 3 YouTube URLs with Kin ACK gating
 - roadmap and architecture docs
 
 The current verification baseline is:
 
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- current test count: `35 files / 144 tests`
+- current test count: `41 files / 163 tests`
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -94,6 +100,7 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Refactor Roadmap](./docs/refactor-roadmap.md)
 - [Next Session Handover](./docs/next-session.md)
 - [Architecture Guidelines](./docs/architecture-guidelines.md)
+- [Handoff 2026-04-14](./docs/HANDOFF-2026-04-14.md)
 - [Handoff 2026-04-11](./docs/HANDOFF-2026-04-11.md)
 
 ## Working Agreement For Refactors

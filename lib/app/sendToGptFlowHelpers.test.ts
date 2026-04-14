@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendRecentAssistantMessage,
   applyProtocolAssistantSideEffects,
   buildProtocolSearchResponseArtifacts,
   handleImplicitSearchArtifacts,
+  resolveMemoryUpdateContext,
   wrapProtocolAssistantText,
 } from "@/lib/app/sendToGptFlowHelpers";
 
@@ -217,6 +219,59 @@ describe("sendToGptFlowHelpers", () => {
     expect(calls).toEqual([
       "ingest:gpt_to_kin:Wrapped protocol response",
       "answer:REQ1:Here is the answer",
+    ]);
+  });
+
+  it("builds memory update context from the current GPT state snapshot", () => {
+    const userMessage = {
+      id: "u1",
+      role: "user" as const,
+      text: "latest user turn",
+    };
+
+    const result = resolveMemoryUpdateContext({
+      gptState: {
+        recentMessages: [
+          {
+            id: "a1",
+            role: "gpt",
+            text: "older assistant turn",
+          },
+        ],
+        memory: {
+          context: {
+            currentTopic: "topic-a",
+          },
+        },
+      },
+      userMessage,
+      chatRecentLimit: 5,
+    });
+
+    expect(result.recentWithUser).toEqual([
+      {
+        id: "a1",
+        role: "gpt",
+        text: "older assistant turn",
+      },
+      userMessage,
+    ]);
+    expect(result.previousCommittedTopic).toBe("topic-a");
+  });
+
+  it("appends the assistant message while preserving the recent-message limit", () => {
+    const updated = appendRecentAssistantMessage({
+      recentMessages: [
+        { id: "1", role: "user", text: "u1" },
+        { id: "2", role: "gpt", text: "a1" },
+      ],
+      assistantMessage: { id: "3", role: "gpt", text: "a2" },
+      chatRecentLimit: 2,
+    });
+
+    expect(updated).toEqual([
+      { id: "2", role: "gpt", text: "a1" },
+      { id: "3", role: "gpt", text: "a2" },
     ]);
   });
 });

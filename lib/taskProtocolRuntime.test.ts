@@ -104,6 +104,15 @@ describe("taskProtocolRuntime", () => {
     ).toBe("waiting_user");
   });
 
+  it("resolves suspended status from task_confirm hold notices", () => {
+    expect(
+      resolveTaskExecutionStatus(
+        "running",
+        createEvent({ type: "task_confirm", status: "SUSPENDED" })
+      )
+    ).toBe("suspended");
+  });
+
   it("increments search progress only on successful search_response and stores search result", () => {
     const next = applyTaskProtocolEvent(
       createRuntime(),
