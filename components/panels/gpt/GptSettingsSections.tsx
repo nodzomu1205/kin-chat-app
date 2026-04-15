@@ -9,6 +9,8 @@ import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
+  TopicDecision,
+  UserUtteranceIntent,
 } from "@/lib/memoryInterpreterRules";
 import {
   SEARCH_MODE_PRESETS,
@@ -74,6 +76,20 @@ const tabButton = (active: boolean): React.CSSProperties => ({
   cursor: "pointer",
   lineHeight: 1,
 });
+
+function getCandidateIntentValue(candidate: PendingMemoryRuleCandidate): UserUtteranceIntent {
+  if (candidate.intent) return candidate.intent;
+  if (candidate.kind === "closing_reply") return "acknowledgement";
+  if (candidate.kind === "topic_alias") return "question";
+  return "unknown";
+}
+
+function getCandidateTopicDecisionValue(candidate: PendingMemoryRuleCandidate): TopicDecision {
+  if (candidate.topicDecision) return candidate.topicDecision;
+  if (candidate.kind === "closing_reply") return "keep";
+  if (candidate.kind === "topic_alias") return "switch";
+  return "unclear";
+}
 
 function ToggleButtons(props: {
   label: string;
@@ -351,11 +367,28 @@ export function RulesSettingsSection(props: {
   ) => void;
   onApproveMemoryRuleCandidate: (id: string) => void;
   onRejectMemoryRuleCandidate: (id: string) => void;
+  onUpdateMemoryRuleCandidate: (
+    id: string,
+    patch: Partial<PendingMemoryRuleCandidate>
+  ) => void;
   onDeleteApprovedMemoryRule: (id: string) => void;
   onApproveIntentCandidate: (id: string) => void;
   onRejectIntentCandidate: (id: string) => void;
   onDeleteApprovedIntentPhrase: (id: string) => void;
+  isMobile?: boolean;
 }) {
+  const intentOptions: UserUtteranceIntent[] = [
+    "agreement",
+    "disagreement",
+    "question",
+    "request",
+    "statement",
+    "suggestion",
+    "acknowledgement",
+    "unknown",
+  ];
+  const topicDecisionOptions: TopicDecision[] = ["keep", "switch", "unclear"];
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={sectionCard}>
@@ -398,18 +431,15 @@ export function RulesSettingsSection(props: {
           props.pendingMemoryRuleCandidates.map((candidate) => (
             <div key={candidate.id} style={{ ...subtleCard, marginTop: 8 }}>
               <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {candidate.kind === "topic_alias"
-                  ? "topic 精査候補"
-                  : "closing reply 精査候補"}
+                {candidate.kind === "utterance_review"
+                  ? "発話レビュー候補"
+                  : candidate.kind === "topic_alias"
+                    ? "topic 精査候補"
+                    : "closing reply 精査候補"}
               </div>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
                 入力文: {candidate.phrase}
               </div>
-              {candidate.normalizedValue ? (
-                <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  正規化値: {candidate.normalizedValue}
-                </div>
-              ) : null}
               <div
                 style={{
                   ...helpTextStyle,
@@ -418,6 +448,69 @@ export function RulesSettingsSection(props: {
                 }}
               >
                 {candidate.sourceText}
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: props.isMobile
+                    ? "1fr"
+                    : "repeat(2, minmax(0, 1fr))",
+                  gap: 10,
+                  marginTop: 10,
+                }}
+              >
+                <div>
+                  <div style={labelStyle}>ユーザー意図</div>
+                  <select
+                    value={getCandidateIntentValue(candidate)}
+                    onChange={(e) =>
+                      props.onUpdateMemoryRuleCandidate(candidate.id, {
+                        kind: "utterance_review",
+                        intent: e.target.value as UserUtteranceIntent,
+                      })
+                    }
+                    style={selectStyle}
+                  >
+                    {intentOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={labelStyle}>トピック判定</div>
+                  <select
+                    value={getCandidateTopicDecisionValue(candidate)}
+                    onChange={(e) =>
+                      props.onUpdateMemoryRuleCandidate(candidate.id, {
+                        kind: "utterance_review",
+                        topicDecision: e.target.value as TopicDecision,
+                      })
+                    }
+                    style={selectStyle}
+                  >
+                    {topicDecisionOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ gridColumn: props.isMobile ? undefined : "1 / -1" }}>
+                  <div style={labelStyle}>トピック</div>
+                  <input
+                    value={candidate.normalizedValue || ""}
+                    onChange={(e) =>
+                      props.onUpdateMemoryRuleCandidate(candidate.id, {
+                        kind: "utterance_review",
+                        normalizedValue: e.target.value,
+                      })
+                    }
+                    placeholder="keep の場合は空のまま"
+                    style={inputStyle}
+                  />
+                </div>
               </div>
               <div
                 style={{
@@ -432,7 +525,7 @@ export function RulesSettingsSection(props: {
                   style={buttonPrimary}
                   onClick={() => props.onApproveMemoryRuleCandidate(candidate.id)}
                 >
-                  承認
+                  確定
                 </button>
                 <button
                   type="button"
@@ -465,16 +558,28 @@ export function RulesSettingsSection(props: {
             {props.approvedMemoryRules.map((rule) => (
               <div key={rule.id} style={subtleCard}>
                 <div style={{ fontSize: 12, fontWeight: 800 }}>
-                  {rule.kind === "topic_alias"
-                    ? "topic 精査"
-                    : "closing reply 精査"}
+                  {rule.kind === "utterance_review"
+                    ? "発話レビュー"
+                    : rule.kind === "topic_alias"
+                      ? "topic 精査"
+                      : "closing reply 精査"}
                 </div>
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
                   入力文: {rule.phrase}
                 </div>
+                {rule.intent ? (
+                  <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                    意図: {rule.intent}
+                  </div>
+                ) : null}
+                {rule.topicDecision ? (
+                  <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                    トピック判定: {rule.topicDecision}
+                  </div>
+                ) : null}
                 {rule.normalizedValue ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                    正規化値: {rule.normalizedValue}
+                    トピック候補: {rule.normalizedValue}
                   </div>
                 ) : null}
                 <div

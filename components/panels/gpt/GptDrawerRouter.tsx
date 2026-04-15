@@ -124,6 +124,7 @@ export default function GptDrawerRouter({
       onSaveStoredDocument: props.onSaveStoredDocument,
   };
   const settings = props.settings ?? {
+    currentTopic: props.gptState?.memory?.context?.currentTopic,
     memorySettings: props.memorySettings,
     defaultMemorySettings: props.defaultMemorySettings,
     tokenStats: props.tokenStats,
@@ -180,6 +181,7 @@ export default function GptDrawerRouter({
     onChangeAutoCopyFileIngestSysInfoToKin:
       props.onChangeAutoCopyFileIngestSysInfoToKin,
     onChangeMemoryInterpreterSettings: props.onChangeMemoryInterpreterSettings,
+    onUpdateMemoryRuleCandidate: props.onUpdateMemoryRuleCandidate,
     onApproveMemoryRuleCandidate: props.onApproveMemoryRuleCandidate,
     onRejectMemoryRuleCandidate: props.onRejectMemoryRuleCandidate,
     onDeleteApprovedMemoryRule: props.onDeleteApprovedMemoryRule,
@@ -376,6 +378,7 @@ export default function GptDrawerRouter({
            settings.onChangeAutoCopyFileIngestSysInfoToKin
          }
         onChangeMemoryInterpreterSettings={settings.onChangeMemoryInterpreterSettings}
+        onUpdateMemoryRuleCandidate={settings.onUpdateMemoryRuleCandidate}
         onApproveMemoryRuleCandidate={settings.onApproveMemoryRuleCandidate}
         onRejectMemoryRuleCandidate={settings.onRejectMemoryRuleCandidate}
         onDeleteApprovedMemoryRule={settings.onDeleteApprovedMemoryRule}

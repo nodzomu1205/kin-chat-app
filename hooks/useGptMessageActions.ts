@@ -122,10 +122,13 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
 
       args.setGptMessages((prev) => [...prev, assistantMsg]);
       const updatedRecent = [
-        ...(args.gptStateRef.current?.recentMessages || []),
+        ...(args.gptMemoryRuntime.gptStateRef.current?.recentMessages || []),
         assistantMsg,
-      ].slice(-args.chatRecentLimit);
-      const memoryResult = await args.handleGptMemory(updatedRecent, {});
+      ].slice(-args.gptMemoryRuntime.chatRecentLimit);
+      const memoryResult = await args.gptMemoryRuntime.handleGptMemory(
+        updatedRecent,
+        {}
+      );
       args.applySummaryUsage(memoryResult.summaryUsage);
     } catch (error) {
       console.error(error);
@@ -334,17 +337,14 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
         settings: args.chatBridgeSettings,
       }),
     parseWrappedSearchResponse,
-    getProvisionalMemory: args.getProvisionalMemory,
-    currentTaskTitle: undefined,
     activeDocumentTitle: undefined,
     lastSearchQuery: args.lastSearchContext?.query,
-    handleGptMemory: args.handleGptMemory,
-    chatRecentLimit: args.chatRecentLimit,
-    gptStateRef: args.gptStateRef,
+    handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
+    chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
+    gptStateRef: args.gptMemoryRuntime.gptStateRef,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
       setKinInput: args.setKinInput,
       setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,

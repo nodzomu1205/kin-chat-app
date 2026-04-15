@@ -7,6 +7,7 @@ import type {
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
 import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
+import { trimPendingMemoryRuleCandidates } from "@/lib/app/memoryRuleCandidateQueue";
 import {
   APPROVED_MEMORY_RULES_KEY,
   MEMORY_INTERPRETER_SETTINGS_KEY,
@@ -55,7 +56,9 @@ export function useMemoryInterpreterSettings() {
     if (savedPending) {
       try {
         const parsed = JSON.parse(savedPending) as PendingMemoryRuleCandidate[];
-        if (Array.isArray(parsed)) setPendingMemoryRuleCandidates(parsed);
+        if (Array.isArray(parsed)) {
+          setPendingMemoryRuleCandidates(trimPendingMemoryRuleCandidates(parsed));
+        }
       } catch {}
     }
 
@@ -86,7 +89,7 @@ export function useMemoryInterpreterSettings() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
       PENDING_MEMORY_RULE_CANDIDATES_KEY,
-      JSON.stringify(pendingMemoryRuleCandidates)
+      JSON.stringify(trimPendingMemoryRuleCandidates(pendingMemoryRuleCandidates))
     );
   }, [pendingMemoryRuleCandidates]);
 

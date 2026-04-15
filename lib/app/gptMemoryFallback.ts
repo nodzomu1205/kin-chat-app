@@ -1,12 +1,17 @@
-import { getMemoryRuleSignature } from "@/lib/memoryInterpreterRules";
+import {
+  getMemoryRulePhraseSignature,
+  getMemoryRuleSignature,
+} from "@/lib/memoryInterpreterRules";
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
+import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import { normalizeText } from "@/lib/app/memoryInterpreterText";
 
 export type MemoryFallbackResult = {
-  optionsPatch: Partial<MemoryUpdateOptions>;
+  adjudication: MemoryTopicAdjudication;
   pendingCandidates: PendingMemoryRuleCandidate[];
   usedFallback: boolean;
 };
@@ -17,17 +22,66 @@ export function filterPendingMemoryRuleCandidates(
 ) {
   return candidates.filter((candidate) => {
     const signature = getMemoryRuleSignature(candidate);
-    return !rejectedSignatures.includes(signature);
+    const phraseSignature = getMemoryRulePhraseSignature(candidate);
+    return (
+      !rejectedSignatures.includes(signature) &&
+      !rejectedSignatures.includes(phraseSignature)
+    );
   });
 }
 
-export function buildMemoryUpdateOptionsFromFallback(
+export function applyMemoryTopicAdjudication(
   baseOptions: MemoryUpdateOptions | undefined,
-  fallbackResult: Pick<MemoryFallbackResult, "optionsPatch">
+  adjudication: MemoryTopicAdjudication
 ): MemoryUpdateOptions {
   return {
     ...baseOptions,
-    ...fallbackResult.optionsPatch,
+    topicAdjudication: {
+      ...(baseOptions?.topicAdjudication || {}),
+      ...adjudication,
+    },
+  };
+}
+
+export function suppressRejectedFallbackOptions(args: {
+  fallbackResult: MemoryFallbackResult;
+  rejectedSignatures: string[];
+}) {
+  if (args.rejectedSignatures.length === 0) {
+    return args.fallbackResult;
+  }
+
+  const nextAdjudication = { ...args.fallbackResult.adjudication };
+  const committedTopic = normalizeText(String(nextAdjudication.committedTopic || ""));
+  const matchingTopicCandidates = args.fallbackResult.pendingCandidates.filter((candidate) => {
+    const candidateValue = normalizeText(candidate.normalizedValue || candidate.phrase);
+    return Boolean(committedTopic) && candidateValue === committedTopic;
+  });
+  const hasRejectedMatchingCandidate = matchingTopicCandidates.some((candidate) =>
+    args.rejectedSignatures.includes(getMemoryRuleSignature(candidate)) ||
+    args.rejectedSignatures.includes(getMemoryRulePhraseSignature(candidate))
+  );
+  const hasNonRejectedMatchingCandidate = matchingTopicCandidates.some((candidate) => {
+    const signature = getMemoryRuleSignature(candidate);
+    const phraseSignature = getMemoryRulePhraseSignature(candidate);
+    return (
+      !args.rejectedSignatures.includes(signature) &&
+      !args.rejectedSignatures.includes(phraseSignature)
+    );
+  });
+  const committedTopicRejected =
+    Boolean(committedTopic) &&
+    hasRejectedMatchingCandidate &&
+    !hasNonRejectedMatchingCandidate;
+
+  if (committedTopicRejected) {
+    delete nextAdjudication.committedTopic;
+    delete nextAdjudication.trackedEntityOverride;
+  }
+
+  return {
+    ...args.fallbackResult,
+    adjudication: nextAdjudication,
   };
 }
 

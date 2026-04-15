@@ -1,23 +1,29 @@
 import { normalizeMemoryTextValue } from "@/lib/app/gptMemoryCore";
+import { applyCommittedTopicContext } from "@/lib/app/memoryInterpreterContextReducer";
 import type { Memory } from "@/lib/memory";
-import type { ApprovedMemoryRule, PendingMemoryRuleCandidate } from "@/lib/memoryInterpreterRules";
+import type {
+  ApprovedMemoryRule,
+  PendingMemoryRuleCandidate,
+} from "@/lib/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
 import type { KinMemoryState } from "@/types/chat";
+import { buildRuleTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
 
-export type ApprovedCandidateOptionsPatch = Partial<MemoryUpdateOptions> & {
-  closingReplyOverride?: boolean;
-  trackedEntityOverride?: string;
+export type ApprovedCandidateAdjudication = Partial<MemoryUpdateOptions> & {
+  topicAdjudication?: ReturnType<typeof buildRuleTopicAdjudication>;
 };
 
-export function buildApprovedCandidateOptionsPatch(
+export function buildApprovedCandidateAdjudication(
   candidate: PendingMemoryRuleCandidate
-): ApprovedCandidateOptionsPatch {
-  return candidate.kind === "closing_reply"
-    ? { closingReplyOverride: true }
-    : {
-        topicSeed: candidate.normalizedValue || candidate.phrase,
-        trackedEntityOverride: candidate.normalizedValue || candidate.phrase,
-      };
+): ApprovedCandidateAdjudication {
+  return {
+    topicAdjudication: buildRuleTopicAdjudication({
+      kind: candidate.kind,
+      topicDecision: candidate.topicDecision,
+      normalizedValue: candidate.normalizedValue,
+      phrase: candidate.phrase,
+    }),
+  };
 }
 
 export function resolveApprovedTopicFromCandidate(
@@ -36,19 +42,35 @@ export function buildApprovedRuleFromCandidate(
     normalizedValue: candidate.normalizedValue
       ? normalizeMemoryTextValue(candidate.normalizedValue)
       : undefined,
+    intent: candidate.intent,
+    topicDecision: candidate.topicDecision,
+    confidence: candidate.confidence,
+    evidenceText: candidate.evidenceText
+      ? normalizeMemoryTextValue(candidate.evidenceText)
+      : undefined,
+    leftContext: candidate.leftContext
+      ? normalizeMemoryTextValue(candidate.leftContext)
+      : undefined,
+    rightContext: candidate.rightContext
+      ? normalizeMemoryTextValue(candidate.rightContext)
+      : undefined,
+    surfacePattern: candidate.surfacePattern
+      ? normalizeMemoryTextValue(candidate.surfacePattern)
+      : undefined,
+    approvedCount: candidate.approvedCount,
+    rejectedCount: candidate.rejectedCount,
+    lastUsedAt: candidate.lastUsedAt,
     createdAt: candidate.createdAt,
   };
 }
 
-export function applyApprovedTopicToMemory(memory: Memory, approvedTopic: string): Memory {
+export function applyApprovedTopicToMemory(
+  memory: Memory,
+  approvedTopic: string
+): Memory {
   return {
     ...memory,
-    context: {
-      ...memory.context,
-      currentTopic: approvedTopic,
-      currentTask: `ユーザーは${approvedTopic}について知りたい`,
-      followUpRule: `短い追質問は、直前の${approvedTopic}トピックを引き継いで解釈する`,
-    },
+    context: applyCommittedTopicContext(memory.context, approvedTopic),
     lists: {
       ...memory.lists,
       trackedEntities: Array.from(

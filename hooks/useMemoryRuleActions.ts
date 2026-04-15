@@ -1,4 +1,10 @@
-import { getMemoryRuleSignature } from "@/lib/memoryInterpreterRules";
+import {
+  getMemoryRulePhraseSignature,
+  getMemoryRuleReviewSignature,
+  getMemoryRuleSignature,
+  getMemoryRuleSourceSignature,
+} from "@/lib/memoryInterpreterRules";
+import { buildApprovedRuleFromCandidate } from "@/lib/app/gptMemoryApproval";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
@@ -21,6 +27,10 @@ type Params = {
     candidate: PendingMemoryRuleCandidate,
     nextApprovedRules: ApprovedMemoryRule[]
   ) => void | Promise<void>;
+  onRejectCandidateApplied?: (
+    candidate: PendingMemoryRuleCandidate,
+    nextRejectedSignatures: string[]
+  ) => void | Promise<void>;
 };
 
 export function useMemoryRuleActions({
@@ -31,7 +41,14 @@ export function useMemoryRuleActions({
   setApprovedMemoryRules,
   setRejectedMemoryRuleCandidateSignatures,
   onApproveCandidateApplied,
+  onRejectCandidateApplied,
 }: Params) {
+  const touchApprovedRuleUsage = (rule: ApprovedMemoryRule, patch?: Partial<ApprovedMemoryRule>) => ({
+    ...rule,
+    ...patch,
+    lastUsedAt: new Date().toISOString(),
+  });
+
   const updateMemoryInterpreterSettings = (
     patch: Partial<MemoryInterpreterSettings>
   ) => {
@@ -47,19 +64,30 @@ export function useMemoryRuleActions({
     );
     if (!candidate) return;
 
+    const candidatePhraseSignature = getMemoryRulePhraseSignature(candidate);
     const candidateSignature = getMemoryRuleSignature(candidate);
-    const exists = approvedMemoryRules.some(
+    const candidateReviewSignature = getMemoryRuleReviewSignature(candidate);
+    const candidateSourceSignature = getMemoryRuleSourceSignature(candidate);
+    const existingRule = approvedMemoryRules.find(
       (item) => getMemoryRuleSignature(item) === candidateSignature
     );
-    const nextApprovedRules = exists
-      ? approvedMemoryRules
+    const approvedRuleBase = buildApprovedRuleFromCandidate(candidate);
+    const nextApprovedRules = existingRule
+      ? approvedMemoryRules.map((item) =>
+          item.id === existingRule.id
+            ? touchApprovedRuleUsage(item, {
+                approvedCount: (item.approvedCount ?? 0) + 1,
+                rejectedCount: item.rejectedCount ?? 0,
+              })
+            : item
+        )
       : [
         {
+          ...approvedRuleBase,
           id: `memrule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          phrase: candidate.phrase,
-          kind: candidate.kind,
-          normalizedValue: candidate.normalizedValue,
           createdAt: new Date().toISOString(),
+          approvedCount: (approvedRuleBase.approvedCount ?? 0) + 1,
+          lastUsedAt: new Date().toISOString(),
         },
         ...approvedMemoryRules,
       ].slice(0, 100);
@@ -67,7 +95,14 @@ export function useMemoryRuleActions({
     setApprovedMemoryRules(nextApprovedRules);
 
     setPendingMemoryRuleCandidates((prev) =>
-      prev.filter((item) => item.id !== candidateId)
+      prev.filter(
+        (item) =>
+          item.id !== candidateId &&
+          getMemoryRuleSignature(item) !== candidateSignature &&
+          getMemoryRulePhraseSignature(item) !== candidatePhraseSignature &&
+          getMemoryRuleReviewSignature(item) !== candidateReviewSignature &&
+          getMemoryRuleSourceSignature(item) !== candidateSourceSignature
+      )
     );
 
     if (onApproveCandidateApplied) {
@@ -75,19 +110,79 @@ export function useMemoryRuleActions({
     }
   };
 
-  const rejectMemoryRuleCandidate = (candidateId: string) => {
+  const updateMemoryRuleCandidate = (
+    candidateId: string,
+    patch: Partial<PendingMemoryRuleCandidate>
+  ) => {
+    setPendingMemoryRuleCandidates((prev) =>
+      prev.map((item) =>
+        item.id === candidateId
+          ? {
+              ...item,
+              ...patch,
+            }
+          : item
+      )
+    );
+  };
+
+  const rejectMemoryRuleCandidate = async (candidateId: string) => {
     const candidate = pendingMemoryRuleCandidates.find(
       (item) => item.id === candidateId
     );
+    let nextRejectedSignatures: string[] | null = null;
     if (candidate) {
-      const signature = getMemoryRuleSignature(candidate);
-      setRejectedMemoryRuleCandidateSignatures((prev) =>
-        prev.includes(signature) ? prev : [signature, ...prev].slice(0, 200)
+      const candidateSignature = getMemoryRuleSignature(candidate);
+      const phraseSignature = getMemoryRulePhraseSignature(candidate);
+      setApprovedMemoryRules((prev) =>
+        prev.map((item) => {
+          const itemSignature = getMemoryRuleSignature(item);
+          const itemPhraseSignature = getMemoryRulePhraseSignature(item);
+          if (
+            itemSignature !== candidateSignature &&
+            itemPhraseSignature !== phraseSignature
+          ) {
+            return item;
+          }
+          return touchApprovedRuleUsage(item, {
+            rejectedCount: (item.rejectedCount ?? 0) + 1,
+            approvedCount: item.approvedCount ?? 0,
+          });
+        })
       );
     }
+    if (candidate) {
+      const signatures = [
+        getMemoryRuleSignature(candidate),
+        getMemoryRulePhraseSignature(candidate),
+        getMemoryRuleReviewSignature(candidate),
+        getMemoryRuleSourceSignature(candidate),
+      ];
+      setRejectedMemoryRuleCandidateSignatures((prev) => {
+        const next = [
+          ...signatures.filter((signature) => !prev.includes(signature)),
+          ...prev,
+        ].slice(0, 200);
+        nextRejectedSignatures = next;
+        return next;
+      });
+    }
     setPendingMemoryRuleCandidates((prev) =>
-      prev.filter((item) => item.id !== candidateId)
+      candidate
+        ? prev.filter(
+            (item) =>
+              item.id !== candidateId &&
+              getMemoryRuleSignature(item) !== getMemoryRuleSignature(candidate) &&
+              getMemoryRulePhraseSignature(item) !== getMemoryRulePhraseSignature(candidate) &&
+              getMemoryRuleReviewSignature(item) !== getMemoryRuleReviewSignature(candidate) &&
+              getMemoryRuleSourceSignature(item) !== getMemoryRuleSourceSignature(candidate)
+          )
+        : prev.filter((item) => item.id !== candidateId)
     );
+
+    if (candidate && nextRejectedSignatures && onRejectCandidateApplied) {
+      await onRejectCandidateApplied(candidate, nextRejectedSignatures);
+    }
   };
 
   const deleteApprovedMemoryRule = (ruleId: string) => {
@@ -96,6 +191,7 @@ export function useMemoryRuleActions({
 
   return {
     updateMemoryInterpreterSettings,
+    updateMemoryRuleCandidate,
     approveMemoryRuleCandidate,
     rejectMemoryRuleCandidate,
     deleteApprovedMemoryRule,

@@ -89,7 +89,14 @@ The current verification baseline is:
 
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- current test count: `41 files / 163 tests`
+- current test count: `63 files / 259 tests`
+
+Recent regression fixes include:
+
+- rejected memory-rule candidates now trigger memory reapplication, so an incorrect tentative topic can be cleared immediately after rejection
+- GPT chat scroll position now stays stable when moving into and back out of the settings workspace on both desktop and mobile
+- chat topic adjudication / approval flow has been structurally rebuilt and is now stable in live review
+- task title auto-generation now uses a clean naming pipeline instead of truncating the first summary sentence
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -99,6 +106,7 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Domain Model](./docs/domain-model.md)
 - [Refactor Roadmap](./docs/refactor-roadmap.md)
 - [Next Session Handover](./docs/next-session.md)
+- [Handoff 2026-04-15](./docs/HANDOFF-2026-04-15.md)
 - [Architecture Guidelines](./docs/architecture-guidelines.md)
 - [Handoff 2026-04-14](./docs/HANDOFF-2026-04-14.md)
 - [Handoff 2026-04-11](./docs/HANDOFF-2026-04-11.md)

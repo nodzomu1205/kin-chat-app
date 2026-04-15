@@ -30,14 +30,14 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
-      persistCurrentGptState: args.persistCurrentGptState,
+      setGptState: args.gptMemoryRuntime.setGptState,
+      persistCurrentGptState: args.gptMemoryRuntime.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
-      gptStateRef: args.gptStateRef,
-      chatRecentLimit: args.chatRecentLimit,
+      gptStateRef: args.gptMemoryRuntime.gptStateRef,
+      chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
       applySummaryUsage: args.applySummaryUsage,
-      handleGptMemory: args.handleGptMemory,
+      handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
     });
   };
 
@@ -53,14 +53,14 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
-      persistCurrentGptState: args.persistCurrentGptState,
+      setGptState: args.gptMemoryRuntime.setGptState,
+      persistCurrentGptState: args.gptMemoryRuntime.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
-      gptStateRef: args.gptStateRef,
-      chatRecentLimit: args.chatRecentLimit,
+      gptStateRef: args.gptMemoryRuntime.gptStateRef,
+      chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
       applySummaryUsage: args.applySummaryUsage,
-      handleGptMemory: args.handleGptMemory,
+      handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
     });
   };
 
@@ -77,14 +77,14 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
-      persistCurrentGptState: args.persistCurrentGptState,
+      setGptState: args.gptMemoryRuntime.setGptState,
+      persistCurrentGptState: args.gptMemoryRuntime.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
-      gptStateRef: args.gptStateRef,
-      chatRecentLimit: args.chatRecentLimit,
+      gptStateRef: args.gptMemoryRuntime.gptStateRef,
+      chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
       applySummaryUsage: args.applySummaryUsage,
-      handleGptMemory: args.handleGptMemory,
+      handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
     });
   };
 
@@ -102,14 +102,14 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
-      persistCurrentGptState: args.persistCurrentGptState,
+      setGptState: args.gptMemoryRuntime.setGptState,
+      persistCurrentGptState: args.gptMemoryRuntime.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
-      gptStateRef: args.gptStateRef,
-      chatRecentLimit: args.chatRecentLimit,
+      gptStateRef: args.gptMemoryRuntime.gptStateRef,
+      chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
       applySummaryUsage: args.applySummaryUsage,
-      handleGptMemory: args.handleGptMemory,
+      handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
     });
   };
 
@@ -125,14 +125,14 @@ export function useTaskDraftActions(args: UseChatPageActionsArgs) {
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
-      setGptState: args.setGptState,
-      persistCurrentGptState: args.persistCurrentGptState,
+      setGptState: args.gptMemoryRuntime.setGptState,
+      persistCurrentGptState: args.gptMemoryRuntime.persistCurrentGptState,
       setCurrentTaskDraft: args.setCurrentTaskDraft,
-      gptStateRef: args.gptStateRef,
-      chatRecentLimit: args.chatRecentLimit,
+      gptStateRef: args.gptMemoryRuntime.gptStateRef,
+      chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       applyTaskUsage: args.applyTaskUsage,
       applySummaryUsage: args.applySummaryUsage,
-      handleGptMemory: args.handleGptMemory,
+      handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
     });
   };
 

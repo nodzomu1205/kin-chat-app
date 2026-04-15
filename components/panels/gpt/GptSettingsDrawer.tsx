@@ -114,6 +114,10 @@ type Props = {
   ) => void;
   onApproveMemoryRuleCandidate: (id: string) => void;
   onRejectMemoryRuleCandidate: (id: string) => void;
+  onUpdateMemoryRuleCandidate: (
+    id: string,
+    patch: Partial<PendingMemoryRuleCandidate>
+  ) => void;
   onDeleteApprovedMemoryRule: (id: string) => void;
   protocolPrompt: string;
   protocolRulebook: string;
@@ -435,10 +439,12 @@ export default function GptSettingsDrawer(props: Props) {
           onChangeMemoryInterpreterSettings={props.onChangeMemoryInterpreterSettings}
           onApproveMemoryRuleCandidate={props.onApproveMemoryRuleCandidate}
           onRejectMemoryRuleCandidate={props.onRejectMemoryRuleCandidate}
+          onUpdateMemoryRuleCandidate={props.onUpdateMemoryRuleCandidate}
           onDeleteApprovedMemoryRule={props.onDeleteApprovedMemoryRule}
           onApproveIntentCandidate={props.onApproveIntentCandidate}
           onRejectIntentCandidate={props.onRejectIntentCandidate}
           onDeleteApprovedIntentPhrase={props.onDeleteApprovedIntentPhrase}
+          isMobile={props.isMobile}
         />
       ) : null}
 

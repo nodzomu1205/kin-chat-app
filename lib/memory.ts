@@ -6,6 +6,7 @@ export type Memory = {
   lists: Record<string, unknown>;
   context: {
     currentTopic?: string;
+    proposedTopic?: string;
     currentTask?: string;
     followUpRule?: string;
     lastUserIntent?: string;
@@ -71,6 +72,10 @@ export function normalizeMemoryShape(input: unknown): Memory {
     currentTopic:
       typeof rawContext.currentTopic === "string"
         ? rawContext.currentTopic
+        : undefined,
+    proposedTopic:
+      typeof rawContext.proposedTopic === "string"
+        ? rawContext.proposedTopic
         : undefined,
     currentTask:
       typeof rawContext.currentTask === "string"

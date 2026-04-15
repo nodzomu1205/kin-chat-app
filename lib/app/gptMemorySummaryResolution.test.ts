@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
-import { resolveSummarizedMemoryState } from "@/lib/app/gptMemoryUpdateFlow";
+import { resolveMemorySummaryState } from "@/lib/app/gptMemorySummaryResolution";
 
-describe("gptMemoryUpdateFlow", () => {
+describe("gptMemorySummaryResolution", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -29,7 +29,7 @@ describe("gptMemoryUpdateFlow", () => {
       })
     );
 
-    const result = await resolveSummarizedMemoryState({
+    const result = await resolveMemorySummaryState({
       candidateMemory: {
         facts: ["candidate fact"],
         preferences: [],
@@ -60,7 +60,7 @@ describe("gptMemoryUpdateFlow", () => {
       })
     );
 
-    const result = await resolveSummarizedMemoryState({
+    const result = await resolveMemorySummaryState({
       candidateMemory: {
         facts: ["candidate fact"],
         preferences: [],

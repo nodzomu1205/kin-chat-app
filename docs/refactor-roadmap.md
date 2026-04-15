@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-13
+Updated: 2026-04-15
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -15,7 +15,7 @@ The goal is not to rewrite everything at once. The goal is to keep shipping whil
 Current verification baseline:
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- test status: `36 files / 149 tests`
+- test status: `63 files / 259 tests`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -112,8 +112,10 @@ Done:
 - part of `app/page.tsx` orchestration extraction
 - `panelPropsBuilders.ts` now absorbs pending-injection progress, task-draft field callbacks, and settings count clamping
 - GPT settings now have a separate full-area workspace path with 3 icon entry points while the existing hanging drawers remain in place
+- GPT chat scroll position is now preserved when switching into and back out of the settings workspace
 - `useGptMemory.ts` reduced to a smaller orchestration hook
 - `memoryInterpreter.ts` reduced through staged helper extraction
+- rejected memory-rule candidates now trigger immediate memory reapplication so tentative wrong topics can be cleared
 
 Next:
 - introduce `useChatAppController`
@@ -206,6 +208,8 @@ Done:
 - legacy local helper block removed from `route.ts`
 - approved-candidate reapply now uses the same formal memory recomputation path as approved-rule reapply
 - closing-reply detection now uses a single source of truth
+- chat topic adjudication flow was structurally rebuilt and reached a stable live-reviewed state
+- task title auto-generation was rebuilt around a clean naming pipeline
 
 Next:
 - keep `memoryInterpreter.ts` and `useGptMemory.ts` stable unless a correctness issue is found
@@ -214,6 +218,7 @@ Next:
 - consider the next `sendToGptFlow` slice around transcript request handling or request-payload assembly
 - continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
 - review `app/api/ingest/route.ts` and `hooks/useIngestActions.ts` as the next ingest-side integration point
+- periodically audit topic write authority and remove any newly regrown hidden mutation paths instead of layering blockers over them
 
 ### 4. Test Readiness
 Status: In progress
@@ -265,6 +270,7 @@ Done:
 - [`lib/app/gptMemoryUpdateFlow.test.ts`](../lib/app/gptMemoryUpdateFlow.test.ts)
 - [`lib/app/gptMemoryReapply.test.ts`](../lib/app/gptMemoryReapply.test.ts)
 - [`lib/app/gptMemoryRegistry.test.ts`](../lib/app/gptMemoryRegistry.test.ts)
+- [`hooks/useMemoryRuleActions.test.ts`](../hooks/useMemoryRuleActions.test.ts)
 
 Next:
 - task budget tests

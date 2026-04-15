@@ -2,15 +2,17 @@ import type { Memory, MemorySettings } from "@/lib/memory";
 import type { ApprovedMemoryRule, MemoryInterpreterSettings } from "@/lib/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
 import type { Message } from "@/types/chat";
-import { buildCandidateMemoryState, type TokenUsage } from "@/lib/app/gptMemoryStateHelpers";
+import { type TokenUsage } from "@/lib/app/gptMemoryStateHelpers";
+import { buildCandidateMemoryState } from "@/lib/app/gptMemoryStateCandidate";
 import { shouldSummarizeMemoryUpdate } from "@/lib/app/gptMemorySummarizePolicy";
 import {
-  buildMemoryUpdateOptionsFromFallback,
+  applyMemoryTopicAdjudication,
   filterPendingMemoryRuleCandidates,
+  suppressRejectedFallbackOptions,
 } from "@/lib/app/gptMemoryFallback";
 import { resolveMemoryFallbackOptions } from "@/lib/app/memoryInterpreter";
 
-export async function prepareMemoryUpdate(params: {
+export async function prepareCandidateMemoryUpdate(params: {
   currentMemory: Memory;
   updatedRecent: Message[];
   settings: MemorySettings;
@@ -35,20 +37,26 @@ export async function prepareMemoryUpdate(params: {
   const fallbackResult = latestUserText
     ? await resolveMemoryFallbackOptions({
         latestUserText,
+        recentMessages: params.updatedRecent,
         currentMemory: params.currentMemory,
         settings: params.memoryInterpreterSettings,
         approvedRules: params.approvedRules,
       })
-    : { optionsPatch: {}, pendingCandidates: [], usedFallback: false };
+    : { adjudication: {}, pendingCandidates: [], usedFallback: false };
+
+  const effectiveFallbackResult = suppressRejectedFallbackOptions({
+    fallbackResult,
+    rejectedSignatures: params.rejectedMemoryRuleCandidateSignatures,
+  });
 
   const filteredPendingCandidates = filterPendingMemoryRuleCandidates(
-    fallbackResult.pendingCandidates,
+    effectiveFallbackResult.pendingCandidates,
     params.rejectedMemoryRuleCandidateSignatures
   );
 
-  const memoryUpdateOptions = buildMemoryUpdateOptionsFromFallback(
+  const memoryUpdateOptions = applyMemoryTopicAdjudication(
     params.options,
-    fallbackResult
+    effectiveFallbackResult.adjudication
   );
   const { trimmedRecent, candidateMemory } = buildCandidateMemoryState({
     currentMemory: params.currentMemory,
@@ -56,6 +64,17 @@ export async function prepareMemoryUpdate(params: {
     settings: params.settings,
     options: memoryUpdateOptions,
   });
+  if (fallbackResult.usedFallback && fallbackResult.debug) {
+    candidateMemory.lists = {
+      ...candidateMemory.lists,
+      memoryInterpretDebug: {
+        latestUserText,
+        prompt: fallbackResult.debug.prompt,
+        rawReply: fallbackResult.debug.rawReply,
+        parsed: fallbackResult.debug.parsed,
+      },
+    };
+  }
   const needsSummary = shouldSummarizeMemoryUpdate({
     trimmedRecent,
     candidateMemory,

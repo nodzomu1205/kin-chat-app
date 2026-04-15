@@ -279,6 +279,7 @@ export default function GptPanel(props: GptPanelProps) {
     onChangeAutoCopyFileIngestSysInfoToKin:
       props.onChangeAutoCopyFileIngestSysInfoToKin,
     onChangeMemoryInterpreterSettings: props.onChangeMemoryInterpreterSettings,
+    onUpdateMemoryRuleCandidate: props.onUpdateMemoryRuleCandidate,
     onApproveMemoryRuleCandidate: props.onApproveMemoryRuleCandidate,
     onRejectMemoryRuleCandidate: props.onRejectMemoryRuleCandidate,
     onDeleteApprovedMemoryRule: props.onDeleteApprovedMemoryRule,
@@ -312,27 +313,16 @@ export default function GptPanel(props: GptPanelProps) {
     (settings.memorySettings.chatRecentLimit ?? 0) +
     (settings.memorySettings.maxFacts ?? 0) +
     (settings.memorySettings.maxPreferences ?? 0);
-  const latestUserText =
-    [...chat.gptMessages]
-      .reverse()
-      .find((message) => message.role === "user")?.text || "";
-
   const floatingLabel = useMemo<FloatingLabel>(() => resolveFloatingLabel({
     activeDrawer,
     bottomTab,
     currentTaskDraft: task.currentTaskDraft,
-    currentTaskFromMemory: chat.gptState.memory?.context?.currentTask,
     currentTopic: chat.gptState.memory?.context?.currentTopic,
-    currentInput: chat.gptInput,
-    latestUserText,
   }), [
     activeDrawer,
     bottomTab,
     task.currentTaskDraft,
-    chat.gptState.memory?.context?.currentTask,
     chat.gptState.memory?.context?.currentTopic,
-    chat.gptInput,
-    latestUserText,
   ]);
 
   const memoryCapacityPreview =
@@ -490,30 +480,24 @@ export default function GptPanel(props: GptPanelProps) {
         </div>
       ) : null}
 
-      {activeSettingsWorkspace ? (
-        <GptSettingsWorkspace
-          activeView={activeSettingsWorkspace}
-          settings={settings}
-          protocol={protocol}
-          localSettings={localSettings}
-          setLocalSettings={setLocalSettings}
-          memoryCapacityPreview={memoryCapacityPreview}
-          toPositiveInt={toPositiveInt}
-          isMobile={header.isMobile}
-          onClose={() => setActiveSettingsWorkspace(null)}
-        />
-      ) : (
-        <>
       <div
         style={{
-          ...chatBodyStyle(header.isMobile),
-          position: "relative",
+          display: activeSettingsWorkspace ? "none" : "flex",
           flex: 1,
           minHeight: 0,
-          display: "flex",
           flexDirection: "column",
         }}
       >
+        <div
+          style={{
+            ...chatBodyStyle(header.isMobile),
+            position: "relative",
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
         <div
           style={{
             minHeight: 30,
@@ -590,75 +574,98 @@ export default function GptPanel(props: GptPanelProps) {
             onSendYouTubeTranscriptToKin={props.onSendYouTubeTranscriptToKin}
           />
         </div>
-      </div>
-
-      <div style={footerStyle(header.isMobile)}>
-        {task.pendingInjectionTotalParts > 0 && (
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#0f766e",
-              background: "#ecfdf5",
-              border: "1px solid #a7f3d0",
-              borderRadius: 10,
-              padding: "8px 10px",
-              marginBottom: 0,
-            }}
-          >
-            注入送信中 {task.pendingInjectionCurrentPart}/{task.pendingInjectionTotalParts}
-          </div>
-        )}
-
-        <div style={{ position: "relative", paddingTop: header.isMobile ? 0 : 0, marginTop: 0 }}>
-          <GptToolbar
-            activeTab={bottomTab}
-            isMobile={header.isMobile}
-            onSwitchPanel={header.onSwitchPanel}
-            onChangeTab={setBottomTab}
-            onAction={handleToolbarAction}
-            onRunTask={() => void task.runPrepTaskFromInput()}
-            onRunDeepen={() => void task.runDeepenTaskFromLast()}
-            onRunTaskUpdate={() => void task.runUpdateTaskFromInput()}
-            onImportLastResponse={() => void task.runUpdateTaskFromLastGptMessage()}
-            onAttachSearchResult={() => void task.runAttachSearchResultToTask()}
-            onSendLatestResponseToKin={() => void task.sendLatestGptContentToKin()}
-            onSendCurrentTaskToKin={() => void task.sendCurrentTaskContentToKin()}
-            onReceiveKinResponse={() => void task.receiveLastKinResponseToGptInput()}
-            onTransfer={task.sendLastGptToKinDraft}
-            onReset={chat.resetGptForCurrentKin}
-          />
         </div>
 
-        <GptComposer
-          value={chat.gptInput}
-          onChange={(value) => chat.setGptInput(value)}
-          onSubmit={() => void chat.sendToGpt("normal")}
-          submitOnEnter={!header.isMobile}
-          placeholder={
-            getComposerPlaceholder(bottomTab)
-          }
-          onInjectFile={props.injectFileToKinDraft}
-          loading={chat.loading}
-          ingestLoading={settings.ingestLoading}
-          canInjectFile={settings.canInjectFile}
-          uploadKind={settings.uploadKind}
-          ingestMode={settings.ingestMode}
-          imageDetail={settings.imageDetail}
-          postIngestAction={settings.postIngestAction}
-          fileReadPolicy={settings.fileReadPolicy}
-          compactCharLimit={settings.compactCharLimit}
-          simpleImageCharLimit={settings.simpleImageCharLimit}
-          onChangeUploadKind={settings.onChangeUploadKind}
-          onChangeIngestMode={settings.onChangeIngestMode}
-          onChangeImageDetail={settings.onChangeImageDetail}
-          onChangePostIngestAction={settings.onChangePostIngestAction}
-          showFileTools={bottomTab === "file"}
-          isMobile={header.isMobile}
-        />
+        <div style={footerStyle(header.isMobile)}>
+          {task.pendingInjectionTotalParts > 0 && (
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "#0f766e",
+                background: "#ecfdf5",
+                border: "1px solid #a7f3d0",
+                borderRadius: 10,
+                padding: "8px 10px",
+                marginBottom: 0,
+              }}
+            >
+              注入送信中 {task.pendingInjectionCurrentPart}/{task.pendingInjectionTotalParts}
+            </div>
+          )}
+
+          <div style={{ position: "relative", paddingTop: header.isMobile ? 0 : 0, marginTop: 0 }}>
+            <GptToolbar
+              activeTab={bottomTab}
+              isMobile={header.isMobile}
+              onSwitchPanel={header.onSwitchPanel}
+              onChangeTab={setBottomTab}
+              onAction={handleToolbarAction}
+              onRunTask={() => void task.runPrepTaskFromInput()}
+              onRunDeepen={() => void task.runDeepenTaskFromLast()}
+              onRunTaskUpdate={() => void task.runUpdateTaskFromInput()}
+              onImportLastResponse={() => void task.runUpdateTaskFromLastGptMessage()}
+              onAttachSearchResult={() => void task.runAttachSearchResultToTask()}
+              onSendLatestResponseToKin={() => void task.sendLatestGptContentToKin()}
+              onSendCurrentTaskToKin={() => void task.sendCurrentTaskContentToKin()}
+              onReceiveKinResponse={() => void task.receiveLastKinResponseToGptInput()}
+              onTransfer={task.sendLastGptToKinDraft}
+              onReset={chat.resetGptForCurrentKin}
+            />
+          </div>
+
+          <GptComposer
+            value={chat.gptInput}
+            onChange={(value) => chat.setGptInput(value)}
+            onSubmit={() => void chat.sendToGpt("normal")}
+            submitOnEnter={!header.isMobile}
+            placeholder={
+              getComposerPlaceholder(bottomTab)
+            }
+            onInjectFile={props.injectFileToKinDraft}
+            loading={chat.loading}
+            ingestLoading={settings.ingestLoading}
+            canInjectFile={settings.canInjectFile}
+            uploadKind={settings.uploadKind}
+            ingestMode={settings.ingestMode}
+            imageDetail={settings.imageDetail}
+            postIngestAction={settings.postIngestAction}
+            fileReadPolicy={settings.fileReadPolicy}
+            compactCharLimit={settings.compactCharLimit}
+            simpleImageCharLimit={settings.simpleImageCharLimit}
+            onChangeUploadKind={settings.onChangeUploadKind}
+            onChangeIngestMode={settings.onChangeIngestMode}
+            onChangeImageDetail={settings.onChangeImageDetail}
+            onChangePostIngestAction={settings.onChangePostIngestAction}
+            showFileTools={bottomTab === "file"}
+            isMobile={header.isMobile}
+          />
+        </div>
       </div>
-        </>
-      )}
+
+      <div
+        style={{
+          display: activeSettingsWorkspace ? "flex" : "none",
+          flex: activeSettingsWorkspace ? 1 : undefined,
+          minHeight: 0,
+          height: "100%",
+          overflow: "hidden",
+        }}
+      >
+        {activeSettingsWorkspace ? (
+          <GptSettingsWorkspace
+            activeView={activeSettingsWorkspace}
+            settings={settings}
+            protocol={protocol}
+            localSettings={localSettings}
+            setLocalSettings={setLocalSettings}
+            memoryCapacityPreview={memoryCapacityPreview}
+            toPositiveInt={toPositiveInt}
+            isMobile={header.isMobile}
+            onClose={() => setActiveSettingsWorkspace(null)}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

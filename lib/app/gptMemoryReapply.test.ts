@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildRejectedCandidateReapplyMemory,
   getReapplicableRecentMessages,
   mergeApprovedRulesWithCandidate,
 } from "@/lib/app/gptMemoryReapply";
@@ -54,5 +55,48 @@ describe("gptMemoryReapply", () => {
         createdAt: "2026-04-13T00:00:00.000Z",
       },
     ]);
+  });
+
+  it("builds a clean reapply memory when a candidate is rejected", () => {
+    expect(
+      buildRejectedCandidateReapplyMemory(
+        {
+          facts: ["Wrong topic fact"],
+          preferences: ["pref-a"],
+          lists: {
+            activeDocument: { title: "Doc A" },
+            recentSearchQueries: ["query-a"],
+            trackedEntities: ["Move Preparation", "Other"],
+          },
+          context: {
+            currentTopic: "Move Preparation",
+            currentTask: "User wants to know about Move Preparation",
+            followUpRule: "Short follow-ups inherit Move Preparation",
+            lastUserIntent: "Tell me about moving",
+          },
+        },
+        {
+          id: "cand-1",
+          kind: "topic_alias",
+          phrase: "move",
+          normalizedValue: "Move Preparation",
+          createdAt: "2026-04-13T00:00:00.000Z",
+          sourceText: "We need to move soon.",
+        }
+      )
+    ).toEqual({
+      facts: [],
+      preferences: ["pref-a"],
+      lists: {
+        activeDocument: { title: "Doc A" },
+        recentSearchQueries: ["query-a"],
+        trackedEntities: ["Other"],
+      },
+      context: {
+        currentTopic: undefined,
+        proposedTopic: undefined,
+        lastUserIntent: "Tell me about moving",
+      },
+    });
   });
 });

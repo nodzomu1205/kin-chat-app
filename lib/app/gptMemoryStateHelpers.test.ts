@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  buildCandidateMemoryState,
   hasMeaningfulMemoryState,
-  mergeSummarizedMemoryState,
   normalizeRecentMessagesState,
   normalizeTokenUsage,
   trimMemoryState,
 } from "@/lib/app/gptMemoryStateHelpers";
+import { buildCandidateMemoryState } from "@/lib/app/gptMemoryStateCandidate";
+import { mergeSummarizedMemoryState } from "@/lib/app/gptMemoryStateSummaryMerge";
 import { DEFAULT_MEMORY_SETTINGS, type Memory } from "@/lib/memory";
 import type { Message } from "@/types/chat";
 
-const interpretMemoryPatchMock = vi.fn();
+const interpretMemoryStateMock = vi.fn();
 
 vi.mock("@/lib/app/memoryInterpreter", () => ({
-  interpretMemoryPatch: (...args: unknown[]) => interpretMemoryPatchMock(...args),
+  interpretMemoryState: (...args: unknown[]) => interpretMemoryStateMock(...args),
 }));
 
 function buildMessage(
@@ -36,7 +36,7 @@ function buildMemory(overrides?: Partial<Memory>): Memory {
 
 describe("gptMemoryStateHelpers", () => {
   beforeEach(() => {
-    interpretMemoryPatchMock.mockReset();
+    interpretMemoryStateMock.mockReset();
   });
 
   it("trims and normalizes memory state", () => {
@@ -53,6 +53,7 @@ describe("gptMemoryStateHelpers", () => {
         },
         context: {
           currentTopic: " Topic A ",
+          proposedTopic: " Topic B ",
           currentTask: " Task A ",
           followUpRule: " Rule A ",
           lastUserIntent: " Intent A ",
@@ -77,6 +78,7 @@ describe("gptMemoryStateHelpers", () => {
       },
       context: {
         currentTopic: "Topic A",
+        proposedTopic: "Topic B",
         currentTask: "Task A",
         followUpRule: "Rule A",
         lastUserIntent: "Intent A",
@@ -123,7 +125,7 @@ describe("gptMemoryStateHelpers", () => {
   });
 
   it("clears previous facts when the topic switches", () => {
-    interpretMemoryPatchMock.mockReturnValue({
+    interpretMemoryStateMock.mockReturnValue({
       facts: ["new fact"],
       lists: { trackedEntities: ["New Topic"] },
       context: {
@@ -169,7 +171,7 @@ describe("gptMemoryStateHelpers", () => {
   });
 
   it("retains previous facts when no topic switch and no new facts are produced", () => {
-    interpretMemoryPatchMock.mockReturnValue({
+    interpretMemoryStateMock.mockReturnValue({
       context: {
         currentTopic: "Same Topic",
       },
@@ -205,6 +207,7 @@ describe("gptMemoryStateHelpers", () => {
         facts: ["candidate fact"],
         context: {
           currentTopic: "Move Preparation",
+          proposedTopic: "Possible Switch",
           currentTask: "Find a new home",
           followUpRule: "Carry the move topic",
           lastUserIntent: "",
@@ -225,6 +228,7 @@ describe("gptMemoryStateHelpers", () => {
 
     expect(merged.context).toEqual({
       currentTopic: "Move Preparation",
+      proposedTopic: "Possible Switch",
       currentTask: "Find a new home",
       followUpRule: "Carry the move topic",
       lastUserIntent: "",

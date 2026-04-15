@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildMemoryUpdateOptionsFromFallback,
+  applyMemoryTopicAdjudication,
   filterPendingMemoryRuleCandidates,
   resolveApprovedMemoryRules,
+  suppressRejectedFallbackOptions,
 } from "@/lib/app/gptMemoryFallback";
 import type {
   ApprovedMemoryRule,
@@ -35,25 +36,49 @@ describe("gptMemoryFallback", () => {
     ).toEqual([candidateB]);
   });
 
+  it("filters rejected memory rule candidates by phrase signature", () => {
+    expect(
+      filterPendingMemoryRuleCandidates([candidateA, candidateB], [
+        "topic_alias|Move planning",
+      ])
+    ).toEqual([candidateB]);
+  });
+
   it("merges base options and fallback options patch", () => {
     expect(
-      buildMemoryUpdateOptionsFromFallback(
+      applyMemoryTopicAdjudication(
         {
           previousCommittedTopic: "Old Topic",
-          topicSeed: "Old Topic",
+          topicAdjudication: {
+            committedTopic: "Old Topic",
+          },
         },
         {
-          optionsPatch: {
-            topicSeed: "New Topic",
-            lastUserIntent: "Let's move",
-          },
+          committedTopic: "New Topic",
         }
       )
     ).toEqual({
       previousCommittedTopic: "Old Topic",
-      topicSeed: "New Topic",
-      lastUserIntent: "Let's move",
+      topicAdjudication: {
+        committedTopic: "New Topic",
+      },
     });
+  });
+
+  it("suppresses a rejected topic-alias fallback patch", () => {
+    expect(
+      suppressRejectedFallbackOptions({
+        fallbackResult: {
+          adjudication: {
+            committedTopic: "Move Planning",
+            trackedEntityOverride: "Move Planning",
+          },
+          pendingCandidates: [candidateA],
+          usedFallback: true,
+        },
+        rejectedSignatures: ["topic_alias|Move Planning"],
+      }).adjudication
+    ).toEqual({});
   });
 
   it("prefers runtime approved rules when provided", () => {

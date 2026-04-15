@@ -62,8 +62,6 @@ describe("runSendToGptFlow", () => {
       getProtocolLimitViolation: () => null,
       shouldInjectTaskContextWithSettings: () => false,
       parseWrappedSearchResponse: () => null,
-      getProvisionalMemory: () => ({}),
-      currentTaskTitle: undefined,
       searchMode: "normal",
       searchEngines: ["google_search"],
       searchLocation: "Japan",
@@ -94,7 +92,6 @@ describe("runSendToGptFlow", () => {
         inputValue = typeof next === "function" ? next(inputValue) : next;
       },
       setGptLoading: () => {},
-      setGptState: () => {},
       setKinInput: () => {},
       setPendingKinInjectionBlocks: () => {},
       setPendingKinInjectionIndex: () => {},

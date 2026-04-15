@@ -1,6 +1,6 @@
 # Next Session Handover
 
-Updated: 2026-04-14
+Updated: 2026-04-15
 
 ## Current State
 
@@ -8,141 +8,150 @@ The repository is in a good stopping state.
 
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- current test count: `41 files / 163 tests`
+- current test count: `63 files / 259 tests`
 
-Recent work covered both maintainability and a substantial task-workflow expansion. The codebase is now in a stronger state around task orchestration, task progress handling, YouTube transcript delivery, settings UX separation, and protocol documentation.
+The most important result of this wave is that the chat-side topic decision flow is now behaving correctly in live review, including:
+
+- topic proposal / approval / hold behavior
+- duplicate approval suppression
+- approved topic reflection into memory and the top chat chip
+- task-title auto naming quality improvements
+- English leakage reduction in memory/topic presentation
 
 ## What Changed In This Wave
 
-### Maintainability / structure
+### 1. Topic flow was re-architected, not patched
 
-- `app/page.tsx` was thinned further through `panelPropsBuilders.ts`
-  - pending injection progress moved out of the page
-  - task draft field callbacks moved out of the page
-  - settings count clamping moved out of the page
-- `lib/app/sendToGptFlowHelpers.ts` now owns shared recent-message / previous-topic memory-update helpers
-- `lib/app/sendToGptFlow.ts` was reduced in small slices
-  - transcript helper extraction
-  - protocol wrapping helper extraction
-  - search response shaping helper extraction
-  - implicit search helper extraction
-  - protocol side-effect helper extraction
-- task-draft collection helpers were added in `lib/app/taskDraftCollection.ts`
-- task-runtime collection helpers were added in `lib/taskRuntimeCollection.ts`
-- task progress mutation helpers were added in `lib/taskProtocolMutations.ts`
+The memory/topic work moved away from ad-hoc local fixes and toward clearer adjudication boundaries.
 
-### GPT settings workspace
+Done:
 
-- GPT settings now have a dedicated full-area workspace view
-- header settings entry was replaced with 3 small icon entry points
-- chat and task icons glow when pending memory / SYS approvals exist
-- memory approval UI and SYS rule approval UI were unified
-- the old hanging drawers for memory / tokens / task draft / task progress / library remain in place as a compatibility bridge
-
-### Task workflow expansion
-
-- the old `タスク形成` / `タスク進捗` entry points were unified under a single `タスク` drawer entry
-- task draft saving now writes snapshot documents into the library
-- multiple task drafts can now be retained and switched with left/right navigation
-- multiple task progress runtimes can now be retained and switched with left/right navigation
-- `TASK_CONFIRM` with `STATUS: SUSPENDED` is now supported as an official hold state
-- task progress UI now supports:
-  - hold-state badge
-  - suspend-message generation
-  - manual progress-count editing
-  - progress-count SYS block output
-  - passing the generated SYS block into the Kin input
-- when a task result artifact is stored in the library, the matching task progress snapshot is archived from the active progress panel
-
-### Search / media / transcript work
-
-- normal `検索:` requests once again attach visible sources in GPT responses
-- YouTube sources in message cards now use muted autoplay preview-style embeds
-- `SYS_YOUTUBE_TRANSCRIPT_REQUEST` now supports `URLS:` with up to 3 URLs
-- queued transcript delivery is now gated by Kin ACK via:
-
-```txt
-<<SYS_KIN_RESPONSE>>
-Received. Send the next part.
-<<END_SYS_KIN_RESPONSE>>
-```
-
-### Protocol docs
-
-- `lib/taskCompiler.ts` examples and rule lines now describe:
-  - `URLS:` support for up to 3 YouTube URLs
-  - required ACK behavior after each transcript part / queued delivery
-- `lib/app/kinProtocolDefaults.ts` prompt and rulebook now describe the same behavior
-- the default rulebook now also documents `TASK_CONFIRM` and `STATUS: SUSPENDED`
-
-## Current Review Priorities
-
-Review these first before starting new work:
-
-1. `app/page.tsx`
-2. `lib/app/sendToGptFlowHelpers.ts`
-3. `lib/app/sendToGptFlow.ts`
-4. `components/panels/gpt/GptSettingsWorkspace.tsx`
-5. `components/panels/gpt/GptTaskDrawer.tsx`
-6. `hooks/useKinTaskProtocol.ts`
-7. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
-
-## Known Safe Stopping Point
-
-These areas are currently in a good stopping state for this wave:
-
-- `hooks/useGptMemory.ts`
-- `lib/app/memoryInterpreter.ts`
-- the new settings workspace entry flow
-- multi-draft task storage
-- multi-runtime task progress storage
+- topic adjudication now centers on explicit `keep / switch / unclear`
+- `closingReplyOverride`, generic fallback patch merge, and old runtime `topic_alias / closing_reply` branches were removed from active runtime flow
+- `committedTopic` precedence and approval/reapply behavior were fixed
+- `unclear` now stays as preserve + proposal, instead of silently committing
+- duplicate pending topic reviews were reduced through shared queue handling
+- top-chip rendering was simplified to follow actual memory state
 
 Important:
 
-- TypeScript passes
-- tests pass
-- transcript queueing depends on Kin returning the ACK block exactly
-- old hanging drawers are intentionally still present
-- task-runtime archival now depends on `task_result` metadata being carried into stored documents
+- the working rule is now: after the initial topic, any new topic candidate should stay pending unless a strong approved shortcut applies
+- strong shortcut means approved pattern memory match, not raw LLM confidence
 
-## Recommended Next Maintainability Steps
+### 2. Memory interpreter and memory update flow were structurally thinned
 
-Resume with planning and low-risk thinning work around:
+Done:
 
-1. `app/page.tsx`
-2. `lib/app/sendToGptFlowHelpers.ts`
-3. `lib/app/sendToGptFlow.ts`
+- `memoryInterpreter.ts` is now much closer to a facade/orchestrator
+- topic extraction, utterance classification, fallback orchestration, topic reduction, context reduction, state assembly, fact extraction, list extraction, and context phrasing are now split into separate modules
+- `useGptMemory` now delegates update/reapply/store work through coordinators rather than holding most of the orchestration inline
+- `app/page.tsx` and `useChatPageActions` were thinned through shared builders/helpers
 
-Recommended goal for the next maintainability pass:
+Important:
 
-- keep behavior unchanged while reducing panel-prop wiring and GPT flow branching
-- push task-workflow collection logic toward pure helpers where possible
-- keep `useGptMemory.ts` as an orchestration boundary unless a new bug justifies touching it
-- reduce duplication between settings workspace sections and remaining legacy drawer sections
+- file splitting only helped once write authority started to move toward fewer places
+- future work should continue to reduce write paths, not just split files cosmetically
 
-If that proves too coupled, move to the next planned area instead:
+### 3. Task title auto-generation was rebuilt cleanly
 
-- `components/panels/gpt/GptSettingsSections.tsx`
-- `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
+Done:
 
-## Product / feature Follow-Ups
+- `lib/app/contextNaming.ts` was replaced with a clean implementation
+- task titles now prefer:
+  - cleaned summary lines
+  - structured noun phrases such as `〜の関係`
+  - quoted work names when they are the most concrete signal
+- boilerplate-first-sentence truncation behavior was reduced
+- clean tests now cover the title extraction rules
 
-These are the main unfinished workflow items carried into the next session:
+### 4. UI / copy cleanup
 
-1. verify the new multi-task progress flow with a live Kin session
-2. verify transcript queue delivery across 2-3 URLs with real Kin ACKs
-3. consider task-progress UI for active Kin participants before multi-Kin coordination work
-4. decide whether old hanging settings drawers should start shrinking or remain as bridge UI
-5. continue maintainability cleanup before the next large feature wave
+Done:
 
-## Working Rule For The Next Session
+- memory drawer wording was partially normalized back to Japanese
+- follow-up rule / memory copy corruption was cleaned
+- unnecessary memory drawer clutter such as always-visible proposed-topic display was removed
 
-When resuming:
+## Working Rules For The Next Session
 
-1. inspect `app/page.tsx`, `sendToGptFlowHelpers.ts`, and `sendToGptFlow.ts` together before editing
-2. choose the smallest behavior-preserving extraction around orchestration or flow shaping
-3. run `npx tsc --noEmit`
-4. run `npm test`
-5. update `README.md`, `docs/refactor-roadmap.md`, and `docs/next-session.md`
+These are not optional style notes. They are operational constraints.
 
-This keeps the repo in the current low-risk, high-visibility mode.
+1. Prefer structural fixes over hole-patching.
+2. Do not treat “it seems fixed” as done.
+3. Before claiming a route is removed, verify it repo-wide.
+4. When refactoring, compare imports/exports against responsibility and remove unnecessary wiring immediately.
+5. Do not leave temporary compatibility branches in place unless the reason is explicit and documented.
+
+In practical terms:
+
+- do not add one-off blockers for individual topic phrases unless the architecture truly leaves no better option
+- do not declare “old logic removed” until search confirms all active runtime paths are gone or intentionally isolated
+- do not let hidden state mutation paths regrow in helper modules
+
+## Mandatory Verification Discipline
+
+Before saying a fix is complete:
+
+1. identify all files that can write or reshape the relevant state
+2. verify remaining routes repo-wide with `rg`
+3. confirm which paths are active runtime vs backward-compatibility only
+4. run:
+   - `npx tsc --noEmit`
+   - `npm test`
+5. explicitly state what was verified and what was not
+
+This is especially important for:
+
+- `currentTopic`
+- `proposedTopic`
+- pending memory-rule candidates
+- approved shortcut routes
+- task-title naming flows
+
+## Maintenance Work To Do Before The Next Feature Wave
+
+Before starting the next substantial feature, perform a maintenance-first pass around these areas:
+
+1. audit remaining topic write routes
+   - verify `topicAdjudication` is the real single path in active runtime
+   - continue collapsing any leftover shape-conversion indirection
+2. review backward-compatibility-only layers
+   - especially `memoryInterpreterRules` compatibility handling
+   - confirm old saved data paths are isolated and not influencing live runtime branching
+3. review UI copy and language consistency
+   - remove remaining English labels where Japanese is intended
+   - ensure memory drawer text is consistent
+4. review task naming downstream usage
+   - confirm all task-entry/update/import flows rely on the new naming pipeline consistently
+5. keep `app/page.tsx` and `sendToGptFlow*` under periodic wiring review
+   - not only for file size
+   - also for hidden state mutation paths and unnecessary parameter spread
+
+## Recommended Next Review Files
+
+Review these first before changing behavior:
+
+1. `lib/app/memoryTopicAdjudication.ts`
+2. `lib/app/memoryInterpreterTopicReducer.ts`
+3. `lib/app/memoryInterpreterTopicResolution.ts`
+4. `lib/app/gptMemoryUpdateCoordinator.ts`
+5. `hooks/useGptMemory.ts`
+6. `lib/app/contextNaming.ts`
+7. `lib/app/taskDraftActionFlows.ts`
+8. `app/page.tsx`
+
+## Suggested Next-Session Order
+
+1. run a live regression pass for topic / approval / task-title behavior
+2. perform the maintenance audit items above before new feature work
+3. only then begin the next product feature
+
+## Verification Commands
+
+```bash
+npx tsc --noEmit
+```
+
+```bash
+npm test
+```

@@ -1,15 +1,15 @@
 import { normalizeMemoryShape, type MemorySettings } from "@/lib/memory";
 import {
   hasMeaningfulMemoryState,
-  mergeSummarizedMemoryState,
   normalizeTokenUsage,
   trimMemoryState,
   type TokenUsage,
 } from "@/lib/app/gptMemoryStateHelpers";
+import { mergeSummarizedMemoryState } from "@/lib/app/gptMemoryStateSummaryMerge";
 import type { KinMemoryState, Message } from "@/types/chat";
 import type { Memory } from "@/lib/memory";
 
-export async function resolveSummarizedMemoryState(params: {
+export async function resolveMemorySummaryState(params: {
   candidateMemory: Memory;
   trimmedRecent: Message[];
   settings: MemorySettings;

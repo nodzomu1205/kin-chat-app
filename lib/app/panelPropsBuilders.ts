@@ -202,6 +202,7 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): GptPanelProps {
       onSaveStoredDocument: panelArgs.onSaveStoredDocument,
     },
     settings: {
+      currentTopic: panelArgs.gptState.memory?.context?.currentTopic,
       memorySettings: panelArgs.memorySettings,
       defaultMemorySettings: panelArgs.defaultMemorySettings,
       tokenStats: panelArgs.tokenStats,
@@ -260,6 +261,7 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): GptPanelProps {
       onChangeMemoryInterpreterSettings: panelArgs.onChangeMemoryInterpreterSettings,
       onApproveMemoryRuleCandidate: panelArgs.onApproveMemoryRuleCandidate,
       onRejectMemoryRuleCandidate: panelArgs.onRejectMemoryRuleCandidate,
+      onUpdateMemoryRuleCandidate: panelArgs.onUpdateMemoryRuleCandidate,
       onDeleteApprovedMemoryRule: panelArgs.onDeleteApprovedMemoryRule,
     },
     onAnswerTaskRequest,

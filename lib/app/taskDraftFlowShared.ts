@@ -7,8 +7,6 @@ export type TaskMemoryBridgeArgs = {
   persistCurrentGptState?: (state: any) => void;
   gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: any }>;
   recentMessages?: Message[];
-  topic?: string;
-  taskTitle?: string;
   lastUserIntent?: string;
   activeReference?: {
     title: string;

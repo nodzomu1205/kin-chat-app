@@ -3,14 +3,14 @@ import {
   applyApprovedTopicToKinState,
   applyApprovedTopicToMemory,
   buildApprovedRuleFromCandidate,
-  buildApprovedCandidateOptionsPatch,
+  buildApprovedCandidateAdjudication,
   resolveApprovedTopicFromCandidate,
 } from "@/lib/app/gptMemoryApproval";
 
 describe("gptMemoryApproval", () => {
-  it("builds topic alias options patch", () => {
+  it("builds topic alias approval commands", () => {
     expect(
-      buildApprovedCandidateOptionsPatch({
+      buildApprovedCandidateAdjudication({
         id: "cand-1",
         kind: "topic_alias",
         phrase: "Move planning",
@@ -18,27 +18,56 @@ describe("gptMemoryApproval", () => {
         createdAt: "2026-04-13T00:00:00.000Z",
         sourceText: "We need to move soon.",
       })
-    ).toEqual({
-      topicSeed: "Move Preparation",
-      trackedEntityOverride: "Move Preparation",
-    });
+    ).toEqual(
+      expect.objectContaining({
+        topicAdjudication: expect.objectContaining({
+          committedTopic: "Move Preparation",
+          trackedEntityOverride: "Move Preparation",
+        }),
+      })
+    );
   });
 
-  it("builds closing reply override patch", () => {
+  it("builds closing reply keep commands", () => {
     expect(
-      buildApprovedCandidateOptionsPatch({
+      buildApprovedCandidateAdjudication({
         id: "cand-2",
         kind: "closing_reply",
         phrase: "Thanks, that's enough",
         createdAt: "2026-04-13T00:00:00.000Z",
         sourceText: "Thanks, that's enough.",
       })
-    ).toEqual({
-      closingReplyOverride: true,
-    });
+    ).toEqual(
+      expect.objectContaining({
+        topicAdjudication: expect.objectContaining({
+          preserveExistingTopic: true,
+        }),
+      })
+    );
   });
 
-  it("resolves normalized topic from candidate", () => {
+  it("uses the edited topic when keep is approved with a normalized value", () => {
+    expect(
+      buildApprovedCandidateAdjudication({
+        id: "cand-keep",
+        kind: "utterance_review",
+        phrase: "That does not sound right",
+        normalizedValue: "Socrates",
+        topicDecision: "keep",
+        createdAt: "2026-04-14T00:00:00.000Z",
+        sourceText: "That does not sound right",
+      })
+    ).toEqual(
+      expect.objectContaining({
+        topicAdjudication: expect.objectContaining({
+          committedTopic: "Socrates",
+          trackedEntityOverride: "Socrates",
+        }),
+      })
+    );
+  });
+
+  it("resolves normalized topic from a candidate", () => {
     expect(
       resolveApprovedTopicFromCandidate({
         id: "cand-3",
@@ -69,31 +98,59 @@ describe("gptMemoryApproval", () => {
     });
   });
 
-  it("applies approved topic metadata to memory", () => {
+  it("preserves utterance review pattern metadata when approving a candidate", () => {
     expect(
-      applyApprovedTopicToMemory(
-        {
-          facts: [],
-          preferences: [],
-          lists: {
-            trackedEntities: ["Old Topic"],
-          },
-          context: {},
-        },
-        "引っ越し準備"
-      )
+      buildApprovedRuleFromCandidate({
+        id: "cand-5",
+        kind: "utterance_review",
+        phrase: " That does not sound right ",
+        normalizedValue: " Socrates ",
+        topicDecision: "keep",
+        intent: "disagreement",
+        confidence: 0.84,
+        evidenceText: " sound right ",
+        leftContext: " That does not ",
+        rightContext: " . ",
+        surfacePattern: " that does not sound right ",
+        createdAt: "2026-04-14T00:00:00.000Z",
+        sourceText: "That does not sound right",
+      })
     ).toEqual({
-      facts: [],
-      preferences: [],
-      lists: {
-        trackedEntities: ["引っ越し準備", "Old Topic"],
-      },
-      context: {
-        currentTopic: "引っ越し準備",
-        currentTask: "ユーザーは引っ越し準備について知りたい",
-        followUpRule: "短い追質問は、直前の引っ越し準備トピックを引き継いで解釈する",
-      },
+      id: "cand-5",
+      kind: "utterance_review",
+      phrase: "That does not sound right",
+      normalizedValue: "Socrates",
+      topicDecision: "keep",
+      intent: "disagreement",
+      confidence: 0.84,
+      evidenceText: "sound right",
+      leftContext: "That does not",
+      rightContext: ".",
+      surfacePattern: "that does not sound right",
+      createdAt: "2026-04-14T00:00:00.000Z",
     });
+  });
+
+  it("applies approved topic metadata to memory and clears proposed topic", () => {
+    const next = applyApprovedTopicToMemory(
+      {
+        facts: [],
+        preferences: [],
+        lists: {
+          trackedEntities: ["Old Topic"],
+        },
+        context: {
+          proposedTopic: "Wrong Topic",
+        },
+      },
+      "Approved Topic"
+    );
+
+    expect(next.context.currentTopic).toBe("Approved Topic");
+    expect(next.context.proposedTopic).toBeUndefined();
+    expect(next.context.currentTask).toContain("Approved Topic");
+    expect(next.context.followUpRule).toContain("Approved Topic");
+    expect(next.lists.trackedEntities).toEqual(["Approved Topic", "Old Topic"]);
   });
 
   it("applies approved topic metadata to kin state", () => {
@@ -103,14 +160,38 @@ describe("gptMemoryApproval", () => {
           facts: [],
           preferences: [],
           lists: {},
-          context: {},
+          context: {
+            proposedTopic: "Old Proposal",
+          },
         },
         recentMessages: [{ id: "m1", role: "user", text: "hello" }],
       },
-      "YouTube検索タスク"
+      "YouTube Search Task"
     );
 
-    expect(next.memory.context.currentTopic).toBe("YouTube検索タスク");
+    expect(next.memory.context.currentTopic).toBe("YouTube Search Task");
+    expect(next.memory.context.proposedTopic).toBeUndefined();
     expect(next.recentMessages).toEqual([{ id: "m1", role: "user", text: "hello" }]);
+  });
+
+  it("keeps the current topic and stores a proposal for an unclear utterance review", () => {
+    expect(
+      buildApprovedCandidateAdjudication({
+        id: "cand-unclear",
+        kind: "utterance_review",
+        phrase: "Tell me about the Edo period",
+        normalizedValue: "Edo period",
+        topicDecision: "unclear",
+        createdAt: "2026-04-15T00:00:00.000Z",
+        sourceText: "Tell me about the Edo period",
+      })
+    ).toEqual(
+      expect.objectContaining({
+        topicAdjudication: expect.objectContaining({
+          preserveExistingTopic: true,
+          proposedTopic: "Edo period",
+        }),
+      })
+    );
   });
 });

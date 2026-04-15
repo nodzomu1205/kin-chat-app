@@ -67,7 +67,7 @@ import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import {
   type PendingIntentCandidate,
 } from "@/lib/taskIntent";
-import { getMemoryRuleSignature } from "@/lib/memoryInterpreterRules";
+import { mergePendingMemoryRuleCandidates } from "@/lib/app/memoryRuleCandidateQueue";
 import {
   buildTaskChatBridgeContext,
 } from "@/lib/taskChatBridge";
@@ -85,6 +85,10 @@ import {
 } from "@/lib/app/taskDraftCollection";
 import { PROTOCOL_PROMPT_DEFAULT_KEY, PROTOCOL_RULEBOOK_DEFAULT_KEY } from "@/lib/app/chatPageStorageKeys";
 import { createProtocolEventIngestor } from "@/lib/app/protocolEventIngest";
+import {
+  buildChatPageGptMemoryRuntime,
+  buildChatPageGptMemorySettingsControls,
+} from "@/lib/app/chatPageGptMemoryControls";
 
 type MobileTab = "kin" | "gpt";
 
@@ -205,11 +209,11 @@ export default function ChatApp() {
     gptState,
     setGptState,
     gptStateRef,
-    getProvisionalMemory,
     handleGptMemory,
     resetGptForCurrentKin,
     reapplyCurrentMemoryWithApprovedRules,
     reapplyCurrentMemoryWithApprovedCandidate,
+    reapplyCurrentMemoryWithRejectedCandidate,
     persistCurrentGptState,
     clearTaskScopedMemory,
     ensureKinState,
@@ -223,20 +227,24 @@ export default function ChatApp() {
     memoryInterpreterSettings,
     approvedMemoryRules,
     rejectedMemoryRuleCandidateSignatures,
-    onAddPendingMemoryRuleCandidates: (candidates) => {
-      setPendingMemoryRuleCandidates((prev) => {
-        const seen = new Set(prev.map((item) => getMemoryRuleSignature(item)));
-        const next = [...prev];
-        candidates.forEach((candidate) => {
-          const signature = getMemoryRuleSignature(candidate);
-          if (!seen.has(signature)) {
-            seen.add(signature);
-            next.push(candidate);
-          }
-        });
-        return next.slice(-100);
-      });
+    onAddPendingMemoryRuleCandidates: (candidates, approvedMemoryRulesOverride) => {
+      setPendingMemoryRuleCandidates((prev) =>
+        mergePendingMemoryRuleCandidates({
+          prev,
+          candidates,
+          approvedMemoryRules: approvedMemoryRulesOverride ?? approvedMemoryRules,
+        })
+      );
     },
+  });
+  const gptMemoryRuntime = buildChatPageGptMemoryRuntime({
+    gptStateRef,
+    setGptState,
+    persistCurrentGptState,
+    handleGptMemory,
+    chatRecentLimit,
+    clearTaskScopedMemory,
+    resetGptForCurrentKin,
   });
 
   const {
@@ -323,6 +331,7 @@ export default function ChatApp() {
 
   const {
     updateMemoryInterpreterSettings,
+    updateMemoryRuleCandidate,
     approveMemoryRuleCandidate,
     rejectMemoryRuleCandidate,
     deleteApprovedMemoryRule,
@@ -337,6 +346,12 @@ export default function ChatApp() {
       await reapplyCurrentMemoryWithApprovedCandidate(
         candidate,
         nextApprovedRules
+      );
+    },
+    onRejectCandidateApplied: async (candidate, nextRejectedSignatures) => {
+      await reapplyCurrentMemoryWithRejectedCandidate(
+        candidate,
+        nextRejectedSignatures
       );
     },
   });
@@ -376,7 +391,7 @@ export default function ChatApp() {
     gptMessages,
     setCurrentTaskDraft,
     resetTaskProtocolRuntime: taskProtocol.resetRuntime,
-    clearTaskScopedMemory,
+    clearTaskScopedMemory: gptMemoryRuntime.clearTaskScopedMemory,
     deleteSearchHistoryItemBase,
     currentTaskIntentConstraints: taskProtocol.runtime.currentTaskIntent?.constraints || [],
   });
@@ -495,8 +510,7 @@ export default function ChatApp() {
       autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
     gptMessages,
     kinMessages,
-      gptState,
-      gptStateRef,
+      gptMemoryRuntime,
       lastSearchContext,
       searchMode,
       searchEngines,
@@ -516,8 +530,6 @@ export default function ChatApp() {
     setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex,
     setCurrentTaskDraft,
-    setGptState,
-    persistCurrentGptState,
     setUploadKind,
     setPendingIntentCandidates,
     setApprovedIntentPhrases,
@@ -534,9 +546,6 @@ export default function ChatApp() {
     applySummaryUsage,
     applyTaskUsage,
     applyIngestUsage,
-    getProvisionalMemory,
-    handleGptMemory,
-    chatRecentLimit,
     buildLibraryReferenceContext,
     referenceLibraryItems: libraryItems,
     libraryIndexResponseCount,
@@ -550,8 +559,10 @@ export default function ChatApp() {
     applyPrefixedTaskFieldsFromText,
     getCurrentTaskCharConstraint,
     resetCurrentTaskDraft,
-    updateMemorySettings,
-    resetMemorySettings,
+    gptMemorySettingsControls: buildChatPageGptMemorySettingsControls({
+      updateMemorySettings,
+      resetMemorySettings,
+    }),
     deleteSearchHistoryItemBase,
     ingestProtocolMessage,
     clearSearchHistory,
@@ -723,6 +734,7 @@ export default function ChatApp() {
         onChangeMemoryInterpreterSettings: updateMemoryInterpreterSettings,
         onApproveMemoryRuleCandidate: approveMemoryRuleCandidate,
         onRejectMemoryRuleCandidate: rejectMemoryRuleCandidate,
+        onUpdateMemoryRuleCandidate: updateMemoryRuleCandidate,
         onDeleteApprovedMemoryRule: deleteApprovedMemoryRule,
         onDeleteSearchHistoryItem: deleteSearchHistoryItem,
         pendingIntentCandidates,

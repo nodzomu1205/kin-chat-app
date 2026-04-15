@@ -124,6 +124,7 @@ describe("panelPropsBuilders", () => {
       onChangeMemoryInterpreterSettings: vi.fn(),
       onApproveMemoryRuleCandidate: vi.fn(),
       onRejectMemoryRuleCandidate: vi.fn(),
+      onUpdateMemoryRuleCandidate: vi.fn(),
       onDeleteApprovedMemoryRule: vi.fn(),
       onDeleteSearchHistoryItem: vi.fn(),
       multipartAssemblies: [],

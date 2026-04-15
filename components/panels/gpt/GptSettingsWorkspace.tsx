@@ -34,6 +34,11 @@ import {
   type PrimarySearchMode,
 } from "@/lib/search-domain/presets";
 import type { SearchEngine, SearchMode } from "@/types/task";
+import type {
+  PendingMemoryRuleCandidate,
+  TopicDecision,
+  UserUtteranceIntent,
+} from "@/lib/memoryInterpreterRules";
 
 export type SettingsWorkspaceView = "chat" | "task" | "library";
 
@@ -64,6 +69,52 @@ type ApprovalSectionPendingItem = {
   extra?: string;
   sourceText: string;
 };
+
+function getCandidateIntentValue(candidate: PendingMemoryRuleCandidate): UserUtteranceIntent {
+  if (candidate.intent) return candidate.intent;
+  if (candidate.kind === "closing_reply") return "acknowledgement";
+  if (candidate.kind === "topic_alias") return "question";
+  return "unknown";
+}
+
+function getCandidateTopicDecisionValue(candidate: PendingMemoryRuleCandidate): TopicDecision {
+  if (candidate.topicDecision) return candidate.topicDecision;
+  if (candidate.kind === "closing_reply") return "keep";
+  if (candidate.kind === "topic_alias") return "switch";
+  return "unclear";
+}
+
+function formatIntentLabel(intent: UserUtteranceIntent) {
+  switch (intent) {
+    case "agreement":
+      return "同意";
+    case "disagreement":
+      return "否定";
+    case "question":
+      return "質問";
+    case "request":
+      return "依頼";
+    case "statement":
+      return "叙述";
+    case "suggestion":
+      return "提案";
+    case "acknowledgement":
+      return "相槌";
+    default:
+      return "不明";
+  }
+}
+
+function formatTopicDecisionLabel(decision: TopicDecision) {
+  switch (decision) {
+    case "keep":
+      return "維持";
+    case "switch":
+      return "切替";
+    default:
+      return "保留";
+  }
+}
 
 function NumberField(props: {
   label: string;
@@ -310,6 +361,9 @@ function RuleApprovalSection(props: {
                   flexWrap: "wrap",
                 }}
               >
+                <div style={{ ...helpTextStyle, width: "100%", marginTop: 0 }}>
+                  左が確定、右が却下です。
+                </div>
                 <button
                   type="button"
                   style={buttonPrimary}
@@ -334,50 +388,325 @@ function RuleApprovalSection(props: {
 }
 
 function MemoryApprovalSection(props: {
+  currentTopic?: string;
+  isMobile?: boolean;
   pendingCount: number;
   approvedCount: number;
   showApproved: boolean;
   onToggleApproved: () => void;
   approvedRules: GptPanelSettingsProps["approvedMemoryRules"];
   pendingCandidates: GptPanelSettingsProps["pendingMemoryRuleCandidates"];
+  onUpdate: (id: string, patch: Partial<PendingMemoryRuleCandidate>) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const intentOptions: UserUtteranceIntent[] = [
+    "agreement",
+    "disagreement",
+    "question",
+    "request",
+    "statement",
+    "suggestion",
+    "acknowledgement",
+    "unknown",
+  ];
+  const topicDecisionOptions: TopicDecision[] = ["keep", "switch", "unclear"];
+  const currentTopic = props.currentTopic?.trim() || "";
+  const originalSuggestedTopicRef = React.useRef<Record<string, string>>({});
+
+  React.useEffect(() => {
+    props.pendingCandidates.forEach((candidate) => {
+      if (
+        candidate.kind === "utterance_review" &&
+        typeof originalSuggestedTopicRef.current[candidate.id] === "undefined"
+      ) {
+        originalSuggestedTopicRef.current[candidate.id] = candidate.normalizedValue || "";
+      }
+    });
+  }, [props.pendingCandidates]);
+
+  const resolveCandidateTopicInputValue = React.useCallback(
+    (candidate: PendingMemoryRuleCandidate) => {
+      const decision = getCandidateTopicDecisionValue(candidate);
+      const originalSuggested = originalSuggestedTopicRef.current[candidate.id] || "";
+      const currentValue = candidate.normalizedValue || "";
+
+      if (decision === "switch") return currentValue || originalSuggested;
+      if (currentValue && currentValue !== originalSuggested) return currentValue;
+      return currentTopic || currentValue;
+    },
+    [currentTopic]
+  );
+
   return (
-    <RuleApprovalSection
-      sectionTitle="登録済文脈"
-      approvedLabel="承認済"
-      pendingLabel="承認待ち"
-      approvedCount={props.approvedCount}
-      pendingCount={props.pendingCount}
-      showApproved={props.showApproved}
-      onToggleApproved={props.onToggleApproved}
-      approvedEmptyText="登録済みの文脈ルールはありません。"
-      pendingEmptyText="未対応の文脈候補はありません。"
-      approvedItems={props.approvedRules.map((rule) => ({
-        id: rule.id,
-        title: rule.kind === "topic_alias" ? "topic 文脈" : "closing reply 文脈",
-        meta: `入力語: ${rule.phrase}`,
-        extra: rule.normalizedValue ? `正規化: ${rule.normalizedValue}` : undefined,
-        createdAt: rule.createdAt,
-      }))}
-      pendingItems={props.pendingCandidates.map((candidate) => ({
-        id: candidate.id,
-        title:
-          candidate.kind === "topic_alias"
-            ? "topic 候補"
-            : "closing reply 候補",
-        meta: `入力語: ${candidate.phrase}`,
-        extra: candidate.normalizedValue
-          ? `正規化: ${candidate.normalizedValue}`
-          : undefined,
-        sourceText: candidate.sourceText,
-      }))}
-      onApprove={props.onApprove}
-      onReject={props.onReject}
-      onDelete={props.onDelete}
-    />
+    <div style={sectionCard}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ ...labelStyle, marginBottom: 0 }}>文脈レビュー</div>
+          <span
+            style={{
+              borderRadius: 999,
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              border: "1px solid #bfdbfe",
+              padding: "2px 8px",
+              fontSize: 11,
+              fontWeight: 800,
+            }}
+          >
+            承認済み {props.approvedCount}
+          </span>
+          <span
+            style={{
+              borderRadius: 999,
+              background: props.pendingCount > 0 ? "#fef3c7" : "#f1f5f9",
+              color: props.pendingCount > 0 ? "#92400e" : "#475569",
+              border: `1px solid ${props.pendingCount > 0 ? "#fcd34d" : "#cbd5e1"}`,
+              padding: "2px 8px",
+              fontSize: 11,
+              fontWeight: 800,
+            }}
+          >
+            承認待ち {props.pendingCount}
+          </span>
+        </div>
+        <button
+          type="button"
+          style={tabButton(props.showApproved)}
+          onClick={props.onToggleApproved}
+        >
+          {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
+        </button>
+      </div>
+
+      {props.showApproved ? (
+        <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+          {props.approvedRules.length === 0 ? (
+            <div style={helpTextStyle}>登録済みの文脈レビューはありません。</div>
+          ) : (
+            props.approvedRules.map((rule) => (
+              <div key={rule.id} style={subtleCard}>
+                <div
+                  style={{
+                    display: "none",
+                    marginBottom: 8,
+                    borderRadius: 10,
+                    border: "1px solid #bfdbfe",
+                    background: "#eff6ff",
+                    padding: "8px 10px",
+                  }}
+                >
+                  <div style={{ ...helpTextStyle, marginTop: 0 }}>
+                    実際のコメント: {rule.phrase}
+                  </div>
+                  {rule.intent ? (
+                    <div style={{ ...helpTextStyle, marginTop: 4 }}>
+                      ユーザー意図: {rule.intent}
+                    </div>
+                  ) : null}
+                  {rule.topicDecision ? (
+                    <div style={{ ...helpTextStyle, marginTop: 4 }}>
+                      トピック判定: {rule.topicDecision}
+                    </div>
+                  ) : null}
+                  {rule.normalizedValue ? (
+                    <div style={{ ...helpTextStyle, marginTop: 4 }}>
+                      トピック: {rule.normalizedValue}
+                    </div>
+                  ) : null}
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 800 }}>
+                  {rule.kind === "utterance_review" ? "utterance review" : rule.kind}
+                </div>
+                <div style={{ ...helpTextStyle, marginTop: 6 }}>入力語: {rule.phrase}</div>
+                {rule.intent ? (
+                  <div style={{ ...helpTextStyle, marginTop: 6 }}>意図: {rule.intent}</div>
+                ) : null}
+                {rule.topicDecision ? (
+                  <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                    トピック判定: {rule.topicDecision}
+                  </div>
+                ) : null}
+                {rule.normalizedValue ? (
+                  <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                    トピック候補: {rule.normalizedValue}
+                  </div>
+                ) : null}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  <div style={helpTextStyle}>登録日: {rule.createdAt.slice(0, 10)}</div>
+                  <button
+                    type="button"
+                    style={buttonSecondaryWide}
+                    onClick={() => props.onDelete(rule.id)}
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+
+      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認待ち</div>
+      {props.pendingCandidates.length === 0 ? (
+        <div style={helpTextStyle}>未対応の文脈候補はありません。</div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {props.pendingCandidates.map((candidate) => (
+            <div key={candidate.id} style={subtleCard}>
+              <div
+                style={{
+                  display: "none",
+                  marginBottom: 8,
+                  borderRadius: 10,
+                  border: "1px solid #bae6fd",
+                  background: "#f0f9ff",
+                  padding: "8px 10px",
+                }}
+              >
+                <div style={{ ...helpTextStyle, marginTop: 0 }}>
+                  実際のコメント: {candidate.phrase}
+                </div>
+                <div style={{ ...helpTextStyle, marginTop: 4 }}>
+                  ユーザー意図: {getCandidateIntentValue(candidate)}
+                </div>
+                <div style={{ ...helpTextStyle, marginTop: 4 }}>
+                  トピック判定: {getCandidateTopicDecisionValue(candidate)}
+                </div>
+                <div style={{ ...helpTextStyle, marginTop: 4 }}>
+                  トピック: {candidate.normalizedValue || "(keep の場合は空) "}
+                </div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 800 }}>
+                {candidate.kind === "utterance_review" ? "utterance review" : candidate.kind}
+              </div>
+              <div style={{ ...helpTextStyle, marginTop: 6 }}>実際のコメント: {candidate.phrase}</div>
+              <div
+                style={{
+                  ...helpTextStyle,
+                  display: "none",
+                  marginTop: 6,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {candidate.sourceText}
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: props.isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+                  gap: 10,
+                  marginTop: 10,
+                }}
+              >
+                <div>
+                  <div style={labelStyle}>ユーザー意図</div>
+                  <select
+                    value={getCandidateIntentValue(candidate)}
+                    onChange={(e) =>
+                      props.onUpdate(candidate.id, {
+                        kind: "utterance_review",
+                        intent: e.target.value as UserUtteranceIntent,
+                      })
+                    }
+                    style={selectStyle}
+                  >
+                    {intentOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {formatIntentLabel(option)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div style={labelStyle}>トピック判定</div>
+                  <select
+                    value={getCandidateTopicDecisionValue(candidate)}
+                    onChange={(e) => {
+                      const nextDecision = e.target.value as TopicDecision;
+                      const originalSuggested =
+                        originalSuggestedTopicRef.current[candidate.id] ||
+                        candidate.normalizedValue ||
+                        "";
+                      props.onUpdate(candidate.id, {
+                        kind: "utterance_review",
+                        topicDecision: nextDecision,
+                        normalizedValue:
+                          nextDecision === "switch"
+                            ? originalSuggested
+                            : currentTopic || candidate.normalizedValue || "",
+                      });
+                    }}
+                    style={selectStyle}
+                  >
+                    {topicDecisionOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {formatTopicDecisionLabel(option)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ gridColumn: props.isMobile ? undefined : "1 / -1" }}>
+                  <div style={labelStyle}>トピック</div>
+                  <input
+                    value={resolveCandidateTopicInputValue(candidate)}
+                    onChange={(e) =>
+                      props.onUpdate(candidate.id, {
+                        kind: "utterance_review",
+                        normalizedValue: e.target.value,
+                      })
+                    }
+                    placeholder="keep の場合は空のまま"
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginTop: 10,
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  type="button"
+                  style={buttonPrimary}
+                  onClick={() => props.onApprove(candidate.id)}
+                >
+                  確定
+                </button>
+                <button
+                  type="button"
+                  style={buttonSecondaryWide}
+                  onClick={() => props.onReject(candidate.id)}
+                >
+                  却下
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -451,7 +780,10 @@ export default function GptSettingsWorkspace({
   isMobile = false,
   onClose,
 }: Props) {
-  const [showApprovedMemoryRules, setShowApprovedMemoryRules] = React.useState(true);
+  const [showApprovedMemoryRules, setShowApprovedMemoryRules] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.sessionStorage.getItem("gpt-settings-show-approved-memory") === "1";
+  });
   const [showApprovedIntentRules, setShowApprovedIntentRules] = React.useState(true);
   const [sourceDisplayCountInput, setSourceDisplayCountInput] = React.useState(
     String(settings.sourceDisplayCount)
@@ -460,6 +792,14 @@ export default function GptSettingsWorkspace({
   React.useEffect(() => {
     setSourceDisplayCountInput(String(settings.sourceDisplayCount));
   }, [settings.sourceDisplayCount]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(
+      "gpt-settings-show-approved-memory",
+      showApprovedMemoryRules ? "1" : "0"
+    );
+  }, [showApprovedMemoryRules]);
 
   const normalizedSearchMode = normalizeStoredSearchMode(settings.searchMode);
   const activeSearchMode: PrimarySearchMode | undefined =
@@ -537,7 +877,9 @@ export default function GptSettingsWorkspace({
     <div
       style={{
         flex: 1,
+        height: "100%",
         minHeight: 0,
+        overflow: "hidden auto",
         overflowY: "auto",
         scrollbarGutter: "stable",
         WebkitOverflowScrolling: "touch",
@@ -591,14 +933,17 @@ export default function GptSettingsWorkspace({
         {activeView === "chat" ? (
           <>
             <MemoryApprovalSection
+              currentTopic={settings.currentTopic}
               pendingCount={settings.pendingMemoryRuleCandidates.length}
               approvedCount={settings.approvedMemoryRules.length}
+              isMobile={isMobile}
               showApproved={showApprovedMemoryRules}
               onToggleApproved={() =>
                 setShowApprovedMemoryRules((prev) => !prev)
               }
               approvedRules={settings.approvedMemoryRules}
               pendingCandidates={settings.pendingMemoryRuleCandidates}
+              onUpdate={settings.onUpdateMemoryRuleCandidate}
               onApprove={settings.onApproveMemoryRuleCandidate}
               onReject={settings.onRejectMemoryRuleCandidate}
               onDelete={settings.onDeleteApprovedMemoryRule}

@@ -2,7 +2,7 @@ import type { Memory } from "@/lib/memory";
 import {
   extractQuotedWorks,
   extractWorksByEntityFromTable,
-} from "@/lib/app/memoryInterpreterFacts";
+} from "@/lib/app/memoryInterpreterListExtraction";
 
 export function getActiveDocumentRecord(
   currentMemory: Memory,
@@ -60,17 +60,23 @@ export function resolveWorksByEntityState(params: {
       ? (params.currentMemory.lists.worksByEntity as Record<string, unknown>)
       : {};
 
+  const mergedTopicWorks =
+    params.resolvedTopic
+      ? Array.from(
+          new Set([
+            ...(((existingWorksByEntity as Record<string, unknown> | undefined)?.[
+              params.resolvedTopic
+            ] as string[]) || []),
+            ...(tableWorksByEntity[params.resolvedTopic] || []),
+            ...quotedWorks,
+          ])
+        ).slice(-8)
+      : [];
+
   const mergedQuotedWorks =
-    params.resolvedTopic && quotedWorks.length > 0
+    params.resolvedTopic && mergedTopicWorks.length > 0
       ? {
-          [params.resolvedTopic]: Array.from(
-            new Set([
-              ...(((existingWorksByEntity as Record<string, unknown> | undefined)?.[
-                params.resolvedTopic
-              ] as string[]) || []),
-              ...quotedWorks,
-            ])
-          ).slice(-8),
+          [params.resolvedTopic]: mergedTopicWorks,
         }
       : {};
 

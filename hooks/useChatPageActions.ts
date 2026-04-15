@@ -16,11 +16,17 @@ import { useKinTransferActions } from "@/hooks/useKinTransferActions";
 import { useGptMessageActions } from "@/hooks/useGptMessageActions";
 import { useTaskProtocolActions } from "@/hooks/useTaskProtocolActions";
 import { useFileIngestActions } from "@/hooks/useFileIngestActions";
+import type {
+  GptMemoryRuntime,
+  GptMemorySettingsControls,
+} from "@/lib/app/chatPageGptMemoryControls";
+import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
 
 type TaskProtocolController = ReturnType<typeof useKinTaskProtocol>;
 
 export type MemoryUpdateOptions = {
-  topicSeed?: string;
+  topicAdjudication?: MemoryTopicAdjudication;
+  currentTaskTitleOverride?: string;
   lastUserIntent?: string;
   activeDocument?: Record<string, unknown> | null;
   previousCommittedTopic?: string;
@@ -46,8 +52,7 @@ export type UseChatPageActionsArgs = {
   autoCopyFileIngestSysInfoToKin: boolean;
   gptMessages: Message[];
   kinMessages: Message[];
-  gptState: any;
-  gptStateRef: React.MutableRefObject<any>;
+  gptMemoryRuntime: GptMemoryRuntime;
   lastSearchContext: SearchContext | null;
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
@@ -67,8 +72,6 @@ export type UseChatPageActionsArgs = {
   setPendingKinInjectionBlocks: React.Dispatch<React.SetStateAction<string[]>>;
   setPendingKinInjectionIndex: React.Dispatch<React.SetStateAction<number>>;
   setCurrentTaskDraft: React.Dispatch<React.SetStateAction<TaskDraft>>;
-  setGptState: React.Dispatch<React.SetStateAction<any>>;
-  persistCurrentGptState: (state: any) => void;
   setUploadKind: React.Dispatch<React.SetStateAction<any>>;
   setPendingIntentCandidates: React.Dispatch<
     React.SetStateAction<PendingIntentCandidate[]>
@@ -111,19 +114,6 @@ export type UseChatPageActionsArgs = {
   applySummaryUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
   applyTaskUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
   applyIngestUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
-  getProvisionalMemory: (
-    inputText: string,
-    options?: {
-      currentTaskTitle?: string;
-      activeDocumentTitle?: string;
-      lastSearchQuery?: string;
-    }
-  ) => any;
-  handleGptMemory: (
-    recent: Message[],
-    options?: MemoryUpdateOptions
-  ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
-  chatRecentLimit: number;
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
@@ -155,8 +145,7 @@ export type UseChatPageActionsArgs = {
   applyPrefixedTaskFieldsFromText: (text: string) => any;
   getCurrentTaskCharConstraint: () => TaskCharConstraint | null;
   resetCurrentTaskDraft: () => void;
-  updateMemorySettings: (next: any) => void;
-  resetMemorySettings: () => void;
+  gptMemorySettingsControls: GptMemorySettingsControls;
   deleteSearchHistoryItemBase: (rawResultId: string) => void;
   ingestProtocolMessage: (
     text: string,
@@ -219,11 +208,11 @@ export function useChatPageActions(args: UseChatPageActionsArgs) {
   const { injectFileToKinDraft } = useFileIngestActions(args);
 
   const handleSaveMemorySettings = (next: any) => {
-    args.updateMemorySettings(next);
+    args.gptMemorySettingsControls.updateMemorySettings(next);
   };
 
   const handleResetMemorySettings = () => {
-    args.resetMemorySettings();
+    args.gptMemorySettingsControls.resetMemorySettings();
   };
 
   return {

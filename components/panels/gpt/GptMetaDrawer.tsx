@@ -223,6 +223,13 @@ export default function GptMetaDrawer({
     gptState.memory?.lists && typeof gptState.memory.lists === "object"
       ? Object.entries(gptState.memory.lists)
       : [];
+  const memoryInterpretDebug =
+    gptState.memory?.lists &&
+    typeof gptState.memory.lists === "object" &&
+    gptState.memory.lists.memoryInterpretDebug &&
+    typeof gptState.memory.lists.memoryInterpretDebug === "object"
+      ? (gptState.memory.lists.memoryInterpretDebug as Record<string, unknown>)
+      : null;
 
   if (mode === "memory") {
     return (
@@ -251,11 +258,11 @@ export default function GptMetaDrawer({
           <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
             recentMessages {recentCount}/{chatRecentLimit}
             {" ・ "}
-            facts {factCount}/{maxFacts}
+            事実 {factCount}/{maxFacts}
             {" ・ "}
-            preferences {preferenceCount}/{maxPreferences}
+            好み {preferenceCount}/{maxPreferences}
             {" ・ "}
-            collection groups {listCount}
+            コレクション {listCount}
           </div>
         </div>
 
@@ -267,7 +274,7 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>目標</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>会話目標</div>
           <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
             {gptState.memory?.context?.currentTask || "-"}
           </div>
@@ -280,25 +287,25 @@ export default function GptMetaDrawer({
           </div>
           {gptState.memory?.context?.followUpRule ? (
             <div style={{ ...tokenMetaStyle, marginTop: 10, lineHeight: 1.6 }}>
-              follow-up rule: {gptState.memory.context.followUpRule}
+              フォローアップ規則: {gptState.memory.context.followUpRule}
             </div>
           ) : null}
         </div>
 
         <MemoryListCard
-          title="Facts"
+          title="事実"
           items={facts}
           emptyText="会話から抽出された短い事実はまだありません。"
         />
 
         <MemoryListCard
-          title="Preferences"
+          title="好み"
           items={preferences}
           emptyText="継続的な好みや出力条件はまだありません。"
         />
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>Collections</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>コレクション</div>
           <div style={{ ...tokenMetaStyle, fontSize: 12, marginBottom: 10 }}>
             会話から拾った構造化メモです。検索語や、人物ごとの作品群のようなまとまりを置きます。
           </div>
@@ -339,6 +346,28 @@ export default function GptMetaDrawer({
             </div>
           )}
         </div>
+
+        {memoryInterpretDebug ? (
+          <div style={tokenCardStyle}>
+            <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>
+              Memory Interpret Debug
+            </div>
+            <pre
+              style={{
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontSize: 12,
+                lineHeight: 1.6,
+                color: "#0f172a",
+                maxHeight: isMobile ? "24dvh" : "28dvh",
+                overflowY: "auto",
+              }}
+            >
+              {JSON.stringify(memoryInterpretDebug, null, 2)}
+            </pre>
+          </div>
+        ) : null}
 
         <div style={tokenCardStyle}>
           <div

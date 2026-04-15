@@ -71,6 +71,7 @@ export type GptStateLike = {
     lists?: Record<string, unknown>;
     context?: {
       currentTopic?: string;
+      proposedTopic?: string;
       currentTask?: string;
       followUpRule?: string;
       lastUserIntent?: string;
@@ -208,6 +209,7 @@ export type GptPanelReferenceProps = {
 };
 
 export type GptPanelSettingsProps = {
+  currentTopic?: string;
   memorySettings: MemorySettings;
   defaultMemorySettings: MemorySettings;
   tokenStats: TokenStats;
@@ -267,6 +269,10 @@ export type GptPanelSettingsProps = {
   ) => void;
   onApproveMemoryRuleCandidate: (candidateId: string) => void;
   onRejectMemoryRuleCandidate: (candidateId: string) => void;
+  onUpdateMemoryRuleCandidate: (
+    candidateId: string,
+    patch: Partial<PendingMemoryRuleCandidate>
+  ) => void;
   onDeleteApprovedMemoryRule: (ruleId: string) => void;
 };
 
@@ -362,6 +368,10 @@ export type GptPanelProps = {
   ) => void;
   onApproveMemoryRuleCandidate: (candidateId: string) => void;
   onRejectMemoryRuleCandidate: (candidateId: string) => void;
+  onUpdateMemoryRuleCandidate: (
+    candidateId: string,
+    patch: Partial<PendingMemoryRuleCandidate>
+  ) => void;
   onDeleteApprovedMemoryRule: (ruleId: string) => void;
   onDeleteSearchHistoryItem: (rawResultId: string) => void;
   multipartAssemblies: MultipartAssembly[];

@@ -1,16 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
-import {
-  buildProvisionalMemoryState,
-  normalizeKinMemoryStateForSettings,
-} from "@/lib/app/gptMemoryPersistence";
-
-const interpretProvisionalMemoryContextMock = vi.fn();
-
-vi.mock("@/lib/app/memoryInterpreter", () => ({
-  interpretProvisionalMemoryContext: (...args: unknown[]) =>
-    interpretProvisionalMemoryContextMock(...args),
-}));
+import { normalizeKinMemoryStateForSettings } from "@/lib/app/gptMemoryPersistence";
 
 describe("gptMemoryPersistence", () => {
   it("normalizes persisted kin memory state for the active settings", () => {
@@ -49,6 +39,7 @@ describe("gptMemoryPersistence", () => {
         context: {
           currentTopic: "Topic A",
           currentTask: undefined,
+          proposedTopic: undefined,
           followUpRule: undefined,
           lastUserIntent: undefined,
         },
@@ -57,39 +48,6 @@ describe("gptMemoryPersistence", () => {
         { id: "m2", role: "gpt", text: "second" },
         { id: "m3", role: "user", text: "third" },
       ],
-    });
-  });
-
-  it("builds provisional memory from interpreted context and trims it", () => {
-    interpretProvisionalMemoryContextMock.mockReturnValue({
-      currentTopic: " Move Planning ",
-      currentTask: " Find a new home ",
-    });
-
-    const provisional = buildProvisionalMemoryState({
-      inputText: "We need to move soon",
-      currentMemory: {
-        facts: [],
-        preferences: [],
-        lists: {},
-        context: {},
-      },
-      settings: DEFAULT_MEMORY_SETTINGS,
-      options: {
-        currentTaskTitle: "Relocation",
-      },
-    });
-
-    expect(provisional).toEqual({
-      facts: [],
-      preferences: [],
-      lists: {},
-      context: {
-        currentTopic: "Move Planning",
-        currentTask: "Find a new home",
-        followUpRule: undefined,
-        lastUserIntent: undefined,
-      },
     });
   });
 });

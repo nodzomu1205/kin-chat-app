@@ -1,6 +1,5 @@
 import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
 import type { DrawerMode } from "@/components/panels/gpt/DrawerTabs";
-import { normalizePromptTopic } from "@/lib/app/gptContextResolver";
 
 export type BottomTabKey =
   | "chat"
@@ -63,25 +62,27 @@ export function resolveFloatingLabel(args: {
   activeDrawer: DrawerMode;
   bottomTab: BottomTabKey;
   currentTaskDraft: GptPanelProps["currentTaskDraft"];
-  currentTaskFromMemory?: string;
   currentTopic?: string;
-  currentInput?: string;
-  latestUserText?: string;
 }): FloatingLabel {
   const taskName =
     args.currentTaskDraft.title?.trim() ||
     args.currentTaskDraft.taskName?.trim() ||
-    args.currentTaskFromMemory?.trim() ||
     "";
   const currentTopic = args.currentTopic?.trim() || "";
-  const liveTopic =
-    normalizePromptTopic(args.currentInput || "") ||
-    normalizePromptTopic(args.latestUserText || "");
-  const topic = currentTopic || liveTopic || "";
   const taskFocused =
     args.bottomTab === "task_primary" ||
     args.bottomTab === "task_secondary" ||
     args.activeDrawer === "task";
+
+  if (!taskFocused && currentTopic) {
+    return {
+      kind: "トピック",
+      value: currentTopic,
+      updatedAt: "",
+      accent: "#0f766e",
+      chipBg: "#ecfeff",
+    };
+  }
 
   if (taskFocused && taskName) {
     return {
@@ -93,20 +94,10 @@ export function resolveFloatingLabel(args: {
     };
   }
 
-  if (args.bottomTab === "chat" && topic) {
+  if (currentTopic) {
     return {
       kind: "トピック",
-      value: topic,
-      updatedAt: "",
-      accent: "#0f766e",
-      chipBg: "#ecfeff",
-    };
-  }
-
-  if (topic) {
-    return {
-      kind: "トピック",
-      value: topic,
+      value: currentTopic,
       updatedAt: "",
       accent: "#0f766e",
       chipBg: "#ecfeff",
@@ -135,13 +126,13 @@ export function resolveFloatingLabel(args: {
 export function getComposerPlaceholder(bottomTab: BottomTabKey) {
   if (bottomTab === "chat") return "メッセージを入力";
   if (bottomTab === "task_primary") {
-    return "タスク形成ボタン使用時。新規タスク内容を入力";
+    return "タスク作成ボタン使用時。新規タスク内容を入力";
   }
   if (bottomTab === "task_secondary") {
-    return "タスク形成ボタン使用時。タスク整理に関する指示や追加データを入力";
+    return "タスク作成ボタン使用時。タスク整理に関する指示や追加データを入力";
   }
   if (bottomTab === "kin") {
-    return "タスク形成ボタン使用時。Kinへの指示内容や条件を入力";
+    return "タスク作成ボタン使用時。Kinへ送る指示を入力";
   }
-  return "タスク形成ボタン使用時。ファイル取込時の指示や追加条件を入力";
+  return "タスク作成ボタン使用時。ファイル取込や検索結果の追加内容を入力";
 }

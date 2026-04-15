@@ -1,10 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { Memory } from "@/lib/memory";
+import { createEmptyMemory, type Memory } from "@/lib/memory";
 import { generateId } from "@/lib/uuid";
 import { buildTaskChatBridgeContext } from "@/lib/taskChatBridge";
-import {
-  buildYoutubeTranscriptRetryBlock,
-} from "@/lib/taskRuntimeProtocol";
 import {
   appendRecentAssistantMessage,
   applyProtocolAssistantSideEffects,
@@ -21,15 +18,10 @@ import {
   type PendingRequestLike,
 } from "@/lib/app/sendToGptFlowHelpers";
 import {
-  buildYoutubeTranscriptFailureText,
-  buildYoutubeTranscriptSuccessArtifacts,
-  extractYouTubeVideoIdFromUrl,
-  type YouTubeTranscriptApiResponse,
-} from "@/lib/app/sendToGptTranscriptHelpers";
-import {
   extractInlineUrlTarget as extractInlineUrlTargetHelper,
   runInlineUrlShortcut,
 } from "@/lib/app/sendToGptShortcutFlows";
+import { handleYoutubeTranscriptFlow } from "@/lib/app/sendToGptYoutubeFlow";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
 import type { Message, ReferenceLibraryItem, SourceItem } from "@/types/chat";
@@ -99,15 +91,6 @@ type RunSendToGptFlowArgs = {
   getProtocolLimitViolation: (event: ProtocolLimitEvent) => string | null;
   shouldInjectTaskContextWithSettings: (userInput: string) => boolean;
   parseWrappedSearchResponse: (text: string) => WrappedSearchResponse;
-  getProvisionalMemory: (
-    text: string,
-    options?: {
-      currentTaskTitle?: string;
-      activeDocumentTitle?: string;
-      lastSearchQuery?: string;
-    }
-  ) => unknown;
-  currentTaskTitle?: string;
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
   searchLocation: string;
@@ -122,7 +105,6 @@ type RunSendToGptFlowArgs = {
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
-  setGptState: Dispatch<SetStateAction<any>>;
   setKinInput: Dispatch<SetStateAction<string>>;
   setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
@@ -186,8 +168,6 @@ export async function runSendToGptFlow({
   getProtocolLimitViolation,
   shouldInjectTaskContextWithSettings,
   parseWrappedSearchResponse,
-  getProvisionalMemory,
-  currentTaskTitle,
   searchMode,
   searchEngines,
   searchLocation,
@@ -199,7 +179,6 @@ export async function runSendToGptFlow({
   setGptMessages,
   setGptInput,
   setGptLoading,
-  setGptState,
   setKinInput,
   setPendingKinInjectionBlocks,
   setPendingKinInjectionIndex,
@@ -362,137 +341,26 @@ export async function runSendToGptFlow({
   }
 
   if (youtubeTranscriptRequestEvent?.url?.trim()) {
-    if (onHandleYoutubeTranscriptRequest) {
-      const handled = await onHandleYoutubeTranscriptRequest({
-        userMessage: userMsg,
-        youtubeTranscriptRequestEvent,
-        currentTaskId,
-      });
-      if (handled) return;
-    }
-    const transcriptUrl = youtubeTranscriptRequestEvent.url.trim();
-    const videoId = extractYouTubeVideoIdFromUrl(transcriptUrl);
-    const outputMode = youtubeTranscriptRequestEvent.outputMode || "summary_plus_raw";
-
-    setGptMessages((prev) => [...prev, userMsg]);
-    setGptInput("");
-    setGptLoading(true);
-
-    try {
-      if (!videoId) {
-        throw new Error("Invalid YouTube URL");
-      }
-
-      const response = await fetch("/api/youtube-transcript", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ videoId }),
-      });
-      const data = (await response.json()) as YouTubeTranscriptApiResponse;
-
-      if (!response.ok || !data.text || !videoId) {
-        throw new Error(data.error || "YouTube transcript fetch failed");
-      }
-
-        const now = new Date().toISOString();
-        const transcriptArtifacts = buildYoutubeTranscriptSuccessArtifacts({
-          data,
-          videoId,
-          transcriptUrl,
-          outputMode,
-          taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || "",
-          actionId: youtubeTranscriptRequestEvent.actionId || "",
-          storedDocumentId: "",
-        });
-        const storedDocument = recordIngestedDocument({
-          title: transcriptArtifacts.title,
-          filename: transcriptArtifacts.filename,
-          text: transcriptArtifacts.cleanTranscript,
-          summary: transcriptArtifacts.summary,
-          taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || undefined,
-          charCount: transcriptArtifacts.cleanTranscript.length,
-          createdAt: now,
-          updatedAt: now,
-        });
-        const finalizedArtifacts = buildYoutubeTranscriptSuccessArtifacts({
-          data,
-          videoId,
-          transcriptUrl,
-          outputMode,
-          taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || "",
-          actionId: youtubeTranscriptRequestEvent.actionId || "",
-          storedDocumentId: storedDocument.id,
-        });
-        const assistantText = finalizedArtifacts.assistantText;
-        const kinBlocks = finalizedArtifacts.kinBlocks;
-
-      const assistantMsg: Message = {
-        id: generateId(),
-        role: "gpt",
-        text: assistantText,
-        meta: {
-          kind: "task_info",
-          sourceType: "file_ingest",
-        },
-        };
-
-        ingestProtocolMessage(assistantText, "gpt_to_kin");
-        setKinInput(kinBlocks[0] || "");
-        setPendingKinInjectionBlocks(kinBlocks.length > 1 ? kinBlocks : []);
-        setPendingKinInjectionIndex(0);
-        setActiveTabToKin?.();
-      const memoryContext = resolveMemoryUpdateContext({
-        gptState: gptStateRef.current,
-        userMessage: userMsg,
-        chatRecentLimit,
-      });
-      const updatedRecent = appendRecentAssistantMessage({
-        recentMessages: memoryContext.recentWithUser,
-        assistantMessage: assistantMsg,
-        chatRecentLimit,
-      });
-
-      setGptMessages((prev) => [...prev, assistantMsg]);
-      const memoryResult = await handleGptMemory(updatedRecent, {
-        previousCommittedTopic: memoryContext.previousCommittedTopic,
-      });
-      applySummaryUsage(memoryResult.summaryUsage);
-    } catch (error) {
-      console.error(error);
-      const failureText = buildYoutubeTranscriptFailureText({
-        taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || "",
-        actionId: youtubeTranscriptRequestEvent.actionId || "",
-        transcriptUrl,
-        outputMode,
-      });
-      const retryBlock = buildYoutubeTranscriptRetryBlock({
-        taskId: youtubeTranscriptRequestEvent.taskId || currentTaskId || "",
-        actionId: youtubeTranscriptRequestEvent.actionId || "",
-        url: transcriptUrl,
-      });
-      setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: failureText,
-          meta: {
-            kind: "task_info",
-            sourceType: "manual",
-          },
-        },
-      ]);
-      ingestProtocolMessage(failureText, "gpt_to_kin");
-      setPendingKinInjectionBlocks([]);
-      setPendingKinInjectionIndex(0);
-      setKinInput(retryBlock);
-      setActiveTabToKin?.();
-    } finally {
-      setGptLoading(false);
-    }
-
+    const handled = await handleYoutubeTranscriptFlow({
+      userMsg,
+      youtubeTranscriptRequestEvent,
+      currentTaskId,
+      onHandleYoutubeTranscriptRequest,
+      setGptMessages,
+      setGptInput,
+      setGptLoading,
+      setKinInput,
+      setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex,
+      setActiveTabToKin,
+      recordIngestedDocument,
+      ingestProtocolMessage,
+      gptStateRef,
+      chatRecentLimit,
+      handleGptMemory,
+      applySummaryUsage,
+    });
+    if (handled) return;
     return;
   }
 
@@ -525,26 +393,13 @@ export async function runSendToGptFlow({
     userMessage: userMsg,
     chatRecentLimit,
   });
-  const provisionalMemory = getProvisionalMemory(finalRequestText, {
-    currentTaskTitle: shouldInjectTaskContext ? currentTaskTitle : undefined,
-    activeDocumentTitle: undefined,
-    lastSearchQuery: undefined,
-  });
+  const requestMemory =
+    (gptStateRef.current.memory as Memory | undefined) || createEmptyMemory();
   setGptMessages((prev) => {
     return [...prev, userMsg];
   });
   setGptInput("");
   setGptLoading(true);
-
-  gptStateRef.current = {
-    ...(gptStateRef.current as any),
-    memory: provisionalMemory,
-  } as any;
-
-  setGptState((prev: any) => ({
-    ...prev,
-    memory: provisionalMemory,
-  }));
 
   try {
     const res = await fetch("/api/chatgpt", {
@@ -554,7 +409,7 @@ export async function runSendToGptFlow({
       },
       body: JSON.stringify({
         mode: "chat",
-        memory: provisionalMemory,
+        memory: requestMemory,
         recentMessages: memoryContext.recentWithUser,
         input: finalRequestText,
         storedSearchContext: "",

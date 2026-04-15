@@ -162,6 +162,7 @@ export default function TestTaskPage() {
             onChangeMemoryInterpreterSettings={noop}
             onApproveMemoryRuleCandidate={noop}
             onRejectMemoryRuleCandidate={noop}
+            onUpdateMemoryRuleCandidate={noop}
             onDeleteApprovedMemoryRule={noop}
             onDeleteSearchHistoryItem={noop}
             multipartAssemblies={[]}
