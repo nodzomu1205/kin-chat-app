@@ -104,7 +104,7 @@ function ActionRow({
           解説
         </button>
         <button type="button" style={resetLike(buttonReply)} onClick={() => onAction("reply_only")}>
-          返信のみ
+          返答のみ
         </button>
         <button type="button" style={resetLike(buttonPolish)} onClick={() => onAction("polish")}>
           整える
@@ -113,7 +113,7 @@ function ActionRow({
           Kinに送る
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↺
+          ×
         </button>
       </>
     );
@@ -130,7 +130,7 @@ function ActionRow({
           更新
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↺
+          ×
         </button>
       </>
     );
@@ -150,7 +150,7 @@ function ActionRow({
           データ取込
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↺
+          ×
         </button>
       </>
     );
@@ -165,20 +165,20 @@ function ActionRow({
           style={tint(buttonTransfer, "#d8b4fe", "#faf5ff", "#7e22ce")}
           onClick={onSendLatestResponseToKin}
         >
-          レス送付
+          レス送信
         </button>
         <button
           type="button"
           style={tint(buttonTransfer, "#d8b4fe", "#faf5ff", "#7e22ce")}
           onClick={onSendCurrentTaskToKin}
         >
-          タスク送付
+          タスク送信
         </button>
         <button type="button" style={tint(buttonTask, "#d8b4fe", "#faf5ff", "#7e22ce")} onClick={onReceiveKinResponse}>
           レス受取
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↺
+          ×
         </button>
       </>
     );
@@ -186,7 +186,7 @@ function ActionRow({
 
   return (
     <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "0 4px" }}>
-      ファイル取込は下の「注入」エリアから操作できます。
+      ファイル取込は下の「投入」エリアから操作できます。
     </div>
   );
 }

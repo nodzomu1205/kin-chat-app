@@ -124,6 +124,7 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Domain Model](./docs/domain-model.md)
 - [Refactor Roadmap](./docs/refactor-roadmap.md)
 - [Next Session Handover](./docs/next-session.md)
+- [Handoff 2026-04-16](./docs/HANDOFF-2026-04-16.md)
 - [Handoff 2026-04-15](./docs/HANDOFF-2026-04-15.md)
 - [Architecture Guidelines](./docs/architecture-guidelines.md)
 - [Handoff 2026-04-14](./docs/HANDOFF-2026-04-14.md)
@@ -159,15 +160,13 @@ npm test
 Before large new features, continue maintainability work in this order:
 
 1. remove dead helper branches that are still physically present after the recent refactors
-   - especially `lib/taskIntent.ts`
-   - and the remaining broad helper surfaces inside `lib/app/sendToGptFlowRequestPreparation.ts` and `lib/app/sendToGptFlowState.ts`
-2. residual `app/page.tsx` orchestration review and cleanup of any regrown glue
-   - especially the broad `useChatPageWorkspaceView(...)` source bundle and page-level candidate merge / controller-style coordination that still sits above narrower domain modules
+   - especially the remaining broad helper surfaces inside `lib/app/sendToGptFlowRequestPreparation.ts` and `lib/app/sendToGptFlowState.ts`
+2. residual workspace-view orchestration review and cleanup of any regrown glue
+   - especially the broad `useChatPageWorkspaceView(...)` / `chatPageWorkspaceViewBuilders.ts` source bundle that now sits above narrower domain modules
 3. `lib/app/sendToGptFlowRequestPreparation.ts` / `lib/app/sendToGptFlowState.ts` / `lib/app/sendToGptFlow.ts` flow-surface thinning
    - keep `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` aligned with that thinning so the GPT flow keeps a clean domain boundary
-4. `components/panels/gpt/GptSettingsSections.tsx` settings information architecture redesign
-   - reduce duplication between the new settings workspace and the legacy drawer-oriented settings surface
-5. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts` ingest-flow cleanup
+4. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts` ingest-flow cleanup
+5. final live-surface copy sweep across remaining non-settings panels such as `GptMetaDrawer`
 6. protocol / task / ingest test hardening around the next touched area
 
 `hooks/useGptMemory.ts` and `lib/app/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.

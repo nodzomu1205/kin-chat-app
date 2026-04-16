@@ -525,6 +525,7 @@ export default function GptPanel(props: GptPanelProps) {
         {activeSettingsWorkspace ? (
           <GptSettingsWorkspace
             activeView={activeSettingsWorkspace}
+            onChangeView={setActiveSettingsWorkspace}
             settings={settings}
             protocol={protocol}
             localSettings={localSettings}

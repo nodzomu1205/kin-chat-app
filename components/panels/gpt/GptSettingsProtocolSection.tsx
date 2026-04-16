@@ -27,37 +27,37 @@ function ProtocolAutomationSection(props: {
 }) {
   return (
     <div style={sectionCard}>
-      <div style={{ ...labelStyle, marginBottom: 8 }}>自動送信</div>
+      <div style={{ ...labelStyle, marginBottom: 8 }}>自動化フロー</div>
       <div style={{ display: "grid", gap: 10 }}>
         <ToggleButtons
-          label="A. Kin入力欄の SYS を自動送信"
+          label="A. Kin入力後に SYS を自動送信"
           checked={props.autoSendKinSysInput}
           onChange={props.onChangeAutoSendKinSysInput}
-          help="Kin入力欄に SYS ブロックが載ったら自動送信します。"
+          help="Kin に入力した直後、必要な SYS ブロックを自動送信します。"
         />
         <ToggleButtons
-          label="B. Kin最新レスの SYS を GPT入力欄へ自動転記"
+          label="B. Kin の SYS 応答を GPT 入力欄へ自動コピー"
           checked={props.autoCopyKinSysResponseToGpt}
           onChange={props.onChangeAutoCopyKinSysResponseToGpt}
-          help="Kin の最新メッセージに SYS ブロックがあれば GPT入力欄へ自動転記します。"
+          help="Kin の最新メッセージに SYS ブロックがあれば、GPT の入力欄へ自動反映します。"
         />
         <ToggleButtons
-          label="C. GPT入力欄の SYS を自動送信"
+          label="C. GPT入力後に SYS を自動送信"
           checked={props.autoSendGptSysInput}
           onChange={props.onChangeAutoSendGptSysInput}
-          help="GPT入力欄に SYS ブロックが載ったら自動送信します。"
+          help="GPT に入力した直後、必要な SYS ブロックを自動送信します。"
         />
         <ToggleButtons
-          label="D. GPT最新レスの SYS を Kin入力欄へ自動転記"
+          label="D. GPT の SYS 応答を Kin 入力欄へ自動コピー"
           checked={props.autoCopyGptSysResponseToKin}
           onChange={props.onChangeAutoCopyGptSysResponseToKin}
-          help="GPT の最新メッセージに SYS ブロックがあれば Kin入力欄へ自動転記します。"
+          help="GPT の最新メッセージに SYS ブロックがあれば、Kin の入力欄へ自動反映します。"
         />
         <ToggleButtons
-          label="E. 文書取込時に Kin入力欄へ自動転記（SYS_INFO フォーマット）"
+          label="E. 文書取込後の SYS_INFO を Kin 入力欄へ自動コピー"
           checked={props.autoCopyFileIngestSysInfoToKin}
           onChange={props.onChangeAutoCopyFileIngestSysInfoToKin}
-          help="文書取込後、整形済みの SYS_INFO を Kin入力欄へ自動セットします。"
+          help="ファイル取込後に生成された SYS_INFO を Kin 入力欄へ自動セットします。"
         />
       </div>
     </div>
@@ -89,7 +89,8 @@ function ProtocolEditorSection(props: {
           style={{ ...textAreaStyle, minHeight: 260 }}
         />
         <div style={{ ...helpTextStyle, marginTop: 8 }}>
-          検索プロトコルでは `ENGINE: google_search / google_ai_mode / google_news / google_local` と `LOCATION: Japan` のような明示設定を使えます。
+          検索プロトコルでは `ENGINE: google_search / google_ai_mode / google_news / google_local`
+          と `LOCATION: Japan` のような設定を使えます。
         </div>
       </div>
     </>
@@ -130,7 +131,7 @@ function ProtocolActionSection(props: {
         style={buttonSecondaryWide}
         onClick={() => void props.onSetProtocolRulebookToKinDraft()}
       >
-        Kin入力欄へセット
+        Kin 入力欄へセット
       </button>
       <button
         type="button"

@@ -53,6 +53,7 @@ export type SettingsWorkspaceView = "chat" | "task" | "library";
 
 type Props = {
   activeView: SettingsWorkspaceView;
+  onChangeView: (view: SettingsWorkspaceView) => void;
   settings: GptPanelSettingsProps;
   protocol: GptPanelProtocolProps;
   localSettings: LocalMemorySettingsInput;
@@ -778,6 +779,7 @@ function WorkspaceSectionTitle(props: { title: string; subtitle: string }) {
 
 export default function GptSettingsWorkspace({
   activeView,
+  onChangeView,
   settings,
   protocol,
   localSettings,
@@ -932,9 +934,35 @@ export default function GptSettingsWorkspace({
                   : "ライブラリ、検索、取込"
             }
           />
-          <button type="button" style={buttonSecondaryWide} onClick={onClose}>
-            閉じる
-          </button>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+              justifyContent: isMobile ? "flex-start" : "flex-end",
+            }}
+          >
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {(["chat", "task", "library"] as SettingsWorkspaceView[]).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  style={tabButton(activeView === view)}
+                  onClick={() => onChangeView(view)}
+                >
+                  {view === "chat"
+                    ? "チャット"
+                    : view === "task"
+                      ? "タスク"
+                      : "ライブラリ"}
+                </button>
+              ))}
+            </div>
+            <button type="button" style={buttonSecondaryWide} onClick={onClose}>
+              閉じる
+            </button>
+          </div>
         </div>
 
         {activeView === "chat" ? (

@@ -41,7 +41,7 @@ export default function KinToolbar({
       </button>
 
       <button type="button" style={buttonReset} onClick={onReset} title="リセット">
-        ↻
+        ×
       </button>
     </div>
   );

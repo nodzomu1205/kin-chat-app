@@ -143,7 +143,7 @@ export function buildChatPageWorkspacePanelsViewArgs(
     },
     taskProtocolView: args.task.taskProtocolView,
     kinPanel: {
-      activeTabSetter: () => args.app.setActiveTab("kin"),
+      activeTabSetter: () => args.app.setActiveTab("gpt"),
       kinState: {
         kinIdInput: args.kin.kinIdInput,
         setKinIdInput: args.kin.setKinIdInput,

@@ -108,10 +108,10 @@ export default function KinPanel(props: KinPanelProps) {
         }}
       >
         <ChatMessages
-            messages={kinMessages}
-            bottomRef={kinBottomRef}
-            loadingText={loading ? "Kindroidが応答中…" : null}
-          />
+          messages={kinMessages}
+          bottomRef={kinBottomRef}
+          loadingText={loading ? "Kindroidが応答中…" : null}
+        />
       </div>
 
       <div style={footerStyle(isMobile)}>
@@ -128,7 +128,7 @@ export default function KinPanel(props: KinPanelProps) {
               marginBottom: 8,
             }}
           >
-            📦 注入送信中 {pendingInjectionCurrentPart}/{pendingInjectionTotalParts}
+            注入送信中 {pendingInjectionCurrentPart}/{pendingInjectionTotalParts}
           </div>
         )}
 
