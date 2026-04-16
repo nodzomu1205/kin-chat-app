@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-15
+Updated: 2026-04-16
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -15,7 +15,7 @@ The goal is not to rewrite everything at once. The goal is to keep shipping whil
 Current verification baseline:
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- test status: `63 files / 259 tests`
+- test status: `65 files / 274 tests`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -111,6 +111,9 @@ Done:
 - `ReceivedDocsDrawer` cleanup
 - part of `app/page.tsx` orchestration extraction
 - `panelPropsBuilders.ts` now absorbs pending-injection progress, task-draft field callbacks, and settings count clamping
+- `useTaskDraftWorkspace.ts` now absorbs task-draft slot state and navigation from `app/page.tsx`
+- `app/page.tsx` action / panel / effect / hook inputs now assemble through dedicated builder layers instead of one large inline wiring surface
+- `useChatPageActions.ts` now acts more clearly as a thin coordinator and passes smaller arg slices to sub-hooks
 - GPT settings now have a separate full-area workspace path with 3 icon entry points while the existing hanging drawers remain in place
 - GPT chat scroll position is now preserved when switching into and back out of the settings workspace
 - `useGptMemory.ts` reduced to a smaller orchestration hook
@@ -119,7 +122,7 @@ Done:
 
 Next:
 - introduce `useChatAppController`
-- move more panel prop assembly out of `app/page.tsx`
+- review whether the remaining `app/page.tsx` orchestration should stay as builders or move behind a higher-level controller hook
 - review whether the pending-memory-rule candidate merge path should move out of `app/page.tsx`
 
 ### 2.5. Task Protocol Hook Thinning
@@ -179,8 +182,24 @@ Done:
   - implicit search usage / context helper
   - protocol post-response side-effect helper
   - shared recent-message / previous-topic memory-update helpers
+- [`lib/app/sendToGptProtocolBuilders.ts`](../lib/app/sendToGptProtocolBuilders.ts)
+  - protocol request / response block builders extracted from `sendToGptFlowHelpers.ts`
+- [`lib/app/sendToGptFlowTypes.ts`](../lib/app/sendToGptFlowTypes.ts)
+  - shared flow / helper protocol and artifact types extracted for reuse across `sendToGptFlow.ts` and helpers
+- [`lib/app/sendToGptFlowContext.ts`](../lib/app/sendToGptFlowContext.ts)
+  - protocol event / search-context derivation extracted from `sendToGptFlowHelpers.ts`
+- [`lib/app/sendToGptText.ts`](../lib/app/sendToGptText.ts)
+  - UTF-8-safe request text and task-info text helpers extracted so the main `sendToGpt` path no longer depends on mojibake-prone literals
+  - `sendToGptFlowHelpers.ts` currently keeps thin compatibility wrappers while remaining call sites are migrated
+- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+  - request / search / protocol / memory / UI args now grouped through shared flow-slice types
 - [`lib/app/memoryInterpreterText.ts`](../lib/app/memoryInterpreterText.ts)
   - shared text normalization / topic candidate helpers extracted from `memoryInterpreter.ts`
+  - search-directive detection is now anchored to a UTF-8-safe shared prefix regex
+- [`lib/app/memoryInterpreterTopicText.ts`](../lib/app/memoryInterpreterTopicText.ts)
+  - shared topic-tail cleanup now keeps `memoryInterpreterText.ts` and `memoryInterpreterTopicExtractor.ts` aligned
+- [`lib/app/memoryInterpreterTextPatterns.ts`](../lib/app/memoryInterpreterTextPatterns.ts)
+  - shared acknowledgement lead-in and sentence-marker patterns extracted for reuse across memory text helpers
 - [`lib/app/memoryInterpreterFacts.ts`](../lib/app/memoryInterpreterFacts.ts)
   - fact / preference / tracked-entity helpers extracted from `memoryInterpreter.ts`
 - [`lib/app/memoryInterpreterWorks.ts`](../lib/app/memoryInterpreterWorks.ts)
@@ -215,7 +234,7 @@ Next:
 - keep `memoryInterpreter.ts` and `useGptMemory.ts` stable unless a correctness issue is found
 - thin `app/page.tsx` by moving panel prop assembly and orchestration glue outward
 - keep thinning `sendToGptFlowHelpers.ts` / `sendToGptFlow.ts` by moving protocol / search / transcript shaping logic out in small slices
-- consider the next `sendToGptFlow` slice around transcript request handling or request-payload assembly
+- consider the next `sendToGptFlow` slice around request-text normalization or transcript request handling
 - continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
 - review `app/api/ingest/route.ts` and `hooks/useIngestActions.ts` as the next ingest-side integration point
 - periodically audit topic write authority and remove any newly regrown hidden mutation paths instead of layering blockers over them

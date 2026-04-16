@@ -1,7 +1,7 @@
 import type { SearchResultMode, TaskProtocolEvent } from "@/types/taskProtocol";
 
 const BLOCK_REGEX = /<<SYS_([A-Z_]+)>>([\s\S]*?)<<END_SYS_\1>>/g;
-const TASK_BLOCK_REGEX = /<<SYS_TASK>>[\s\S]*?<<SYS_TASK_END>>/g;
+const TASK_BLOCK_REGEX = /<<SYS_TASK>>[\s\S]*?(?:<<END_SYS_TASK>>|<<SYS_TASK_END>>)/g;
 const INFO_BLOCK_REGEX = /<<SYS_INFO>>[\s\S]*?<<END_SYS_INFO>>/g;
 
 export function normalizeTaskProtocolEventType(

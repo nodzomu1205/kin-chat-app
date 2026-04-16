@@ -33,7 +33,9 @@ ${longBody}
     expect(blocks[0]).toContain("<<SYS_TASK>>");
     expect(blocks[0]).toContain("PART: 1/");
     expect(blocks[0]).toContain("MULTIPART_TASK_NOTICE:");
-    expect(blocks[0]).toContain('reply only with "Received."');
+    expect(blocks[0]).toContain(
+      "reply only with <<SYS_KIN_RESPONSE>> Received. Send the next. <<END_SYS_RESPONSE>>"
+    );
     expect(blocks[0]).toContain("END OF PART 1/");
     expect(blocks[0]).toContain("<<END_SYS_TASK>>");
   });

@@ -78,7 +78,12 @@ Recent progress includes:
 - staged helper extraction from `memoryInterpreter.ts`
 - inline URL dead-code cleanup in `sendToGptFlow.ts`
 - panel-prop builder extraction for `app/page.tsx`
+- chat-page action / panel / effect / hook arg builders extracted from `app/page.tsx`
+- task-draft workspace extraction from `app/page.tsx`
+- `useChatPageActions` narrowed toward a thin coordinator with sub-hook specific arg slices
 - shared recent-message / memory-update helper extraction for `sendToGptFlow`
+- `sendToGptFlow` split into dedicated `context` / `builders` / `helpers` / `types` modules
+- `memoryInterpreter` topic-tail and sentence-pattern helpers extracted into shared text modules
 - GPT settings workspace split from the old hanging-drawer UI
 - task drawer unification plus multi-draft / multi-progress task workflow support
 - task suspend / hold support through `TASK_CONFIRM`
@@ -89,7 +94,7 @@ The current verification baseline is:
 
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- current test count: `63 files / 259 tests`
+- current test count: `65 files / 274 tests`
 
 Recent regression fixes include:
 
@@ -140,8 +145,9 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. `app/page.tsx` orchestration thinning
+1. residual `app/page.tsx` orchestration review and cleanup of any regrown glue
 2. `lib/app/sendToGptFlowHelpers.ts` / `lib/app/sendToGptFlow.ts` flow-surface thinning
+   - keep `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` aligned with that thinning so the GPT flow keeps a clean domain boundary
 3. `components/panels/gpt/GptSettingsSections.tsx` settings information architecture redesign
 4. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts` ingest-flow cleanup
 5. protocol / task / ingest test hardening around the next touched area

@@ -4,18 +4,24 @@ import {
   shouldTransformContent,
   transformTextWithIntent,
 } from "@/lib/app/transformIntent";
-import type { PostIngestAction } from "@/components/panels/gpt/gptPanelTypes";
-import type { UseChatPageActionsArgs } from "@/hooks/useChatPageActions";
+import type {
+  FileReadPolicy,
+  ImageDetail,
+  IngestMode,
+  PostIngestAction,
+  UploadKind,
+} from "@/components/panels/gpt/gptPanelTypes";
+import type { UseFileIngestActionsArgs } from "@/hooks/useChatPageActions";
 
-export function useFileIngestActions(args: UseChatPageActionsArgs) {
+export function useFileIngestActions(args: UseFileIngestActionsArgs) {
   const injectFileToKinDraft = async (
     file: File,
     options: {
-      kind: any;
-      mode: any;
-      detail: any;
+      kind: UploadKind;
+      mode: IngestMode;
+      detail: ImageDetail;
       action: PostIngestAction;
-      readPolicy: any;
+      readPolicy: FileReadPolicy;
       compactCharLimit: number;
       simpleImageCharLimit: number;
     }

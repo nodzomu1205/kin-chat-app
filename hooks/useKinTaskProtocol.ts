@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type {
   PendingExternalRequest,
   TaskIntent,
@@ -41,11 +41,6 @@ export function useKinTaskProtocol() {
   const [runtime, setRuntime] = useState<TaskRuntimeState>(createEmptyTaskRuntime);
   const [runtimeSnapshots, setRuntimeSnapshots] = useState<TaskRuntimeState[]>([]);
 
-  useEffect(() => {
-    if (!runtime.currentTaskId) return;
-    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, runtime));
-  }, [runtime]);
-
   function createActionId() {
     return `A${String(Date.now()).slice(-6)}`;
   }
@@ -53,6 +48,7 @@ export function useKinTaskProtocol() {
   function startTask(params: {
     originalInstruction: string;
     intent: TaskIntent;
+    title?: string;
   }) {
     const taskId = createTaskId();
     const started = buildStartedTaskState({
@@ -60,9 +56,11 @@ export function useKinTaskProtocol() {
       taskId,
       originalInstruction: params.originalInstruction,
       intent: params.intent,
+      title: params.title,
       now: Date.now(),
     });
     setRuntime(started.nextState);
+    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, started.nextState));
 
     return {
       taskId,
@@ -79,11 +77,13 @@ export function useKinTaskProtocol() {
         status: "pending",
       };
       const nextPending = [...prev.pendingRequests, pending];
-      return {
+      const nextState = {
         ...prev,
         pendingRequests: nextPending,
         userFacingRequests: toUserFacingRequests(nextPending),
       };
+      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
+      return nextState;
     });
   }
 
@@ -103,10 +103,13 @@ export function useKinTaskProtocol() {
       originalInstruction: params.originalInstruction,
     });
 
-    setRuntime((prev) => ({
-      ...prev,
+    const nextState = {
+      ...runtime,
       ...next.nextState,
-    }));
+    };
+
+    setRuntime(nextState);
+    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextState));
 
     return {
       taskId,
@@ -116,17 +119,23 @@ export function useKinTaskProtocol() {
   }
 
   function answerPendingRequest(requestId: string, answerText: string) {
-    setRuntime((prev) =>
-      answerPendingTaskRequestState(prev, {
+    setRuntime((prev) => {
+      const nextState = answerPendingTaskRequestState(prev, {
         requestId,
         answerText,
         answeredAt: Date.now(),
-      })
-    );
+      });
+      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
+      return nextState;
+    });
   }
 
   function setFinalizeReviewed(params: { accepted: boolean; summary?: string }) {
-    setRuntime((prev) => applyFinalizeReviewedState(prev, params));
+    setRuntime((prev) => {
+      const nextState = applyFinalizeReviewedState(prev, params);
+      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
+      return nextState;
+    });
   }
 
   function updateRequirementProgressCounts(params: {
@@ -134,7 +143,11 @@ export function useKinTaskProtocol() {
     completedCount: number;
     targetCount?: number;
   }) {
-    setRuntime((prev) => updateRequirementProgressCountsState(prev, params));
+    setRuntime((prev) => {
+      const nextState = updateRequirementProgressCountsState(prev, params);
+      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
+      return nextState;
+    });
   }
 
   function ingestProtocolEvents(params: {
@@ -145,12 +158,14 @@ export function useKinTaskProtocol() {
     if (params.events.length === 0) return;
 
     setRuntime((prev) => {
-      return ingestTaskProtocolEventsState(prev, {
+      const nextState = ingestTaskProtocolEventsState(prev, {
         direction: params.direction,
         events: params.events,
         createActionId,
         now: () => Date.now(),
       });
+      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
+      return nextState;
     });
   }
 
@@ -169,7 +184,9 @@ export function useKinTaskProtocol() {
   }
 
   function resetRuntime() {
-    setRuntime(createEmptyTaskRuntime());
+    const nextState = createEmptyTaskRuntime();
+    setRuntime(nextState);
+    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextState));
   }
 
   function archiveTask(taskId: string) {
@@ -202,12 +219,14 @@ export function useKinTaskProtocol() {
     const nextRuntime = runtimeSnapshots[progressSelection.activeIndex - 1];
     if (!nextRuntime) return;
     setRuntime(nextRuntime);
+    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextRuntime));
   }
 
   function selectNextProgressView() {
     const nextRuntime = runtimeSnapshots[progressSelection.activeIndex + 1];
     if (!nextRuntime) return;
     setRuntime(nextRuntime);
+    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextRuntime));
   }
 
   return {

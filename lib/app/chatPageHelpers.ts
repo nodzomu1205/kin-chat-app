@@ -30,7 +30,7 @@ export function buildPendingIntentCandidateKey(
 
 export function extractTaskGoalFromSysTaskBlock(text: string) {
   const match = text.match(
-    /<<SYS_TASK>>[\s\S]*?GOAL:\s*([\s\S]*?)(?:\n[A-Z_]+:|\n<<SYS_TASK_END>>)/
+    /<<SYS_TASK>>[\s\S]*?GOAL:\s*([\s\S]*?)(?:\n[A-Z_]+:|\n(?:<<END_SYS_TASK>>|<<SYS_TASK_END>>))/
   );
   return match?.[1]?.trim() || "";
 }

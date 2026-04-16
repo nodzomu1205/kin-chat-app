@@ -40,10 +40,130 @@ function toKinStoredDocument(item: MultipartAssembly): StoredDocument {
   };
 }
 
+function parseStoredDocuments(value: string | null): StoredDocument[] {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value) as StoredDocument[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item) =>
+        !!item?.id &&
+        !!item?.filename &&
+        !!item?.text &&
+        item?.sourceType === "ingested_file"
+    );
+  } catch {
+    return [];
+  }
+}
+
+function parseDocumentOrder(value: string | null): string[] {
+  if (!value) return [];
+
+  try {
+    const parsed = JSON.parse(value) as string[];
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseDocumentOverrides(
+  value: string | null
+): Record<string, Partial<StoredDocument>> {
+  if (!value) return {};
+
+  try {
+    const parsed = JSON.parse(value) as Record<string, Partial<StoredDocument>>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function applyDocumentOverride(
+  item: StoredDocument,
+  override?: Partial<StoredDocument>
+): StoredDocument {
+  if (!override) return item;
+
+  const text = typeof override.text === "string" ? override.text : item.text;
+  const title = typeof override.title === "string" ? override.title : item.title;
+  const summary = typeof override.summary === "string" ? override.summary : item.summary;
+  const updatedAt =
+    typeof override.updatedAt === "string" ? override.updatedAt : item.updatedAt;
+
+  return {
+    ...item,
+    ...override,
+    title,
+    text,
+    summary,
+    updatedAt,
+    charCount: text.length,
+  };
+}
+
+export function sanitizeDocumentOrder(documentOrder: string[], documents: StoredDocument[]) {
+  const currentIds = new Set(documents.map((item) => item.id));
+  const next = documentOrder.filter((id) => currentIds.has(id));
+  const missing = documents.map((item) => item.id).filter((id) => !next.includes(id));
+  return [...next, ...missing];
+}
+
+export function buildAllStoredDocuments(args: {
+  kinDocuments: StoredDocument[];
+  ingestedDocuments: StoredDocument[];
+  documentOverrides: Record<string, Partial<StoredDocument>>;
+  documentOrder: string[];
+}) {
+  const defaultDocuments = [...args.kinDocuments, ...args.ingestedDocuments]
+    .map((item) => applyDocumentOverride(item, args.documentOverrides[item.id]))
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+
+  const effectiveOrder = sanitizeDocumentOrder(args.documentOrder, defaultDocuments);
+  if (effectiveOrder.length === 0) {
+    return {
+      allDocuments: defaultDocuments,
+      documentOrder: effectiveOrder,
+    };
+  }
+
+  const byId = new Map(defaultDocuments.map((item) => [item.id, item]));
+  const ordered: StoredDocument[] = [];
+  effectiveOrder.forEach((id) => {
+    const item = byId.get(id);
+    if (item) {
+      ordered.push(item);
+      byId.delete(id);
+    }
+  });
+
+  return {
+    allDocuments: [...ordered, ...Array.from(byId.values())],
+    documentOrder: effectiveOrder,
+  };
+}
+
 export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
-  const [ingestedDocuments, setIngestedDocuments] = useState<StoredDocument[]>([]);
-  const [documentOverrides, setDocumentOverrides] = useState<Record<string, Partial<StoredDocument>>>({});
-  const [documentOrder, setDocumentOrder] = useState<string[]>([]);
+  const [ingestedDocuments, setIngestedDocuments] = useState<StoredDocument[]>(() =>
+    typeof window === "undefined"
+      ? []
+      : parseStoredDocuments(window.localStorage.getItem(INGESTED_DOCUMENTS_KEY))
+  );
+  const [documentOverrides, setDocumentOverrides] = useState<
+    Record<string, Partial<StoredDocument>>
+  >(() =>
+    typeof window === "undefined"
+      ? {}
+      : parseDocumentOverrides(window.localStorage.getItem(DOCUMENT_OVERRIDES_KEY))
+  );
+  const [documentOrder, setDocumentOrder] = useState<string[]>(() =>
+    typeof window === "undefined"
+      ? []
+      : parseDocumentOrder(window.localStorage.getItem(DOCUMENT_ORDER_KEY))
+  );
 
   const kinDocuments = useMemo(
     () =>
@@ -55,44 +175,6 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const savedIngestedDocuments = window.localStorage.getItem(INGESTED_DOCUMENTS_KEY);
-    const savedDocumentOrder = window.localStorage.getItem(DOCUMENT_ORDER_KEY);
-    const savedDocumentOverrides = window.localStorage.getItem(DOCUMENT_OVERRIDES_KEY);
-
-    if (savedIngestedDocuments) {
-      try {
-        const parsed = JSON.parse(savedIngestedDocuments) as StoredDocument[];
-        if (Array.isArray(parsed)) {
-          setIngestedDocuments(
-            parsed.filter(
-              (item) =>
-                item?.id &&
-                item?.filename &&
-                item?.text &&
-                item?.sourceType === "ingested_file"
-            )
-          );
-        }
-      } catch {}
-    }
-
-    if (savedDocumentOrder) {
-      try {
-        const parsed = JSON.parse(savedDocumentOrder) as string[];
-        if (Array.isArray(parsed)) setDocumentOrder(parsed.filter(Boolean));
-      } catch {}
-    }
-    if (savedDocumentOverrides) {
-      try {
-        const parsed = JSON.parse(savedDocumentOverrides) as Record<string, Partial<StoredDocument>>;
-        if (parsed && typeof parsed === "object") setDocumentOverrides(parsed);
-      } catch {}
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     window.localStorage.setItem(
       INGESTED_DOCUMENTS_KEY,
       JSON.stringify(ingestedDocuments)
@@ -101,58 +183,25 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(DOCUMENT_ORDER_KEY, JSON.stringify(documentOrder));
-  }, [documentOrder]);
+    const nextOrder = sanitizeDocumentOrder(documentOrder, [...kinDocuments, ...ingestedDocuments]);
+    window.localStorage.setItem(DOCUMENT_ORDER_KEY, JSON.stringify(nextOrder));
+  }, [documentOrder, ingestedDocuments, kinDocuments]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(DOCUMENT_OVERRIDES_KEY, JSON.stringify(documentOverrides));
   }, [documentOverrides]);
 
-  const allDocuments = useMemo(() => {
-    const defaultDocuments = [...kinDocuments, ...ingestedDocuments]
-      .map((item) => {
-        const override = documentOverrides[item.id];
-        if (!override) return item;
-        const text = typeof override.text === "string" ? override.text : item.text;
-        const title = typeof override.title === "string" ? override.title : item.title;
-        const summary = typeof override.summary === "string" ? override.summary : item.summary;
-        const updatedAt =
-          typeof override.updatedAt === "string" ? override.updatedAt : item.updatedAt;
-        return {
-          ...item,
-          ...override,
-          title,
-          text,
-          summary,
-          updatedAt,
-          charCount: text.length,
-        };
-      })
-      .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-    if (documentOrder.length === 0) return defaultDocuments;
-
-    const byId = new Map(defaultDocuments.map((item) => [item.id, item]));
-    const ordered: StoredDocument[] = [];
-    documentOrder.forEach((id) => {
-      const item = byId.get(id);
-      if (item) {
-        ordered.push(item);
-        byId.delete(id);
-      }
-    });
-    return [...ordered, ...Array.from(byId.values())];
-  }, [documentOrder, ingestedDocuments, kinDocuments]);
-
-  useEffect(() => {
-    setDocumentOrder((prev) => {
-      const currentIds = new Set([...kinDocuments, ...ingestedDocuments].map((item) => item.id));
-      const next = prev.filter((id) => currentIds.has(id));
-      const missing = allDocuments.map((item) => item.id).filter((id) => !next.includes(id));
-      if (missing.length === 0 && next.length === prev.length) return prev;
-      return [...next, ...missing];
-    });
-  }, [allDocuments, ingestedDocuments, kinDocuments]);
+  const { allDocuments, documentOrder: effectiveDocumentOrder } = useMemo(
+    () =>
+      buildAllStoredDocuments({
+        kinDocuments,
+        ingestedDocuments,
+        documentOverrides,
+        documentOrder,
+      }),
+    [documentOrder, documentOverrides, ingestedDocuments, kinDocuments]
+  );
 
   const getStoredDocument = (documentId: string) =>
     allDocuments.find((item) => item.id === documentId) || null;
@@ -218,7 +267,12 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
 
   const moveStoredDocument = (documentId: string, direction: "up" | "down") => {
     setDocumentOrder((prev) => {
-      const next = prev.length > 0 ? [...prev] : allDocuments.map((item) => item.id);
+      const next =
+        prev.length > 0
+          ? [...sanitizeDocumentOrder(prev, allDocuments)]
+          : effectiveDocumentOrder.length > 0
+            ? [...effectiveDocumentOrder]
+            : allDocuments.map((item) => item.id);
       const index = next.findIndex((id) => id === documentId);
       if (index < 0) return next;
       const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -243,7 +297,7 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
   return {
     ingestedDocuments,
     allDocuments,
-    documentOrder,
+    documentOrder: effectiveDocumentOrder,
     documentStorageMB,
     recordIngestedDocument,
     updateStoredDocument,

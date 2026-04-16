@@ -9,6 +9,10 @@ describe("memoryInterpreterTopicExtractor", () => {
   it("extracts direct Japanese topics", () => {
     expect(extractQuestionSubject("日本の歴史を教えて下さい。")).toBe("日本の歴史");
     expect(extractQuestionSubject("ソクラテスについて知っていますか？")).toBe("ソクラテス");
+    expect(extractQuestionSubject("ソクラテスのことを教えて下さい。")).toBe("ソクラテス");
+    expect(
+      extractQuestionSubject("ナポレオンについてもっと詳しく教えてください")
+    ).toBe("ナポレオン");
     expect(
       extractQuestionSubject("なぜそんなにも長く続いて文化も栄えた縄文時代が終わってしまったのですか？")
     ).toBe("縄文時代");

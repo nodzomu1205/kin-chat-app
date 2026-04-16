@@ -56,6 +56,27 @@ describe("taskProtocolTaskState", () => {
     expect(result.nextState.protocolLog).toHaveLength(1);
   });
 
+  it("derives a clearer Japanese title from the original instruction", () => {
+    const intent: TaskIntent = {
+      ...baseIntent,
+      goal: "縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して",
+      entities: [],
+    };
+
+    const result = buildStartedTaskState({
+      prev: createRuntime(),
+      taskId: "123456",
+      originalInstruction:
+        "縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して！1000文字以上。検索3回迄。コンテンツ取得5回迄。",
+      intent,
+      now: 1000,
+    });
+
+    expect(result.title).toContain("縄文時代");
+    expect(result.title).toContain("YouTube");
+    expect(result.title).not.toBe("縄文時代に関する動画をYouTube");
+  });
+
   it("preserves prior progress when replacing the current task intent", () => {
     const prev = createRuntime({
       currentTaskId: "123456",

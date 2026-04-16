@@ -1,8 +1,9 @@
 import { useCallback } from "react";
+import type { Message } from "@/types/chat";
 
-export function usePanelResetActions(args: {
-  setKinMessages: React.Dispatch<React.SetStateAction<any[]>>;
-  setGptMessages: React.Dispatch<React.SetStateAction<any[]>>;
+export type PanelResetActionArgs = {
+  setKinMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   resetTokenStats: () => void;
   clearPendingKinInjection: () => void;
   resetCurrentTaskDraft: () => void;
@@ -14,7 +15,9 @@ export function usePanelResetActions(args: {
   removeKinState: (id: string) => void;
   removeKin: (id: string) => void;
   resetGptForCurrentKin: () => void;
-}) {
+};
+
+export function usePanelResetActions(args: PanelResetActionArgs) {
   const resetBothPanels = useCallback(() => {
     args.setKinMessages([]);
     args.setGptMessages([]);

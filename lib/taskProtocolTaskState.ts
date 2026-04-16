@@ -1,6 +1,7 @@
 import { compileKinTaskPrompt } from "@/lib/taskCompiler";
 import { generateTaskTitle } from "@/lib/taskTitle";
 import { mergeRequirementProgressForIntent } from "@/lib/taskProtocolState";
+import { suggestTaskTitle } from "@/lib/app/contextNaming";
 import type { TaskIntent, TaskRuntimeState } from "@/types/taskProtocol";
 
 type StartTaskStateParams = {
@@ -8,6 +9,7 @@ type StartTaskStateParams = {
   taskId: string;
   originalInstruction: string;
   intent: TaskIntent;
+  title?: string;
   now: number;
 };
 
@@ -23,20 +25,33 @@ function resolveTaskTitle(params: {
   intent: TaskIntent;
   title?: string;
   fallbackTitle?: string;
+  originalInstruction?: string;
 }) {
+  const titleSource = params.originalInstruction || params.intent.goal;
+  const generated = generateTaskTitle({
+    goal: titleSource,
+    outputType: params.intent.output.type,
+    entities: params.intent.entities,
+  });
+  const suggested = suggestTaskTitle({
+    freeText: titleSource,
+    fallback: params.fallbackTitle || params.intent.goal,
+  });
+
   return (
     params.title?.trim() ||
     params.fallbackTitle ||
-    generateTaskTitle({
-      goal: params.intent.goal,
-      outputType: params.intent.output.type,
-      entities: params.intent.entities,
-    })
+    generated ||
+    suggested
   );
 }
 
 export function buildStartedTaskState(params: StartTaskStateParams) {
-  const title = resolveTaskTitle({ intent: params.intent });
+  const title = resolveTaskTitle({
+    intent: params.intent,
+    title: params.title,
+    originalInstruction: params.originalInstruction,
+  });
   const compiledTaskPrompt = compileKinTaskPrompt({
     taskId: params.taskId,
     title,
@@ -78,6 +93,7 @@ export function buildReplacedTaskIntentState(params: ReplaceCurrentTaskIntentPar
     intent: params.intent,
     title: params.title,
     fallbackTitle: params.prev.currentTaskTitle,
+    originalInstruction: params.originalInstruction,
   });
   const compiledTaskPrompt = compileKinTaskPrompt({
     taskId: params.taskId,

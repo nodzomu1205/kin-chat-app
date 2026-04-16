@@ -1,63 +1,35 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { createEmptyMemory, type Memory } from "@/lib/memory";
 import { generateId } from "@/lib/uuid";
 import { buildTaskChatBridgeContext } from "@/lib/taskChatBridge";
 import {
   appendRecentAssistantMessage,
   applyProtocolAssistantSideEffects,
-  buildEffectiveRequestText,
+  buildAssistantResponseArtifacts,
+  buildChatApiRequestPayload,
+  buildFinalRequestText,
   handleImplicitSearchArtifacts,
-  buildProtocolOverrideRequestText,
-  buildProtocolSearchResponseArtifacts,
-  deriveProtocolSearchContext,
   resolveMemoryUpdateContext,
   resolveProtocolLimitViolation,
-  toSourceItems,
-  wrapProtocolAssistantText,
-  type ParsedInputLike,
-  type PendingRequestLike,
 } from "@/lib/app/sendToGptFlowHelpers";
+import { deriveProtocolSearchContext } from "@/lib/app/sendToGptFlowContext";
+import {
+  getTaskDirectiveOnlyResponseText,
+  shouldRespondToTaskDirectiveOnlyInput,
+} from "@/lib/app/sendToGptText";
+import type {
+  SendToGptFlowMemoryArgs,
+  SendToGptFlowProtocolArgs,
+  SendToGptFlowRequestArgs,
+  SendToGptFlowSearchArgs,
+  SendToGptFlowUiArgs,
+} from "@/lib/app/sendToGptFlowTypes";
 import {
   extractInlineUrlTarget as extractInlineUrlTargetHelper,
   runInlineUrlShortcut,
 } from "@/lib/app/sendToGptShortcutFlows";
 import { handleYoutubeTranscriptFlow } from "@/lib/app/sendToGptYoutubeFlow";
 import { normalizeUsage } from "@/lib/tokenStats";
-import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
-import type { Message, ReferenceLibraryItem, SourceItem } from "@/types/chat";
-import type { TaskRuntimeState } from "@/types/taskProtocol";
-import type { TaskProtocolEvent } from "@/types/taskProtocol";
-import type { GptInstructionMode, ResponseMode } from "@/components/panels/gpt/gptPanelTypes";
-import type { SearchEngine, SearchMode } from "@/types/task";
-
-type ProtocolLimitEvent = {
-  type:
-    | "ask_gpt"
-    | "search_request"
-    | "user_question"
-    | "library_reference"
-    | "youtube_transcript_request";
-  taskId?: string;
-  actionId?: string;
-};
-
-
-
-
-type WrappedSearchResponse = {
-  query?: string;
-  outputMode?: string;
-  summary?: string;
-  rawExcerpt?: string;
-} | null;
-
-type SearchRecord = {
-  rawResultId: string;
-};
-
-type MemoryResultLike = {
-  summaryUsage?: Parameters<typeof normalizeUsage>[0];
-};
+import type { Message } from "@/types/chat";
 
 type SearchSource = {
   title?: string;
@@ -75,105 +47,41 @@ type ChatApiResponse = {
   sources?: SearchSource[];
 };
 
-type RunSendToGptFlowArgs = {
-  gptInput: string;
-  gptLoading: boolean;
-  processMultipartTaskDoneText: (
-    text: string,
-    options?: { setGptTab?: boolean }
-  ) => { handled: boolean; accepted: boolean } | null;
-  taskProtocolRuntime: TaskRuntimeState;
-  findPendingRequest: (requestId: string) => PendingRequestLike | null;
-  applyPrefixedTaskFieldsFromText: (text: string) => ParsedInputLike;
-  buildLibraryReferenceContext: () => string;
-  referenceLibraryItems: ReferenceLibraryItem[];
-  libraryIndexResponseCount: number;
-  getProtocolLimitViolation: (event: ProtocolLimitEvent) => string | null;
-  shouldInjectTaskContextWithSettings: (userInput: string) => boolean;
-  parseWrappedSearchResponse: (text: string) => WrappedSearchResponse;
-  searchMode: SearchMode;
-  searchEngines: SearchEngine[];
-  searchLocation: string;
-  activeDocumentTitle?: string;
-  lastSearchQuery?: string;
-  handleGptMemory: (
-    recent: Message[],
-    options?: MemoryUpdateOptions
-  ) => Promise<MemoryResultLike>;
-  chatRecentLimit: number;
-  gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: Memory }>;
-  setGptMessages: Dispatch<SetStateAction<Message[]>>;
-  setGptInput: Dispatch<SetStateAction<string>>;
-  setGptLoading: Dispatch<SetStateAction<boolean>>;
-  setKinInput: Dispatch<SetStateAction<string>>;
-  setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
-  setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
-  setActiveTabToKin?: () => void;
-  instructionMode?: GptInstructionMode;
-  responseMode: ResponseMode;
-  currentTaskId: string | null;
-  recordIngestedDocument: (document: {
-    title: string;
-    filename: string;
-    text: string;
-    summary?: string;
-    taskId?: string;
-    charCount: number;
-    createdAt: string;
-    updatedAt: string;
-  }) => { id: string };
-  taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
-  ingestProtocolMessage: (
-    text: string,
-    direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
-  ) => void;
-  recordSearchContext: (args: {
-    mode?: SearchMode;
-    engines?: SearchEngine[];
-    location?: string;
-    seriesId?: string;
-    continuationToken?: string;
-    metadata?: Record<string, unknown>;
-    taskId?: string;
-    actionId?: string;
-    query: string;
-    goal?: string;
-    outputMode?: "summary" | "raw_and_summary";
-    summaryText?: string;
-    rawText: string;
-    sources: SourceItem[];
-  }) => SearchRecord;
-  getContinuationTokenForSeries: (seriesId: string) => string;
-  getAskAiModeLinkForQuery: (query: string) => string;
-  applySearchUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
-  applyChatUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
-  onHandleYoutubeTranscriptRequest?: (params: {
-    userMessage: Message;
-    youtubeTranscriptRequestEvent: TaskProtocolEvent;
-    currentTaskId: string | null;
-  }) => Promise<boolean>;
-};
+export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
+  SendToGptFlowSearchArgs &
+  SendToGptFlowProtocolArgs &
+  SendToGptFlowMemoryArgs &
+  SendToGptFlowUiArgs;
 
 export async function runSendToGptFlow({
   gptInput,
   gptLoading,
   processMultipartTaskDoneText,
+  instructionMode = "normal",
+  onHandleYoutubeTranscriptRequest,
+  responseMode,
   taskProtocolRuntime,
+  currentTaskId,
   findPendingRequest,
   applyPrefixedTaskFieldsFromText,
-  buildLibraryReferenceContext,
-  referenceLibraryItems,
-  libraryIndexResponseCount,
   getProtocolLimitViolation,
   shouldInjectTaskContextWithSettings,
-  parseWrappedSearchResponse,
+  referenceLibraryItems,
+  libraryIndexResponseCount,
+  buildLibraryReferenceContext,
+  taskProtocolAnswerPendingRequest,
+  ingestProtocolMessage,
   searchMode,
   searchEngines,
   searchLocation,
-  activeDocumentTitle,
-  lastSearchQuery,
+  parseWrappedSearchResponse,
+  recordSearchContext,
+  getContinuationTokenForSeries,
+  getAskAiModeLinkForQuery,
+  applySearchUsage,
+  applyChatUsage,
   handleGptMemory,
+  applySummaryUsage,
   chatRecentLimit,
   gptStateRef,
   setGptMessages,
@@ -183,19 +91,7 @@ export async function runSendToGptFlow({
   setPendingKinInjectionBlocks,
   setPendingKinInjectionIndex,
   setActiveTabToKin,
-  instructionMode = "normal",
-  responseMode,
-  currentTaskId,
   recordIngestedDocument,
-  taskProtocolAnswerPendingRequest,
-  ingestProtocolMessage,
-  recordSearchContext,
-  getContinuationTokenForSeries,
-  getAskAiModeLinkForQuery,
-  applySearchUsage,
-  applyChatUsage,
-  applySummaryUsage,
-  onHandleYoutubeTranscriptRequest,
 }: RunSendToGptFlowArgs) {
   if (!gptInput.trim() || gptLoading) return;
 
@@ -253,16 +149,18 @@ export async function runSendToGptFlow({
     getAskAiModeLinkForQuery,
   });
 
-  const hasSearch = !!effectiveParsedSearchQuery;
-  const hasTaskDirectives = !!(parsedInput.title || parsedInput.userInstruction);
-
-  if (hasTaskDirectives && !hasSearch && !parsedInput.freeText) {
+  if (
+    shouldRespondToTaskDirectiveOnlyInput({
+      parsedInput,
+      effectiveParsedSearchQuery,
+    })
+  ) {
     setGptMessages((prev) => [
       ...prev,
       {
         id: generateId(),
         role: "gpt",
-        text: "タスクのタイトルや追加指示を更新しました。",
+        text: getTaskDirectiveOnlyResponseText(),
         meta: {
           kind: "task_info",
           sourceType: "manual",
@@ -273,34 +171,6 @@ export async function runSendToGptFlow({
     return;
   }
 
-  const requestText = [
-    parsedInput.searchQuery ? `検索: ${parsedInput.searchQuery}` : "",
-    parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const normalizedRequestText = [
-    effectiveParsedSearchQuery ? `検索：${effectiveParsedSearchQuery}` : "",
-    parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const effectiveRequestText = [
-    effectiveParsedSearchQuery
-      ? `\u691c\u7d22\uFF1A${effectiveParsedSearchQuery}`
-      : "",
-    parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  let finalRequestText = buildEffectiveRequestText({
-    rawText,
-    parsedInput,
-    effectiveParsedSearchQuery,
-  });
   // Search history is already represented in the reference library, so avoid
   // double-injecting it during normal chat turns.
   const libraryReferenceContext = buildLibraryReferenceContext();
@@ -364,7 +234,16 @@ export async function runSendToGptFlow({
     return;
   }
 
-  finalRequestText = buildProtocolOverrideRequestText({
+  const shouldInjectTaskContext =
+    !!currentTaskId && shouldInjectTaskContextWithSettings(rawText);
+  const taskContext = shouldInjectTaskContext
+    ? buildTaskChatBridgeContext(taskProtocolRuntime)
+    : "";
+
+  const finalRequestText = buildFinalRequestText({
+    rawText,
+    parsedInput,
+    effectiveParsedSearchQuery,
     askGptEvent,
     requestToAnswer,
     requestAnswerBody,
@@ -374,19 +253,10 @@ export async function runSendToGptFlow({
     effectiveSearchLocation,
     libraryIndexRequestEvent,
     libraryItemRequestEvent,
-    rawText,
     referenceLibraryItems,
     libraryIndexResponseCount,
-    defaultText: finalRequestText,
+    taskContext,
   });
-
-  const shouldInjectTaskContext =
-    !!currentTaskId && shouldInjectTaskContextWithSettings(rawText);
-
-  if (shouldInjectTaskContext) {
-    const taskContext = buildTaskChatBridgeContext(taskProtocolRuntime);
-    finalRequestText = `${taskContext}\n\n${finalRequestText}`;
-  }
 
   const memoryContext = resolveMemoryUpdateContext({
     gptState: gptStateRef.current,
@@ -395,9 +265,7 @@ export async function runSendToGptFlow({
   });
   const requestMemory =
     (gptStateRef.current.memory as Memory | undefined) || createEmptyMemory();
-  setGptMessages((prev) => {
-    return [...prev, userMsg];
-  });
+  setGptMessages((prev) => [...prev, userMsg]);
   setGptInput("");
   setGptLoading(true);
 
@@ -407,67 +275,46 @@ export async function runSendToGptFlow({
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        mode: "chat",
-        memory: requestMemory,
-        recentMessages: memoryContext.recentWithUser,
-        input: finalRequestText,
-        storedSearchContext: "",
-        storedDocumentContext: effectiveDocumentReferenceContext,
-        storedLibraryContext: libraryReferenceContext,
-        forcedSearchQuery:
-          continuationDetails.cleanQuery ||
-          searchRequestEvent?.query ||
-          effectiveParsedSearchQuery ||
-          undefined,
-        searchSeriesId,
-        searchContinuationToken: continuationToken || undefined,
-        searchAskAiModeLink: askAiModeLink || undefined,
-        searchMode: effectiveSearchMode,
-        searchEngines: effectiveSearchEngines,
-        searchLocation: effectiveSearchLocation,
-        instructionMode,
-        reasoningMode: responseMode,
-      }),
+      body: JSON.stringify(
+        buildChatApiRequestPayload({
+          requestMemory,
+          recentMessages: memoryContext.recentWithUser,
+          input: finalRequestText,
+          storedDocumentContext: effectiveDocumentReferenceContext,
+          storedLibraryContext: libraryReferenceContext,
+          forcedSearchQuery:
+            continuationDetails.cleanQuery ||
+            searchRequestEvent?.query ||
+            effectiveParsedSearchQuery ||
+            undefined,
+          searchSeriesId,
+          searchContinuationToken: continuationToken || undefined,
+          searchAskAiModeLink: askAiModeLink || undefined,
+          searchMode: effectiveSearchMode,
+          searchEngines: effectiveSearchEngines,
+          searchLocation: effectiveSearchLocation,
+          instructionMode,
+          reasoningMode: responseMode,
+        })
+      ),
     });
 
     const data = (await res.json()) as ChatApiResponse;
-    let assistantText =
-      typeof data.reply === "string" && data.reply.trim()
-        ? data.reply.trim()
-        : "GPT did not return a usable response.";
-    let normalizedSources: SourceItem[] = [];
-
-    assistantText = wrapProtocolAssistantText({
-      assistantText,
+    const { assistantText, normalizedSources } = buildAssistantResponseArtifacts({
+      data,
+      parseWrappedSearchResponse,
       askGptEvent,
       currentTaskId,
       requestToAnswer,
       requestAnswerBody,
+      searchRequestEvent,
+      effectiveSearchMode,
+      effectiveSearchEngines,
+      effectiveSearchLocation,
+      searchSeriesId,
+      cleanQuery: continuationDetails.cleanQuery,
+      recordSearchContext,
     });
-
-    if (searchRequestEvent) {
-      const wrappedSearchResponse =
-        typeof data.reply === "string" && data.reply.includes("<<SYS_SEARCH_RESPONSE>>")
-          ? parseWrappedSearchResponse(data.reply)
-          : null;
-      const searchArtifacts = buildProtocolSearchResponseArtifacts({
-        data,
-        searchRequestEvent,
-        currentTaskId,
-        wrappedSearchResponse,
-        effectiveSearchMode,
-        effectiveSearchEngines,
-        effectiveSearchLocation,
-        searchSeriesId,
-        cleanQuery: continuationDetails.cleanQuery,
-        recordSearchContext,
-      });
-      normalizedSources = searchArtifacts.normalizedSources;
-      assistantText = searchArtifacts.assistantText;
-    } else if (data.searchUsed) {
-      normalizedSources = toSourceItems(data.sources);
-    }
 
     const assistantMsg: Message = {
       id: generateId(),
@@ -528,7 +375,7 @@ export async function runSendToGptFlow({
         text: "GPT request failed.",
       },
     ]);
-    } finally {
-      setGptLoading(false);
-    }
+  } finally {
+    setGptLoading(false);
   }
+}

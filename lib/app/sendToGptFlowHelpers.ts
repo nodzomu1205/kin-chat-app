@@ -1,258 +1,53 @@
-import { parseTaskInput } from "@/lib/taskInputParser";
-import { parseSearchContinuation } from "@/lib/search-domain/continuations";
-import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
 import { buildUserResponseBlock } from "@/lib/taskRuntimeProtocol";
+import {
+  buildAskGptRequestBlock,
+  buildLibraryIndexResponseDraft,
+  buildLibraryItemResponseDraft,
+  buildProtocolSourceLines,
+  buildSearchRequestInstruction,
+  buildSearchResponseBlock,
+  buildUserResponseRequestBlock,
+} from "@/lib/app/sendToGptProtocolBuilders";
+import {
+  buildNormalizedRequestText as buildNormalizedRequestTextClean,
+  getTaskDirectiveOnlyResponseText as getTaskDirectiveOnlyResponseTextClean,
+  shouldRespondToTaskDirectiveOnlyInput as shouldRespondToTaskDirectiveOnlyInputClean,
+} from "@/lib/app/sendToGptText";
+import type {
+  ChatApiRequestPayload,
+  ChatApiSearchLike,
+  GptStateSnapshotLike,
+  ParsedInputLike,
+  PendingRequestLike,
+  ProtocolLimitEvent,
+  ProtocolTaskEventLike,
+  SearchContextRecorder,
+  SearchRecord,
+  SearchResponseEventLike,
+  SearchSource,
+  WrappedSearchResponse,
+} from "@/lib/app/sendToGptFlowTypes";
 import type { Message, ReferenceLibraryItem, SourceItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
-
-export type ParsedInputLike = {
-  searchQuery?: string;
-  freeText?: string;
-  title?: string;
-  userInstruction?: string;
+export type {
+  ChatApiRequestPayload,
+  ChatApiSearchLike,
+  ParsedInputLike,
+  PendingRequestLike,
+  SearchRecord,
+  SearchSource,
+  WrappedSearchResponse,
 };
 
-export type PendingRequestLike = {
-  id: string;
-  taskId: string;
-  actionId: string;
-  body: string;
-};
-
-export type WrappedSearchResponse = {
-  query?: string;
-  outputMode?: string;
-  summary?: string;
-  rawExcerpt?: string;
-} | null;
-
-export type SearchRecord = {
-  rawResultId: string;
-};
-
-export type SearchSource = {
-  title?: string;
-  link?: string;
-  snippet?: string;
-  sourceType?: string;
-  publishedAt?: string;
-  thumbnailUrl?: string;
-  channelName?: string;
-  duration?: string;
-  viewCount?: string;
-  videoId?: string;
-};
-
-export type ChatApiSearchLike = {
-  reply?: string;
-  usage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
-  searchUsed?: boolean;
-  searchQuery?: string;
-  searchSeriesId?: string;
-  searchContinuationToken?: string;
-  searchEvidence?: string;
-  sources?: SearchSource[];
-};
-
-type ProtocolLimitEvent = {
-  type:
-    | "ask_gpt"
-    | "search_request"
-    | "user_question"
-    | "library_reference"
-    | "youtube_transcript_request";
-  taskId?: string;
-  actionId?: string;
-};
-
-type ProtocolTaskEventLike = {
-  taskId?: string;
-  actionId?: string;
-  body?: string;
-  summary?: string;
-  query?: string;
-  searchEngine?: string;
-  searchLocation?: string;
-  outputMode?: string;
-};
-
-type SearchResponseEventLike = {
-  taskId?: string;
-  actionId?: string;
-  body?: string;
-  summary?: string;
-  query?: string;
-  searchEngine?: string;
-  searchLocation?: string;
-  outputMode?: string;
-};
-
-type GptStateSnapshotLike = {
-  recentMessages?: Message[];
-  memory?: {
-    context?: {
-      currentTopic?: string;
-    };
-  };
-};
-
-export function deriveProtocolSearchContext(params: {
-  rawText: string;
-  findPendingRequest: (requestId: string) => PendingRequestLike | null;
-  applyPrefixedTaskFieldsFromText: (text: string) => ParsedInputLike;
-  searchMode: SearchMode;
-  searchEngines: SearchEngine[];
-  searchLocation: string;
-  getContinuationTokenForSeries: (seriesId: string) => string;
-  getAskAiModeLinkForQuery: (query: string) => string;
-}) {
-  const protocolEvents = extractTaskProtocolEvents(params.rawText);
-  const askGptEvent = protocolEvents.find((event) => event.type === "ask_gpt");
-  const searchRequestEvent = protocolEvents.find(
-    (event) => event.type === "search_request"
-  );
-  const youtubeTranscriptRequestEvent = protocolEvents.find(
-    (event) => event.type === "youtube_transcript_request"
-  );
-  const libraryIndexRequestEvent = protocolEvents.find(
-    (event) => event.type === "library_index_request"
-  );
-  const libraryItemRequestEvent = protocolEvents.find(
-    (event) => event.type === "library_item_request"
-  );
-  const userQuestionEvent = protocolEvents.find(
-    (event) => event.type === "user_question"
-  );
-
-  const reqAnswerMatch = params.rawText.match(
-    /^REQ\s+([A-Z]\d+)\s+.+?:\s*([\s\S]*)$/i
-  );
-  const requestAnswerId = reqAnswerMatch?.[1]?.trim() || "";
-  const requestAnswerBody = reqAnswerMatch?.[2]?.trim() || "";
-  const requestToAnswer = requestAnswerId
-    ? params.findPendingRequest(requestAnswerId)
-    : null;
-
-  const parsedInput = params.applyPrefixedTaskFieldsFromText(params.rawText);
-  const inlineSearchQuery = extractInlineSearchQuery(params.rawText);
-  const effectiveParsedSearchQuery = parsedInput.searchQuery || inlineSearchQuery;
-  const continuationDetails = parseSearchContinuation(
-    searchRequestEvent?.query || parsedInput.searchQuery || inlineSearchQuery || ""
-  );
-  const protocolSearchOverrides = resolveProtocolSearchOverrides({
-    requestedEngine: searchRequestEvent?.searchEngine,
-    requestedLocation: searchRequestEvent?.searchLocation,
-    fallbackMode: params.searchMode,
-    fallbackEngines: params.searchEngines,
-    fallbackLocation: params.searchLocation,
-  });
-  const effectiveSearchMode = protocolSearchOverrides.searchMode;
-  const effectiveSearchEngines = protocolSearchOverrides.searchEngines;
-  const effectiveSearchLocation = protocolSearchOverrides.searchLocation;
-  const aiContinuationEnabled =
-    effectiveSearchEngines.includes("google_ai_mode") ||
-    (effectiveSearchEngines.length === 0 &&
-      (effectiveSearchMode === "ai" ||
-        effectiveSearchMode === "integrated" ||
-        effectiveSearchMode === "ai_first"));
-  const searchSeriesId = aiContinuationEnabled
-    ? continuationDetails.seriesId
-    : undefined;
-  const continuationToken = searchSeriesId
-    ? params.getContinuationTokenForSeries(searchSeriesId)
-    : "";
-  const askAiModeLink =
-    aiContinuationEnabled && !continuationToken
-      ? params.getAskAiModeLinkForQuery(
-          continuationDetails.cleanQuery ||
-            searchRequestEvent?.query ||
-            effectiveParsedSearchQuery ||
-            ""
-        )
-      : "";
-
-  return {
-    protocolEvents,
-    askGptEvent,
-    searchRequestEvent,
-    youtubeTranscriptRequestEvent,
-    libraryIndexRequestEvent,
-    libraryItemRequestEvent,
-    userQuestionEvent,
-    requestToAnswer,
-    requestAnswerBody,
-    parsedInput,
-    effectiveParsedSearchQuery,
-    continuationDetails,
-    effectiveSearchMode,
-    effectiveSearchEngines,
-    effectiveSearchLocation,
-    searchSeriesId,
-    continuationToken,
-    askAiModeLink,
-  };
-}
-
-export function resolveProtocolSearchOverrides(params: {
-  requestedEngine?: string;
-  requestedLocation?: string;
-  fallbackMode: SearchMode;
-  fallbackEngines: SearchEngine[];
-  fallbackLocation: string;
-}) {
-  const engine = params.requestedEngine?.trim().toLowerCase();
-  const location = params.requestedLocation?.trim() || params.fallbackLocation;
-
-  switch (engine) {
-    case "google_search":
-      return {
-        searchMode: "normal" as SearchMode,
-        searchEngines: ["google_search"] as SearchEngine[],
-        searchLocation: location,
-      };
-    case "google_ai_mode":
-      return {
-        searchMode: "ai" as SearchMode,
-        searchEngines: ["google_ai_mode"] as SearchEngine[],
-        searchLocation: location,
-      };
-    case "google_news":
-      return {
-        searchMode: "news" as SearchMode,
-        searchEngines: ["google_news"] as SearchEngine[],
-        searchLocation: location,
-      };
-    case "google_local":
-      return {
-        searchMode: "geo" as SearchMode,
-        searchEngines: ["google_local"] as SearchEngine[],
-        searchLocation: location,
-      };
-    case "youtube_search":
-      return {
-        searchMode: "youtube" as SearchMode,
-        searchEngines: ["youtube_search"] as SearchEngine[],
-        searchLocation: location,
-      };
-    default:
-      return {
-        searchMode: params.fallbackMode,
-        searchEngines: params.fallbackEngines,
-        searchLocation: location,
-      };
-  }
-}
-
-export function extractInlineSearchQuery(text: string) {
-  if (!text) return "";
-  return parseTaskInput(text).searchQuery.trim();
-}
-
+// Legacy wrapper kept temporarily so downstream call sites can move to
+// sendToGptText.ts incrementally without changing behavior.
 export function buildEffectiveRequestText(params: {
   rawText: string;
   parsedInput: ParsedInputLike;
   effectiveParsedSearchQuery: string;
 }) {
+  return buildNormalizedRequestTextClean(params);
+
   const requestText = [
     params.parsedInput.searchQuery ? `検索：${params.parsedInput.searchQuery}` : "",
     params.parsedInput.freeText || "",
@@ -279,6 +74,142 @@ export function buildEffectiveRequestText(params: {
     .join("\n");
 
   return effectiveRequestText || normalizedRequestText || requestText || params.rawText;
+}
+
+// Legacy wrapper kept temporarily so text-domain helpers can migrate in small slices.
+export function shouldRespondToTaskDirectiveOnlyInput(params: {
+  parsedInput: ParsedInputLike;
+  effectiveParsedSearchQuery: string;
+}) {
+  return shouldRespondToTaskDirectiveOnlyInputClean(params);
+
+  const hasSearch = !!params.effectiveParsedSearchQuery;
+  const hasTaskDirectives = !!(
+    params.parsedInput.title || params.parsedInput.userInstruction
+  );
+
+  return hasTaskDirectives && !hasSearch && !params.parsedInput.freeText;
+}
+
+export function getTaskDirectiveOnlyResponseText() {
+  return getTaskDirectiveOnlyResponseTextClean();
+
+  return "タスクのタイトルと指示を更新しました。";
+}
+
+export function getUtf8TaskDirectiveOnlyResponseText() {
+  return "\u30bf\u30b9\u30af\u306e\u30bf\u30a4\u30c8\u30eb\u3068\u6307\u793a\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002";
+}
+
+// Legacy wrapper kept temporarily so text-domain helpers can migrate in small slices.
+export function buildNormalizedRequestText(params: {
+  rawText: string;
+  parsedInput: ParsedInputLike;
+  effectiveParsedSearchQuery: string;
+}) {
+  return buildNormalizedRequestTextClean(params);
+
+  const resolvedSearchQuery =
+    params.effectiveParsedSearchQuery || params.parsedInput.searchQuery || "";
+  const normalizedRequestText = [
+    resolvedSearchQuery ? `\u691c\u7d22: ${resolvedSearchQuery}` : "",
+    params.parsedInput.freeText || "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return normalizedRequestText || params.rawText;
+}
+
+export function buildFinalRequestText(params: {
+  rawText: string;
+  parsedInput: ParsedInputLike;
+  effectiveParsedSearchQuery: string;
+  askGptEvent?: ProtocolTaskEventLike;
+  requestToAnswer?: PendingRequestLike | null;
+  requestAnswerBody?: string;
+  searchRequestEvent?: ProtocolTaskEventLike;
+  currentTaskId?: string | null;
+  effectiveSearchEngines: string[];
+  effectiveSearchLocation: string;
+  libraryIndexRequestEvent?: ProtocolTaskEventLike;
+  libraryItemRequestEvent?: ProtocolTaskEventLike;
+  referenceLibraryItems: ReferenceLibraryItem[];
+  libraryIndexResponseCount: number;
+  taskContext?: string;
+}) {
+  const protocolOverrideText = buildProtocolOverrideRequestText({
+    askGptEvent: params.askGptEvent,
+    requestToAnswer: params.requestToAnswer,
+    requestAnswerBody: params.requestAnswerBody,
+    searchRequestEvent: params.searchRequestEvent,
+    currentTaskId: params.currentTaskId,
+    effectiveSearchEngines: params.effectiveSearchEngines,
+    effectiveSearchLocation: params.effectiveSearchLocation,
+    libraryIndexRequestEvent: params.libraryIndexRequestEvent,
+    libraryItemRequestEvent: params.libraryItemRequestEvent,
+    rawText: params.rawText,
+    referenceLibraryItems: params.referenceLibraryItems,
+    libraryIndexResponseCount: params.libraryIndexResponseCount,
+    defaultText: buildNormalizedRequestTextClean({
+      rawText: params.rawText,
+      parsedInput: params.parsedInput,
+      effectiveParsedSearchQuery: params.effectiveParsedSearchQuery,
+    }),
+  });
+
+  if (!params.taskContext) {
+    return protocolOverrideText;
+  }
+
+  return `${params.taskContext}\n\n${protocolOverrideText}`;
+}
+
+export function buildChatApiRequestPayload(params: {
+  requestMemory: unknown;
+  recentMessages: Message[];
+  input: string;
+  storedLibraryContext: string;
+  storedDocumentContext?: string;
+  forcedSearchQuery?: string;
+  searchSeriesId?: string;
+  searchContinuationToken?: string;
+  searchAskAiModeLink?: string;
+  searchMode: SearchMode;
+  searchEngines: SearchEngine[];
+  searchLocation: string;
+  instructionMode: string;
+  reasoningMode: string;
+}) {
+  const payload: ChatApiRequestPayload = {
+    mode: "chat",
+    memory: params.requestMemory,
+    recentMessages: params.recentMessages,
+    input: params.input,
+    storedSearchContext: "",
+    storedDocumentContext: params.storedDocumentContext || "",
+    storedLibraryContext: params.storedLibraryContext,
+    searchMode: params.searchMode,
+    searchEngines: params.searchEngines,
+    searchLocation: params.searchLocation,
+    instructionMode: params.instructionMode,
+    reasoningMode: params.reasoningMode,
+  };
+
+  if (params.forcedSearchQuery) {
+    payload.forcedSearchQuery = params.forcedSearchQuery;
+  }
+  if (params.searchSeriesId) {
+    payload.searchSeriesId = params.searchSeriesId;
+  }
+  if (params.searchContinuationToken) {
+    payload.searchContinuationToken = params.searchContinuationToken;
+  }
+  if (params.searchAskAiModeLink) {
+    payload.searchAskAiModeLink = params.searchAskAiModeLink;
+  }
+
+  return payload;
 }
 
 export function resolveMemoryUpdateContext(params: {
@@ -356,22 +287,7 @@ export function buildProtocolSearchResponseArtifacts(params: {
   effectiveSearchLocation: string;
   searchSeriesId?: string;
   cleanQuery?: string;
-  recordSearchContext: (args: {
-    mode?: SearchMode;
-    engines?: SearchEngine[];
-    location?: string;
-    seriesId?: string;
-    continuationToken?: string;
-    metadata?: Record<string, unknown>;
-    taskId?: string;
-    actionId?: string;
-    query: string;
-    goal?: string;
-    outputMode?: "summary" | "raw_and_summary";
-    summaryText?: string;
-    rawText: string;
-    sources: SourceItem[];
-  }) => SearchRecord;
+  recordSearchContext: SearchContextRecorder;
 }) {
   const requestedMode = params.searchRequestEvent.outputMode || "summary";
   const normalizedSources = toSourceItems(params.data.sources);
@@ -468,6 +384,65 @@ export function buildProtocolSearchResponseArtifacts(params: {
   };
 }
 
+export function buildAssistantResponseArtifacts(params: {
+  data: ChatApiSearchLike;
+  parseWrappedSearchResponse: (text: string) => WrappedSearchResponse;
+  askGptEvent?: ProtocolTaskEventLike;
+  currentTaskId?: string | null;
+  requestToAnswer?: PendingRequestLike | null;
+  requestAnswerBody?: string;
+  searchRequestEvent?: SearchResponseEventLike;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  searchSeriesId?: string;
+  cleanQuery?: string;
+  recordSearchContext: SearchContextRecorder;
+}) {
+  let assistantText =
+    typeof params.data.reply === "string" && params.data.reply.trim()
+      ? params.data.reply.trim()
+      : "GPT did not return a usable response.";
+  let normalizedSources: SourceItem[] = [];
+
+  assistantText = wrapProtocolAssistantText({
+    assistantText,
+    askGptEvent: params.askGptEvent,
+    currentTaskId: params.currentTaskId,
+    requestToAnswer: params.requestToAnswer,
+    requestAnswerBody: params.requestAnswerBody,
+  });
+
+  if (params.searchRequestEvent) {
+    const wrappedSearchResponse =
+      typeof params.data.reply === "string" &&
+      params.data.reply.includes("<<SYS_SEARCH_RESPONSE>>")
+        ? params.parseWrappedSearchResponse(params.data.reply)
+        : null;
+    const searchArtifacts = buildProtocolSearchResponseArtifacts({
+      data: params.data,
+      searchRequestEvent: params.searchRequestEvent,
+      currentTaskId: params.currentTaskId,
+      wrappedSearchResponse,
+      effectiveSearchMode: params.effectiveSearchMode,
+      effectiveSearchEngines: params.effectiveSearchEngines,
+      effectiveSearchLocation: params.effectiveSearchLocation,
+      searchSeriesId: params.searchSeriesId,
+      cleanQuery: params.cleanQuery,
+      recordSearchContext: params.recordSearchContext,
+    });
+    normalizedSources = searchArtifacts.normalizedSources;
+    assistantText = searchArtifacts.assistantText;
+  } else if (params.data.searchUsed) {
+    normalizedSources = toSourceItems(params.data.sources);
+  }
+
+  return {
+    assistantText,
+    normalizedSources,
+  };
+}
+
 export function handleImplicitSearchArtifacts(params: {
   data: ChatApiSearchLike;
   searchRequestEvent?: SearchResponseEventLike;
@@ -480,22 +455,7 @@ export function handleImplicitSearchArtifacts(params: {
   finalRequestText: string;
   applySearchUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
   applyChatUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
-  recordSearchContext: (args: {
-    mode?: SearchMode;
-    engines?: SearchEngine[];
-    location?: string;
-    seriesId?: string;
-    continuationToken?: string;
-    metadata?: Record<string, unknown>;
-    taskId?: string;
-    actionId?: string;
-    query: string;
-    goal?: string;
-    outputMode?: "summary" | "raw_and_summary";
-    summaryText?: string;
-    rawText: string;
-    sources: SourceItem[];
-  }) => SearchRecord;
+  recordSearchContext: SearchContextRecorder;
 }) {
   if (params.data.searchUsed && !params.searchRequestEvent) {
     params.applySearchUsage(params.data.usage);
@@ -685,265 +645,6 @@ export function buildProtocolOverrideRequestText(params: {
   }
 
   return params.defaultText;
-}
-
-export function buildAskGptRequestBlock(params: {
-  taskId: string;
-  actionId: string;
-  body: string;
-}) {
-  return [
-    "You are responding to a Kindroid SYS_ASK_GPT request.",
-    "Return only this exact block format and nothing outside it:",
-    "<<SYS_GPT_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    "BODY: <your answer>",
-    "<<END_SYS_GPT_RESPONSE>>",
-    "",
-    "Request:",
-    params.body,
-  ].join("\n");
-}
-
-export function buildUserResponseRequestBlock(params: {
-  taskId: string;
-  actionId: string;
-  originalQuestion: string;
-  answerBody: string;
-}) {
-  return [
-    "You are converting a user's plain answer into a Kindroid protocol response.",
-    "Return only this exact block format and nothing outside it:",
-    "<<SYS_USER_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    "BODY: <clean answer for Kindroid here>",
-    "<<END_SYS_USER_RESPONSE>>",
-    "",
-    "Original Kindroid question:",
-    params.originalQuestion,
-    "",
-    "User answer:",
-    params.answerBody,
-  ].join("\n");
-}
-
-export function buildSearchRequestInstruction(params: {
-  taskId: string;
-  actionId: string;
-  query: string;
-  engine: string;
-  location: string;
-  requestedMode: string;
-  goal: string;
-}) {
-  const modeInstruction =
-    params.requestedMode === "raw"
-      ? "Prefer raw evidence excerpts and keep synthesis minimal."
-      : params.requestedMode === "summary_plus_raw"
-        ? "Return both a concise synthesis and a compact raw evidence excerpt."
-        : "Return a concise synthesis only.";
-
-  return [
-    "You are responding to a Kindroid SYS_SEARCH_REQUEST.",
-    "Use the provided search evidence seriously and return only this exact block format:",
-    "<<SYS_SEARCH_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `QUERY: ${params.query}`,
-    `ENGINE: ${params.engine}`,
-    `LOCATION: ${params.location}`,
-    `OUTPUT_MODE: ${params.requestedMode}`,
-    "SUMMARY:",
-    "<search summary here>",
-    "SOURCES:",
-    "- <title> | <url>",
-    "RAW_RESULT_AVAILABLE: YES",
-    "RAW_RESULT_ID: <raw result id here>",
-    "<<END_SYS_SEARCH_RESPONSE>>",
-    "",
-    modeInstruction,
-    "",
-    "Search goal:",
-    params.goal,
-  ].join("\n");
-}
-
-export function buildLibraryIndexResponseDraft(params: {
-  taskId: string;
-  actionId: string;
-  referenceLibraryItems: ReferenceLibraryItem[];
-  libraryIndexResponseCount: number;
-}) {
-  const lines = [
-    "<<SYS_LIBRARY_INDEX_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    "BODY:",
-  ];
-
-  const compactItems = params.referenceLibraryItems.slice(
-    0,
-    Math.max(1, params.libraryIndexResponseCount || 1)
-  );
-  if (compactItems.length === 0) {
-    lines.push("- No library items are currently available.");
-  } else {
-    compactItems.forEach((item) => {
-      lines.push(
-        `- ITEM_ID: ${item.id} | TYPE: ${item.itemType} | TITLE: ${item.title} | SHORT_SUMMARY: ${item.summary}`
-      );
-    });
-  }
-
-  lines.push("<<END_SYS_LIBRARY_INDEX_RESPONSE>>");
-  return lines.join("\n");
-}
-
-export function buildLibraryItemResponseDraft(params: {
-  taskId: string;
-  actionId: string;
-  rawText: string;
-  referenceLibraryItems: ReferenceLibraryItem[];
-}) {
-  const itemIdMatch = params.rawText.match(/ITEM_ID:\s*([A-Za-z0-9:_-]+)/i);
-  const requestedItemId = itemIdMatch?.[1]?.trim() || "";
-  const requestedModeMatch = params.rawText.match(
-    /OUTPUT_MODE:\s*(summary|summary_plus_raw|raw)/i
-  );
-  const requestedMode = requestedModeMatch?.[1]?.trim().toLowerCase() || "summary";
-  const item = params.referenceLibraryItems.find(
-    (candidate) => candidate.id === requestedItemId
-  );
-
-  const lines = [
-    "<<SYS_LIBRARY_ITEM_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `ITEM_ID: ${requestedItemId || item?.id || ""}`,
-    `OUTPUT_MODE: ${requestedMode === "raw" ? "summary_plus_raw" : requestedMode}`,
-  ];
-
-  if (!item) {
-    lines.push("SUMMARY: Requested library item was not found.");
-  } else {
-    lines.push(`SUMMARY: ${item.summary}`);
-    if (requestedMode !== "summary" && item.excerptText.trim()) {
-      lines.push(`RAW_EXCERPT: ${item.excerptText.trim().slice(0, 1400)}`);
-    }
-  }
-
-  lines.push("<<END_SYS_LIBRARY_ITEM_RESPONSE>>");
-  return lines.join("\n");
-}
-
-export function buildSearchResponseBlock(params: {
-  taskId: string;
-  actionId: string;
-  query: string;
-  engine: string;
-  location: string;
-  requestedMode: string;
-  recordedSearch: SearchRecord | null;
-  summaryText: string;
-  rawExcerpt: string;
-  wrappedOutputMode?: string;
-  sourceLines: string[];
-}) {
-  const responseLines = [
-    "<<SYS_SEARCH_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `QUERY: ${params.query}`,
-    `ENGINE: ${params.engine}`,
-    `LOCATION: ${params.location}`,
-    `OUTPUT_MODE: ${params.wrappedOutputMode || params.requestedMode}`,
-    `RAW_RESULT_AVAILABLE: ${params.recordedSearch ? "YES" : "NO"}`,
-    ...(params.recordedSearch ? [`RAW_RESULT_ID: ${params.recordedSearch.rawResultId}`] : []),
-  ];
-
-  if (params.requestedMode !== "raw") {
-    responseLines.push("SUMMARY:", params.summaryText);
-  } else {
-    responseLines.push("SUMMARY:", "Raw-focused search response. See RAW_EXCERPT below.");
-  }
-
-  const shouldIncludeSources =
-    params.requestedMode !== "summary" || params.engine === "youtube_search";
-
-  if (shouldIncludeSources) {
-    responseLines.push(
-      "SOURCES:",
-      ...(params.sourceLines.length > 0 ? params.sourceLines : ["- none"])
-    );
-  }
-
-  if (
-    (params.requestedMode === "raw" || params.requestedMode === "summary_plus_raw") &&
-    params.rawExcerpt
-  ) {
-    responseLines.push("RAW_EXCERPT:", params.rawExcerpt);
-  }
-
-  responseLines.push("<<END_SYS_SEARCH_RESPONSE>>");
-  return responseLines.join("\n");
-}
-
-export function buildProtocolSourceLines(
-  sources: SourceItem[],
-  engine: string
-): string[] {
-  return sources.slice(0, 5).map((source) => {
-    if (engine === "youtube_search") {
-      return [
-        `- ${source.title || "Untitled"}`,
-        source.channelName ? `  Channel: ${source.channelName}` : "",
-        source.duration ? `  Duration: ${source.duration}` : "",
-        source.viewCount ? `  Views: ${Number(source.viewCount).toLocaleString()} views` : "",
-        source.link ? `  URL: ${source.link}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-    }
-
-    return `- ${source.title || "Untitled"}${source.link ? ` | ${source.link}` : ""}`;
-  });
-}
-
-export function buildYouTubeTranscriptResponseBlock(params: {
-  taskId: string;
-  actionId: string;
-  url: string;
-  outputMode: string;
-  title: string;
-  channel: string;
-  summary: string;
-  rawExcerpt?: string;
-  libraryItemId?: string;
-}) {
-  const lines = [
-    "<<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `URL: ${params.url}`,
-    `OUTPUT_MODE: ${params.outputMode}`,
-    `TITLE: ${params.title}`,
-    `CHANNEL: ${params.channel}`,
-    "SUMMARY:",
-    params.summary,
-  ];
-
-  if (params.rawExcerpt) {
-    lines.push("RAW_EXCERPT:", params.rawExcerpt);
-  }
-
-  if (params.libraryItemId) {
-    lines.push(`LIBRARY_ITEM_ID: ${params.libraryItemId}`);
-  }
-
-  lines.push("<<END_SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>");
-  return lines.join("\n");
 }
 
 export function toSourceItems(sources?: SearchSource[]): SourceItem[] {

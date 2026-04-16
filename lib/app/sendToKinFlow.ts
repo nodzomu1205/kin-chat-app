@@ -43,7 +43,7 @@ function extractTaskIdFromOutboundText(text: string): string | undefined {
 }
 
 function hasKinReceivedAck(text: string) {
-  return /<<SYS_KIN_RESPONSE>>[\s\S]*?Received\.\s*Send the next part\.[\s\S]*?<<END_SYS_KIN_RESPONSE>>/i.test(
+  return /<<SYS_KIN_RESPONSE>>[\s\S]*?Received\.\s*Send the next(?: part)?\.[\s\S]*?<<(?:END_SYS_KIN_RESPONSE|END_SYS_RESPONSE)>>/i.test(
     text
   );
 }

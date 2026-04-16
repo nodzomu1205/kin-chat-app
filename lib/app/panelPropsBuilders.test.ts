@@ -68,7 +68,6 @@ describe("panelPropsBuilders", () => {
       canInjectFile: true,
       loading: false,
       ingestLoading: false,
-      gptBottomRef: { current: null },
       memorySettings: DEFAULT_MEMORY_SETTINGS,
       defaultMemorySettings: DEFAULT_MEMORY_SETTINGS,
       onSaveMemorySettings: vi.fn(),

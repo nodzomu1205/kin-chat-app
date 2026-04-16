@@ -3,7 +3,7 @@ import { buildTrackedEntities } from "@/lib/app/memoryInterpreterFacts";
 import { resolveWorksByEntityState } from "@/lib/app/memoryInterpreterWorks";
 
 const LITERATURE_HINT_RE =
-  /(?:譁・ｭｦ|菴懷ｮｶ|菴懷刀|蟆剰ｪｬ|謌ｯ譖ｲ|隧ｩ莠ｺ|莉｣陦ｨ菴忿蜈・ｸ･|莠ｺ迚ｩ|豁ｴ蜿ｲ|繝√ぉ繝ｼ繝帙ヵ|繝峨せ繝医お繝輔せ繧ｭ繝ｼ|繝医Ν繧ｹ繝医う|繝励・繧ｷ繧ｭ繝ｳ|繝翫・繝ｬ繧ｪ繝ｳ)/u;
+  /(?:文学|小説|作品|作家|詩人|評論家|代表作|人物|映画|チェーホフ|ドストエフスキー|トルストイ|プーシキン|ナポレオン)/u;
 
 export function buildMemoryStateAssemblyLists(args: {
   currentMemory: Memory;

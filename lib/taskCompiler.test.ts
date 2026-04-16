@@ -47,8 +47,12 @@ describe("taskCompiler", () => {
       intent: createIntent(),
     });
 
-    expect(prompt).toContain('If this <<SYS_TASK>> arrives as multiple PART n/total messages, reply only with "Received." until the final part arrives.');
+    expect(prompt).toContain("Every SYS block you send must end with the matching <<END_SYS_...>> line.");
+    expect(prompt).toContain(
+      "reply only with <<SYS_KIN_RESPONSE>> Received. Send the next. <<END_SYS_RESPONSE>> until the final part arrives."
+    );
     expect(prompt).toContain("The final part must clearly say it is the last part.");
+    expect(prompt.trim().endsWith("<<END_SYS_TASK>>")).toBe(true);
   });
 
   it("emits youtube transcript request and progress examples", () => {
@@ -59,6 +63,11 @@ describe("taskCompiler", () => {
     });
 
     expect(prompt).toContain("<<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>");
+    expect(prompt).toContain(
+      "COPY RULE: Every <<SYS_...>> example below must be sent with its matching <<END_SYS_...>> closing line."
+    );
+    expect(prompt).toContain("EXAMPLE: YOUTUBE_TRANSCRIPT_REQUEST");
+    expect(prompt).toContain("END_EXAMPLE: YOUTUBE_TRANSCRIPT_REQUEST");
     expect(prompt).toContain("ACTION_ID: Y001");
     expect(prompt).toContain("URL: https://www.youtube.com/watch?v=example");
     expect(prompt).toContain("Candidate YouTube videos shortlisted for transcript fetch.");

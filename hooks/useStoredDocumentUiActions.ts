@@ -1,6 +1,6 @@
 import type { StoredDocument } from "@/types/chat";
 
-type Args = {
+export type StoredDocumentUiActionArgs = {
   getStoredDocument: (documentId: string) => StoredDocument | null;
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
   isMobile: boolean;
@@ -12,7 +12,7 @@ export function useStoredDocumentUiActions({
   setGptInput,
   isMobile,
   setActiveTab,
-}: Args) {
+}: StoredDocumentUiActionArgs) {
   const loadStoredDocumentToGptInput = (documentId: string) => {
     const document = getStoredDocument(documentId);
     if (!document) return;

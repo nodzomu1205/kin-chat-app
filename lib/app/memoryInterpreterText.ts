@@ -3,13 +3,19 @@ import {
   isWeakTopicCandidate as isWeakTopicCandidateFromTopicExtractor,
   normalizeTopicCandidate as normalizeTopicCandidateFromTopicExtractor,
 } from "@/lib/app/memoryInterpreterTopicExtractor";
+import {
+  countMemorySentenceMarkers,
+  MEMORY_ACK_LEAD_IN_RE,
+  MEMORY_CLAUSE_SEPARATOR_RE,
+} from "@/lib/app/memoryInterpreterTextPatterns";
+import { stripTopicTailText } from "@/lib/app/memoryInterpreterTopicText";
 
 export const SEARCH_PREFIX_RE = /^(?:検索|search)\s*[:：]/i;
 
-const ACK_LEAD_IN_RE = /^(?:へー|なるほど|そうなんだ|そうなんですね)[、,\s]*/u;
-const SENTENCE_MARK_RE = /[。！？!?]/gu;
 const QUESTIONISH_RE =
   /(?:誰|何|どこ|いつ|なぜ|何故|どうして|ですか|でしょうか|ますか|教えて|知りたい|説明して)/u;
+const ACK_LEAD_IN_RE = MEMORY_ACK_LEAD_IN_RE;
+const CLAUSE_SEPARATOR_RE = MEMORY_CLAUSE_SEPARATOR_RE;
 
 export function normalizeText(text: string) {
   return text.normalize("NFKC").replace(/\s+/g, " ").trim();
@@ -31,17 +37,11 @@ export function stripLeadIn(text: string) {
 }
 
 export function stripTopicTail(text: string) {
-  return normalizeText(text)
-    .replace(
-      /(?:について(?:もっと)?(?:教えて|知りたい|説明して)(?:ください|下さい)?|について知っていますか|について|のことを教えて(?:ください|下さい)?|を教えて(?:ください|下さい)?|の弟子で一番有名なのは誰(?:か)?知っていますか|ですか\??|は\??)\s*$/u,
-      ""
-    )
-    .replace(/[!！?？。]+$/u, "")
-    .trim();
+  return stripTopicTailText(normalizeText(text));
 }
 
 export function countSentenceMarkers(text: string) {
-  return (text.match(SENTENCE_MARK_RE) || []).length;
+  return countMemorySentenceMarkers(text);
 }
 
 export function looksLikeLongNarrativeText(text: string) {
@@ -178,7 +178,7 @@ export function shouldPreserveExistingTopic(text: string) {
   if (shouldPreserveExistingTopicSingle(normalized)) return true;
 
   const clauses = normalized
-    .split(/[。！？!?]/u)
+    .split(CLAUSE_SEPARATOR_RE)
     .map((item) => item.trim())
     .filter(Boolean);
 
@@ -195,5 +195,5 @@ export function extractQuestionSubject(text: string) {
 }
 
 export function normalizeTopicCandidate(text: string) {
-  return normalizeTopicCandidateFromTopicExtractor(text);
+  return stripTopicTail(normalizeTopicCandidateFromTopicExtractor(text));
 }

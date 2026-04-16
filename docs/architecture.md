@@ -32,12 +32,13 @@ Current role:
 - top-level state wiring
 - panel coordination
 - layout composition
-- final prop assembly
+- final prop assembly through builder layers
 
 Current risk:
 
 - `app/page.tsx` still acts as a broad orchestration point
-- panel prop wiring is still heavier than ideal
+- panel prop wiring is thinner than before, but still broad
+- action / panel / effect / hook arg assembly now lives behind dedicated builders, but the page still owns too many boundaries
 - memory-rule candidate merging is still page-level glue instead of a narrower controller boundary
 
 ### App flows
@@ -59,8 +60,8 @@ Current role:
 
 Current risk:
 
-- `sendToGptFlowHelpers.ts` has become a new large coordination surface
-- `sendToGptFlow.ts` still holds too many responsibilities
+- `sendToGptFlow.ts` is thinner now, but still remains the main execution coordinator
+- `sendToGptFlowHelpers.ts` is narrower after `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` were split out, but it still owns several response-shaping responsibilities
 
 ### Memory
 
@@ -176,11 +177,11 @@ The current refactor order is:
 Based on the current repository state, the best remaining cleanup order is:
 
 1. [`app/page.tsx`](../app/page.tsx)
-   - still the broadest remaining UI orchestration point
+   - much thinner than before, but still the broadest remaining UI orchestration point
 2. [`lib/app/sendToGptFlowHelpers.ts`](../lib/app/sendToGptFlowHelpers.ts)
-   - now the largest remaining GPT flow coordination surface
+   - now a smaller GPT flow helper surface, but still the broadest remaining GPT-side shaping module
 3. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
-   - still a large execution path even after helper extraction
+   - still a large execution path even after context / builder / type extraction
 4. [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
    - large UI composition file with many field variants
    - likely needs section-level information architecture redesign, not only component splitting

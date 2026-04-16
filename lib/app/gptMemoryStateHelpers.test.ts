@@ -253,4 +253,33 @@ describe("gptMemoryStateHelpers", () => {
 
     expect(merged.context.lastUserIntent).toBe("Previous intent");
   });
+
+  it("derives a focused entity from clean Japanese intent text", () => {
+    const merged = mergeSummarizedMemoryState({
+      candidateMemory: buildMemory({
+        facts: ["チェーホフは劇作家", "ドストエフスキーは小説家", "桜の園は戯曲"],
+        lists: {
+          trackedEntities: ["チェーホフ", "ドストエフスキー"],
+          worksByEntity: {
+            チェーホフ: ["桜の園"],
+            ドストエフスキー: ["罪と罰"],
+          },
+        },
+        context: {
+          currentTopic: "ロシア文学",
+          lastUserIntent: "では チェーホフについて詳しく教えて",
+        },
+      }),
+      summarizedCandidate: buildMemory({
+        facts: ["罪と罰は長編小説", "桜の園は晩年の代表作"],
+      }),
+      settings: DEFAULT_MEMORY_SETTINGS,
+      recentMessages: [],
+    });
+
+    expect(merged.facts).toContain("チェーホフは劇作家");
+    expect(merged.facts).toContain("桜の園は晩年の代表作");
+    expect(merged.facts).not.toContain("ドストエフスキーは小説家");
+    expect(merged.facts).not.toContain("罪と罰は長編小説");
+  });
 });

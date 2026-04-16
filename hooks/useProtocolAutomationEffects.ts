@@ -10,7 +10,7 @@ type AutoBridgeSettings = {
   autoCopyGptSysResponseToKin: boolean;
 };
 
-type Args = {
+export type ProtocolAutomationEffectArgs = {
   autoBridgeSettings: AutoBridgeSettings;
   kinInput: string;
   gptInput: string;
@@ -26,7 +26,7 @@ type Args = {
   setActiveTab: (tab: "kin" | "gpt") => void;
 };
 
-export function useProtocolAutomationEffects(args: Args) {
+export function useProtocolAutomationEffects(args: ProtocolAutomationEffectArgs) {
   const lastAutoSentKinInputRef = useRef("");
   const lastAutoSentGptInputRef = useRef("");
   const lastAutoCopiedKinMessageIdRef = useRef("");

@@ -1,9 +1,47 @@
+import { suggestTaskTitle } from "@/lib/app/contextNaming";
+
+function normalizeGoalForTitle(goal: string) {
+  return goal
+    .normalize("NFKC")
+    .replace(/\s+/g, " ")
+    .split(/[。.!！?？]/u)
+    .map((part) => part.trim())
+    .find(Boolean) || goal.trim();
+}
+
+function buildVideoAnalysisTitle(goal: string) {
+  const sentence = normalizeGoalForTitle(goal);
+  const match = sentence.match(
+    /^(.+?)(?:に関する|についての?|の)?(?:動画|映像|コンテンツ)(?:を|で)?/u
+  );
+  const subject = match?.[1]?.trim();
+  if (!subject) return "";
+
+  if (/(?:youtube)/i.test(sentence)) {
+    return `${subject}YouTube動画分析`;
+  }
+
+  if (/(?:分析|評価|比較|解説|レポート)/u.test(sentence)) {
+    return `${subject}動画分析`;
+  }
+
+  return `${subject}動画調査`;
+}
+
 export function generateTaskTitle(params: {
   goal: string;
   outputType?: string;
   entities?: string[];
 }): string {
   const goal = params.goal.trim();
+
+  const structured = suggestTaskTitle({
+    freeText: goal,
+  });
+  const videoAnalysisTitle = buildVideoAnalysisTitle(goal);
+
+  if (videoAnalysisTitle) return videoAnalysisTitle;
+  if (structured && structured !== "タスク") return structured;
 
   if (params.entities && params.entities.length > 0) {
     const joined = params.entities.slice(0, 2).join("・");

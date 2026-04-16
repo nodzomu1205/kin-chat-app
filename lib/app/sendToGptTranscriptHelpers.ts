@@ -1,4 +1,4 @@
-import { buildYouTubeTranscriptResponseBlock } from "@/lib/app/sendToGptFlowHelpers";
+import { buildYouTubeTranscriptResponseBlock } from "@/lib/app/sendToGptProtocolBuilders";
 import { buildYouTubeTranscriptExcerpt } from "@/lib/app/youtubeTranscriptText";
 import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtubeTranscriptKinBlocks";
 import { cleanYouTubeTranscriptText } from "@/lib/app/youtubeTranscriptText";

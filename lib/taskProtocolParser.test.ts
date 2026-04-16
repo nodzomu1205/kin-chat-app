@@ -56,7 +56,7 @@ describe("taskProtocolParser", () => {
     const text = `<<SYS_TASK>>
 TASK_ID: 111
 BODY: hidden
-<<SYS_TASK_END>>
+<<END_SYS_TASK>>
 <<SYS_SEARCH_RESPONSE>>
 TASK_ID: 222
 ACTION_ID: S001
@@ -86,6 +86,25 @@ TITLE: hidden info
       summary: "Digest line",
       partIndex: 1,
       totalParts: 2,
+    });
+  });
+
+  it("still ignores legacy SYS_TASK_END blocks for backward compatibility", () => {
+    const text = `<<SYS_TASK>>
+TASK_ID: 111
+BODY: hidden
+<<SYS_TASK_END>>
+<<SYS_GPT_RESPONSE>>
+TASK_ID: 222
+BODY: hello
+<<END_SYS_GPT_RESPONSE>>`;
+
+    const events = extractTaskProtocolEvents(text);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "gpt_response",
+      taskId: "222",
+      body: "hello",
     });
   });
 

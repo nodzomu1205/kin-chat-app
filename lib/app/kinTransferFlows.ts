@@ -24,6 +24,7 @@ type ResolveTaskIntentResult = {
   intent: TaskIntent;
   usage?: Parameters<typeof normalizeUsage>[0];
   pendingCandidates: PendingIntentCandidate[];
+  suggestedTitle?: string | null;
 };
 
 type SendLatestGptContentToKinArgs = {
@@ -46,6 +47,7 @@ type SendLatestGptContentToKinArgs = {
   startTask: (params: {
     originalInstruction: string;
     intent: TaskIntent;
+    title?: string;
   }) => { taskId: string; title: string; compiledTaskPrompt: string };
   syncTaskDraftFromProtocol: (params: {
     taskId: string;
@@ -135,6 +137,7 @@ export async function sendLatestGptContentToKinFlow({
     const started = startTask({
       originalInstruction: directiveText || content,
       intent: resolved.intent,
+      title: resolved.suggestedTitle || undefined,
     });
 
     syncTaskDraftFromProtocol({
@@ -197,7 +200,7 @@ export async function sendLatestGptContentToKinFlow({
     }
   }
 
-  const directiveLines = buildKinDirectiveLines(intent as any);
+  const directiveLines = buildKinDirectiveLines(intent);
   const block = buildKinSysInfoBlock({
     taskSlot: currentTaskSlot,
     title: currentTaskTitle || "Latest GPT response",
@@ -245,6 +248,7 @@ type SendCurrentTaskContentToKinArgs = {
   startTask: (params: {
     originalInstruction: string;
     intent: TaskIntent;
+    title?: string;
   }) => { taskId: string; title: string; compiledTaskPrompt: string };
   syncTaskDraftFromProtocol: (params: {
     taskId: string;
@@ -348,6 +352,7 @@ export async function sendCurrentTaskContentToKinFlow({
     const started = startTask({
       originalInstruction: taskInstruction,
       intent: resolved.intent,
+      title: resolved.suggestedTitle || undefined,
     });
 
     syncTaskDraftFromProtocol({
@@ -410,7 +415,7 @@ export async function sendCurrentTaskContentToKinFlow({
     }
   }
 
-  const directiveLines = buildKinDirectiveLines(intent as any);
+  const directiveLines = buildKinDirectiveLines(intent);
   const block =
     intent.mode === "sys_info"
       ? buildKinSysInfoBlock({

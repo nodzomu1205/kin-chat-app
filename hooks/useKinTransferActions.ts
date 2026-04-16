@@ -19,10 +19,10 @@ import {
   shouldTransformContent,
   transformTextWithIntent,
 } from "@/lib/app/transformIntent";
-import type { UseChatPageActionsArgs } from "@/hooks/useChatPageActions";
+import type { UseKinTransferActionsArgs } from "@/hooks/useChatPageActions";
 
 export function useKinTransferActions(
-  args: UseChatPageActionsArgs,
+  args: UseKinTransferActionsArgs,
   deps?: { onPendingKinAck?: () => void | Promise<void> }
 ) {
   const clearPendingKinInjection = () => {
@@ -33,13 +33,16 @@ export function useKinTransferActions(
   const mergePendingIntentCandidates = (candidates: typeof args.pendingIntentCandidates) => {
     args.setPendingIntentCandidates((prev) => {
       const rejected = new Set(args.rejectedIntentCandidateSignatures);
+      const approved = new Set(
+        args.approvedIntentPhrases.map((item) => getIntentCandidateSignature(item))
+      );
       const existingKeys = new Set(
         prev.map((item) => buildPendingIntentCandidateKey(item))
       );
       const additions = candidates.filter((item) => {
         const key = buildPendingIntentCandidateKey(item);
         const signature = getIntentCandidateSignature(item);
-        return !existingKeys.has(key) && !rejected.has(signature);
+        return !existingKeys.has(key) && !rejected.has(signature) && !approved.has(signature);
       });
       return additions.length > 0 ? [...additions, ...prev].slice(0, 50) : prev;
     });

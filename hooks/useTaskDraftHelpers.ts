@@ -20,10 +20,19 @@ export function useTaskDraftHelpers(args: {
   deleteSearchHistoryItemBase: (rawResultId: string) => void;
   currentTaskIntentConstraints: string[];
 }) {
+  const {
+    currentTaskDraft,
+    setCurrentTaskDraft,
+    resetTaskProtocolRuntime,
+    clearTaskScopedMemory,
+    deleteSearchHistoryItemBase,
+    currentTaskIntentConstraints,
+  } = args;
+
   const deleteSearchHistoryItem = useCallback(
     (rawResultId: string) => {
-      args.deleteSearchHistoryItemBase(rawResultId);
-      args.setCurrentTaskDraft((prev) =>
+      deleteSearchHistoryItemBase(rawResultId);
+      setCurrentTaskDraft((prev) =>
         prev.searchContext?.rawResultId === rawResultId
           ? {
               ...prev,
@@ -33,17 +42,17 @@ export function useTaskDraftHelpers(args: {
           : prev
       );
     },
-    [args]
+    [deleteSearchHistoryItemBase, setCurrentTaskDraft]
   );
 
   const resetCurrentTaskDraft = useCallback(() => {
-    args.setCurrentTaskDraft(resetTaskDraft());
-    args.resetTaskProtocolRuntime();
-    args.clearTaskScopedMemory();
-  }, [args]);
+    setCurrentTaskDraft(resetTaskDraft());
+    resetTaskProtocolRuntime();
+    clearTaskScopedMemory();
+  }, [clearTaskScopedMemory, resetTaskProtocolRuntime, setCurrentTaskDraft]);
 
   const getCurrentTaskCharConstraint = useCallback((): CharConstraint => {
-    const constraints = args.currentTaskIntentConstraints || [];
+    const constraints = currentTaskIntentConstraints || [];
     for (const item of constraints) {
       let match = item.match(/exactly\s+(\d+)\s+Japanese characters/i);
       if (match) return { rule: "exact", limit: Number(match[1]) };
@@ -55,17 +64,17 @@ export function useTaskDraftHelpers(args: {
       if (match) return { rule: "around", limit: Number(match[1]) };
     }
     return null;
-  }, [args.currentTaskIntentConstraints]);
+  }, [currentTaskIntentConstraints]);
 
   const updateTaskDraftFields = useCallback(
     (patch: Partial<TaskDraft>) => {
-      args.setCurrentTaskDraft((prev) => ({
+      setCurrentTaskDraft((prev) => ({
         ...prev,
         ...patch,
         updatedAt: new Date().toISOString(),
       }));
     },
-    [args.setCurrentTaskDraft]
+    [setCurrentTaskDraft]
   );
 
   const applyPrefixedTaskFieldsFromText = useCallback(
@@ -73,7 +82,7 @@ export function useTaskDraftHelpers(args: {
       const parsed = parseTaskInput(text);
 
       if (parsed.title || parsed.userInstruction) {
-        args.setCurrentTaskDraft((prev) => ({
+        setCurrentTaskDraft((prev) => ({
           ...prev,
           title: parsed.title || prev.title,
           taskName: parsed.title?.trim() ? parsed.title.trim() : prev.taskName,
@@ -84,12 +93,12 @@ export function useTaskDraftHelpers(args: {
 
       return parsed;
     },
-    [args.setCurrentTaskDraft]
+    [setCurrentTaskDraft]
   );
 
   const getTaskSlotLabel = useCallback(
-    () => formatTaskSlot(args.currentTaskDraft.slot),
-    [args.currentTaskDraft.slot]
+    () => formatTaskSlot(currentTaskDraft.slot),
+    [currentTaskDraft.slot]
   );
 
   const getResolvedTaskTitle = useCallback(
@@ -99,13 +108,13 @@ export function useTaskDraftHelpers(args: {
       searchQuery?: string;
       fallback?: string;
     }) =>
-      resolveDraftTitle(args.currentTaskDraft, {
+      resolveDraftTitle(currentTaskDraft, {
         explicitTitle: params.explicitTitle,
         freeText: params.freeText,
         searchQuery: params.searchQuery,
         fallback: params.fallback,
       }),
-    [args.currentTaskDraft]
+    [currentTaskDraft]
   );
 
   const resolveTaskTitleFromDraft = useCallback(
@@ -128,12 +137,12 @@ export function useTaskDraftHelpers(args: {
   );
 
   const getTaskBaseText = useCallback(() => {
-    if (args.currentTaskDraft.body.trim()) return args.currentTaskDraft.body.trim();
-    if (args.currentTaskDraft.mergedText.trim()) return args.currentTaskDraft.mergedText.trim();
-    if (args.currentTaskDraft.deepenText.trim()) return args.currentTaskDraft.deepenText.trim();
-    if (args.currentTaskDraft.prepText.trim()) return args.currentTaskDraft.prepText.trim();
+    if (currentTaskDraft.body.trim()) return currentTaskDraft.body.trim();
+    if (currentTaskDraft.mergedText.trim()) return currentTaskDraft.mergedText.trim();
+    if (currentTaskDraft.deepenText.trim()) return currentTaskDraft.deepenText.trim();
+    if (currentTaskDraft.prepText.trim()) return currentTaskDraft.prepText.trim();
     return "";
-  }, [args.currentTaskDraft, args.gptMessages]);
+  }, [currentTaskDraft]);
 
   const syncTaskDraftFromProtocol = useCallback(
     (params: {
@@ -142,7 +151,7 @@ export function useTaskDraftHelpers(args: {
       goal: string;
       compiledTaskPrompt: string;
     }) => {
-      args.setCurrentTaskDraft((prev) => ({
+      setCurrentTaskDraft((prev) => ({
         ...prev,
         title: params.title,
         taskName: params.title,
@@ -154,7 +163,7 @@ export function useTaskDraftHelpers(args: {
         updatedAt: new Date().toISOString(),
       }));
     },
-    [args.setCurrentTaskDraft]
+    [setCurrentTaskDraft]
   );
 
   return {

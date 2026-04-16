@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { createSession, getSessions } from "@/lib/storage";
 
-type Args = {
+export type ChatPageLifecycleArgs = {
   currentKin: string | null;
   ensureKinState: (kinId: string) => void;
   isMobile: boolean;
@@ -15,7 +15,7 @@ export function useChatPageLifecycle({
   isMobile,
   setActiveTab,
   setCurrentSessionId,
-}: Args) {
+}: ChatPageLifecycleArgs) {
   useEffect(() => {
     const sessions = getSessions();
 

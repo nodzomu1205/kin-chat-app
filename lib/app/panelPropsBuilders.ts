@@ -1,5 +1,8 @@
 import type { KinPanelProps } from "@/components/panels/kin/kinPanelTypes";
-import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
+import type {
+  GptPanelChatProps,
+  GptPanelProps,
+} from "@/components/panels/gpt/gptPanelTypes";
 import type { TaskDraft } from "@/types/task";
 
 type PendingInjectionState = {
@@ -9,14 +12,14 @@ type PendingInjectionState = {
 
 type UpdateTaskDraftFields = (patch: Partial<TaskDraft>) => void;
 
-type BuildKinPanelArgs = Omit<
+export type BuildKinPanelArgs = Omit<
   KinPanelProps,
-  "pendingInjectionCurrentPart" | "pendingInjectionTotalParts"
+  "pendingInjectionCurrentPart" | "pendingInjectionTotalParts" | "kinBottomRef"
 > & {
   pendingInjection: PendingInjectionState;
 };
 
-type BuildGptPanelArgs = Omit<
+export type BuildGptPanelArgs = Omit<
   GptPanelProps,
   | "onAnswerTaskRequest"
   | "pendingInjectionCurrentPart"
@@ -24,6 +27,7 @@ type BuildGptPanelArgs = Omit<
   | "onChangeTaskTitle"
   | "onChangeTaskUserInstruction"
   | "onChangeTaskBody"
+  | "gptBottomRef"
 > & {
   pendingInjection: PendingInjectionState;
   updateTaskDraftFields: UpdateTaskDraftFields;
@@ -33,6 +37,11 @@ type BuildGptPanelArgs = Omit<
     requestBody?: string | null
   ) => string;
   setGptInput: (value: string) => void;
+};
+
+type BuiltKinPanelProps = Omit<KinPanelProps, "kinBottomRef">;
+type BuiltGptPanelProps = Omit<GptPanelProps, "gptBottomRef" | "chat"> & {
+  chat: Omit<GptPanelChatProps, "gptBottomRef">;
 };
 
 export function resolvePendingInjectionProgress({
@@ -49,7 +58,7 @@ export function clampPanelCount(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, Number(value) || min));
 }
 
-export function buildKinPanelProps(args: BuildKinPanelArgs): KinPanelProps {
+export function buildKinPanelProps(args: BuildKinPanelArgs): BuiltKinPanelProps {
   const { pendingInjection: pendingInjectionState, ...panelArgs } = args;
   const pendingInjection = resolvePendingInjectionProgress(pendingInjectionState);
 
@@ -60,7 +69,7 @@ export function buildKinPanelProps(args: BuildKinPanelArgs): KinPanelProps {
   };
 }
 
-export function buildGptPanelProps(args: BuildGptPanelArgs): GptPanelProps {
+export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps {
   const {
     pendingInjection: pendingInjectionState,
     updateTaskDraftFields,
@@ -122,7 +131,6 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): GptPanelProps {
       sendToGpt: panelArgs.sendToGpt,
       resetGptForCurrentKin: panelArgs.resetGptForCurrentKin,
       loading: panelArgs.loading,
-      gptBottomRef: panelArgs.gptBottomRef,
     },
     task: {
       currentTaskDraft: panelArgs.currentTaskDraft,

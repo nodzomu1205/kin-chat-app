@@ -1,7 +1,13 @@
 import { normalizePromptTopic } from "@/lib/app/gptContextResolver";
+import {
+  countMemorySentenceMarkers,
+  MEMORY_ACK_LEAD_IN_RE,
+  MEMORY_CLAUSE_SEPARATOR_RE,
+} from "@/lib/app/memoryInterpreterTextPatterns";
+import { stripTopicTailText } from "@/lib/app/memoryInterpreterTopicText";
 
-const ACK_LEAD_IN_RE =
-  /^(?:へー|なるほど|そうなんですね|そうなんだ|はい|うん|ああ|了解(?:です)?|わかりました|ありがとう(?:ございます)?)[、。\s!！?？]*/u;
+const ACK_LEAD_IN_RE = MEMORY_ACK_LEAD_IN_RE;
+const CLAUSE_SEPARATOR_RE = MEMORY_CLAUSE_SEPARATOR_RE;
 const PRONOUN_TOPIC_RE =
   /^(?:それ|それら|これ|これら|あれ|あれら|彼|彼女|その人|そのこと)(?:の|は|を|が|って)?/u;
 const QUESTIONISH_RE =
@@ -16,17 +22,11 @@ function stripLeadIn(text: string) {
 }
 
 function stripTopicTail(text: string) {
-  return normalizeText(text)
-    .replace(
-      /(?:について(?:もっと)?|について詳しく|について教えて|について知って|を教えて|を詳しく|とは|って誰|って何|が終わった|が長い|が好き)(?:ですか|ますか|ください|下さい)?[。.!！?？\s]*$/u,
-      ""
-    )
-    .replace(/[。.!！?？\s]+$/u, "")
-    .trim();
+  return stripTopicTailText(normalizeText(text));
 }
 
 function countSentenceMarkers(text: string) {
-  return (text.match(/[。.!！?？]/gu) || []).length;
+  return countMemorySentenceMarkers(text);
 }
 
 function looksLikeLongNarrativeText(text: string) {
@@ -126,7 +126,7 @@ function shouldPreserveExistingTopic(text: string): boolean {
   }
 
   const clauses = normalized
-    .split(/[。.!！?？]/u)
+    .split(CLAUSE_SEPARATOR_RE)
     .map((item) => item.trim())
     .filter(Boolean);
   if (clauses.length <= 1) return false;

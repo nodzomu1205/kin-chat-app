@@ -116,6 +116,27 @@ function formatTopicDecisionLabel(decision: TopicDecision) {
   }
 }
 
+function formatIntentPhraseKindLabel(
+  kind: GptPanelProtocolProps["pendingIntentCandidates"][number]["kind"]
+) {
+  switch (kind) {
+    case "ask_gpt":
+      return "GPT依頼回数";
+    case "ask_user":
+      return "ユーザー確認回数";
+    case "search_request":
+      return "検索依頼回数";
+    case "youtube_transcript_request":
+      return "コンテンツ取得回数";
+    case "library_reference":
+      return "ライブラリ参照回数";
+    case "char_limit":
+      return "文字数制約";
+    default:
+      return kind;
+  }
+}
+
 function NumberField(props: {
   label: string;
   value: string;
@@ -387,6 +408,8 @@ function RuleApprovalSection(props: {
   );
 }
 
+void RuleApprovalSection;
+
 function MemoryApprovalSection(props: {
   currentTopic?: string;
   isMobile?: boolean;
@@ -413,30 +436,27 @@ function MemoryApprovalSection(props: {
   ];
   const topicDecisionOptions: TopicDecision[] = ["keep", "switch", "unclear"];
   const currentTopic = props.currentTopic?.trim() || "";
-  const originalSuggestedTopicRef = React.useRef<Record<string, string>>({});
-
-  React.useEffect(() => {
+  const originalSuggestedTopics = React.useMemo(() => {
+    const next: Record<string, string> = {};
     props.pendingCandidates.forEach((candidate) => {
-      if (
-        candidate.kind === "utterance_review" &&
-        typeof originalSuggestedTopicRef.current[candidate.id] === "undefined"
-      ) {
-        originalSuggestedTopicRef.current[candidate.id] = candidate.normalizedValue || "";
+      if (candidate.kind === "utterance_review") {
+        next[candidate.id] = candidate.normalizedValue || "";
       }
     });
+    return next;
   }, [props.pendingCandidates]);
 
   const resolveCandidateTopicInputValue = React.useCallback(
     (candidate: PendingMemoryRuleCandidate) => {
       const decision = getCandidateTopicDecisionValue(candidate);
-      const originalSuggested = originalSuggestedTopicRef.current[candidate.id] || "";
+      const originalSuggested = originalSuggestedTopics[candidate.id] || "";
       const currentValue = candidate.normalizedValue || "";
 
       if (decision === "switch") return currentValue || originalSuggested;
       if (currentValue && currentValue !== originalSuggested) return currentValue;
       return currentTopic || currentValue;
     },
-    [currentTopic]
+    [currentTopic, originalSuggestedTopics]
   );
 
   return (
@@ -643,9 +663,7 @@ function MemoryApprovalSection(props: {
                     onChange={(e) => {
                       const nextDecision = e.target.value as TopicDecision;
                       const originalSuggested =
-                        originalSuggestedTopicRef.current[candidate.id] ||
-                        candidate.normalizedValue ||
-                        "";
+                        originalSuggestedTopics[candidate.id] || candidate.normalizedValue || "";
                       props.onUpdate(candidate.id, {
                         kind: "utterance_review",
                         topicDecision: nextDecision,
@@ -717,35 +735,156 @@ function SysRuleApprovalSection(props: {
   onToggleApproved: () => void;
   approvedPhrases: GptPanelProtocolProps["approvedIntentPhrases"];
   pendingCandidates: GptPanelProtocolProps["pendingIntentCandidates"];
+  onUpdate: GptPanelProtocolProps["onUpdateIntentCandidate"];
+  onUpdateApproved: GptPanelProtocolProps["onUpdateApprovedIntentPhrase"];
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   return (
-    <RuleApprovalSection
-      sectionTitle="SYSフォーマットルール"
-      approvedLabel="承認済"
-      pendingLabel="承認待ち"
-      approvedCount={props.approvedCount}
-      pendingCount={props.pendingCount}
-      showApproved={props.showApproved}
-      onToggleApproved={props.onToggleApproved}
-      approvedEmptyText="承認済みの SYS ルールはありません。"
-      pendingEmptyText="未対応の SYS ルール候補はありません。"
-      approvedItems={props.approvedPhrases.map((phrase) => ({
-        id: phrase.id,
-        title: `${phrase.kind} / ${phrase.phrase}`,
-        createdAt: phrase.createdAt,
-      }))}
-      pendingItems={props.pendingCandidates.map((candidate) => ({
-        id: candidate.id,
-        title: `${candidate.kind} / ${candidate.phrase}`,
-        sourceText: candidate.sourceText,
-      }))}
-      onApprove={props.onApprove}
-      onReject={props.onReject}
-      onDelete={props.onDelete}
-    />
+    <div style={sectionCard}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ ...labelStyle, marginBottom: 0 }}>SYSフォーマットルール</div>
+          <span
+            style={{
+              borderRadius: 999,
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              padding: "3px 8px",
+              fontSize: 11,
+              fontWeight: 800,
+            }}
+          >
+            承認済み {props.approvedCount}
+          </span>
+          <span
+            style={{
+              borderRadius: 999,
+              background: "#fff7ed",
+              color: "#c2410c",
+              padding: "3px 8px",
+              fontSize: 11,
+              fontWeight: 800,
+            }}
+          >
+            承認待ち {props.pendingCount}
+          </span>
+        </div>
+        <button type="button" style={tabButton(props.showApproved)} onClick={props.onToggleApproved}>
+          {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
+        </button>
+      </div>
+
+      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認待ち</div>
+      {props.pendingCandidates.length === 0 ? (
+        <div style={helpTextStyle}>未対応の SYS ルール候補はありません。</div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {props.pendingCandidates.map((candidate) => (
+            <div key={candidate.id} style={subtleCard}>
+              <div style={{ fontSize: 12, fontWeight: 800 }}>
+                {formatIntentPhraseKindLabel(candidate.kind)}
+              </div>
+              <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                元の検出語: {candidate.phrase}
+              </div>
+              <div style={{ ...helpTextStyle, marginTop: 6, whiteSpace: "pre-wrap" }}>
+                {candidate.sourceText}
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <div style={labelStyle}>承認文面</div>
+                <textarea
+                  value={candidate.draftText || candidate.phrase}
+                  onChange={(e) =>
+                    props.onUpdate(candidate.id, {
+                      draftText: e.target.value,
+                    })
+                  }
+                  style={{
+                    ...inputStyle,
+                    minHeight: 74,
+                    resize: "vertical",
+                    whiteSpace: "pre-wrap",
+                  }}
+                />
+              </div>
+              <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                正しければ承認、少しズレていれば修正して承認、方向が違えば却下します。
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                <button type="button" style={buttonPrimary} onClick={() => props.onApprove(candidate.id)}>
+                  承認
+                </button>
+                <button type="button" style={buttonSecondaryWide} onClick={() => props.onReject(candidate.id)}>
+                  却下
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {props.showApproved ? (
+        <>
+          <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認済み</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {props.approvedPhrases.map((phrase) => (
+              <div key={phrase.id} style={subtleCard}>
+                <div style={{ fontSize: 12, fontWeight: 800 }}>
+                  {formatIntentPhraseKindLabel(phrase.kind)}
+                </div>
+                <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                  元の検出語: {phrase.phrase}
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <div style={labelStyle}>承認文面</div>
+                  <textarea
+                    value={phrase.draftText || phrase.phrase}
+                    onChange={(e) =>
+                      props.onUpdateApproved(phrase.id, {
+                        draftText: e.target.value,
+                      })
+                    }
+                    style={{
+                      ...inputStyle,
+                      minHeight: 64,
+                      resize: "vertical",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  />
+                </div>
+                <div style={{ ...helpTextStyle, marginTop: 6 }}>
+                  承認回数: {phrase.approvedCount ?? 0} / 却下回数: {phrase.rejectedCount ?? 0}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 10,
+                  }}
+                >
+                  <div style={helpTextStyle}>作成日: {phrase.createdAt.slice(0, 10)}</div>
+                  <button type="button" style={buttonSecondaryWide} onClick={() => props.onDelete(phrase.id)}>
+                    削除
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -1073,6 +1212,8 @@ export default function GptSettingsWorkspace({
               }
               approvedPhrases={protocol.approvedIntentPhrases}
               pendingCandidates={protocol.pendingIntentCandidates}
+              onUpdate={protocol.onUpdateIntentCandidate}
+              onUpdateApproved={protocol.onUpdateApprovedIntentPhrase}
               onApprove={protocol.onApproveIntentCandidate}
               onReject={protocol.onRejectIntentCandidate}
               onDelete={protocol.onDeleteApprovedIntentPhrase}

@@ -5,9 +5,9 @@ import {
   runUpdateTaskFromInputFlow,
   runUpdateTaskFromLastGptMessageFlow,
 } from "@/lib/app/taskDraftActionFlows";
-import type { UseChatPageActionsArgs } from "@/hooks/useChatPageActions";
+import type { UseTaskDraftActionsArgs } from "@/hooks/useChatPageActions";
 
-export function useTaskDraftActions(args: UseChatPageActionsArgs) {
+export function useTaskDraftActions(args: UseTaskDraftActionsArgs) {
   const getDraftSearchContext = () => {
     const taskLibraryItem = args.getTaskLibraryItem();
     if (taskLibraryItem?.itemType !== "search") return null;

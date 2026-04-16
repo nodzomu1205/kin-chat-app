@@ -4,7 +4,7 @@ import {
   buildPendingKinInjectionBlocks,
   DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
 } from "@/lib/app/kinMultipart";
-import { resolveTaskIntentWithFallback, type ApprovedIntentPhrase, type PendingIntentCandidate } from "@/lib/taskIntent";
+import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type { TaskIntent } from "@/types/taskProtocol";
@@ -19,6 +19,7 @@ type IntentResolution = {
   intent: TaskIntent;
   usage?: Parameters<typeof normalizeUsage>[0];
   pendingCandidates: PendingIntentCandidate[];
+  suggestedTitle?: string | null;
 };
 
 type StartKinTaskArgs = {
@@ -35,6 +36,7 @@ type StartKinTaskArgs = {
   startTask: (params: {
     originalInstruction: string;
     intent: TaskIntent;
+    title?: string;
   }) => StartedTask;
   syncTaskDraftFromProtocol: (params: {
     taskId: string;
@@ -73,7 +75,7 @@ export async function runStartKinTaskFlow({
 
   const normalizedInput = raw.includes("<<SYS_TASK>>")
     ? extractTaskGoalFromSysTaskBlock(raw) ||
-      raw.replace(/<<SYS_TASK>>[\s\S]*?<<SYS_TASK_END>>/g, "").trim()
+      raw.replace(/<<SYS_TASK>>[\s\S]*?(?:<<END_SYS_TASK>>|<<SYS_TASK_END>>)/g, "").trim()
     : raw;
   const effectiveInput = normalizedInput.trim() || raw;
 
@@ -91,6 +93,7 @@ export async function runStartKinTaskFlow({
   const started = startTask({
     originalInstruction: effectiveInput,
     intent: resolved.intent,
+    title: resolved.suggestedTitle || undefined,
   });
 
   syncTaskDraftFromProtocol({
@@ -133,7 +136,6 @@ type ReceiveLastKinResponseArgs = {
   ) => { handled: boolean; accepted: boolean } | null;
   setGptInput: (value: string) => void;
   appendGptMessage: (message: Message) => void;
-  setActiveTabToKin?: () => void;
   setActiveTabToGpt?: () => void;
 };
 
@@ -142,7 +144,6 @@ export function receiveLastKinResponseFlow({
   processMultipartTaskDoneText,
   setGptInput,
   appendGptMessage,
-  setActiveTabToKin,
   setActiveTabToGpt,
 }: ReceiveLastKinResponseArgs) {
   const last = [...kinMessages]

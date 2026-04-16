@@ -19,10 +19,18 @@ import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,
 } from "@/lib/app/sendToGptTranscriptHelpers";
-import type { UseChatPageActionsArgs } from "@/hooks/useChatPageActions";
+import type {
+  SendToGptFlowMemoryArgs,
+  SendToGptFlowProtocolArgs,
+  SendToGptFlowRequestArgs,
+  SendToGptFlowSearchArgs,
+  SendToGptFlowUiArgs,
+} from "@/lib/app/sendToGptFlowTypes";
+import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
+import type { UseGptMessageActionsArgs } from "@/hooks/useChatPageActions";
 import type { Message, SourceItem } from "@/types/chat";
 
-export function useGptMessageActions(args: UseChatPageActionsArgs) {
+export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   const [pendingYoutubeTranscriptQueue, setPendingYoutubeTranscriptQueue] =
     useState<
       | {
@@ -40,8 +48,6 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
     outputMode: string;
     appendUserMessage?: Message | null;
   }) => {
-    const videoId = params.transcriptUrl.trim();
-    const extractedVideoId = videoId ? undefined : undefined;
     const resolvedVideoId = sourceVideoId(params.transcriptUrl);
     if (!resolvedVideoId) {
       throw new Error("Invalid YouTube URL");
@@ -317,31 +323,48 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
     });
   };
 
-  const buildCommonFlowArgs = () => ({
-    gptLoading: args.gptLoading,
-    processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-    taskProtocolRuntime: args.taskProtocol.runtime,
-    findPendingRequest: (requestId: string) =>
-      args.taskProtocol.runtime.pendingRequests.find(
-        (item) => item.id === requestId || item.actionId === requestId
-      ) || null,
-    applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
-    buildLibraryReferenceContext: args.buildLibraryReferenceContext,
-    referenceLibraryItems: args.referenceLibraryItems,
-    libraryIndexResponseCount: args.libraryIndexResponseCount,
-    recordIngestedDocument: args.recordIngestedDocument,
-    getProtocolLimitViolation,
-    shouldInjectTaskContextWithSettings: (userInput: string) =>
-      shouldInjectTaskContext({
-        userInput,
-        settings: args.chatBridgeSettings,
-      }),
-    parseWrappedSearchResponse,
-    activeDocumentTitle: undefined,
-    lastSearchQuery: args.lastSearchContext?.query,
-    handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
-    chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
-    gptStateRef: args.gptMemoryRuntime.gptStateRef,
+  const buildCommonFlowArgs = () => {
+    const protocolArgs: SendToGptFlowProtocolArgs = {
+      taskProtocolRuntime: args.taskProtocol.runtime,
+      currentTaskId: args.taskProtocol.runtime.currentTaskId,
+      findPendingRequest: (requestId: string) =>
+        args.taskProtocol.runtime.pendingRequests.find(
+          (item) => item.id === requestId || item.actionId === requestId
+        ) || null,
+      applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
+      getProtocolLimitViolation,
+      shouldInjectTaskContextWithSettings: (userInput: string) =>
+        shouldInjectTaskContext({
+          userInput,
+          settings: args.chatBridgeSettings,
+        }),
+      referenceLibraryItems: args.referenceLibraryItems,
+      libraryIndexResponseCount: args.libraryIndexResponseCount,
+      buildLibraryReferenceContext: args.buildLibraryReferenceContext,
+      taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
+      ingestProtocolMessage: args.ingestProtocolMessage,
+    };
+
+    const searchArgs: SendToGptFlowSearchArgs = {
+      searchMode: args.searchMode,
+      searchEngines: args.searchEngines,
+      searchLocation: args.searchLocation,
+      parseWrappedSearchResponse,
+      recordSearchContext: args.recordSearchContext,
+      getContinuationTokenForSeries: args.getContinuationTokenForSeries,
+      getAskAiModeLinkForQuery: args.getAskAiModeLinkForQuery,
+      applySearchUsage: args.applySearchUsage,
+      applyChatUsage: args.applyChatUsage,
+    };
+
+    const memoryArgs: SendToGptFlowMemoryArgs = {
+      handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
+      applySummaryUsage: args.applySummaryUsage,
+      chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
+      gptStateRef: args.gptMemoryRuntime.gptStateRef,
+    };
+
+    const uiArgs: SendToGptFlowUiArgs = {
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
@@ -349,19 +372,27 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
       setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
       setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
-      responseMode: args.responseMode,
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-    taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
-    ingestProtocolMessage: args.ingestProtocolMessage,
-    recordSearchContext: args.recordSearchContext,
-    getContinuationTokenForSeries: args.getContinuationTokenForSeries,
-    getAskAiModeLinkForQuery: args.getAskAiModeLinkForQuery,
-    applySearchUsage: args.applySearchUsage,
-    applyChatUsage: args.applyChatUsage,
-    applySummaryUsage: args.applySummaryUsage,
-  });
+    };
 
-  const sendToGpt = async (instructionMode: any = "normal") => {
+    const requestArgs: SendToGptFlowRequestArgs = {
+      gptInput: args.gptInput,
+      gptLoading: args.gptLoading,
+      instructionMode: "normal",
+      processMultipartTaskDoneText: args.processMultipartTaskDoneText,
+      responseMode: args.responseMode,
+      recordIngestedDocument: args.recordIngestedDocument,
+    };
+
+    return {
+      ...protocolArgs,
+      ...searchArgs,
+      ...memoryArgs,
+      ...uiArgs,
+      ...requestArgs,
+    };
+  };
+
+  const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
     await runSendToGptFlow({
       ...buildCommonFlowArgs(),
       gptInput: args.gptInput,
@@ -530,7 +561,6 @@ export function useGptMessageActions(args: UseChatPageActionsArgs) {
       processMultipartTaskDoneText: args.processMultipartTaskDoneText,
       setGptInput: args.setGptInput,
       appendGptMessage: (message) => args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
       setActiveTabToGpt: args.isMobile ? () => args.setActiveTab("gpt") : undefined,
     });
   };

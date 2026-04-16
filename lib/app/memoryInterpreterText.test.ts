@@ -47,6 +47,16 @@ describe("memoryInterpreterText", () => {
         "\u306a\u305c\u305d\u3093\u306a\u306b\u3082\u9577\u304f\u7d9a\u3044\u3066\u6587\u5316\u3082\u6804\u3048\u305f\u7e04\u6587\u6642\u4ee3\u304c\u7d42\u308f\u3063\u3066\u3057\u307e\u3063\u305f\u306e\u3067\u3059\u304b\uff1f"
       )
     ).toBe("\u7e04\u6587\u6642\u4ee3");
+    expect(
+      normalizeTopicCandidate(
+        "\u30c1\u30a7\u30fc\u30db\u30d5\u306e\u4f5c\u54c1\u306b\u3064\u3044\u3066\u3082\u3063\u3068\u8a73\u3057\u304f\u6559\u3048\u3066\u304f\u3060\u3055\u3044"
+      )
+    ).toBe("\u30c1\u30a7\u30fc\u30db\u30d5\u306e\u4f5c\u54c1");
+    expect(
+      normalizeTopicCandidate(
+        "\u30bd\u30af\u30e9\u30c6\u30b9\u306e\u3053\u3068\u3092\u6559\u3048\u3066\u4e0b\u3055\u3044"
+      )
+    ).toBe("\u30bd\u30af\u30e9\u30c6\u30b9");
   });
 
   it("detects closing replies", () => {
@@ -78,6 +88,16 @@ describe("memoryInterpreterText", () => {
         "\u590f\u76ee\u6f31\u77f3\u306b\u3064\u3044\u3066\u3082\u3063\u3068\u8a73\u3057\u304f\u6559\u3048\u3066\u4e0b\u3055\u3044"
       )
     ).toBe("\u590f\u76ee\u6f31\u77f3");
+    expect(
+      isGenericFollowUpRequest(
+        "\u3082\u3046\u5c11\u3057\u304f\u308f\u3057\u304f\u8aac\u660e\u3057\u3066\u304f\u3060\u3055\u3044"
+      )
+    ).toBe(true);
+    expect(
+      isGenericFollowUpRequest(
+        "\u4ed6\u306b\u306f\u8ab0\u304c\u3044\u307e\u3059\u304b\uff1f"
+      )
+    ).toBe(false);
   });
 
   it("treats generic correction replies as non-topics", () => {
@@ -148,6 +168,19 @@ describe("memoryInterpreterText", () => {
     ).toBe("");
   });
 
+  it("preserves the current topic for acknowledgement-led comments", () => {
+    expect(
+      shouldPreserveExistingTopic(
+        "\u3078\u30fc\u3001\u305d\u308c\u306f\u9762\u767d\u3044\u3067\u3059\u306d"
+      )
+    ).toBe(true);
+    expect(
+      shouldPreserveExistingTopic(
+        "\u306a\u308b\u307b\u3069\u3001\u305d\u3046\u3044\u3046\u80cc\u666f\u3060\u3063\u305f\u3093\u3067\u3059\u306d"
+      )
+    ).toBe(true);
+  });
+
   it("treats continuation questions with correction text as preserving the current topic", () => {
     expect(
       isGenericContinuationQuestion(
@@ -164,6 +197,16 @@ describe("memoryInterpreterText", () => {
         "\u4ed6\u306b\u306f\u8ab0\u304c\u3044\u307e\u3059\u304b? \u5618\u306f\u30c0\u30e1\u3067\u3059\u3088\u3002"
       )
     ).toBe("");
+    expect(
+      isGenericContinuationQuestion(
+        "\u307b\u304b\u306b\u306f\u3069\u3093\u306a\u4eba\u304c\u3044\u307e\u3059\u304b\uff1f"
+      )
+    ).toBe(true);
+    expect(
+      isGenericContinuationQuestion(
+        "\u3082\u3046\u5c11\u3057\u8a73\u3057\u304f\u6559\u3048\u3066\u304f\u3060\u3055\u3044"
+      )
+    ).toBe(false);
   });
 
   it("detects search directives and trims topic tails", () => {
@@ -173,9 +216,29 @@ describe("memoryInterpreterText", () => {
       )
     ).toBe(true);
     expect(
+      isSearchDirectiveText(
+        "\u691c\u7d22: \u6771\u4eac\u306e\u5929\u6c17"
+      )
+    ).toBe(true);
+    expect(
+      isSearchDirectiveText(
+        "\u691c\u7d22\uff1a\u6771\u4eac\u306e\u5929\u6c17"
+      )
+    ).toBe(true);
+    expect(
       stripTopicTail(
         "\u30c1\u30a7\u30fc\u30db\u30d5\u306b\u3064\u3044\u3066"
       )
     ).toBe("\u30c1\u30a7\u30fc\u30db\u30d5");
+    expect(
+      stripTopicTail(
+        "\u30ca\u30dd\u30ec\u30aa\u30f3\u306b\u3064\u3044\u3066\u3082\u3063\u3068\u8a73\u3057\u304f\u6559\u3048\u3066\u304f\u3060\u3055\u3044"
+      )
+    ).toBe("\u30ca\u30dd\u30ec\u30aa\u30f3");
+    expect(
+      stripTopicTail(
+        "\u30bd\u30af\u30e9\u30c6\u30b9\u306e\u3053\u3068\u3092\u6559\u3048\u3066\u4e0b\u3055\u3044"
+      )
+    ).toBe("\u30bd\u30af\u30e9\u30c6\u30b9");
   });
 });

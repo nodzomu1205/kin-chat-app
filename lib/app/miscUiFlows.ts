@@ -9,6 +9,15 @@ import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
+import {
+  parseIntentCandidateDraftText,
+  resolveTaskIntentWithFallback,
+} from "@/lib/taskIntent";
+import {
+  buildPendingKinInjectionBlocks,
+  DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+} from "@/lib/app/kinMultipart";
+import type { TaskIntent } from "@/types/taskProtocol";
 
 export function prepareTaskRequestAckFlow(args: {
   requestId: string;
@@ -149,25 +158,42 @@ export function approveIntentCandidateFlow(args: {
 }) {
   const candidate = args.pendingIntentCandidates.find((item) => item.id === args.candidateId);
   if (!candidate) return;
+  const normalizedCandidate = {
+    ...candidate,
+    ...parseIntentCandidateDraftText(candidate.draftText || candidate.phrase, candidate),
+  };
 
   args.setApprovedIntentPhrases((prev) => {
-    const exists = prev.some(
+    const existing = prev.find(
       (item) =>
-        item.kind === candidate.kind &&
-        item.phrase === candidate.phrase &&
-        item.count === candidate.count &&
-        item.rule === candidate.rule &&
-        item.charLimit === candidate.charLimit
+        item.kind === normalizedCandidate.kind &&
+        item.phrase === normalizedCandidate.phrase &&
+        item.count === normalizedCandidate.count &&
+        item.rule === normalizedCandidate.rule &&
+        item.charLimit === normalizedCandidate.charLimit
     );
-    if (exists) return prev;
+    if (existing) {
+      return prev.map((item) =>
+        item.id === existing.id
+          ? {
+              ...item,
+              approvedCount: (item.approvedCount ?? 0) + 1,
+              draftText: normalizedCandidate.draftText,
+            }
+          : item
+      );
+    }
     return [
       {
         id: `approved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        phrase: candidate.phrase,
-        kind: candidate.kind,
-        count: candidate.count,
-        rule: candidate.rule,
-        charLimit: candidate.charLimit,
+        phrase: normalizedCandidate.phrase,
+        kind: normalizedCandidate.kind,
+        count: normalizedCandidate.count,
+        rule: normalizedCandidate.rule,
+        charLimit: normalizedCandidate.charLimit,
+        draftText: normalizedCandidate.draftText,
+        approvedCount: 1,
+        rejectedCount: 0,
         createdAt: new Date().toISOString(),
       },
       ...prev,
@@ -177,6 +203,143 @@ export function approveIntentCandidateFlow(args: {
   args.setPendingIntentCandidates((prev) =>
     prev.filter((item) => item.id !== args.candidateId)
   );
+}
+
+export function buildNextApprovedIntentPhrasesOnApprove(args: {
+  pendingIntentCandidates: PendingIntentCandidate[];
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  candidateId: string;
+}) {
+  const candidate = args.pendingIntentCandidates.find((item) => item.id === args.candidateId);
+  if (!candidate) return args.approvedIntentPhrases;
+  const normalizedCandidate = {
+    ...candidate,
+    ...parseIntentCandidateDraftText(candidate.draftText || candidate.phrase, candidate),
+  };
+
+  const existing = args.approvedIntentPhrases.find(
+    (item) =>
+      item.kind === normalizedCandidate.kind &&
+      item.phrase === normalizedCandidate.phrase &&
+      item.count === normalizedCandidate.count &&
+      item.rule === normalizedCandidate.rule &&
+      item.charLimit === normalizedCandidate.charLimit
+  );
+
+  if (existing) {
+    return args.approvedIntentPhrases.map((item) =>
+        item.id === existing.id
+          ? {
+            ...item,
+            approvedCount: (item.approvedCount ?? 0) + 1,
+            draftText: normalizedCandidate.draftText,
+          }
+        : item
+    );
+  }
+
+  return [
+    {
+      id: `approved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      phrase: normalizedCandidate.phrase,
+      kind: normalizedCandidate.kind,
+      count: normalizedCandidate.count,
+      rule: normalizedCandidate.rule,
+      charLimit: normalizedCandidate.charLimit,
+      draftText: normalizedCandidate.draftText,
+      approvedCount: 1,
+      rejectedCount: 0,
+      createdAt: new Date().toISOString(),
+    },
+    ...args.approvedIntentPhrases,
+  ].slice(0, 100);
+}
+
+export function buildNextApprovedIntentPhrasesOnUpdate(args: {
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  phraseId: string;
+  patch: Partial<ApprovedIntentPhrase>;
+}) {
+  return args.approvedIntentPhrases.map((item) =>
+    item.id === args.phraseId
+      ? {
+          ...item,
+          ...args.patch,
+        }
+      : item
+  );
+}
+
+export function buildNextApprovedIntentPhrasesOnDelete(args: {
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  phraseId: string;
+}) {
+  return args.approvedIntentPhrases.filter((item) => item.id !== args.phraseId);
+}
+
+export async function syncApprovedIntentPhrasesToCurrentTaskFlow(args: {
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  sourceInstruction: string;
+  currentTaskId: string | null;
+  currentTaskTitle: string;
+  currentTaskDraftTitle: string;
+  responseMode: "strict" | "creative";
+  applyTaskUsage: (usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null) => void;
+  replaceCurrentTaskIntent?: (params: {
+    intent: TaskIntent;
+    title?: string;
+    originalInstruction?: string;
+  }) =>
+    | {
+        taskId: string;
+        title: string;
+        compiledTaskPrompt: string;
+      }
+    | null
+    | undefined;
+  syncTaskDraftFromProtocol: (args: {
+    taskId: string;
+    title: string;
+    goal: string;
+    compiledTaskPrompt: string;
+  }) => void;
+  setPendingKinInjectionBlocks: (blocks: string[]) => void;
+  setPendingKinInjectionIndex: (index: number) => void;
+  setKinInput: (value: string) => void;
+}) {
+  const sourceInstruction = args.sourceInstruction.trim();
+  if (!sourceInstruction || !args.currentTaskId || !args.replaceCurrentTaskIntent) {
+    return;
+  }
+
+  const resolved = await resolveTaskIntentWithFallback({
+    input: sourceInstruction,
+    approvedPhrases: args.approvedIntentPhrases,
+    responseMode: args.responseMode,
+  });
+
+  args.applyTaskUsage(resolved.usage);
+
+  const replaced = args.replaceCurrentTaskIntent({
+    intent: resolved.intent,
+    title: resolved.suggestedTitle || args.currentTaskTitle || args.currentTaskDraftTitle,
+    originalInstruction: sourceInstruction,
+  });
+
+  if (!replaced) return;
+
+  args.syncTaskDraftFromProtocol({
+    taskId: replaced.taskId,
+    title: replaced.title,
+    goal: resolved.intent.goal,
+    compiledTaskPrompt: replaced.compiledTaskPrompt,
+  });
+  const blocks = buildPendingKinInjectionBlocks(replaced.compiledTaskPrompt, {
+    noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+  });
+  args.setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
+  args.setPendingKinInjectionIndex(0);
+  args.setKinInput(blocks[0] ?? replaced.compiledTaskPrompt);
 }
 
 export function rejectIntentCandidateFlow(args: {

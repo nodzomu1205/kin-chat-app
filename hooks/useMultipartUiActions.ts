@@ -6,7 +6,7 @@ import {
 } from "@/lib/app/multipartAssemblyFlow";
 import type { Message, MultipartAssembly } from "@/types/chat";
 
-export function useMultipartUiActions(args: {
+export type MultipartUiActionArgs = {
   multipartAssemblies: MultipartAssembly[];
   setMultipartAssemblies: React.Dispatch<React.SetStateAction<MultipartAssembly[]>>;
   currentTaskId: string | undefined;
@@ -21,7 +21,9 @@ export function useMultipartUiActions(args: {
   loadMultipartAssemblyText: (assemblyId: string) => string;
   getMultipartAssembly: (assemblyId: string) => MultipartAssembly | null;
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
-}) {
+};
+
+export function useMultipartUiActions(args: MultipartUiActionArgs) {
   const processMultipartTaskDoneText = useCallback(
     (text: string, options?: { setGptTab?: boolean }) => {
       const result = processMultipartTaskDoneTextBase({

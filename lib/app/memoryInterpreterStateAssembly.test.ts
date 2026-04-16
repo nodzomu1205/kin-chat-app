@@ -51,6 +51,29 @@ describe("memoryInterpreterStateAssembly", () => {
     });
   });
 
+  it("allows works extraction when literature hints appear in clean Japanese text", () => {
+    const lists = buildMemoryStateAssemblyLists({
+      currentMemory: {
+        facts: [],
+        preferences: [],
+        lists: {},
+        context: {},
+      },
+      resolvedTopic: "ロシア文学",
+      topicSwitched: false,
+      activeDocument: null,
+      activeDocumentTitle: "文学メモ",
+      activeDocumentExcerpt:
+        "| 作家名 | 作品 |\n| --- | --- |\n| ドストエフスキー | 罪と罰 |",
+      latestAssistantText: "ドストエフスキーの代表作は罪と罰です。",
+      recentSearchQueries: [],
+    });
+
+    expect(lists.worksByEntity).toEqual({
+      ドストエフスキー: ["罪と罰"],
+    });
+  });
+
   it("builds the final patch from extracted components", () => {
     const patch = buildInterpretedMemoryState({
       currentMemory: {

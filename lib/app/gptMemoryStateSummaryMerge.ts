@@ -19,7 +19,7 @@ function getLatestMeaningfulUserText(recentMessages: Message[]) {
 
 function stripIntentLead(text: string) {
   return normalizeText(text)
-    .replace(/^(?:谺｡縺ｯ|縺ｧ縺ｯ|縺倥ｃ縺・荳逡ｪ闊亥袖縺後≠繧九・縺ｯ|莉雁ｺｦ縺ｯ)\s*/u, "")
+    .replace(/^(?:次は|では|じゃあ一旦見出しがあるなら次は|最後は)\s*/u, "")
     .trim();
 }
 
@@ -29,7 +29,7 @@ function deriveFocusedEntity(memory: Memory): string {
   const candidates = new Set<string>();
 
   const intentCandidate = intent
-    .replace(/(?:縺ｫ縺､縺・※.*|縺ｨ縺ｯ.*|縺ｯ\??|縺ｧ\??|繧・*)$/u, "")
+    .replace(/(?:について.*|とは.*|は\??|です\??|[。.!！?？\s]+)$/u, "")
     .trim();
   if (intentCandidate) candidates.add(intentCandidate);
 
