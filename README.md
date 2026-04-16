@@ -94,7 +94,7 @@ The current verification baseline is:
 
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- current test count: `65 files / 274 tests`
+- current test count: `67 files / 288 tests`
 
 Recent regression fixes include:
 
@@ -102,6 +102,11 @@ Recent regression fixes include:
 - GPT chat scroll position now stays stable when moving into and back out of the settings workspace on both desktop and mobile
 - chat topic adjudication / approval flow has been structurally rebuilt and is now stable in live review
 - task title auto-generation now uses a clean naming pipeline instead of truncating the first summary sentence
+- task intent approval is now behaving as intended in live review:
+  - natural-language task input creates an initial `SYS_TASK` draft
+  - count / limit phrases stay out of the first draft and appear in the approval flow instead
+  - approving a task-intent candidate immediately updates the Kin draft and the task-progress action items
+  - task progress entries can now be cleared directly from the task-progress view if the user decides not to proceed
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -145,12 +150,17 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. residual `app/page.tsx` orchestration review and cleanup of any regrown glue
-2. `lib/app/sendToGptFlowHelpers.ts` / `lib/app/sendToGptFlow.ts` flow-surface thinning
+1. remove compatibility-only and dead helper branches that are still physically present after the recent refactors
+   - especially `lib/taskIntent.ts`
+   - and `lib/app/sendToGptFlowHelpers.ts`
+2. residual `app/page.tsx` orchestration review and cleanup of any regrown glue
+   - especially page-level candidate merge / controller-style coordination that still sits above narrower domain modules
+3. `lib/app/sendToGptFlowHelpers.ts` / `lib/app/sendToGptFlow.ts` flow-surface thinning
    - keep `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` aligned with that thinning so the GPT flow keeps a clean domain boundary
-3. `components/panels/gpt/GptSettingsSections.tsx` settings information architecture redesign
-4. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts` ingest-flow cleanup
-5. protocol / task / ingest test hardening around the next touched area
+4. `components/panels/gpt/GptSettingsSections.tsx` settings information architecture redesign
+   - reduce duplication between the new settings workspace and the legacy drawer-oriented settings surface
+5. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts` ingest-flow cleanup
+6. protocol / task / ingest test hardening around the next touched area
 
 `hooks/useGptMemory.ts` and `lib/app/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
 

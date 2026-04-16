@@ -161,6 +161,7 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps 
       onPrepareTaskSync: panelArgs.onPrepareTaskSync,
       onPrepareTaskSuspend: panelArgs.onPrepareTaskSuspend,
       onUpdateTaskProgressCounts: panelArgs.onUpdateTaskProgressCounts,
+      onClearTaskProgress: panelArgs.onClearTaskProgress,
       onSelectPreviousTaskProgress: panelArgs.onSelectPreviousTaskProgress,
       onSelectNextTaskProgress: panelArgs.onSelectNextTaskProgress,
       onStartKinTask: panelArgs.onStartKinTask,

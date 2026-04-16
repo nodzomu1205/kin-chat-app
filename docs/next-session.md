@@ -1,6 +1,6 @@
 # Next Session Handover
 
-Updated: 2026-04-15
+Updated: 2026-04-16
 
 ## Current State
 
@@ -8,15 +8,24 @@ The repository is in a good stopping state.
 
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- current test count: `63 files / 259 tests`
+- current test count: `67 files / 288 tests`
 
-The most important result of this wave is that the chat-side topic decision flow is now behaving correctly in live review, including:
+The most important result of this wave is that the chat-side topic decision flow is now behaving correctly in live review, and the task-intent approval flow reached the intended behavior too.
+
+Topic-side highlights:
 
 - topic proposal / approval / hold behavior
 - duplicate approval suppression
 - approved topic reflection into memory and the top chat chip
 - task-title auto naming quality improvements
 - English leakage reduction in memory/topic presentation
+
+Task-side highlights:
+
+- natural-language task input now creates an initial `SYS_TASK` draft without prematurely baking in count / limit phrases
+- count / limit phrases rise into the approval flow instead
+- approving a task-intent candidate immediately recompiles the Kin draft and refreshes the task-progress action items
+- the task-progress view now has a direct clear button so a user can archive a drafted task if they choose not to proceed
 
 ## What Changed In This Wave
 
@@ -64,7 +73,25 @@ Done:
 - boilerplate-first-sentence truncation behavior was reduced
 - clean tests now cover the title extraction rules
 
-### 4. UI / copy cleanup
+### 4. Task intent / protocol flow was rebuilt around approvals
+
+Done:
+
+- task intent now follows the same structural direction as topic handling:
+  - LLM-primary extraction for unapproved meaning
+  - approved shortcut matching only after explicit approval history exists
+  - immediate UI/runtime reflection after approval
+- protocol prompt and rulebook wording were compressed and clarified without weakening the `<<END_SYS_...>>` closing rule
+- task compiler examples now make matching closing blocks easier to scan
+- task-progress view now supports direct archive / clear from the user side
+
+Important:
+
+- do not let task intent drift back toward regex-first meaning extraction
+- approved shortcuts are acceptable
+- unapproved meaning extraction should remain LLM-primary
+
+### 5. UI / copy cleanup
 
 Done:
 
@@ -81,12 +108,14 @@ These are not optional style notes. They are operational constraints.
 3. Before claiming a route is removed, verify it repo-wide.
 4. When refactoring, compare imports/exports against responsibility and remove unnecessary wiring immediately.
 5. Do not leave temporary compatibility branches in place unless the reason is explicit and documented.
+6. After a structural migration lands, physically remove dead helper bodies instead of leaving them beside the active path.
 
 In practical terms:
 
 - do not add one-off blockers for individual topic phrases unless the architecture truly leaves no better option
 - do not declare “old logic removed” until search confirms all active runtime paths are gone or intentionally isolated
 - do not let hidden state mutation paths regrow in helper modules
+- do not stop at "the active path is clean" if compatibility-era dead code still makes the file hard to audit
 
 ## Mandatory Verification Discipline
 
@@ -107,6 +136,7 @@ This is especially important for:
 - pending memory-rule candidates
 - approved shortcut routes
 - task-title naming flows
+- task-intent approval reflection into Kin draft / task-progress runtime
 
 ## Maintenance Work To Do Before The Next Feature Wave
 
@@ -126,6 +156,11 @@ Before starting the next substantial feature, perform a maintenance-first pass a
 5. keep `app/page.tsx` and `sendToGptFlow*` under periodic wiring review
    - not only for file size
    - also for hidden state mutation paths and unnecessary parameter spread
+6. remove compatibility-era dead code in migrated modules
+   - especially `lib/taskIntent.ts`
+   - and `lib/app/sendToGptFlowHelpers.ts`
+7. review GPT settings duplication
+   - keep reducing overlap between the new settings workspace and the old drawer-oriented settings surface
 
 ## Recommended Next Review Files
 
@@ -139,12 +174,15 @@ Review these first before changing behavior:
 6. `lib/app/contextNaming.ts`
 7. `lib/app/taskDraftActionFlows.ts`
 8. `app/page.tsx`
+9. `lib/taskIntent.ts`
+10. `lib/app/sendToGptFlowHelpers.ts`
 
 ## Suggested Next-Session Order
 
-1. run a live regression pass for topic / approval / task-title behavior
-2. perform the maintenance audit items above before new feature work
-3. only then begin the next product feature
+1. run a live regression pass for topic / approval / task-title / task-intent approval behavior
+2. remove compatibility-era dead code from the current active-path migrations before new feature work
+3. perform the maintenance audit items above
+4. only then begin the next product feature
 
 ## Verification Commands
 

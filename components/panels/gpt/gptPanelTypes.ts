@@ -142,6 +142,7 @@ export type GptPanelTaskProps = {
     completedCount: number;
     targetCount?: number;
   }) => void;
+  onClearTaskProgress?: (taskId: string) => void;
   onSelectPreviousTaskProgress?: () => void;
   onSelectNextTaskProgress?: () => void;
   onStartKinTask?: () => void | Promise<void>;
@@ -452,6 +453,7 @@ export type GptPanelProps = {
     completedCount: number;
     targetCount?: number;
   }) => void;
+  onClearTaskProgress?: (taskId: string) => void;
   onSelectPreviousTaskProgress?: () => void;
   onSelectNextTaskProgress?: () => void;
   onStartKinTask?: () => void | Promise<void>;

@@ -40,6 +40,7 @@ export default function GptTaskDrawer({
   onPrepareTaskSync,
   onPrepareTaskSuspend,
   onUpdateTaskProgressCounts,
+  onClearTaskProgress,
   onSelectPreviousTaskProgress,
   onSelectNextTaskProgress,
   isMobile = false,
@@ -63,6 +64,7 @@ export default function GptTaskDrawer({
   | "onPrepareTaskSync"
   | "onPrepareTaskSuspend"
   | "onUpdateTaskProgressCounts"
+  | "onClearTaskProgress"
   | "onSelectPreviousTaskProgress"
   | "onSelectNextTaskProgress"
 > & {
@@ -133,6 +135,7 @@ export default function GptTaskDrawer({
           onPrepareTaskSync={onPrepareTaskSync}
           onPrepareTaskSuspend={onPrepareTaskSuspend}
           onUpdateTaskProgressCounts={onUpdateTaskProgressCounts}
+          onClearTaskProgress={onClearTaskProgress}
           onSelectPreviousTaskProgress={onSelectPreviousTaskProgress}
           onSelectNextTaskProgress={onSelectNextTaskProgress}
         />

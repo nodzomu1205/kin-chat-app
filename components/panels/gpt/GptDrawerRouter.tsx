@@ -75,6 +75,7 @@ export default function GptDrawerRouter({
     onPrepareTaskSync: props.onPrepareTaskSync,
     onPrepareTaskSuspend: props.onPrepareTaskSuspend,
     onUpdateTaskProgressCounts: props.onUpdateTaskProgressCounts,
+    onClearTaskProgress: props.onClearTaskProgress,
     onSelectPreviousTaskProgress: props.onSelectPreviousTaskProgress,
     onSelectNextTaskProgress: props.onSelectNextTaskProgress,
     onStartKinTask: props.onStartKinTask,
@@ -256,6 +257,7 @@ export default function GptDrawerRouter({
           onPrepareTaskSync={task.onPrepareTaskSync}
           onPrepareTaskSuspend={task.onPrepareTaskSuspend}
           onUpdateTaskProgressCounts={task.onUpdateTaskProgressCounts}
+          onClearTaskProgress={task.onClearTaskProgress}
           onSelectPreviousTaskProgress={task.onSelectPreviousTaskProgress}
           onSelectNextTaskProgress={task.onSelectNextTaskProgress}
           isMobile={props.isMobile}

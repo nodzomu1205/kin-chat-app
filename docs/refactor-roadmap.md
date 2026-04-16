@@ -15,7 +15,7 @@ The goal is not to rewrite everything at once. The goal is to keep shipping whil
 Current verification baseline:
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- test status: `65 files / 274 tests`
+- test status: `67 files / 288 tests`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -29,11 +29,12 @@ Primary review points:
 - `lib/app/kinMultipart.ts`
 
 Current cleanup priority:
-1. `app/page.tsx`
+1. `lib/taskIntent.ts`
 2. `lib/app/sendToGptFlowHelpers.ts`
-3. `lib/app/sendToGptFlow.ts`
-4. `components/panels/gpt/GptSettingsSections.tsx`
-5. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
+3. `app/page.tsx`
+4. `lib/app/sendToGptFlow.ts`
+5. `components/panels/gpt/GptSettingsSections.tsx`
+6. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
 
 ## Phase Plan
 
@@ -119,11 +120,14 @@ Done:
 - `useGptMemory.ts` reduced to a smaller orchestration hook
 - `memoryInterpreter.ts` reduced through staged helper extraction
 - rejected memory-rule candidates now trigger immediate memory reapplication so tentative wrong topics can be cleared
+- task drawer now supports approval-driven `SYS_TASK` drafting where count / limit candidates are approved separately and reflected immediately into both the Kin draft and task-progress action items
+- task-progress view now supports direct user-side clear / archive when a drafted task should not proceed
 
 Next:
 - introduce `useChatAppController`
 - review whether the remaining `app/page.tsx` orchestration should stay as builders or move behind a higher-level controller hook
 - review whether the pending-memory-rule candidate merge path should move out of `app/page.tsx`
+- keep task-progress lifecycle controls (`start / archive / selection / approval refresh`) concentrated in the task protocol controller boundary instead of regrowing in page-level UI code
 
 ### 2.5. Task Protocol Hook Thinning
 Status: In progress
@@ -137,9 +141,15 @@ Done:
 - pending-answer / finalize mutation extraction
 - task start / replace-current-intent state builder extraction
 - test coverage for parser, runtime, ingest, state, mutations, and task-state helpers
+- task intent approval flow rebuilt toward:
+  - LLM-primary candidate extraction
+  - approved shortcut matching
+  - immediate recompile / Kin draft sync after approval
+- task-progress runtime now exposes direct archive support used by the progress UI clear button
 
 Next:
-- evaluate whether `addPendingRequest` should also move to a pure helper
+- physically remove dead compatibility-era helpers from `lib/taskIntent.ts` so the active runtime path is easier to audit
+- decide whether `addPendingRequest` should also move to a pure helper
 - decide whether to continue thinning here or shift effort to `useGptMemory`
 
 ### 3. Server Route Service Extraction
@@ -234,6 +244,7 @@ Next:
 - keep `memoryInterpreter.ts` and `useGptMemory.ts` stable unless a correctness issue is found
 - thin `app/page.tsx` by moving panel prop assembly and orchestration glue outward
 - keep thinning `sendToGptFlowHelpers.ts` / `sendToGptFlow.ts` by moving protocol / search / transcript shaping logic out in small slices
+- remove temporary compatibility wrappers and dead unreachable helper bodies from `sendToGptFlowHelpers.ts` once the `sendToGptText.ts` migration is complete
 - consider the next `sendToGptFlow` slice around request-text normalization or transcript request handling
 - continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
 - review `app/api/ingest/route.ts` and `hooks/useIngestActions.ts` as the next ingest-side integration point
@@ -294,6 +305,7 @@ Done:
 Next:
 - task budget tests
 - more pure-helper extraction around `sendToGptFlowHelpers` / `app/page.tsx` / ingest flow
+- add narrow tests around task-intent approval sync and task-progress archive / clear behavior if those surfaces change again
 - add docs for protocol actions and ingest pipeline before larger phase-2 work
 
 ## Next Review Points

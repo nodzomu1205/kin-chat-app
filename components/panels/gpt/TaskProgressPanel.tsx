@@ -14,6 +14,7 @@ type Props = Pick<
   | "onPrepareTaskSync"
   | "onPrepareTaskSuspend"
   | "onUpdateTaskProgressCounts"
+  | "onClearTaskProgress"
   | "onSelectPreviousTaskProgress"
   | "onSelectNextTaskProgress"
 >;
@@ -144,6 +145,7 @@ export default function TaskProgressPanel({
   onPrepareTaskSync,
   onPrepareTaskSuspend,
   onUpdateTaskProgressCounts,
+  onClearTaskProgress,
   onSelectPreviousTaskProgress,
   onSelectNextTaskProgress,
 }: Props) {
@@ -188,6 +190,15 @@ export default function TaskProgressPanel({
     setEditingRequirementId("");
   };
 
+  const handleClearTaskProgress = () => {
+    const taskId = taskProgressView?.taskId;
+    if (!taskId || !onClearTaskProgress) return;
+    setEditingRequirementId("");
+    setSyncNote("");
+    setSuspendNote("");
+    onClearTaskProgress(taskId);
+  };
+
   if (!taskProgressView || !taskProgressView.taskId) {
     return (
       <div
@@ -220,6 +231,21 @@ export default function TaskProgressPanel({
             進捗切替 {activeTaskProgressIndex + 1} / {taskProgressCount}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleClearTaskProgress}
+              disabled={!onClearTaskProgress || !taskProgressView?.taskId}
+              style={{
+                ...actionButtonStyle("amber"),
+                opacity: onClearTaskProgress && taskProgressView?.taskId ? 1 : 0.45,
+                cursor:
+                  onClearTaskProgress && taskProgressView?.taskId
+                    ? "pointer"
+                    : "not-allowed",
+              }}
+            >
+              クリア
+            </button>
             <button
               type="button"
               onClick={onSelectPreviousTaskProgress}

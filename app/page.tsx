@@ -749,6 +749,7 @@ export default function ChatApp() {
     onPrepareTaskSync: prepareTaskSync,
     onPrepareTaskSuspend: prepareTaskSuspend,
     onUpdateTaskProgressCounts: taskProtocol.updateRequirementProgressCounts,
+    onClearTaskProgress: taskProtocol.archiveTask,
     onSelectPreviousTaskProgress: taskProtocol.selectPreviousProgressView,
     onSelectNextTaskProgress: taskProtocol.selectNextProgressView,
     onStartKinTask: runStartKinTaskFromInput,
