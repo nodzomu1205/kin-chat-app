@@ -113,7 +113,7 @@ function ActionRow({
           Kinに送る
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ×
+          ↻
         </button>
       </>
     );
@@ -130,7 +130,7 @@ function ActionRow({
           更新
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ×
+          ↻
         </button>
       </>
     );
@@ -150,7 +150,7 @@ function ActionRow({
           データ取込
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ×
+          ↻
         </button>
       </>
     );
@@ -178,7 +178,7 @@ function ActionRow({
           レス受取
         </button>
         <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ×
+          ↻
         </button>
       </>
     );

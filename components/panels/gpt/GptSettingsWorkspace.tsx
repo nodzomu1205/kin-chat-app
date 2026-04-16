@@ -793,7 +793,7 @@ export default function GptSettingsWorkspace({
     if (typeof window === "undefined") return false;
     return window.sessionStorage.getItem("gpt-settings-show-approved-memory") === "1";
   });
-  const [showApprovedIntentRules, setShowApprovedIntentRules] = React.useState(true);
+  const [showApprovedIntentRules, setShowApprovedIntentRules] = React.useState(false);
   const [sourceDisplayCountInput, setSourceDisplayCountInput] = React.useState(
     String(settings.sourceDisplayCount)
   );
