@@ -191,6 +191,28 @@ export type UseChatPageActionsArgs = ChatPageIdentityArgs &
   ChatPageSearchArgs &
   ChatPageServicesArgs;
 
+export type ChatPageActionArgGroups = {
+  identity: ChatPageIdentityArgs;
+  uiState: ChatPageUiStateArgs;
+  task: ChatPageTaskArgs;
+  protocol: ChatPageProtocolArgs;
+  search: ChatPageSearchArgs;
+  services: ChatPageServicesArgs;
+};
+
+export function flattenChatPageActionArgGroups(
+  groups: ChatPageActionArgGroups
+): UseChatPageActionsArgs {
+  return {
+    ...groups.identity,
+    ...groups.uiState,
+    ...groups.task,
+    ...groups.protocol,
+    ...groups.search,
+    ...groups.services,
+  };
+}
+
 export type UseGptMessageActionsArgs = Pick<
   UseChatPageActionsArgs,
   | "applyChatUsage"

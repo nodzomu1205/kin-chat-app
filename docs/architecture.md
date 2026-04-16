@@ -40,8 +40,11 @@ Current role:
 Current risk:
 
 - `app/page.tsx` still acts as a broad orchestration point
-- `useChatPageController` now centralizes action / protocol-automation / panel-reset wiring and composes smaller domain controller hooks, but the controller boundary is still broad
-- `useChatPageComposition` now owns most controller-arg and panel-arg assembly that used to live inline in `app/page.tsx`
+- `useChatPageController` now acts mainly as a composition hub across domain hooks, while protocol automation and panel reset live behind `useChatPagePanelDomainActions`
+- GPT / Kin composition now sits behind `useChatPageMessagingDomainActions`, so `useChatPageController` no longer wires those two messaging surfaces independently
+- task / protocol / file-ingest composition now sits behind `useChatPageTaskDomainActions`, so `useChatPageController` no longer wires those three surfaces independently
+- `useChatPageControllerArgs`, `useChatPageKinPanelProps`, and `useChatPageGptPanelArgs` now own the controller/panel argument assembly that used to live inline in `app/page.tsx`
+- `useChatPageControllerArgs` now passes `identity / uiState / task / protocol / search / services` as grouped controller args instead of a single flat action bag
 - panel prop wiring is thinner than before, and GPT panel consumers are now mostly section-only
 - no-op page-level action / panel arg passthrough builders were removed, but the page still owns too many boundaries
 - memory-rule candidate queue merging now sits behind `usePendingMemoryRuleQueue`, but the surrounding memory / task authority boundary is still broader than ideal
@@ -67,8 +70,17 @@ Current role:
 Current risk:
 
 - `sendToGptFlow.ts` is thinner now, but still remains the main execution coordinator
-- `sendToGptFlowHelpers.ts` is narrower after `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` were split out, but it still owns several response-shaping responsibilities
-- `sendToGptFlowHelpers.ts` still contains temporary compatibility wrappers and remains a broad helper surface even after the dead legacy bodies were removed
+- `sendToGptFlowRequestText.ts` now owns final request-text assembly and protocol override request-text building
+- `sendToGptFlowRequestPayload.ts` now owns chat API payload construction
+- `sendToGptFlowRequestPreparation.ts` now owns the combined `prepareSendToGptRequest` step; inside it, `buildPreparedRequestArtifacts` isolates the pure request-ready enrichment and `resolveInjectedTaskContext` isolates task-bridge context injection
+- `sendToGptFlowContext.ts` is now internally split into protocol interaction extraction, protocol limit resolution, derived search resolution, and the composed `deriveProtocolSearchContext` entrypoint
+- `sendToGptFlowGuards.ts` now exposes `runPrePreparationGates` and `runPreparedRequestGates`, so the main flow reads as a short gate pipeline rather than five inline guard blocks
+- `sendToGptFlowBundles.ts` now owns request-artifact, finalize-artifact, and memory bundles so the main coordinator no longer hand-assembles long argument objects inline
+- `sendToGptFlowState.ts` now owns recent-message shaping, implicit-search usage handling, protocol post-response side effects, and memory-update context helpers
+- `useGptMessageActions.ts` now delegates common `runSendToGptFlow` arg assembly to `sendToGptFlowArgBuilders.ts`
+- chat API request execution and response-artifact shaping are now split out of `sendToGptFlow.ts` into `sendToGptFlowRequest.ts`, whose fetch and payload-preparation concerns are also separated internally
+- early gate branches for multipart import, inline URL shortcut, protocol limit violations, and transcript routing now sit behind `sendToGptFlowGuards.ts`
+- assistant-message finalize work now sits behind `sendToGptFlowFinalize.ts`, further shrinking the main coordinator body
 
 ### Memory
 

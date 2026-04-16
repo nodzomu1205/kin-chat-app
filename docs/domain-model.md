@@ -121,7 +121,10 @@ Important concepts:
 Current main files:
 
 - [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
-- [`lib/app/sendToGptFlowHelpers.ts`](../lib/app/sendToGptFlowHelpers.ts)
+- [`lib/app/sendToGptFlowRequestPreparation.ts`](../lib/app/sendToGptFlowRequestPreparation.ts)
+- [`lib/app/sendToGptFlowRequestPayload.ts`](../lib/app/sendToGptFlowRequestPayload.ts)
+- [`lib/app/sendToGptFlowRequestText.ts`](../lib/app/sendToGptFlowRequestText.ts)
+- [`lib/app/sendToGptFlowState.ts`](../lib/app/sendToGptFlowState.ts)
 - [`lib/search-domain/`](../lib/search-domain)
 
 ### Library

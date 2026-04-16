@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runSendToGptFlow } from "@/lib/app/sendToGptFlow";
 import {
+  buildNormalizedRequestText as buildEffectiveRequestText,
   buildNormalizedRequestText,
   getTaskDirectiveOnlyResponseText,
   shouldRespondToTaskDirectiveOnlyInput,
 } from "@/lib/app/sendToGptText";
 import {
-  buildAssistantResponseArtifacts,
-  buildChatApiRequestPayload,
-  buildEffectiveRequestText,
-  buildFinalRequestText,
-} from "@/lib/app/sendToGptFlowHelpers";
+} from "@/lib/app/sendToGptFlowRequestPreparation";
+import { buildFinalRequestText } from "@/lib/app/sendToGptFlowRequestText";
+import { buildChatApiRequestPayload } from "@/lib/app/sendToGptFlowRequestPayload";
+import { buildAssistantResponseArtifacts } from "@/lib/app/sendToGptFlowResponse";
 import type { Message } from "@/types/chat";
 
 describe("runSendToGptFlow", () => {
@@ -246,7 +246,7 @@ describe("runSendToGptFlow", () => {
 });
 
 describe("sendToGptFlowHelpers", () => {
-  it("keeps buildEffectiveRequestText aligned with normalized request text", () => {
+  it("builds normalized request text from the effective search query", () => {
     const params = {
       rawText: "元の入力",
       parsedInput: {
@@ -256,7 +256,6 @@ describe("sendToGptFlowHelpers", () => {
       effectiveParsedSearchQuery: "新しい検索",
     };
 
-    expect(buildEffectiveRequestText(params)).toBe(buildNormalizedRequestText(params));
     expect(buildEffectiveRequestText(params)).toContain("検索: 新しい検索");
   });
 

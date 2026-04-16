@@ -4,10 +4,7 @@ import { runSendToGptFlow } from "@/lib/app/sendToGptFlow";
 import { receiveLastKinResponseFlow } from "@/lib/app/kinTaskFlow";
 import {
   buildYoutubeTranscriptRetryBlock,
-  buildLimitExceededBlock,
-  extractTaskProtocolEvents,
 } from "@/lib/taskRuntimeProtocol";
-import { shouldInjectTaskContext } from "@/lib/taskChatBridge";
 import {
   extractPreferredKinTransferText,
 } from "@/lib/app/kinStructuredProtocol";
@@ -19,15 +16,9 @@ import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,
 } from "@/lib/app/sendToGptTranscriptHelpers";
-import type {
-  SendToGptFlowMemoryArgs,
-  SendToGptFlowProtocolArgs,
-  SendToGptFlowRequestArgs,
-  SendToGptFlowSearchArgs,
-  SendToGptFlowUiArgs,
-} from "@/lib/app/sendToGptFlowTypes";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
+import { buildCommonSendToGptFlowArgs } from "@/lib/app/sendToGptFlowArgBuilders";
 import type { Message, SourceItem } from "@/types/chat";
 
 export function useGptMessageActions(args: UseGptMessageActionsArgs) {
@@ -260,128 +251,9 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     } catch {}
     return "";
   }
-  const parseWrappedSearchResponse = (text: string) => {
-    const event = extractTaskProtocolEvents(text).find(
-      (candidate) => candidate.type === "search_response"
-    );
-    if (!event) return null;
-
-    const rawExcerptMatch = text.match(
-      /RAW_EXCERPT:\s*([\s\S]*?)<<END_SYS_SEARCH_RESPONSE>>/
-    );
-
-    return {
-      query: event.query,
-      outputMode: event.outputMode,
-      summary: event.summary || event.body || "",
-      rawResultId: event.rawResultId,
-      rawExcerpt: rawExcerptMatch?.[1]?.trim() || "",
-    };
-  };
-
-  const getProtocolLimitViolation = (event: {
-    type:
-      | "ask_gpt"
-      | "search_request"
-      | "user_question"
-      | "library_reference"
-      | "youtube_transcript_request";
-    taskId?: string;
-    actionId?: string;
-  }) => {
-    const kind =
-      event.type === "ask_gpt"
-        ? "ask_gpt"
-        : event.type === "search_request"
-          ? "search_request"
-          : event.type === "youtube_transcript_request"
-            ? "youtube_transcript_request"
-          : event.type === "library_reference"
-            ? "library_reference"
-            : "ask_user";
-    const requirement = args.taskProtocol.runtime.requirementProgress.find(
-      (item) => item.kind === kind
-    );
-    if (!requirement || typeof requirement.targetCount !== "number") return null;
-    if ((requirement.completedCount ?? 0) <= requirement.targetCount) return null;
-
-    const label =
-      kind === "ask_gpt"
-        ? "GPT request"
-        : kind === "search_request"
-          ? "web search request"
-          : kind === "youtube_transcript_request"
-            ? "YouTube transcript request"
-          : kind === "library_reference"
-            ? "library reference request"
-            : "user question";
-
-    return buildLimitExceededBlock({
-      taskId: event.taskId || args.taskProtocol.runtime.currentTaskId || "",
-      actionId: event.actionId,
-      summary: `This ${label} exceeds the allowed limit for the current task, so do not continue with it.`,
-    });
-  };
-
   const buildCommonFlowArgs = () => {
-    const protocolArgs: SendToGptFlowProtocolArgs = {
-      taskProtocolRuntime: args.taskProtocol.runtime,
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-      findPendingRequest: (requestId: string) =>
-        args.taskProtocol.runtime.pendingRequests.find(
-          (item) => item.id === requestId || item.actionId === requestId
-        ) || null,
-      applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
-      getProtocolLimitViolation,
-      shouldInjectTaskContextWithSettings: (userInput: string) =>
-        shouldInjectTaskContext({
-          userInput,
-          settings: args.chatBridgeSettings,
-        }),
-      referenceLibraryItems: args.referenceLibraryItems,
-      libraryIndexResponseCount: args.libraryIndexResponseCount,
-      buildLibraryReferenceContext: args.buildLibraryReferenceContext,
-      taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
-      ingestProtocolMessage: args.ingestProtocolMessage,
-    };
-
-    const searchArgs: SendToGptFlowSearchArgs = {
-      searchMode: args.searchMode,
-      searchEngines: args.searchEngines,
-      searchLocation: args.searchLocation,
-      parseWrappedSearchResponse,
-      recordSearchContext: args.recordSearchContext,
-      getContinuationTokenForSeries: args.getContinuationTokenForSeries,
-      getAskAiModeLinkForQuery: args.getAskAiModeLinkForQuery,
-      applySearchUsage: args.applySearchUsage,
-      applyChatUsage: args.applyChatUsage,
-    };
-
-    const memoryArgs: SendToGptFlowMemoryArgs = {
-      handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
-      applySummaryUsage: args.applySummaryUsage,
-      chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
-      gptStateRef: args.gptMemoryRuntime.gptStateRef,
-    };
-
-    const uiArgs: SendToGptFlowUiArgs = {
-      setGptMessages: args.setGptMessages,
-      setGptInput: args.setGptInput,
-      setGptLoading: args.setGptLoading,
-      setKinInput: args.setKinInput,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
-    };
-
-    const requestArgs: SendToGptFlowRequestArgs = {
-      gptInput: args.gptInput,
-      gptLoading: args.gptLoading,
-      instructionMode: "normal",
-      processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-      responseMode: args.responseMode,
-      recordIngestedDocument: args.recordIngestedDocument,
-    };
+    const { protocolArgs, searchArgs, memoryArgs, uiArgs, requestArgs } =
+      buildCommonSendToGptFlowArgs(args);
 
     return {
       ...protocolArgs,

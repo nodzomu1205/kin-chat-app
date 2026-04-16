@@ -1,17 +1,14 @@
-import { createEmptyMemory, type Memory } from "@/lib/memory";
 import { generateId } from "@/lib/uuid";
-import { buildTaskChatBridgeContext } from "@/lib/taskChatBridge";
+import { prepareSendToGptRequest } from "@/lib/app/sendToGptFlowRequestPreparation";
 import {
-  appendRecentAssistantMessage,
-  applyProtocolAssistantSideEffects,
-  buildAssistantResponseArtifacts,
-  buildChatApiRequestPayload,
-  buildFinalRequestText,
-  handleImplicitSearchArtifacts,
-  resolveMemoryUpdateContext,
-  resolveProtocolLimitViolation,
-} from "@/lib/app/sendToGptFlowHelpers";
-import { deriveProtocolSearchContext } from "@/lib/app/sendToGptFlowContext";
+  buildSendToGptFinalizeArgs,
+  buildSendToGptMemoryBundle,
+  buildSendToGptRequestArtifactsArgs,
+} from "@/lib/app/sendToGptFlowBundles";
+import {
+  runPrePreparationGates,
+  runPreparedRequestGates,
+} from "@/lib/app/sendToGptFlowGuards";
 import {
   getTaskDirectiveOnlyResponseText,
   shouldRespondToTaskDirectiveOnlyInput,
@@ -23,29 +20,9 @@ import type {
   SendToGptFlowSearchArgs,
   SendToGptFlowUiArgs,
 } from "@/lib/app/sendToGptFlowTypes";
-import {
-  extractInlineUrlTarget as extractInlineUrlTargetHelper,
-  runInlineUrlShortcut,
-} from "@/lib/app/sendToGptShortcutFlows";
-import { handleYoutubeTranscriptFlow } from "@/lib/app/sendToGptYoutubeFlow";
-import { normalizeUsage } from "@/lib/tokenStats";
-import type { Message } from "@/types/chat";
-
-type SearchSource = {
-  title?: string;
-  link?: string;
-};
-
-type ChatApiResponse = {
-  reply?: string;
-  usage?: Parameters<typeof normalizeUsage>[0];
-  searchUsed?: boolean;
-  searchQuery?: string;
-  searchSeriesId?: string;
-  searchContinuationToken?: string;
-  searchEvidence?: string;
-  sources?: SearchSource[];
-};
+import { extractInlineUrlTarget } from "@/lib/app/sendToGptShortcutFlows";
+import { requestGptAssistantArtifacts } from "@/lib/app/sendToGptFlowRequest";
+import { finalizeSendToGptFlow } from "@/lib/app/sendToGptFlowFinalize";
 
 export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
   SendToGptFlowSearchArgs &
@@ -96,50 +73,23 @@ export async function runSendToGptFlow({
   if (!gptInput.trim() || gptLoading) return;
 
   const rawText = gptInput.trim();
-  const multipartHandled = processMultipartTaskDoneText(rawText, { setGptTab: true });
-  if (multipartHandled) {
-    const importedMessage: Message = {
-      id: generateId(),
-      role: "user",
-      text: rawText,
-    };
-    setGptMessages((prev) => [...prev, importedMessage]);
-    setGptInput("");
-    return;
-  }
-
-  const inlineUrlTarget = extractInlineUrlTargetHelper(rawText);
-  if (inlineUrlTarget) {
-    await runInlineUrlShortcut({
+  if (
+    await runPrePreparationGates({
       rawText,
-      inlineUrlTarget,
+      processMultipartTaskDoneText,
+      extractInlineUrlTarget,
       setGptMessages,
       setGptInput,
       setGptLoading,
-    });
+    })
+  ) {
     return;
   }
 
-  const {
-    askGptEvent,
-    searchRequestEvent,
-    youtubeTranscriptRequestEvent,
-    libraryIndexRequestEvent,
-    libraryItemRequestEvent,
-    userQuestionEvent,
-    requestToAnswer,
-    requestAnswerBody,
-    parsedInput,
-    effectiveParsedSearchQuery,
-    continuationDetails,
-    effectiveSearchMode,
-    effectiveSearchEngines,
-    effectiveSearchLocation,
-    searchSeriesId,
-    continuationToken,
-    askAiModeLink,
-  } = deriveProtocolSearchContext({
+  const preparedRequest = prepareSendToGptRequest({
     rawText,
+    currentTaskId,
+    taskProtocolRuntime,
     findPendingRequest,
     applyPrefixedTaskFieldsFromText,
     searchMode,
@@ -147,73 +97,23 @@ export async function runSendToGptFlow({
     searchLocation,
     getContinuationTokenForSeries,
     getAskAiModeLinkForQuery,
+    getProtocolLimitViolation,
+    shouldInjectTaskContextWithSettings,
+    referenceLibraryItems,
+    libraryIndexResponseCount,
+    buildLibraryReferenceContext,
+    createUserMessage: (text) => ({
+      id: generateId(),
+      role: "user",
+      text,
+    }),
   });
 
   if (
-    shouldRespondToTaskDirectiveOnlyInput({
-      parsedInput,
-      effectiveParsedSearchQuery,
-    })
-  ) {
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: getTaskDirectiveOnlyResponseText(),
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-    setGptInput("");
-    return;
-  }
-
-  // Search history is already represented in the reference library, so avoid
-  // double-injecting it during normal chat turns.
-  const libraryReferenceContext = buildLibraryReferenceContext();
-  const effectiveDocumentReferenceContext = "";
-  const userMsg: Message = {
-    id: generateId(),
-    role: "user",
-    text: rawText,
-  };
-
-  const limitViolation = resolveProtocolLimitViolation({
-    askGptEvent,
-    searchRequestEvent,
-    youtubeTranscriptRequestEvent,
-    userQuestionEvent,
-    libraryIndexRequestEvent,
-    libraryItemRequestEvent,
-    currentTaskId,
-    getProtocolLimitViolation,
-  });
-
-  if (limitViolation) {
-    setGptMessages((prev) => [
-      ...prev,
-      userMsg,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: limitViolation,
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-    setGptInput("");
-    return;
-  }
-
-  if (youtubeTranscriptRequestEvent?.url?.trim()) {
-    const handled = await handleYoutubeTranscriptFlow({
-      userMsg,
-      youtubeTranscriptRequestEvent,
+    await runPreparedRequestGates({
+      preparedRequest,
+      shouldRespondToTaskDirectiveOnlyInput,
+      taskDirectiveOnlyResponseText: getTaskDirectiveOnlyResponseText(),
       currentTaskId,
       onHandleYoutubeTranscriptRequest,
       setGptMessages,
@@ -229,142 +129,53 @@ export async function runSendToGptFlow({
       chatRecentLimit,
       handleGptMemory,
       applySummaryUsage,
-    });
-    if (handled) return;
+    })
+  ) {
     return;
   }
 
-  const shouldInjectTaskContext =
-    !!currentTaskId && shouldInjectTaskContextWithSettings(rawText);
-  const taskContext = shouldInjectTaskContext
-    ? buildTaskChatBridgeContext(taskProtocolRuntime)
-    : "";
-
-  const finalRequestText = buildFinalRequestText({
-    rawText,
-    parsedInput,
-    effectiveParsedSearchQuery,
-    askGptEvent,
-    requestToAnswer,
-    requestAnswerBody,
-    searchRequestEvent,
-    currentTaskId,
-    effectiveSearchEngines,
-    effectiveSearchLocation,
-    libraryIndexRequestEvent,
-    libraryItemRequestEvent,
-    referenceLibraryItems,
-    libraryIndexResponseCount,
-    taskContext,
-  });
-
-  const memoryContext = resolveMemoryUpdateContext({
-    gptState: gptStateRef.current,
-    userMessage: userMsg,
+  const { memoryContext, requestMemory } = buildSendToGptMemoryBundle({
+    gptStateRef,
+    userMsg: preparedRequest.userMsg,
     chatRecentLimit,
   });
-  const requestMemory =
-    (gptStateRef.current.memory as Memory | undefined) || createEmptyMemory();
-  setGptMessages((prev) => [...prev, userMsg]);
+  setGptMessages((prev) => [...prev, preparedRequest.userMsg]);
   setGptInput("");
   setGptLoading(true);
 
   try {
-    const res = await fetch("/api/chatgpt", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(
-        buildChatApiRequestPayload({
+    const { data, assistantText, normalizedSources } =
+      await requestGptAssistantArtifacts(
+        buildSendToGptRequestArtifactsArgs({
           requestMemory,
           recentMessages: memoryContext.recentWithUser,
-          input: finalRequestText,
-          storedDocumentContext: effectiveDocumentReferenceContext,
-          storedLibraryContext: libraryReferenceContext,
-          forcedSearchQuery:
-            continuationDetails.cleanQuery ||
-            searchRequestEvent?.query ||
-            effectiveParsedSearchQuery ||
-            undefined,
-          searchSeriesId,
-          searchContinuationToken: continuationToken || undefined,
-          searchAskAiModeLink: askAiModeLink || undefined,
-          searchMode: effectiveSearchMode,
-          searchEngines: effectiveSearchEngines,
-          searchLocation: effectiveSearchLocation,
+          preparedRequest,
           instructionMode,
-          reasoningMode: responseMode,
+          responseMode,
+          parseWrappedSearchResponse,
+          currentTaskId,
+          recordSearchContext,
         })
-      ),
-    });
+      );
 
-    const data = (await res.json()) as ChatApiResponse;
-    const { assistantText, normalizedSources } = buildAssistantResponseArtifacts({
-      data,
-      parseWrappedSearchResponse,
-      askGptEvent,
-      currentTaskId,
-      requestToAnswer,
-      requestAnswerBody,
-      searchRequestEvent,
-      effectiveSearchMode,
-      effectiveSearchEngines,
-      effectiveSearchLocation,
-      searchSeriesId,
-      cleanQuery: continuationDetails.cleanQuery,
-      recordSearchContext,
-    });
-
-    const assistantMsg: Message = {
-      id: generateId(),
-      role: "gpt",
-      text: assistantText,
-      sources: normalizedSources,
-      meta: {
-        kind: "normal",
-        sourceType: data.searchUsed ? "search" : "gpt_input",
-      },
-    };
-    applyProtocolAssistantSideEffects({
-      assistantText,
-      ingestProtocolMessage,
-      requestToAnswer,
-      requestAnswerBody,
-      taskProtocolAnswerPendingRequest,
-    });
-
-    const updatedRecent = appendRecentAssistantMessage({
-      recentMessages: memoryContext.recentWithUser,
-      assistantMessage: assistantMsg,
-      chatRecentLimit,
-    });
-
-    setGptMessages((prev) => [...prev, assistantMsg]);
-
-    handleImplicitSearchArtifacts({
-      data,
-      searchRequestEvent,
-      effectiveSearchMode,
-      effectiveSearchEngines,
-      effectiveSearchLocation,
-      searchSeriesId,
-      cleanQuery: continuationDetails.cleanQuery,
-      effectiveParsedSearchQuery,
-      finalRequestText,
-      applySearchUsage,
-      applyChatUsage,
-      recordSearchContext,
-    });
-
-    if (searchRequestEvent) {
-      applySearchUsage(data.usage);
-    }
-
-    const memoryResult = await handleGptMemory(updatedRecent, {
-      previousCommittedTopic: memoryContext.previousCommittedTopic,
-    });
-    applySummaryUsage(memoryResult.summaryUsage);
+    await finalizeSendToGptFlow(
+      buildSendToGptFinalizeArgs({
+        data,
+        assistantText,
+        normalizedSources,
+        memoryContext,
+        chatRecentLimit,
+        preparedRequest,
+        ingestProtocolMessage,
+        taskProtocolAnswerPendingRequest,
+        setGptMessages,
+        applySearchUsage,
+        applyChatUsage,
+        recordSearchContext,
+        handleGptMemory,
+        applySummaryUsage,
+      })
+    );
   } catch (error) {
     console.error(error);
     setGptMessages((prev) => [

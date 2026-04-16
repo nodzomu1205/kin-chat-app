@@ -117,7 +117,12 @@ Done:
 - `chatPageActionTypes.ts` now owns the shared page-action type contracts that other hooks and memory modules depend on
 - `useChatPageController.ts` now composes grouped domain action sets (`kin` / `gpt` / `task` / `protocol` / `memory`) through smaller controller hooks instead of delegating through an extra facade hook
 - `useChatPageController.ts` now owns the page-level wiring between chat actions, protocol automation, and panel reset actions
-- `useChatPageComposition.ts` now owns most controller-arg and panel-arg assembly that previously lived inline in `app/page.tsx`
+- `useChatPageControllerArgs.ts`, `useChatPageKinPanelProps.ts`, and `useChatPageGptPanelArgs.ts` now own the controller/panel argument assembly that previously lived inline in `app/page.tsx`
+- `page -> controller` action wiring now crosses the boundary as grouped `identity / uiState / task / protocol / search / services` args and is flattened only inside `useChatPageController.ts`
+- `chatPageControllerArgBuilders.ts` now owns the sub-hook input reshaping that used to sit inline in `useChatPageController.ts`
+- `useChatPageMessagingDomainActions.ts` now owns the GPT / Kin controller-side composition, allowing the thin wrappers `useChatPageGptActions.ts` and `useChatPageKinActions.ts` to be removed
+- `useChatPageTaskDomainActions.ts` now owns the task / protocol / file-ingest controller-side composition, allowing the thin wrappers `useChatPageTaskActions.ts` and `useChatPageProtocolActions.ts` to be removed
+- `useChatPagePanelDomainActions.ts` now owns protocol automation + panel reset composition, so `useChatPageController.ts` no longer wires those effects/actions inline
 - `usePendingMemoryRuleQueue.ts` now owns the memory-rule candidate merge policy instead of leaving that closure inline in `app/page.tsx`
 - `useTaskProtocolProjection.ts` and `useArchiveCompletedTaskResults.ts` now own page-facing task-protocol projection and completed-task archive lifecycle glue
 - GPT settings now have a separate full-area workspace path with 3 icon entry points while the existing hanging drawers remain in place
@@ -197,21 +202,42 @@ Done:
   - `buildMapLinkShortcutResponse`
 - [`lib/app/sendToGptTranscriptHelpers.ts`](../lib/app/sendToGptTranscriptHelpers.ts)
   - YouTube transcript request helper extraction
-- [`lib/app/sendToGptFlowHelpers.ts`](../lib/app/sendToGptFlowHelpers.ts)
-  - protocol assistant response wrapping helper
-  - search response shaping helper
+- [`lib/app/sendToGptFlowRequestPreparation.ts`](../lib/app/sendToGptFlowRequestPreparation.ts)
+  - protocol limit resolution
+  - combined `prepareSendToGptRequest` request-preparation step extracted from `sendToGptFlow.ts`
+  - `buildPreparedRequestArtifacts` now isolates the pure request-ready enrichment step inside request preparation
+- [`lib/app/sendToGptFlowRequestPayload.ts`](../lib/app/sendToGptFlowRequestPayload.ts)
+  - chat API request payload builder
+- [`lib/app/sendToGptFlowRequestText.ts`](../lib/app/sendToGptFlowRequestText.ts)
+  - protocol override request-text builder
+  - final request-text assembly
+- [`lib/app/sendToGptFlowState.ts`](../lib/app/sendToGptFlowState.ts)
   - implicit search usage / context helper
   - protocol post-response side-effect helper
   - shared recent-message / previous-topic memory-update helpers
+- [`lib/app/sendToGptFlowGuards.ts`](../lib/app/sendToGptFlowGuards.ts)
+  - now grouped into pre-preparation and post-preparation gate pipelines for the main `sendToGpt` coordinator
+- [`lib/app/sendToGptFlowBundles.ts`](../lib/app/sendToGptFlowBundles.ts)
+  - request-artifact, finalize-artifact, and memory bundle builders extracted from the main `sendToGpt` coordinator
 - [`lib/app/sendToGptProtocolBuilders.ts`](../lib/app/sendToGptProtocolBuilders.ts)
-  - protocol request / response block builders extracted from `sendToGptFlowHelpers.ts`
+  - protocol request / response block builders extracted from the former monolithic `sendToGptFlowHelpers.ts`
 - [`lib/app/sendToGptFlowTypes.ts`](../lib/app/sendToGptFlowTypes.ts)
   - shared flow / helper protocol and artifact types extracted for reuse across `sendToGptFlow.ts` and helpers
 - [`lib/app/sendToGptFlowContext.ts`](../lib/app/sendToGptFlowContext.ts)
-  - protocol event / search-context derivation extracted from `sendToGptFlowHelpers.ts`
-- [`lib/app/sendToGptText.ts`](../lib/app/sendToGptText.ts)
-  - UTF-8-safe request text and task-info text helpers extracted so the main `sendToGpt` path no longer depends on mojibake-prone literals
-  - `sendToGptFlowHelpers.ts` currently keeps thin compatibility wrappers while text-domain migration finishes
+  - protocol event / search-context derivation extracted from the former monolithic `sendToGptFlowHelpers.ts`
+  - now internally split into protocol interaction extraction, protocol limit resolution, and derived search resolution helpers
+  - [`lib/app/sendToGptText.ts`](../lib/app/sendToGptText.ts)
+    - UTF-8-safe request text and task-info text helpers extracted so the main `sendToGpt` path no longer depends on mojibake-prone literals
+  - [`lib/app/sendToGptFlowArgBuilders.ts`](../lib/app/sendToGptFlowArgBuilders.ts)
+    - common `runSendToGptFlow` arg assembly extracted from `useGptMessageActions.ts`
+  - [`lib/app/sendToGptFlowRequest.ts`](../lib/app/sendToGptFlowRequest.ts)
+    - chat API request execution and assistant-artifact shaping extracted from the main `runSendToGptFlow` coordinator
+  - [`lib/app/sendToGptFlowResponse.ts`](../lib/app/sendToGptFlowResponse.ts)
+    - assistant response shaping, protocol wrapping, and protocol search-response artifacts extracted from the former monolithic `sendToGptFlowHelpers.ts`
+  - [`lib/app/sendToGptFlowGuards.ts`](../lib/app/sendToGptFlowGuards.ts)
+    - early-return gate handling extracted from the front half of `runSendToGptFlow`
+  - [`lib/app/sendToGptFlowFinalize.ts`](../lib/app/sendToGptFlowFinalize.ts)
+    - assistant finalize side effects, implicit search handling, and memory follow-up extracted from the back half of `runSendToGptFlow`
 - [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
   - request / search / protocol / memory / UI args now grouped through shared flow-slice types
 - [`lib/app/memoryInterpreterText.ts`](../lib/app/memoryInterpreterText.ts)
@@ -256,8 +282,7 @@ Done:
 Next:
 - keep `memoryInterpreter.ts` and `useGptMemory.ts` stable unless a correctness issue is found
 - thin `app/page.tsx` by moving panel prop assembly and orchestration glue outward
-- keep thinning `sendToGptFlowHelpers.ts` / `sendToGptFlow.ts` by moving protocol / search / transcript shaping logic out in small slices
-- remove temporary compatibility wrappers from `sendToGptFlowHelpers.ts` once the `sendToGptText.ts` migration is complete
+- keep thinning `sendToGptFlowRequestPreparation.ts`, `sendToGptFlowState.ts`, and `sendToGptFlow.ts` so the remaining coordinator path stays easy to audit
 - consider the next `sendToGptFlow` slice around request-text normalization or transcript request handling
 - continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
 - review `app/api/ingest/route.ts` and `hooks/useIngestActions.ts` as the next ingest-side integration point
@@ -318,7 +343,7 @@ Done:
 
 Next:
 - task budget tests
-- more pure-helper extraction around `sendToGptFlowHelpers` / `app/page.tsx` / ingest flow
+- more pure-helper extraction around `sendToGptFlowRequestPreparation` / `sendToGptFlowState` / `app/page.tsx` / ingest flow
 - add narrow tests around task-intent approval sync and task-progress archive / clear behavior if those surfaces change again
 - add docs for protocol actions and ingest pipeline before larger phase-2 work
 
@@ -327,7 +352,7 @@ At the start of each new refactor step, review these files first:
 
 1. `app/api/chatgpt/route.ts`
 2. `app/page.tsx`
-3. `lib/app/sendToGptFlowHelpers.ts` / `lib/app/sendToGptFlow.ts`
+3. `lib/app/sendToGptFlowRequestPreparation.ts` / `lib/app/sendToGptFlowState.ts` / `lib/app/sendToGptFlow.ts`
 
 ## Working Agreement
 For each refactor step:

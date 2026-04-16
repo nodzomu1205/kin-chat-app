@@ -4,18 +4,13 @@ import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
 import type {
   ParsedInputLike,
   PendingRequestLike,
+  ProtocolLimitEvent,
 } from "@/lib/app/sendToGptFlowTypes";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
-export function deriveProtocolSearchContext(params: {
+export function extractProtocolInteractionContext(params: {
   rawText: string;
   findPendingRequest: (requestId: string) => PendingRequestLike | null;
-  applyPrefixedTaskFieldsFromText: (text: string) => ParsedInputLike;
-  searchMode: SearchMode;
-  searchEngines: SearchEngine[];
-  searchLocation: string;
-  getContinuationTokenForSeries: (seriesId: string) => string;
-  getAskAiModeLinkForQuery: (query: string) => string;
 }) {
   const protocolEvents = extractTaskProtocolEvents(params.rawText);
   const askGptEvent = protocolEvents.find((event) => event.type === "ask_gpt");
@@ -44,15 +39,45 @@ export function deriveProtocolSearchContext(params: {
     ? params.findPendingRequest(requestAnswerId)
     : null;
 
-  const parsedInput = params.applyPrefixedTaskFieldsFromText(params.rawText);
+  return {
+    protocolEvents,
+    askGptEvent,
+    searchRequestEvent,
+    youtubeTranscriptRequestEvent,
+    libraryIndexRequestEvent,
+    libraryItemRequestEvent,
+    userQuestionEvent,
+    requestToAnswer,
+    requestAnswerBody,
+  };
+}
+
+export function resolveDerivedSearchContext(params: {
+  rawText: string;
+  parsedInput: ParsedInputLike;
+  searchRequestEvent?: {
+    query?: string;
+    searchEngine?: string;
+    searchLocation?: string;
+  };
+  searchMode: SearchMode;
+  searchEngines: SearchEngine[];
+  searchLocation: string;
+  getContinuationTokenForSeries: (seriesId: string) => string;
+  getAskAiModeLinkForQuery: (query: string) => string;
+}) {
   const inlineSearchQuery = extractInlineSearchQuery(params.rawText);
-  const effectiveParsedSearchQuery = parsedInput.searchQuery || inlineSearchQuery;
+  const effectiveParsedSearchQuery =
+    params.parsedInput.searchQuery || inlineSearchQuery;
   const continuationDetails = parseSearchContinuation(
-    searchRequestEvent?.query || parsedInput.searchQuery || inlineSearchQuery || ""
+    params.searchRequestEvent?.query ||
+      params.parsedInput.searchQuery ||
+      inlineSearchQuery ||
+      ""
   );
   const protocolSearchOverrides = resolveProtocolSearchOverrides({
-    requestedEngine: searchRequestEvent?.searchEngine,
-    requestedLocation: searchRequestEvent?.searchLocation,
+    requestedEngine: params.searchRequestEvent?.searchEngine,
+    requestedLocation: params.searchRequestEvent?.searchLocation,
     fallbackMode: params.searchMode,
     fallbackEngines: params.searchEngines,
     fallbackLocation: params.searchLocation,
@@ -76,23 +101,14 @@ export function deriveProtocolSearchContext(params: {
     aiContinuationEnabled && !continuationToken
       ? params.getAskAiModeLinkForQuery(
           continuationDetails.cleanQuery ||
-            searchRequestEvent?.query ||
+            params.searchRequestEvent?.query ||
             effectiveParsedSearchQuery ||
             ""
         )
       : "";
 
   return {
-    protocolEvents,
-    askGptEvent,
-    searchRequestEvent,
-    youtubeTranscriptRequestEvent,
-    libraryIndexRequestEvent,
-    libraryItemRequestEvent,
-    userQuestionEvent,
-    requestToAnswer,
-    requestAnswerBody,
-    parsedInput,
+    inlineSearchQuery,
     effectiveParsedSearchQuery,
     continuationDetails,
     effectiveSearchMode,
@@ -102,6 +118,108 @@ export function deriveProtocolSearchContext(params: {
     continuationToken,
     askAiModeLink,
   };
+}
+
+export function deriveProtocolSearchContext(params: {
+  rawText: string;
+  findPendingRequest: (requestId: string) => PendingRequestLike | null;
+  applyPrefixedTaskFieldsFromText: (text: string) => ParsedInputLike;
+  searchMode: SearchMode;
+  searchEngines: SearchEngine[];
+  searchLocation: string;
+  getContinuationTokenForSeries: (seriesId: string) => string;
+  getAskAiModeLinkForQuery: (query: string) => string;
+}) {
+  const protocolContext = extractProtocolInteractionContext({
+    rawText: params.rawText,
+    findPendingRequest: params.findPendingRequest,
+  });
+  const parsedInput = params.applyPrefixedTaskFieldsFromText(params.rawText);
+  const derivedSearchContext = resolveDerivedSearchContext({
+    rawText: params.rawText,
+    parsedInput,
+    searchRequestEvent: protocolContext.searchRequestEvent,
+    searchMode: params.searchMode,
+    searchEngines: params.searchEngines,
+    searchLocation: params.searchLocation,
+    getContinuationTokenForSeries: params.getContinuationTokenForSeries,
+    getAskAiModeLinkForQuery: params.getAskAiModeLinkForQuery,
+  });
+
+  return {
+    ...protocolContext,
+    parsedInput,
+    ...derivedSearchContext,
+  };
+}
+
+export function resolveProtocolLimitViolation(params: {
+  askGptEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
+  searchRequestEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
+  youtubeTranscriptRequestEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
+  userQuestionEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
+  libraryIndexRequestEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
+  libraryItemRequestEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
+  currentTaskId?: string | null;
+  getProtocolLimitViolation: (event: ProtocolLimitEvent) => string | null;
+}) {
+  return (
+    (params.askGptEvent &&
+      params.getProtocolLimitViolation({
+        type: "ask_gpt",
+        taskId: params.askGptEvent.taskId,
+        actionId: params.askGptEvent.actionId,
+      })) ||
+    (params.searchRequestEvent &&
+      params.getProtocolLimitViolation({
+        type: "search_request",
+        taskId: params.searchRequestEvent.taskId,
+        actionId: params.searchRequestEvent.actionId,
+      })) ||
+    (params.youtubeTranscriptRequestEvent &&
+      params.getProtocolLimitViolation({
+        type: "youtube_transcript_request",
+        taskId: params.youtubeTranscriptRequestEvent.taskId,
+        actionId: params.youtubeTranscriptRequestEvent.actionId,
+      })) ||
+    (params.userQuestionEvent &&
+      params.getProtocolLimitViolation({
+        type: "user_question",
+        taskId: params.userQuestionEvent.taskId,
+        actionId: params.userQuestionEvent.actionId,
+      })) ||
+    ((params.libraryIndexRequestEvent || params.libraryItemRequestEvent) &&
+      params.getProtocolLimitViolation({
+        type: "library_reference",
+        taskId:
+          params.libraryIndexRequestEvent?.taskId ||
+          params.libraryItemRequestEvent?.taskId ||
+          params.currentTaskId ||
+          undefined,
+        actionId:
+          params.libraryIndexRequestEvent?.actionId ||
+          params.libraryItemRequestEvent?.actionId,
+      })) ||
+    null
+  );
 }
 
 export function resolveProtocolSearchOverrides(params: {

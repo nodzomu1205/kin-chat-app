@@ -29,10 +29,9 @@ import { useTaskProtocolProjection } from "@/hooks/useTaskProtocolProjection";
 import { useArchiveCompletedTaskResults } from "@/hooks/useArchiveCompletedTaskResults";
 import { useChatPageController } from "@/hooks/useChatPageController";
 import { usePendingMemoryRuleQueue } from "@/hooks/usePendingMemoryRuleQueue";
-import {
-  useChatPageControllerComposition,
-  useChatPagePanelComposition,
-} from "@/hooks/useChatPageComposition";
+import { useChatPageControllerArgs } from "@/hooks/useChatPageControllerArgs";
+import { useChatPageKinPanelProps } from "@/hooks/useChatPageKinPanelProps";
+import { useChatPageGptPanelArgs } from "@/hooks/useChatPageGptPanelArgs";
 import type { Message } from "@/types/chat";
 import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
 import { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
@@ -369,7 +368,7 @@ export default function ChatApp() {
     resetMemorySettings,
   });
 
-  const chatPageControllerArgs = useChatPageControllerComposition({
+  const chatPageControllerArgs = useChatPageControllerArgs({
     app: {
       currentKin,
       kinList,
@@ -489,15 +488,16 @@ export default function ChatApp() {
   const { kin, gpt, task, protocol, memory, panel } =
     useChatPageController(chatPageControllerArgs);
 
-  const { kinPanelProps, gptPanelArgs } = useChatPagePanelComposition({
+  const kinPanelProps = useChatPageKinPanelProps({
     app: {
       currentKin,
       currentKinLabel: currentKinDisplayLabel,
       kinStatus,
       kinList,
       isMobile,
-      activeTabSetter: () => setActiveTab("kin"),
     },
+    activeTabSetter: () => setActiveTab("kin"),
+    taskProtocolView,
     kinState: {
       kinIdInput,
       setKinIdInput,
@@ -513,6 +513,23 @@ export default function ChatApp() {
       pendingInjectionBlocks: pendingKinInjectionBlocks,
       pendingInjectionIndex: pendingKinInjectionIndex,
     },
+    controller: { kin, gpt, task, protocol, memory, panel },
+  });
+
+  const gptPanelArgs = useChatPageGptPanelArgs({
+    app: {
+      currentKin,
+      currentKinLabel: currentKinDisplayLabel,
+      kinStatus,
+      kinList,
+      isMobile,
+    },
+    activeTabSetter: () => setActiveTab("kin"),
+    taskProtocolView,
+    pendingInjection: {
+      blocks: pendingKinInjectionBlocks,
+      index: pendingKinInjectionIndex,
+    },
     gptState: {
       gptState,
       gptMessages,
@@ -526,7 +543,6 @@ export default function ChatApp() {
       currentTaskDraft,
       taskDraftCount: taskDrafts.length,
       activeTaskDraftIndex,
-      taskProtocolView,
       resetCurrentTaskDraft,
       updateTaskDraftFields,
       pendingRequests: taskProtocolView.pendingRequests,

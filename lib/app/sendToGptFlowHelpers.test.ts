@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  appendRecentAssistantMessage,
   applyProtocolAssistantSideEffects,
-  buildProtocolSearchResponseArtifacts,
+  appendRecentAssistantMessage,
   handleImplicitSearchArtifacts,
   resolveMemoryUpdateContext,
+} from "@/lib/app/sendToGptFlowState";
+import {
+  buildProtocolSearchResponseArtifacts,
   wrapProtocolAssistantText,
-} from "@/lib/app/sendToGptFlowHelpers";
+} from "@/lib/app/sendToGptFlowResponse";
 
 describe("sendToGptFlowHelpers", () => {
   it("wraps assistant text in SYS_GPT_RESPONSE for ask_gpt events", () => {

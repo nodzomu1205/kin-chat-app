@@ -4,7 +4,7 @@ import { buildYoutubeTranscriptRetryBlock } from "@/lib/taskRuntimeProtocol";
 import {
   appendRecentAssistantMessage,
   resolveMemoryUpdateContext,
-} from "@/lib/app/sendToGptFlowHelpers";
+} from "@/lib/app/sendToGptFlowState";
 import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,
