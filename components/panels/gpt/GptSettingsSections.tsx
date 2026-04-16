@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import type {
@@ -158,7 +158,7 @@ export function SearchSettingsSection(props: {
                 onClick={() => props.onSetSearchPreset(mode)}
               >
                 {mode === "normal"
-                  ? "通常"
+                  ? "標準"
                   : mode === "ai"
                     ? "AI"
                     : mode === "integrated"
@@ -192,7 +192,7 @@ export function SearchSettingsSection(props: {
               style={inputStyle}
             />
             <div style={helpTextStyle}>
-              Protocol の `LOCATION` も自然な地名表記で指定します。
+              Protocol の `LOCATION` に使う主要な地域設定です。
             </div>
           </div>
           <div>
@@ -239,7 +239,7 @@ export function SearchSettingsSection(props: {
               style={inputStyle}
             />
             <div style={helpTextStyle}>
-              検索結果カードや参考リンクカードで表示する件数です。
+              検索結果カードや関連リンクカードで表示する件数です。
             </div>
           </div>
         </div>
@@ -276,7 +276,7 @@ export function LibrarySettingsSection(props: {
           label="ライブラリ自動参照"
           checked={props.autoLibraryReferenceEnabled}
           onChange={props.onChangeAutoLibraryReferenceEnabled}
-          help="Kin作成文書・注入文書・検索データをまとめてライブラリとして扱います。"
+          help="Kin の会話・投入文書・検索結果などをもとに、ライブラリ候補も参照対象に含めます。"
         />
         <div style={subtleCard}>
           <div style={labelStyle}>ライブラリ参照モード</div>
@@ -402,7 +402,7 @@ export function RulesSettingsSection(props: {
                 llmFallbackEnabled: value,
               })
             }
-            help="曖昧な topic / closing reply を LLM に回して補強します。"
+            help="判定しにくい topic / closing reply を LLM で補完判定します。"
           />
           <ToggleButtons
             label="候補を保存"
@@ -412,20 +412,19 @@ export function RulesSettingsSection(props: {
                 saveRuleCandidates: value,
               })
             }
-            help="LLM fallback が見つけた Memory ルール候補を承認キューへ残します。"
+            help="LLM fallback が見つけた Memory ルール候補をレビュー用キューへ残します。"
           />
         </div>
       </div>
 
       <div style={sectionCard}>
         <div style={{ ...labelStyle, marginBottom: 8 }}>Memory ルール候補</div>
-        <div style={{ ...labelStyle, marginBottom: 8 }}>Memory 精査候補</div>
         <div style={{ ...helpTextStyle, marginBottom: 8 }}>
-          曖昧な文面について、今後この表現を LLM 補助で精査してよいかを確認します。
+          判定が難しい発話について、会話全体の文脈を LLM で補完して候補化します。
         </div>
         {props.pendingMemoryRuleCandidates.length === 0 ? (
           <div style={helpTextStyle}>
-            現在、承認待ちの Memory ルール候補はありません。
+            現在、レビュー待ちの Memory ルール候補はありません。
           </div>
         ) : (
           props.pendingMemoryRuleCandidates.map((candidate) => (
@@ -434,11 +433,11 @@ export function RulesSettingsSection(props: {
                 {candidate.kind === "utterance_review"
                   ? "発話レビュー候補"
                   : candidate.kind === "topic_alias"
-                    ? "topic 精査候補"
-                    : "closing reply 精査候補"}
+                    ? "topic 関連候補"
+                    : "closing reply 関連候補"}
               </div>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                入力文: {candidate.phrase}
+                入力語句: {candidate.phrase}
               </div>
               <div
                 style={{
@@ -507,7 +506,7 @@ export function RulesSettingsSection(props: {
                         normalizedValue: e.target.value,
                       })
                     }
-                    placeholder="keep の場合は空のまま"
+                    placeholder="keep の場合の話題名"
                     style={inputStyle}
                   />
                 </div>
@@ -525,7 +524,7 @@ export function RulesSettingsSection(props: {
                   style={buttonPrimary}
                   onClick={() => props.onApproveMemoryRuleCandidate(candidate.id)}
                 >
-                  確定
+                  承認
                 </button>
                 <button
                   type="button"
@@ -542,7 +541,7 @@ export function RulesSettingsSection(props: {
 
       <div style={sectionCard}>
         <div style={{ ...helpTextStyle, marginBottom: 8 }}>
-          許可すると、似た表現が来た時に LLM 補助で topic や facts の整理を改善します。
+          承認済みルールは、必要時に LLM fallback で topic や facts の補正に使われます。
         </div>
         <button
           type="button"
@@ -561,11 +560,11 @@ export function RulesSettingsSection(props: {
                   {rule.kind === "utterance_review"
                     ? "発話レビュー"
                     : rule.kind === "topic_alias"
-                      ? "topic 精査"
-                      : "closing reply 精査"}
+                      ? "topic 関連"
+                      : "closing reply 関連"}
                 </div>
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  入力文: {rule.phrase}
+                  入力語句: {rule.phrase}
                 </div>
                 {rule.intent ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>
@@ -579,7 +578,7 @@ export function RulesSettingsSection(props: {
                 ) : null}
                 {rule.normalizedValue ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                    トピック候補: {rule.normalizedValue}
+                    トピック正規化: {rule.normalizedValue}
                   </div>
                 ) : null}
                 <div
@@ -610,14 +609,14 @@ export function RulesSettingsSection(props: {
 
       <div style={sectionCard}>
         <div style={{ ...labelStyle, marginBottom: 8 }}>
-          SYSフォーマットルール候補
+          SYS フォーマットルール候補
         </div>
         <div style={{ ...helpTextStyle, marginBottom: 8 }}>
-          こちらは SYS フォーマット自動生成の候補です。Memory 精査候補とは役割が別です。
+          こちらは SYS フォーマットや要求表現の候補です。Memory 関連候補とは別系統です。
         </div>
         {props.pendingIntentCandidates.length === 0 ? (
           <div style={helpTextStyle}>
-            現在、SYSフォーマットルール候補はありません。
+            現在、SYS フォーマットルール候補はありません。
           </div>
         ) : (
           props.pendingIntentCandidates.map((candidate) => (
@@ -669,8 +668,8 @@ export function RulesSettingsSection(props: {
           onClick={props.onToggleApprovedIntentRules}
         >
           {props.showApprovedIntentRules
-            ? "承認済み SYSルールを閉じる"
-            : `承認済み SYSルールを表示 (${props.approvedIntentPhrases.length})`}
+            ? "承認済み SYS ルールを閉じる"
+            : `承認済み SYS ルールを表示 (${props.approvedIntentPhrases.length})`}
         </button>
         {props.showApprovedIntentRules ? (
           <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
@@ -731,37 +730,37 @@ export function ProtocolSettingsSection(props: {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={sectionCard}>
-        <div style={{ ...labelStyle, marginBottom: 8 }}>自動化</div>
+        <div style={{ ...labelStyle, marginBottom: 8 }}>自動送信</div>
         <div style={{ display: "grid", gap: 10 }}>
           <ToggleButtons
             label="A. Kin入力欄の SYS を自動送信"
             checked={props.autoSendKinSysInput}
             onChange={props.onChangeAutoSendKinSysInput}
-            help="Kin入力欄に SYS ブロックが入ったら自動送信します。"
+            help="Kin入力欄に SYS ブロックが載ったら自動送信します。"
           />
           <ToggleButtons
             label="B. Kin最新レスの SYS を GPT入力欄へ自動転記"
             checked={props.autoCopyKinSysResponseToGpt}
             onChange={props.onChangeAutoCopyKinSysResponseToGpt}
-            help="Kin の最新メッセージが SYS ブロックなら GPT入力欄へ下書き転記します。"
+            help="Kin の最新メッセージに SYS ブロックがあれば GPT入力欄へ自動転記します。"
           />
           <ToggleButtons
             label="C. GPT入力欄の SYS を自動送信"
             checked={props.autoSendGptSysInput}
             onChange={props.onChangeAutoSendGptSysInput}
-            help="GPT入力欄に SYS ブロックが入ったら自動送信します。"
+            help="GPT入力欄に SYS ブロックが載ったら自動送信します。"
           />
           <ToggleButtons
             label="D. GPT最新レスの SYS を Kin入力欄へ自動転記"
             checked={props.autoCopyGptSysResponseToKin}
             onChange={props.onChangeAutoCopyGptSysResponseToKin}
-            help="GPT の最新メッセージが SYS ブロックなら Kin入力欄へ下書き転記します。"
+            help="GPT の最新メッセージに SYS ブロックがあれば Kin入力欄へ自動転記します。"
           />
           <ToggleButtons
-            label="E. 書類取込時にKin入力欄へ自動転記（SYS_INFOフォーマット）"
+            label="E. 文書取込時に Kin入力欄へ自動転記（SYS_INFO フォーマット）"
             checked={props.autoCopyFileIngestSysInfoToKin}
             onChange={props.onChangeAutoCopyFileIngestSysInfoToKin}
-            help="書類取込後、共有用の SYS_INFO を Kin入力欄へ自動セットします。"
+            help="文書取込後、整形済みの SYS_INFO を Kin入力欄へ自動セットします。"
           />
         </div>
       </div>
@@ -783,7 +782,7 @@ export function ProtocolSettingsSection(props: {
           style={{ ...textAreaStyle, minHeight: 260 }}
         />
         <div style={{ ...helpTextStyle, marginTop: 8 }}>
-          検索プロトコルでは `ENGINE: google_search / google_ai_mode / google_news / google_local` と `LOCATION: Japan` のような自然な地名表記を使います。
+          検索プロトコルでは `ENGINE: google_search / google_ai_mode / google_news / google_local` と `LOCATION: Japan` のような明示設定を使えます。
         </div>
       </div>
 
@@ -829,3 +828,4 @@ export function ProtocolSettingsSection(props: {
 }
 
 export { SEARCH_MODE_PRESETS, tabButton, sectionCard, subtleCard, selectStyle };
+

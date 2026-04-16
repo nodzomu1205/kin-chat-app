@@ -18,42 +18,33 @@ import { useMultipartAssemblies } from "@/hooks/useMultipartAssemblies";
 import { useStoredDocuments } from "@/hooks/useStoredDocuments";
 import { useReferenceLibrary } from "@/hooks/useReferenceLibrary";
 import { useMultipartUiActions } from "@/hooks/useMultipartUiActions";
-import { usePanelResetActions } from "@/hooks/usePanelResetActions";
 import { useProtocolIntentSettings } from "@/hooks/useProtocolIntentSettings";
 import { useMemoryInterpreterSettings } from "@/hooks/useMemoryInterpreterSettings";
 import { useMemoryRuleActions } from "@/hooks/useMemoryRuleActions";
-import { useProtocolAutomationEffects } from "@/hooks/useProtocolAutomationEffects";
 import { useChatPageLifecycle } from "@/hooks/useChatPageLifecycle";
 import { useStoredDocumentUiActions } from "@/hooks/useStoredDocumentUiActions";
 import { useTaskDraftHelpers } from "@/hooks/useTaskDraftHelpers";
 import { useTaskDraftWorkspace } from "@/hooks/useTaskDraftWorkspace";
-import { useChatPageActions } from "@/hooks/useChatPageActions";
+import { useTaskProtocolProjection } from "@/hooks/useTaskProtocolProjection";
+import { useArchiveCompletedTaskResults } from "@/hooks/useArchiveCompletedTaskResults";
+import { useChatPageController } from "@/hooks/useChatPageController";
+import { usePendingMemoryRuleQueue } from "@/hooks/usePendingMemoryRuleQueue";
+import {
+  useChatPageControllerComposition,
+  useChatPagePanelComposition,
+} from "@/hooks/useChatPageComposition";
 import type { Message } from "@/types/chat";
 import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
 import { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
-import { mergePendingMemoryRuleCandidates } from "@/lib/app/memoryRuleCandidateQueue";
 import {
   buildTaskRequestAnswerDraft,
 } from "@/lib/app/chatPageHelpers";
-import { buildChatPageActionArgs } from "@/lib/app/chatPageActionArgs";
 import {
-  buildChatPageGptPanelArgs,
-  buildChatPageKinPanelArgs,
-} from "@/lib/app/chatPagePanelArgs";
-import {
-  buildChatPagePanelResetArgs,
-  buildChatPageProtocolAutomationArgs,
-} from "@/lib/app/chatPageEffectArgs";
-import {
-  buildChatPageLifecycleArgs,
-  buildMultipartUiActionArgs,
-  buildStoredDocumentUiActionArgs,
-} from "@/lib/app/chatPageHookArgs";
-import { buildGptPanelProps, buildKinPanelProps } from "@/lib/app/panelPropsBuilders";
+  buildGptPanelProps,
+} from "@/lib/app/panelPropsBuilders";
 import { buildStoredDocumentFromTaskDraft } from "@/lib/app/taskDraftLibrary";
 import { PROTOCOL_PROMPT_DEFAULT_KEY, PROTOCOL_RULEBOOK_DEFAULT_KEY } from "@/lib/app/chatPageStorageKeys";
-import { createProtocolEventIngestor } from "@/lib/app/protocolEventIngest";
 import {
   buildChatPageGptMemoryRuntime,
   buildChatPageGptMemorySettingsControls,
@@ -150,6 +141,10 @@ export default function ChatApp() {
   } = useKinManager();
   const currentKinDisplayLabel =
     kinList.find((kin) => kin.id === currentKin)?.label ?? null;
+  const { enqueuePendingMemoryRuleCandidates } = usePendingMemoryRuleQueue({
+    approvedMemoryRules,
+    setPendingMemoryRuleCandidates,
+  });
 
   const {
     gptState,
@@ -172,15 +167,7 @@ export default function ChatApp() {
     memoryInterpreterSettings,
     approvedMemoryRules,
     rejectedMemoryRuleCandidateSignatures,
-    onAddPendingMemoryRuleCandidates: (candidates, approvedMemoryRulesOverride) => {
-      setPendingMemoryRuleCandidates((prev) =>
-        mergePendingMemoryRuleCandidates({
-          prev,
-          candidates,
-          approvedMemoryRules: approvedMemoryRulesOverride ?? approvedMemoryRules,
-        })
-      );
-    },
+    onAddPendingMemoryRuleCandidates: enqueuePendingMemoryRuleCandidates,
   });
   const gptMemoryRuntime = buildChatPageGptMemoryRuntime({
     gptStateRef,
@@ -270,6 +257,7 @@ export default function ChatApp() {
   } = useProtocolIntentSettings();
 
   const taskProtocol = useKinTaskProtocol();
+  const taskProtocolView = useTaskProtocolProjection(taskProtocol);
 
   const {
     updateMemoryInterpreterSettings,
@@ -303,18 +291,13 @@ export default function ChatApp() {
     alwaysShowCurrentTaskInChatContext: false,
   });
 
-  const ingestProtocolMessage = createProtocolEventIngestor(
-    taskProtocol.ingestProtocolEvents
-  );
-
-  const chatPageLifecycleArgs = buildChatPageLifecycleArgs({
+  useChatPageLifecycle({
     currentKin,
     ensureKinState,
     isMobile,
     setActiveTab,
     setCurrentSessionId,
   });
-  useChatPageLifecycle(chatPageLifecycleArgs);
 
   const libraryReferenceEstimatedTokens = estimateLibraryReferenceTokens();
 
@@ -333,65 +316,47 @@ export default function ChatApp() {
     currentTaskDraft,
     gptMessages,
     setCurrentTaskDraft,
-    resetTaskProtocolRuntime: taskProtocol.resetRuntime,
+    resetTaskProtocolRuntime: taskProtocolView.resetRuntime,
     clearTaskScopedMemory: gptMemoryRuntime.clearTaskScopedMemory,
     deleteSearchHistoryItemBase,
-    currentTaskIntentConstraints: taskProtocol.runtime.currentTaskIntent?.constraints || [],
+    currentTaskIntentConstraints: taskProtocolView.currentTaskIntentConstraints,
   });
 
-  const multipartUiActionArgs = buildMultipartUiActionArgs({
+  const {
+    processMultipartTaskDoneText,
+    loadMultipartAssemblyToGptInput,
+    downloadMultipartAssembly,
+  } = useMultipartUiActions({
     multipartAssemblies,
     setMultipartAssemblies,
-    currentTaskId: taskProtocol.runtime.currentTaskId || undefined,
-    currentTaskTitle: taskProtocol.runtime.currentTaskTitle || undefined,
+    currentTaskId: taskProtocolView.currentTaskId,
+    currentTaskTitle: taskProtocolView.currentTaskTitle,
     currentKinLabel: currentKinDisplayLabel,
-    getCurrentTaskCharConstraint: () => getCurrentTaskCharConstraint() as TaskCharConstraint | null,
+    getCurrentTaskCharConstraint: () =>
+      getCurrentTaskCharConstraint() as TaskCharConstraint | null,
     setKinInput,
     setGptMessages,
-    setFinalizeReviewed: taskProtocol.setFinalizeReviewed,
+    setFinalizeReviewed: taskProtocolView.setFinalizeReviewed,
     isMobile,
     setActiveTab,
     loadMultipartAssemblyText,
     getMultipartAssembly,
     setGptInput,
   });
-  const {
-    processMultipartTaskDoneText,
-    loadMultipartAssemblyToGptInput,
-    downloadMultipartAssembly,
-  } = useMultipartUiActions(multipartUiActionArgs);
 
-  const storedDocumentUiActionArgs = buildStoredDocumentUiActionArgs({
-    getStoredDocument,
-    setGptInput,
-    isMobile,
-    setActiveTab,
-  });
   const { loadStoredDocumentToGptInput, downloadStoredDocument } =
-    useStoredDocumentUiActions(storedDocumentUiActionArgs);
-
-  useEffect(() => {
-    const completedTaskIds = allDocuments
-      .filter(
-        (document) =>
-          document.artifactType === "task_result" && !!document.taskId
-      )
-      .map((document) => document.taskId as string);
-
-    if (completedTaskIds.length === 0) return;
-
-    const activeTaskIds = new Set(
-      taskProtocol.progressViews
-        .map((view) => view.taskId)
-        .filter((taskId): taskId is string => !!taskId)
-    );
-
-    completedTaskIds.forEach((taskId) => {
-      if (activeTaskIds.has(taskId)) {
-        taskProtocol.archiveTask(taskId);
-      }
+    useStoredDocumentUiActions({
+      getStoredDocument,
+      setGptInput,
+      isMobile,
+      setActiveTab,
     });
-  }, [allDocuments, taskProtocol]);
+
+  useArchiveCompletedTaskResults({
+    documents: allDocuments,
+    progressViews: taskProtocolView.progressViews,
+    archiveTask: taskProtocolView.onClearTaskProgress,
+  });
 
   const handleSaveTaskSnapshot = () => {
     const nextDocument = buildStoredDocumentFromTaskDraft(currentTaskDraft);
@@ -404,385 +369,277 @@ export default function ChatApp() {
     resetMemorySettings,
   });
 
-  const chatPageIdentityArgs = {
-    currentKin,
-    kinList,
-    isMobile,
-    setActiveTab,
-    setKinConnectionState,
-  };
-
-  const chatPageUiStateArgs = {
-    gptInput,
-    kinInput,
-    gptLoading,
-    kinLoading,
-    ingestLoading,
-    gptMessages,
-    kinMessages,
-    pendingKinInjectionBlocks,
-    pendingKinInjectionIndex,
-    setKinInput,
-    setGptInput,
-    setKinMessages,
-    setGptMessages,
-    setKinLoading,
-    setGptLoading,
-    setIngestLoading,
-    setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex,
-  };
-
-  const chatPageTaskArgs = {
-    currentTaskDraft,
-    currentTaskIntentConstraints: taskProtocol.runtime.currentTaskIntent?.constraints || [],
-    setCurrentTaskDraft,
-    getTaskBaseText,
-    getTaskLibraryItem,
-    getResolvedTaskTitle,
-    resolveTaskTitleFromDraft,
-    getTaskSlotLabel,
-    syncTaskDraftFromProtocol,
-    applyPrefixedTaskFieldsFromText,
-    getCurrentTaskCharConstraint,
-    resetCurrentTaskDraft,
-  };
-
-  const chatPageProtocolArgs = {
-    approvedIntentPhrases,
-    rejectedIntentCandidateSignatures,
-    pendingIntentCandidates,
-    protocolPrompt,
-    protocolRulebook,
-    chatBridgeSettings,
-    taskProtocol,
-    setPendingIntentCandidates,
-    setApprovedIntentPhrases,
-    setRejectedIntentCandidateSignatures,
-    setProtocolPrompt,
-    setProtocolRulebook,
-    promptDefaultKey: PROTOCOL_PROMPT_DEFAULT_KEY,
-    rulebookDefaultKey: PROTOCOL_RULEBOOK_DEFAULT_KEY,
-  };
-
-  const chatPageSearchArgs = {
-    lastSearchContext,
-    searchMode,
-    searchEngines,
-    searchLocation,
-    processMultipartTaskDoneText,
-    recordSearchContext,
-    getContinuationTokenForSeries,
-    getAskAiModeLinkForQuery,
-    clearSearchHistory,
-    deleteSearchHistoryItemBase,
-  };
-
-  const chatPageServicesArgs = {
-    responseMode,
-    autoCopyFileIngestSysInfoToKin:
-      autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
-    gptMemoryRuntime,
-    setUploadKind,
-    applySearchUsage,
-    applyChatUsage,
-    applySummaryUsage,
-    applyTaskUsage,
-    applyIngestUsage,
-    buildLibraryReferenceContext,
-    referenceLibraryItems: libraryItems,
-    libraryIndexResponseCount,
-    recordIngestedDocument,
-    gptMemorySettingsControls,
-    ingestProtocolMessage,
-  };
-
-  const chatPageActionArgs = buildChatPageActionArgs({
-    identity: chatPageIdentityArgs,
-    uiState: chatPageUiStateArgs,
-    task: chatPageTaskArgs,
-    protocol: chatPageProtocolArgs,
-    search: chatPageSearchArgs,
-    services: chatPageServicesArgs,
-  });
-
-  const {
-    clearPendingKinInjection,
-    runStartKinTaskFromInput,
-    sendToKin,
-    sendToGpt,
-    startAskAiModeSearch,
-    importYouTubeTranscript,
-    sendYouTubeTranscriptToKin,
-    runPrepTaskFromInput,
-    runUpdateTaskFromInput,
-    runUpdateTaskFromLastGptMessage,
-    runAttachSearchResultToTask,
-    runDeepenTaskFromLast,
-    sendLastKinToGptDraft,
-    sendLastGptToKinDraft,
-    sendLatestGptContentToKin,
-    sendCurrentTaskContentToKin,
-    receiveLastKinResponseToGptInput,
-    injectFileToKinDraft,
-    prepareTaskRequestAck,
-    prepareTaskSync,
-    prepareTaskSuspend,
-    resetProtocolDefaults,
-    saveProtocolDefaults,
-    approveIntentCandidate,
-    updateIntentCandidate,
-    rejectIntentCandidate,
-    updateApprovedIntentPhrase,
-    deleteApprovedIntentPhrase,
-    setProtocolRulebookToKinDraft,
-    sendProtocolRulebookToKin,
-    handleSaveMemorySettings,
-    handleResetMemorySettings,
-  } = useChatPageActions(chatPageActionArgs);
-
-  const protocolAutomationArgs = buildChatPageProtocolAutomationArgs({
-    autoBridgeSettings,
-    kinInput,
-    gptInput,
-    kinLoading,
-    gptLoading,
-    kinMessages,
-    gptMessages,
-    sendToKin,
-    sendToGpt,
-    setGptInput,
-    setKinInput,
-    isMobile,
-    setActiveTab,
-  });
-  useProtocolAutomationEffects(protocolAutomationArgs);
-
-  const panelResetArgs = buildChatPagePanelResetArgs({
-    setKinMessages,
-    setGptMessages,
-    resetTokenStats,
-    clearPendingKinInjection,
-    resetCurrentTaskDraft,
-    isMobile,
-    setActiveTab,
-    connectKin,
-    switchKin,
-    disconnectKin,
-    removeKinState,
-    removeKin,
-    resetGptForCurrentKin,
-  });
-  const {
-    handleConnectKin,
-    handleSwitchKin,
-    handleDisconnectKin,
-    handleRemoveKin,
-    resetKinMessages,
-    handleResetGpt,
-  } = usePanelResetActions(panelResetArgs);
-
-  const kinPanelArgs = buildChatPageKinPanelArgs({
-    kinIdInput,
-    setKinIdInput,
-    kinNameInput,
-    setKinNameInput,
-    connectKin: handleConnectKin,
-    disconnectKin: handleDisconnectKin,
-    kinStatus,
-    currentKin,
-    currentKinLabel: currentKinDisplayLabel,
-    kinList,
-    switchKin: handleSwitchKin,
-    removeKin: handleRemoveKin,
-    renameKin,
-    kinMessages,
-    kinInput,
-    setKinInput,
-    sendToKin,
-    sendLastKinToGptDraft,
-    resetKinMessages,
-    pendingInjection: {
-      blocks: pendingKinInjectionBlocks,
-      index: pendingKinInjectionIndex,
+  const chatPageControllerArgs = useChatPageControllerComposition({
+    app: {
+      currentKin,
+      kinList,
+      isMobile,
+      setActiveTab,
+      setKinConnectionState,
     },
-    isMobile,
-    onSwitchPanel: () => setActiveTab("gpt"),
-    loading: kinLoading,
-  });
-
-  const kinPanel = (
-    <KinPanel {...buildKinPanelProps(kinPanelArgs)} kinBottomRef={kinBottomRef} />
-  );
-
-  const gptPanelArgs = buildChatPageGptPanelArgs({
-    currentKin,
-    currentKinLabel: currentKinDisplayLabel,
-    kinStatus,
-    gptState,
-    gptMessages,
-    gptInput,
-    setGptInput,
-    sendToGpt,
-    runPrepTaskFromInput,
-    runDeepenTaskFromLast,
-    runUpdateTaskFromInput,
-    runUpdateTaskFromLastGptMessage,
-    runAttachSearchResultToTask,
-    sendLatestGptContentToKin,
-    sendCurrentTaskContentToKin,
-    receiveLastKinResponseToGptInput,
-    resetGptForCurrentKin: handleResetGpt,
-    sendLastGptToKinDraft,
-    injectFileToKinDraft,
-    canInjectFile: !gptLoading && !ingestLoading,
-    loading: gptLoading,
-    ingestLoading,
-    memorySettings,
-    defaultMemorySettings,
-    onSaveMemorySettings: handleSaveMemorySettings,
-    onResetMemorySettings: handleResetMemorySettings,
-    tokenStats,
-    responseMode,
-    onChangeResponseMode: setResponseMode,
-    uploadKind,
-    ingestMode,
-    imageDetail,
-    compactCharLimit,
-    simpleImageCharLimit,
-    postIngestAction,
-    fileReadPolicy,
-    onChangeUploadKind: setUploadKind,
-    onChangeIngestMode: setIngestMode,
-    onChangeImageDetail: setImageDetail,
-    onChangeCompactCharLimit: setCompactCharLimit,
-    onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
-    onChangePostIngestAction: setPostIngestAction,
-    onChangeFileReadPolicy: setFileReadPolicy,
-    searchMode,
-    searchEngines,
-    searchLocation,
-    sourceDisplayCount,
-    autoLibraryReferenceEnabled,
-    libraryReferenceMode,
-    libraryIndexResponseCount,
-    libraryReferenceCount,
-    libraryStorageMB,
-    libraryReferenceEstimatedTokens,
-    autoSendKinSysInput: autoBridgeSettings.autoSendKinSysInput,
-    autoCopyKinSysResponseToGpt:
-      autoBridgeSettings.autoCopyKinSysResponseToGpt,
-    autoSendGptSysInput: autoBridgeSettings.autoSendGptSysInput,
-    autoCopyGptSysResponseToKin:
-      autoBridgeSettings.autoCopyGptSysResponseToKin,
-    autoCopyFileIngestSysInfoToKin:
-      autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
-    memoryInterpreterSettings,
-    pendingMemoryRuleCandidates,
-    approvedMemoryRules,
-    onChangeSearchMode: setSearchMode,
-    onChangeSearchEngines: setSearchEngines,
-    onChangeSearchLocation: setSearchLocation,
-    onChangeSourceDisplayCount: setSourceDisplayCount,
-    onChangeAutoLibraryReferenceEnabled: setAutoLibraryReferenceEnabled,
-    onChangeLibraryReferenceMode: setLibraryReferenceMode,
-    onChangeLibraryIndexResponseCount: setLibraryIndexResponseCount,
-    onChangeLibraryReferenceCount: setLibraryReferenceCount,
-    onChangeAutoSendKinSysInput: (value: boolean) =>
-      updateAutoBridgeSettings({ autoSendKinSysInput: value }),
-    onChangeAutoCopyKinSysResponseToGpt: (value: boolean) =>
-      updateAutoBridgeSettings({ autoCopyKinSysResponseToGpt: value }),
-    onChangeAutoSendGptSysInput: (value: boolean) =>
-      updateAutoBridgeSettings({ autoSendGptSysInput: value }),
-    onChangeAutoCopyGptSysResponseToKin: (value: boolean) =>
-      updateAutoBridgeSettings({ autoCopyGptSysResponseToKin: value }),
-    onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) =>
-      updateAutoBridgeSettings({ autoCopyFileIngestSysInfoToKin: value }),
-    onChangeMemoryInterpreterSettings: updateMemoryInterpreterSettings,
-    onApproveMemoryRuleCandidate: approveMemoryRuleCandidate,
-    onRejectMemoryRuleCandidate: rejectMemoryRuleCandidate,
-    onUpdateMemoryRuleCandidate: updateMemoryRuleCandidate,
-    onDeleteApprovedMemoryRule: deleteApprovedMemoryRule,
-    onDeleteSearchHistoryItem: deleteSearchHistoryItem,
-    pendingIntentCandidates,
-    approvedIntentPhrases,
-    multipartAssemblies,
-    storedDocuments: allDocuments,
-    referenceLibraryItems: libraryItems,
-    selectedTaskLibraryItemId,
-    onLoadMultipartAssemblyToGptInput: loadMultipartAssemblyToGptInput,
-    onDownloadMultipartAssembly: downloadMultipartAssembly,
-    onDeleteMultipartAssembly: deleteMultipartAssembly,
-    onLoadStoredDocumentToGptInput: loadStoredDocumentToGptInput,
-    onDownloadStoredDocument: downloadStoredDocument,
-    onDeleteStoredDocument: deleteStoredDocument,
-    onMoveStoredDocument: moveStoredDocument,
-    onMoveLibraryItem: moveLibraryItem,
-    onSelectTaskLibraryItem: setSelectedTaskLibraryItemId,
-    onChangeLibraryItemMode: setLibraryItemModeOverride,
-    onStartAskAiModeSearch: startAskAiModeSearch,
-    onImportYouTubeTranscript: importYouTubeTranscript,
-    onSendYouTubeTranscriptToKin: sendYouTubeTranscriptToKin,
-    onSaveStoredDocument: updateStoredDocument,
-    onUpdateIntentCandidate: updateIntentCandidate,
-    onApproveIntentCandidate: approveIntentCandidate,
-    onRejectIntentCandidate: rejectIntentCandidate,
-    onUpdateApprovedIntentPhrase: updateApprovedIntentPhrase,
-    onDeleteApprovedIntentPhrase: deleteApprovedIntentPhrase,
-    lastSearchContext,
-    searchHistory,
-    selectedTaskSearchResultId,
-    onSelectTaskSearchResult: setSelectedTaskSearchResultId,
-    onMoveSearchHistoryItem: moveSearchHistoryItem,
-    pendingInjection: {
-      blocks: pendingKinInjectionBlocks,
-      index: pendingKinInjectionIndex,
+    uiState: {
+      gptInput,
+      kinInput,
+      gptLoading,
+      kinLoading,
+      ingestLoading,
+      gptMessages,
+      kinMessages,
+      pendingKinInjectionBlocks,
+      pendingKinInjectionIndex,
+      setKinInput,
+      setGptInput,
+      setKinMessages,
+      setGptMessages,
+      setKinLoading,
+      setGptLoading,
+      setIngestLoading,
+      setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex,
     },
-    onSwitchPanel: () => setActiveTab("kin"),
-    isMobile,
-    taskProgressView: taskProtocol.progressView,
-    taskProgressCount: taskProtocol.progressViews.length,
-    activeTaskProgressIndex: taskProtocol.activeProgressIndex,
-    pendingRequests: taskProtocol.runtime.pendingRequests,
-    buildTaskRequestAnswerDraft,
-    onPrepareTaskRequestAck: prepareTaskRequestAck,
-    onPrepareTaskSync: prepareTaskSync,
-    onPrepareTaskSuspend: prepareTaskSuspend,
-    onUpdateTaskProgressCounts: taskProtocol.updateRequirementProgressCounts,
-    onClearTaskProgress: taskProtocol.archiveTask,
-    onSelectPreviousTaskProgress: taskProtocol.selectPreviousProgressView,
-    onSelectNextTaskProgress: taskProtocol.selectNextProgressView,
-    onStartKinTask: runStartKinTaskFromInput,
-    onResetTaskContext: resetCurrentTaskDraft,
-    onSaveTaskSnapshot: handleSaveTaskSnapshot,
-    taskDraftCount: taskDrafts.length,
-    activeTaskDraftIndex,
-    onSelectPreviousTaskDraft: selectPreviousTaskDraft,
-    onSelectNextTaskDraft: selectNextTaskDraft,
-    currentTaskDraft,
-    updateTaskDraftFields,
-    protocolPrompt,
-    protocolRulebook,
-    onChangeProtocolPrompt: setProtocolPrompt,
-    onChangeProtocolRulebook: setProtocolRulebook,
-    onResetProtocolDefaults: resetProtocolDefaults,
-    onSaveProtocolDefaults: saveProtocolDefaults,
-    onSetProtocolRulebookToKinDraft: setProtocolRulebookToKinDraft,
-    onSendProtocolRulebookToKin: sendProtocolRulebookToKin,
+    task: {
+      currentTaskDraft,
+      setCurrentTaskDraft,
+      getTaskBaseText,
+      getTaskLibraryItem,
+      getResolvedTaskTitle,
+      resolveTaskTitleFromDraft,
+      getTaskSlotLabel,
+      syncTaskDraftFromProtocol,
+      applyPrefixedTaskFieldsFromText,
+      getCurrentTaskCharConstraint,
+      resetCurrentTaskDraft,
+      taskProtocol,
+      taskProtocolView,
+    },
+    protocol: {
+      approvedIntentPhrases,
+      rejectedIntentCandidateSignatures,
+      pendingIntentCandidates,
+      protocolPrompt,
+      protocolRulebook,
+      chatBridgeSettings,
+      setPendingIntentCandidates,
+      setApprovedIntentPhrases,
+      setRejectedIntentCandidateSignatures,
+      setProtocolPrompt,
+      setProtocolRulebook,
+      promptDefaultKey: PROTOCOL_PROMPT_DEFAULT_KEY,
+      rulebookDefaultKey: PROTOCOL_RULEBOOK_DEFAULT_KEY,
+    },
+    search: {
+      lastSearchContext,
+      searchMode,
+      searchEngines,
+      searchLocation,
+      processMultipartTaskDoneText,
+      recordSearchContext,
+      getContinuationTokenForSeries,
+      getAskAiModeLinkForQuery,
+      clearSearchHistory,
+      deleteSearchHistoryItemBase,
+    },
+    services: {
+      responseMode,
+      autoCopyFileIngestSysInfoToKin:
+        autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+      gptMemoryRuntime,
+      setUploadKind,
+      applySearchUsage,
+      applyChatUsage,
+      applySummaryUsage,
+      applyTaskUsage,
+      applyIngestUsage,
+      buildLibraryReferenceContext,
+      referenceLibraryItems: libraryItems,
+      libraryIndexResponseCount,
+      recordIngestedDocument,
+      gptMemorySettingsControls,
+      ingestProtocolMessage: taskProtocolView.ingestProtocolMessage,
+    },
+    automation: {
+      autoBridgeSettings,
+      kinInput,
+      gptInput,
+      kinLoading,
+      gptLoading,
+      kinMessages,
+      gptMessages,
+      setGptInput,
+      setKinInput,
+      isMobile,
+      setActiveTab,
+    },
+    reset: {
+      setKinMessages,
+      setGptMessages,
+      resetTokenStats,
+      resetCurrentTaskDraft,
+      isMobile,
+      setActiveTab,
+      connectKin,
+      switchKin,
+      disconnectKin,
+      removeKinState,
+      removeKin,
+      resetGptForCurrentKin,
+    },
   });
 
-  const builtGptPanelProps = buildGptPanelProps(gptPanelArgs);
+  const { kin, gpt, task, protocol, memory, panel } =
+    useChatPageController(chatPageControllerArgs);
 
-  const gptPanel = (
-    <GptPanel
-      {...builtGptPanelProps}
-      gptBottomRef={gptBottomRef}
-      chat={{
-        ...builtGptPanelProps.chat,
-        gptBottomRef,
-      }}
-    />
-  );
+  const { kinPanelProps, gptPanelArgs } = useChatPagePanelComposition({
+    app: {
+      currentKin,
+      currentKinLabel: currentKinDisplayLabel,
+      kinStatus,
+      kinList,
+      isMobile,
+      activeTabSetter: () => setActiveTab("kin"),
+    },
+    kinState: {
+      kinIdInput,
+      setKinIdInput,
+      kinNameInput,
+      setKinNameInput,
+      currentKin,
+      kinMessages,
+      kinInput,
+      setKinInput,
+      renameKin,
+      kinBottomRef,
+      loading: kinLoading,
+      pendingInjectionBlocks: pendingKinInjectionBlocks,
+      pendingInjectionIndex: pendingKinInjectionIndex,
+    },
+    gptState: {
+      gptState,
+      gptMessages,
+      gptInput,
+      setGptInput,
+      gptBottomRef,
+      loading: gptLoading,
+      ingestLoading,
+    },
+    task: {
+      currentTaskDraft,
+      taskDraftCount: taskDrafts.length,
+      activeTaskDraftIndex,
+      taskProtocolView,
+      resetCurrentTaskDraft,
+      updateTaskDraftFields,
+      pendingRequests: taskProtocolView.pendingRequests,
+      buildTaskRequestAnswerDraft,
+      onSaveTaskSnapshot: handleSaveTaskSnapshot,
+      onSelectPreviousTaskDraft: selectPreviousTaskDraft,
+      onSelectNextTaskDraft: selectNextTaskDraft,
+    },
+    references: {
+      lastSearchContext,
+      searchHistory,
+      selectedTaskSearchResultId,
+      multipartAssemblies,
+      storedDocuments: allDocuments,
+      referenceLibraryItems: libraryItems,
+      selectedTaskLibraryItemId,
+      onSelectTaskSearchResult: setSelectedTaskSearchResultId,
+      onMoveSearchHistoryItem: moveSearchHistoryItem,
+      onDeleteSearchHistoryItem: deleteSearchHistoryItem,
+      onLoadMultipartAssemblyToGptInput: loadMultipartAssemblyToGptInput,
+      onDownloadMultipartAssembly: downloadMultipartAssembly,
+      onDeleteMultipartAssembly: deleteMultipartAssembly,
+      onLoadStoredDocumentToGptInput: loadStoredDocumentToGptInput,
+      onDownloadStoredDocument: downloadStoredDocument,
+      onDeleteStoredDocument: deleteStoredDocument,
+      onMoveStoredDocument: moveStoredDocument,
+      onMoveLibraryItem: moveLibraryItem,
+      onSelectTaskLibraryItem: setSelectedTaskLibraryItemId,
+      onChangeLibraryItemMode: setLibraryItemModeOverride,
+      onSaveStoredDocument: updateStoredDocument,
+    },
+    settings: {
+      memorySettings,
+      defaultMemorySettings,
+      tokenStats,
+      responseMode,
+      uploadKind,
+      ingestMode,
+      imageDetail,
+      postIngestAction,
+      fileReadPolicy,
+      compactCharLimit,
+      simpleImageCharLimit,
+      ingestLoading,
+      canInjectFile: !gptLoading && !ingestLoading,
+      searchMode,
+      searchEngines,
+      searchLocation,
+      sourceDisplayCount,
+      autoLibraryReferenceEnabled,
+      libraryReferenceMode,
+      libraryIndexResponseCount,
+      libraryReferenceCount,
+      libraryStorageMB,
+      libraryReferenceEstimatedTokens,
+      autoSendKinSysInput: autoBridgeSettings.autoSendKinSysInput,
+      autoCopyKinSysResponseToGpt:
+        autoBridgeSettings.autoCopyKinSysResponseToGpt,
+      autoSendGptSysInput: autoBridgeSettings.autoSendGptSysInput,
+      autoCopyGptSysResponseToKin:
+        autoBridgeSettings.autoCopyGptSysResponseToKin,
+      autoCopyFileIngestSysInfoToKin:
+        autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+      onChangeResponseMode: setResponseMode,
+      onChangeUploadKind: setUploadKind,
+      onChangeIngestMode: setIngestMode,
+      onChangeImageDetail: setImageDetail,
+      onChangeCompactCharLimit: setCompactCharLimit,
+      onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
+      onChangePostIngestAction: setPostIngestAction,
+      onChangeFileReadPolicy: setFileReadPolicy,
+      onChangeSearchMode: setSearchMode,
+      onChangeSearchEngines: setSearchEngines,
+      onChangeSearchLocation: setSearchLocation,
+      onChangeSourceDisplayCount: setSourceDisplayCount,
+      onChangeAutoLibraryReferenceEnabled: setAutoLibraryReferenceEnabled,
+      onChangeLibraryReferenceMode: setLibraryReferenceMode,
+      onChangeLibraryIndexResponseCount: setLibraryIndexResponseCount,
+      onChangeLibraryReferenceCount: setLibraryReferenceCount,
+      onChangeAutoSendKinSysInput: (value: boolean) =>
+        updateAutoBridgeSettings({ autoSendKinSysInput: value }),
+      onChangeAutoCopyKinSysResponseToGpt: (value: boolean) =>
+        updateAutoBridgeSettings({ autoCopyKinSysResponseToGpt: value }),
+      onChangeAutoSendGptSysInput: (value: boolean) =>
+        updateAutoBridgeSettings({ autoSendGptSysInput: value }),
+      onChangeAutoCopyGptSysResponseToKin: (value: boolean) =>
+        updateAutoBridgeSettings({ autoCopyGptSysResponseToKin: value }),
+      onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) =>
+        updateAutoBridgeSettings({ autoCopyFileIngestSysInfoToKin: value }),
+      onChangeMemoryInterpreterSettings: updateMemoryInterpreterSettings,
+    },
+    protocolState: {
+      protocolPrompt,
+      protocolRulebook,
+      pendingIntentCandidates,
+      approvedIntentPhrases,
+      onChangeProtocolPrompt: setProtocolPrompt,
+      onChangeProtocolRulebook: setProtocolRulebook,
+    },
+    memoryState: {
+      memoryInterpreterSettings,
+      pendingMemoryRuleCandidates,
+      approvedMemoryRules,
+      onApproveMemoryRuleCandidate: approveMemoryRuleCandidate,
+      onRejectMemoryRuleCandidate: rejectMemoryRuleCandidate,
+      onUpdateMemoryRuleCandidate: updateMemoryRuleCandidate,
+      onDeleteApprovedMemoryRule: deleteApprovedMemoryRule,
+    },
+    controller: { kin, gpt, task, protocol, memory, panel },
+  });
+
+  const kinPanel = <KinPanel {...kinPanelProps} />;
+  const gptPanel = <GptPanel {...buildGptPanelProps(gptPanelArgs)} />;
 
   return (
     <div

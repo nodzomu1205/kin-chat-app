@@ -47,33 +47,6 @@ export function buildEffectiveRequestText(params: {
   effectiveParsedSearchQuery: string;
 }) {
   return buildNormalizedRequestTextClean(params);
-
-  const requestText = [
-    params.parsedInput.searchQuery ? `検索：${params.parsedInput.searchQuery}` : "",
-    params.parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const normalizedRequestText = [
-    params.effectiveParsedSearchQuery
-      ? `検索：${params.effectiveParsedSearchQuery}`
-      : "",
-    params.parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const effectiveRequestText = [
-    params.effectiveParsedSearchQuery
-      ? `検索：${params.effectiveParsedSearchQuery}`
-      : "",
-    params.parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  return effectiveRequestText || normalizedRequestText || requestText || params.rawText;
 }
 
 // Legacy wrapper kept temporarily so text-domain helpers can migrate in small slices.
@@ -82,23 +55,10 @@ export function shouldRespondToTaskDirectiveOnlyInput(params: {
   effectiveParsedSearchQuery: string;
 }) {
   return shouldRespondToTaskDirectiveOnlyInputClean(params);
-
-  const hasSearch = !!params.effectiveParsedSearchQuery;
-  const hasTaskDirectives = !!(
-    params.parsedInput.title || params.parsedInput.userInstruction
-  );
-
-  return hasTaskDirectives && !hasSearch && !params.parsedInput.freeText;
 }
 
 export function getTaskDirectiveOnlyResponseText() {
   return getTaskDirectiveOnlyResponseTextClean();
-
-  return "タスクのタイトルと指示を更新しました。";
-}
-
-export function getUtf8TaskDirectiveOnlyResponseText() {
-  return "\u30bf\u30b9\u30af\u306e\u30bf\u30a4\u30c8\u30eb\u3068\u6307\u793a\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002";
 }
 
 // Legacy wrapper kept temporarily so text-domain helpers can migrate in small slices.
@@ -108,17 +68,6 @@ export function buildNormalizedRequestText(params: {
   effectiveParsedSearchQuery: string;
 }) {
   return buildNormalizedRequestTextClean(params);
-
-  const resolvedSearchQuery =
-    params.effectiveParsedSearchQuery || params.parsedInput.searchQuery || "";
-  const normalizedRequestText = [
-    resolvedSearchQuery ? `\u691c\u7d22: ${resolvedSearchQuery}` : "",
-    params.parsedInput.freeText || "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  return normalizedRequestText || params.rawText;
 }
 
 export function buildFinalRequestText(params: {

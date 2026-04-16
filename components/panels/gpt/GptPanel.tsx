@@ -154,136 +154,7 @@ function LibrarySettingsIcon() {
 }
 
 export default function GptPanel(props: GptPanelProps) {
-  const header = props.header ?? {
-    currentKin: props.currentKin,
-    currentKinLabel: props.currentKinLabel,
-    kinStatus: props.kinStatus,
-    isMobile: props.isMobile,
-    onSwitchPanel: props.onSwitchPanel,
-  };
-  const chat = props.chat ?? {
-    gptState: props.gptState,
-    gptMessages: props.gptMessages,
-    gptInput: props.gptInput,
-    setGptInput: props.setGptInput,
-    sendToGpt: props.sendToGpt,
-    resetGptForCurrentKin: props.resetGptForCurrentKin,
-    loading: props.loading,
-    gptBottomRef: props.gptBottomRef,
-  };
-    const task = props.task ?? {
-      currentTaskDraft: props.currentTaskDraft,
-      taskDraftCount: props.taskDraftCount,
-      activeTaskDraftIndex: props.activeTaskDraftIndex,
-      taskProgressView: props.taskProgressView,
-      taskProgressCount: props.taskProgressCount,
-      activeTaskProgressIndex: props.activeTaskProgressIndex,
-      pendingInjectionCurrentPart: props.pendingInjectionCurrentPart,
-    pendingInjectionTotalParts: props.pendingInjectionTotalParts,
-    runPrepTaskFromInput: props.runPrepTaskFromInput,
-    runDeepenTaskFromLast: props.runDeepenTaskFromLast,
-    runUpdateTaskFromInput: props.runUpdateTaskFromInput,
-    runUpdateTaskFromLastGptMessage: props.runUpdateTaskFromLastGptMessage,
-    runAttachSearchResultToTask: props.runAttachSearchResultToTask,
-    sendLatestGptContentToKin: props.sendLatestGptContentToKin,
-    sendCurrentTaskContentToKin: props.sendCurrentTaskContentToKin,
-    receiveLastKinResponseToGptInput: props.receiveLastKinResponseToGptInput,
-    sendLastGptToKinDraft: props.sendLastGptToKinDraft,
-    onChangeTaskTitle: props.onChangeTaskTitle,
-    onChangeTaskUserInstruction: props.onChangeTaskUserInstruction,
-    onChangeTaskBody: props.onChangeTaskBody,
-      onSaveTaskSnapshot: props.onSaveTaskSnapshot,
-      onSelectPreviousTaskDraft: props.onSelectPreviousTaskDraft,
-      onSelectNextTaskDraft: props.onSelectNextTaskDraft,
-      onAnswerTaskRequest: props.onAnswerTaskRequest,
-      onPrepareTaskRequestAck: props.onPrepareTaskRequestAck,
-      onPrepareTaskSync: props.onPrepareTaskSync,
-      onPrepareTaskSuspend: props.onPrepareTaskSuspend,
-      onUpdateTaskProgressCounts: props.onUpdateTaskProgressCounts,
-      onSelectPreviousTaskProgress: props.onSelectPreviousTaskProgress,
-      onSelectNextTaskProgress: props.onSelectNextTaskProgress,
-      onStartKinTask: props.onStartKinTask,
-    onResetTaskContext: props.onResetTaskContext,
-  };
-  const protocol = props.protocol ?? {
-    protocolPrompt: props.protocolPrompt,
-    protocolRulebook: props.protocolRulebook,
-    pendingIntentCandidates: props.pendingIntentCandidates,
-    approvedIntentPhrases: props.approvedIntentPhrases,
-    onChangeProtocolPrompt: props.onChangeProtocolPrompt,
-    onChangeProtocolRulebook: props.onChangeProtocolRulebook,
-    onResetProtocolDefaults: props.onResetProtocolDefaults,
-    onSaveProtocolDefaults: props.onSaveProtocolDefaults,
-    onSetProtocolRulebookToKinDraft: props.onSetProtocolRulebookToKinDraft,
-    onSendProtocolRulebookToKin: props.onSendProtocolRulebookToKin,
-    onUpdateIntentCandidate: props.onUpdateIntentCandidate,
-    onApproveIntentCandidate: props.onApproveIntentCandidate,
-    onRejectIntentCandidate: props.onRejectIntentCandidate,
-    onUpdateApprovedIntentPhrase: props.onUpdateApprovedIntentPhrase,
-    onDeleteApprovedIntentPhrase: props.onDeleteApprovedIntentPhrase,
-  };
-  const settings = props.settings ?? {
-    memorySettings: props.memorySettings,
-    defaultMemorySettings: props.defaultMemorySettings,
-    tokenStats: props.tokenStats,
-    responseMode: props.responseMode,
-    uploadKind: props.uploadKind,
-    ingestMode: props.ingestMode,
-    imageDetail: props.imageDetail,
-    postIngestAction: props.postIngestAction,
-    fileReadPolicy: props.fileReadPolicy,
-    compactCharLimit: props.compactCharLimit,
-    simpleImageCharLimit: props.simpleImageCharLimit,
-    ingestLoading: props.ingestLoading,
-    canInjectFile: props.canInjectFile,
-    searchMode: props.searchMode,
-    searchEngines: props.searchEngines,
-    searchLocation: props.searchLocation,
-    sourceDisplayCount: props.sourceDisplayCount,
-    autoLibraryReferenceEnabled: props.autoLibraryReferenceEnabled,
-    libraryReferenceMode: props.libraryReferenceMode,
-    libraryIndexResponseCount: props.libraryIndexResponseCount,
-    libraryReferenceCount: props.libraryReferenceCount,
-    libraryStorageMB: props.libraryStorageMB,
-    libraryReferenceEstimatedTokens: props.libraryReferenceEstimatedTokens,
-    autoSendKinSysInput: props.autoSendKinSysInput,
-    autoCopyKinSysResponseToGpt: props.autoCopyKinSysResponseToGpt,
-    autoSendGptSysInput: props.autoSendGptSysInput,
-    autoCopyGptSysResponseToKin: props.autoCopyGptSysResponseToKin,
-    autoCopyFileIngestSysInfoToKin: props.autoCopyFileIngestSysInfoToKin,
-    memoryInterpreterSettings: props.memoryInterpreterSettings,
-    pendingMemoryRuleCandidates: props.pendingMemoryRuleCandidates,
-    approvedMemoryRules: props.approvedMemoryRules,
-    onSaveMemorySettings: props.onSaveMemorySettings,
-    onResetMemorySettings: props.onResetMemorySettings,
-    onChangeResponseMode: props.onChangeResponseMode,
-    onChangeUploadKind: props.onChangeUploadKind,
-    onChangeIngestMode: props.onChangeIngestMode,
-    onChangeImageDetail: props.onChangeImageDetail,
-    onChangeCompactCharLimit: props.onChangeCompactCharLimit,
-    onChangeSimpleImageCharLimit: props.onChangeSimpleImageCharLimit,
-    onChangePostIngestAction: props.onChangePostIngestAction,
-    onChangeFileReadPolicy: props.onChangeFileReadPolicy,
-    onChangeSearchMode: props.onChangeSearchMode,
-    onChangeSearchEngines: props.onChangeSearchEngines,
-    onChangeSearchLocation: props.onChangeSearchLocation,
-    onChangeSourceDisplayCount: props.onChangeSourceDisplayCount,
-    onChangeAutoLibraryReferenceEnabled: props.onChangeAutoLibraryReferenceEnabled,
-    onChangeLibraryReferenceMode: props.onChangeLibraryReferenceMode,
-    onChangeLibraryIndexResponseCount: props.onChangeLibraryIndexResponseCount,
-    onChangeLibraryReferenceCount: props.onChangeLibraryReferenceCount,
-    onChangeAutoSendKinSysInput: props.onChangeAutoSendKinSysInput,
-    onChangeAutoCopyKinSysResponseToGpt: props.onChangeAutoCopyKinSysResponseToGpt,
-    onChangeAutoSendGptSysInput: props.onChangeAutoSendGptSysInput,
-    onChangeAutoCopyGptSysResponseToKin: props.onChangeAutoCopyGptSysResponseToKin,
-    onChangeAutoCopyFileIngestSysInfoToKin:
-      props.onChangeAutoCopyFileIngestSysInfoToKin,
-    onChangeMemoryInterpreterSettings: props.onChangeMemoryInterpreterSettings,
-    onUpdateMemoryRuleCandidate: props.onUpdateMemoryRuleCandidate,
-    onApproveMemoryRuleCandidate: props.onApproveMemoryRuleCandidate,
-    onRejectMemoryRuleCandidate: props.onRejectMemoryRuleCandidate,
-    onDeleteApprovedMemoryRule: props.onDeleteApprovedMemoryRule,
-  };
+  const { header, chat, task, protocol, references, settings } = props;
 
   const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
   const [activeSettingsWorkspace, setActiveSettingsWorkspace] =
@@ -291,17 +162,11 @@ export default function GptPanel(props: GptPanelProps) {
   const [bottomTab, setBottomTab] = useState<BottomTabKey>("chat");
   const [showMemoryContent, setShowMemoryContent] = useState(false);
   const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(() =>
-    toLocalSettings({ ...props, memorySettings: settings.memorySettings, defaultMemorySettings: settings.defaultMemorySettings })
+    toLocalSettings(settings)
   );
 
   useEffect(() => {
-    setLocalSettings(
-      toLocalSettings({
-        ...props,
-        memorySettings: settings.memorySettings,
-        defaultMemorySettings: settings.defaultMemorySettings,
-      })
-    );
+    setLocalSettings(toLocalSettings(settings));
   }, [settings.memorySettings, settings.defaultMemorySettings, header.currentKin]);
 
   const recentCount = chat.gptState.recentMessages?.length ?? 0;
@@ -461,7 +326,12 @@ export default function GptPanel(props: GptPanelProps) {
         <div style={drawerWrapStyle(header.isMobile)}>
           <GptDrawerRouter
             activeDrawer={activeDrawer}
-            props={props}
+            header={header}
+            chat={chat}
+            task={task}
+            protocol={protocol}
+            references={references}
+            settings={settings}
             localSettings={localSettings}
             setLocalSettings={setLocalSettings}
             memoryUsed={memoryUsed}
@@ -570,8 +440,8 @@ export default function GptPanel(props: GptPanelProps) {
             bottomRef={chat.gptBottomRef}
             loadingText={chat.loading ? "ChatGPTが応答中…" : null}
             sourceDisplayCount={settings.sourceDisplayCount}
-            onImportYouTubeTranscript={props.onImportYouTubeTranscript}
-            onSendYouTubeTranscriptToKin={props.onSendYouTubeTranscriptToKin}
+            onImportYouTubeTranscript={references.onImportYouTubeTranscript}
+            onSendYouTubeTranscriptToKin={references.onSendYouTubeTranscriptToKin}
           />
         </div>
         </div>
@@ -622,7 +492,7 @@ export default function GptPanel(props: GptPanelProps) {
             placeholder={
               getComposerPlaceholder(bottomTab)
             }
-            onInjectFile={props.injectFileToKinDraft}
+            onInjectFile={chat.onInjectFile}
             loading={chat.loading}
             ingestLoading={settings.ingestLoading}
             canInjectFile={settings.canInjectFile}

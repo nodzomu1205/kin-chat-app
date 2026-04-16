@@ -12,7 +12,7 @@ import {
   type YouTubeTranscriptApiResponse,
 } from "@/lib/app/sendToGptTranscriptHelpers";
 import type { Memory } from "@/lib/memory";
-import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
+import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { Message } from "@/types/chat";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
 import { normalizeUsage } from "@/lib/tokenStats";

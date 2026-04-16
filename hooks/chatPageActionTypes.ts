@@ -1,20 +1,30 @@
 import type React from "react";
-import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
-import type { SearchContext, SearchEngine, SearchMode, TaskDraft } from "@/types/task";
 import type {
+  Message,
+  ReferenceLibraryItem,
+  SourceItem,
+  StoredDocument,
+} from "@/types/chat";
+import type {
+  SearchContext,
+  SearchEngine,
+  SearchMode,
+  TaskDraft,
+} from "@/types/task";
+import type {
+  GptInstructionMode,
+  GptPanelChatProps,
   ResponseMode,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
+import type {
+  ApprovedIntentPhrase,
+  PendingIntentCandidate,
+} from "@/lib/taskIntent";
 import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import type { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
-import { useTaskDraftActions } from "@/hooks/useTaskDraftActions";
-import { useKinTransferActions } from "@/hooks/useKinTransferActions";
-import { useGptMessageActions } from "@/hooks/useGptMessageActions";
-import { useTaskProtocolActions } from "@/hooks/useTaskProtocolActions";
-import { useFileIngestActions } from "@/hooks/useFileIngestActions";
 import type {
   GptMemoryRuntime,
   GptMemorySettingsControls,
@@ -164,7 +174,9 @@ export type ChatPageServicesArgs = {
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
-  recordIngestedDocument: (document: Omit<StoredDocument, "id" | "sourceType">) => StoredDocument;
+  recordIngestedDocument: (
+    document: Omit<StoredDocument, "id" | "sourceType">
+  ) => StoredDocument;
   gptMemorySettingsControls: GptMemorySettingsControls;
   ingestProtocolMessage: (
     text: string,
@@ -323,233 +335,56 @@ export type UseFileIngestActionsArgs = Pick<
   | "setUploadKind"
 >;
 
-export function useChatPageActions(args: UseChatPageActionsArgs) {
-  const gptMessageActionArgs: UseGptMessageActionsArgs = {
-    applyChatUsage: args.applyChatUsage,
-    applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
-    applySearchUsage: args.applySearchUsage,
-    applySummaryUsage: args.applySummaryUsage,
-    buildLibraryReferenceContext: args.buildLibraryReferenceContext,
-    chatBridgeSettings: args.chatBridgeSettings,
-    currentTaskDraft: args.currentTaskDraft,
-    getAskAiModeLinkForQuery: args.getAskAiModeLinkForQuery,
-    getContinuationTokenForSeries: args.getContinuationTokenForSeries,
-    gptInput: args.gptInput,
-    gptLoading: args.gptLoading,
-    gptMemoryRuntime: args.gptMemoryRuntime,
-    ingestProtocolMessage: args.ingestProtocolMessage,
-    isMobile: args.isMobile,
-    kinMessages: args.kinMessages,
-    lastSearchContext: args.lastSearchContext,
-    libraryIndexResponseCount: args.libraryIndexResponseCount,
-    processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-    recordIngestedDocument: args.recordIngestedDocument,
-    recordSearchContext: args.recordSearchContext,
-    referenceLibraryItems: args.referenceLibraryItems,
-    responseMode: args.responseMode,
-    searchEngines: args.searchEngines,
-    searchLocation: args.searchLocation,
-    searchMode: args.searchMode,
-    setActiveTab: args.setActiveTab,
-    setGptInput: args.setGptInput,
-    setGptLoading: args.setGptLoading,
-    setGptMessages: args.setGptMessages,
-    setKinInput: args.setKinInput,
-    setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-    taskProtocol: args.taskProtocol,
+export type ChatPageActionGroups = {
+  kin: {
+    clearPendingKinInjection: () => void;
+    runStartKinTaskFromInput: () => Promise<void>;
+    sendKinMessage: (text: string) => Promise<void>;
+    sendToKin: () => Promise<void>;
+    sendLastKinToGptDraft: () => void | Promise<void>;
+    sendLastGptToKinDraft: () => void | Promise<void>;
+    sendLatestGptContentToKin: () => Promise<void>;
+    sendCurrentTaskContentToKin: () => Promise<void>;
   };
-  const {
-    sendToGpt,
-    continueQueuedYouTubeTranscriptBatch,
-    startAskAiModeSearch,
-    importYouTubeTranscript,
-    sendYouTubeTranscriptToKin,
-    sendLastKinToGptDraft,
-    receiveLastKinResponseToGptInput,
-  } = useGptMessageActions(gptMessageActionArgs);
-
-  const kinTransferActionArgs: UseKinTransferActionsArgs = {
-    applyTaskUsage: args.applyTaskUsage,
-    approvedIntentPhrases: args.approvedIntentPhrases,
-    currentKin: args.currentKin,
-    currentTaskDraft: args.currentTaskDraft,
-    getTaskBaseText: args.getTaskBaseText,
-    getTaskSlotLabel: args.getTaskSlotLabel,
-    gptInput: args.gptInput,
-    gptMessages: args.gptMessages,
-    ingestProtocolMessage: args.ingestProtocolMessage,
-    isMobile: args.isMobile,
-    kinInput: args.kinInput,
-    kinLoading: args.kinLoading,
-    pendingIntentCandidates: args.pendingIntentCandidates,
-    pendingKinInjectionBlocks: args.pendingKinInjectionBlocks,
-    pendingKinInjectionIndex: args.pendingKinInjectionIndex,
-    processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-    rejectedIntentCandidateSignatures: args.rejectedIntentCandidateSignatures,
-    responseMode: args.responseMode,
-    setActiveTab: args.setActiveTab,
-    setGptInput: args.setGptInput,
-    setGptLoading: args.setGptLoading,
-    setGptMessages: args.setGptMessages,
-    setKinConnectionState: args.setKinConnectionState,
-    setKinInput: args.setKinInput,
-    setKinLoading: args.setKinLoading,
-    setKinMessages: args.setKinMessages,
-    setPendingIntentCandidates: args.setPendingIntentCandidates,
-    setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-    syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-    taskProtocol: args.taskProtocol,
+  gpt: {
+    sendToGpt: (
+      instructionMode?: GptInstructionMode
+    ) => void | Promise<void>;
+    startAskAiModeSearch: (query: string) => void | Promise<void>;
+    importYouTubeTranscript: (source: SourceItem) => void | Promise<void>;
+    sendYouTubeTranscriptToKin: (source: SourceItem) => void | Promise<void>;
+    receiveLastKinResponseToGptInput: () => void | Promise<void>;
+    injectFileToKinDraft: GptPanelChatProps["onInjectFile"];
   };
-
-  const {
-    clearPendingKinInjection,
-    runStartKinTaskFromInput,
-    sendKinMessage,
-    sendToKin,
-    sendLastGptToKinDraft,
-    sendLatestGptContentToKin,
-    sendCurrentTaskContentToKin,
-  } = useKinTransferActions(kinTransferActionArgs, {
-    onPendingKinAck: continueQueuedYouTubeTranscriptBatch,
-  });
-
-  const taskDraftActionArgs: UseTaskDraftActionsArgs = {
-    applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
-    applySummaryUsage: args.applySummaryUsage,
-    applyTaskUsage: args.applyTaskUsage,
-    currentTaskDraft: args.currentTaskDraft,
-    getResolvedTaskTitle: args.getResolvedTaskTitle,
-    getTaskBaseText: args.getTaskBaseText,
-    getTaskLibraryItem: args.getTaskLibraryItem,
-    gptInput: args.gptInput,
-    gptLoading: args.gptLoading,
-    gptMemoryRuntime: args.gptMemoryRuntime,
-    gptMessages: args.gptMessages,
-    lastSearchContext: args.lastSearchContext,
-    setCurrentTaskDraft: args.setCurrentTaskDraft,
-    setGptInput: args.setGptInput,
-    setGptLoading: args.setGptLoading,
-    setGptMessages: args.setGptMessages,
+  task: {
+    runPrepTaskFromInput: () => void | Promise<void>;
+    runUpdateTaskFromInput: () => void | Promise<void>;
+    runUpdateTaskFromLastGptMessage: () => void | Promise<void>;
+    runAttachSearchResultToTask: () => void | Promise<void>;
+    runDeepenTaskFromLast: () => void | Promise<void>;
+    prepareTaskRequestAck: (requestId: string) => void;
+    prepareTaskSync: (note: string) => void;
+    prepareTaskSuspend: (note: string) => void;
   };
-
-  const {
-    runPrepTaskFromInput,
-    runUpdateTaskFromInput,
-    runUpdateTaskFromLastGptMessage,
-    runAttachSearchResultToTask,
-    runDeepenTaskFromLast,
-  } = useTaskDraftActions(taskDraftActionArgs);
-
-  const taskProtocolActionArgs: UseTaskProtocolActionsArgs = {
-    applyTaskUsage: args.applyTaskUsage,
-    approvedIntentPhrases: args.approvedIntentPhrases,
-    currentTaskDraft: args.currentTaskDraft,
-    isMobile: args.isMobile,
-    pendingIntentCandidates: args.pendingIntentCandidates,
-    promptDefaultKey: args.promptDefaultKey,
-    protocolPrompt: args.protocolPrompt,
-    protocolRulebook: args.protocolRulebook,
-    responseMode: args.responseMode,
-    rulebookDefaultKey: args.rulebookDefaultKey,
-    setActiveTab: args.setActiveTab,
-    setApprovedIntentPhrases: args.setApprovedIntentPhrases,
-    setGptMessages: args.setGptMessages,
-    setKinInput: args.setKinInput,
-    setPendingIntentCandidates: args.setPendingIntentCandidates,
-    setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-    setProtocolPrompt: args.setProtocolPrompt,
-    setProtocolRulebook: args.setProtocolRulebook,
-    setRejectedIntentCandidateSignatures: args.setRejectedIntentCandidateSignatures,
-    syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-    taskProtocol: args.taskProtocol,
+  protocol: {
+    resetProtocolDefaults: () => void;
+    saveProtocolDefaults: () => void;
+    approveIntentCandidate: (candidateId: string) => Promise<void>;
+    updateIntentCandidate: (
+      candidateId: string,
+      patch: Partial<PendingIntentCandidate>
+    ) => void;
+    rejectIntentCandidate: (candidateId: string) => void;
+    updateApprovedIntentPhrase: (
+      phraseId: string,
+      patch: Partial<ApprovedIntentPhrase>
+    ) => void;
+    deleteApprovedIntentPhrase: (phraseId: string) => void;
+    setProtocolRulebookToKinDraft: () => void;
+    sendProtocolRulebookToKin: () => Promise<void>;
   };
-
-  const {
-    prepareTaskRequestAck,
-    prepareTaskSync,
-    prepareTaskSuspend,
-    resetProtocolDefaults,
-    saveProtocolDefaults,
-    approveIntentCandidate,
-    updateIntentCandidate,
-    rejectIntentCandidate,
-    updateApprovedIntentPhrase,
-    deleteApprovedIntentPhrase,
-    setProtocolRulebookToKinDraft,
-    sendProtocolRulebookToKin,
-  } = useTaskProtocolActions(taskProtocolActionArgs, { sendKinMessage });
-
-  const fileIngestActionArgs: UseFileIngestActionsArgs = {
-    applyIngestUsage: args.applyIngestUsage,
-    applyTaskUsage: args.applyTaskUsage,
-    autoCopyFileIngestSysInfoToKin: args.autoCopyFileIngestSysInfoToKin,
-    currentTaskDraft: args.currentTaskDraft,
-    getResolvedTaskTitle: args.getResolvedTaskTitle,
-    getTaskBaseText: args.getTaskBaseText,
-    gptInput: args.gptInput,
-    gptMemoryRuntime: args.gptMemoryRuntime,
-    ingestLoading: args.ingestLoading,
-    isMobile: args.isMobile,
-    recordIngestedDocument: args.recordIngestedDocument,
-    resolveTaskTitleFromDraft: args.resolveTaskTitleFromDraft,
-    responseMode: args.responseMode,
-    setActiveTab: args.setActiveTab,
-    setCurrentTaskDraft: args.setCurrentTaskDraft,
-    setGptInput: args.setGptInput,
-    setGptMessages: args.setGptMessages,
-    setIngestLoading: args.setIngestLoading,
-    setKinInput: args.setKinInput,
-    setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-    setUploadKind: args.setUploadKind,
+  memory: {
+    handleSaveMemorySettings: (next: MemorySettings) => void;
+    handleResetMemorySettings: () => void;
   };
-
-  const { injectFileToKinDraft } = useFileIngestActions(fileIngestActionArgs);
-
-  const handleSaveMemorySettings = (next: MemorySettings) => {
-    args.gptMemorySettingsControls.updateMemorySettings(next);
-  };
-
-  const handleResetMemorySettings = () => {
-    args.gptMemorySettingsControls.resetMemorySettings();
-  };
-
-  return {
-    clearPendingKinInjection,
-    runStartKinTaskFromInput,
-    sendKinMessage,
-    sendToKin,
-    sendToGpt,
-    startAskAiModeSearch,
-    importYouTubeTranscript,
-    sendYouTubeTranscriptToKin,
-    runPrepTaskFromInput,
-    runUpdateTaskFromInput,
-    runUpdateTaskFromLastGptMessage,
-    runAttachSearchResultToTask,
-    runDeepenTaskFromLast,
-    sendLastKinToGptDraft,
-    sendLastGptToKinDraft,
-    sendLatestGptContentToKin,
-    sendCurrentTaskContentToKin,
-    receiveLastKinResponseToGptInput,
-    injectFileToKinDraft,
-    prepareTaskRequestAck,
-    prepareTaskSync,
-    prepareTaskSuspend,
-    resetProtocolDefaults,
-    saveProtocolDefaults,
-    approveIntentCandidate,
-    updateIntentCandidate,
-    rejectIntentCandidate,
-    updateApprovedIntentPhrase,
-    deleteApprovedIntentPhrase,
-    setProtocolRulebookToKinDraft,
-    sendProtocolRulebookToKin,
-    handleSaveMemorySettings,
-    handleResetMemorySettings,
-  };
-}
+};

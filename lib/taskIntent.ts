@@ -40,6 +40,78 @@ export type PendingIntentCandidate = ApprovedIntentPhrase & {
 
 export const STRONG_APPROVED_INTENT_MATCH_SCORE = 6;
 
+const SEARCH_KEYWORDS = ["検索", "search", "google"];
+const TRANSCRIPT_KEYWORDS = [
+  "youtube",
+  "動画",
+  "文字起こし",
+  "transcript",
+  "content request",
+  "内容取得",
+  "コンテンツ取得",
+];
+const LIBRARY_KEYWORDS = ["library", "ライブラリ", "文献", "資料参照", "資料"];
+const MATERIAL_KEYWORDS = ["document", "pdf", "source", "資料", "原文"];
+const ASK_GPT_KEYWORDS = ["gpt", "chatgpt", "ask gpt", "gptに質問"];
+const ASK_USER_KEYWORDS = ["ask user", "userに質問", "ユーザーに質問", "確認して", "質問して"];
+const AT_LEAST_KEYWORDS = [
+  "at least",
+  "minimum",
+  "no less than",
+  "not less than",
+  "or more",
+  "以上",
+  "最低",
+  "少なくとも",
+];
+const UP_TO_KEYWORDS = [
+  "up to",
+  "at most",
+  "no more than",
+  "not more than",
+  "or less",
+  "以下",
+  "以内",
+  "まで",
+  "迄",
+];
+const AROUND_KEYWORDS = ["around", "about", "approximately", "前後", "程度"];
+const EXACT_KEYWORDS = ["exactly", "ちょうど", "ぴったり", "正確に"];
+
+function includesAnyKeyword(text: string, keywords: string[]) {
+  const lower = text.toLowerCase();
+  return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
+}
+
+export function normalizeLegacyIntentPhraseText(text: string) {
+  return text.normalize("NFKC");
+}
+
+export function normalizeApprovedIntentPhrase(
+  phrase: ApprovedIntentPhrase
+): ApprovedIntentPhrase {
+  return {
+    ...phrase,
+    phrase: normalizeLegacyIntentPhraseText(phrase.phrase),
+    draftText: phrase.draftText
+      ? normalizeLegacyIntentPhraseText(phrase.draftText)
+      : phrase.draftText,
+  };
+}
+
+export function normalizePendingIntentCandidate(
+  candidate: PendingIntentCandidate
+): PendingIntentCandidate {
+  return {
+    ...candidate,
+    phrase: normalizeLegacyIntentPhraseText(candidate.phrase),
+    sourceText: normalizeLegacyIntentPhraseText(candidate.sourceText),
+    draftText: candidate.draftText
+      ? normalizeLegacyIntentPhraseText(candidate.draftText)
+      : candidate.draftText,
+  };
+}
+
 export function formatIntentCandidateDraftText(candidate: {
   kind: IntentPhraseKind;
   count?: number;
@@ -87,26 +159,26 @@ export function parseIntentCandidateDraftText(
   text: string,
   fallback: PendingIntentCandidate
 ): Partial<PendingIntentCandidate> {
-  const normalized = text.normalize("NFKC").trim();
+  const normalized = normalizeLegacyIntentPhraseText(text).trim();
   const countMatch = normalized.match(/(\d+)/);
   const count = countMatch?.[1] ? Number(countMatch[1]) : fallback.count;
 
   const rule = detectTaskCountRule(normalized, fallback.rule || "exact");
 
-  const kind: IntentPhraseKind =
-    /ask gpt/i.test(normalized)
-      ? "ask_gpt"
-      : /ask user/i.test(normalized)
-        ? "ask_user"
-        : /content request/i.test(normalized)
-          ? "youtube_transcript_request"
-          : /library reference/i.test(normalized)
-            ? "library_reference"
-            : /japanese characters/i.test(normalized)
-              ? "char_limit"
-              : /search request/i.test(normalized)
-                ? "search_request"
-                : fallback.kind;
+  const lower = normalized.toLowerCase();
+  const kind: IntentPhraseKind = includesAnyKeyword(lower, ASK_GPT_KEYWORDS)
+    ? "ask_gpt"
+    : includesAnyKeyword(lower, ASK_USER_KEYWORDS)
+      ? "ask_user"
+      : includesAnyKeyword(lower, ["content request", "transcript", "文字起こし", "内容取得"])
+        ? "youtube_transcript_request"
+        : includesAnyKeyword(lower, ["library reference", "ライブラリ参照", "文献参照"])
+          ? "library_reference"
+          : /japanese characters|文字/.test(lower)
+            ? "char_limit"
+            : includesAnyKeyword(lower, ["search request", "検索", "search"])
+              ? "search_request"
+              : fallback.kind;
 
   return {
     kind,
@@ -121,27 +193,24 @@ function detectTaskCountRule(
   text: string,
   fallbackRule: TaskCountRule = "exact"
 ): TaskCountRule {
-  const normalized = text.normalize("NFKC");
-  if (
-    /at least|minimum|no less than|not less than|or more|以上|最低|少なくとも/i.test(
-      normalized
-    )
-  ) {
+  const lower = normalizeLegacyIntentPhraseText(text).toLowerCase();
+
+  if (includesAnyKeyword(lower, AT_LEAST_KEYWORDS)) {
     return "at_least";
   }
-  if (
-    /up to|at most|no more than|not more than|or less|以下|以内|まで|迄/i.test(
-      normalized
-    )
-  ) {
+
+  if (includesAnyKeyword(lower, UP_TO_KEYWORDS)) {
     return "up_to";
   }
-  if (/around|about|approximately|前後|程度/i.test(normalized)) {
+
+  if (includesAnyKeyword(lower, AROUND_KEYWORDS)) {
     return "around";
   }
-  if (/exactly|ちょうど|ぴったり|正確に/i.test(normalized)) {
+
+  if (includesAnyKeyword(lower, EXACT_KEYWORDS)) {
     return "exact";
   }
+
   return fallbackRule;
 }
 
@@ -150,12 +219,11 @@ function normalizeText(input: string) {
 }
 
 function normalizePhraseForMatch(input: string) {
-  return input
-    .normalize("NFKC")
+  return normalizeLegacyIntentPhraseText(input)
     .toLowerCase()
     .replace(/\s+/g, "")
-    .replace(/[、。,.!！?？:：;；"'`´’“”()[\]{}<>＜＞「」『』【】]/g, "")
-    .replace(/(?:への|へ|は|が|を|に|で|と|も|の)+/g, "")
+    .replace(/[、。.,!?'"`()[\]{}<>:;/-]+/g, "")
+    .replace(/(?:への|へ|は|が|を|に|で|と|も|の|まで|迄)+/g, "")
     .trim();
 }
 
@@ -164,47 +232,52 @@ function detectGoal(text: string) {
 }
 
 function detectOutputType(text: string): TaskOutputType {
-  if (/(?:presentation|プレゼン)/i.test(text)) return "presentation";
-  if (/(?:comparison|比較)/i.test(text)) return "comparison";
-  if (/(?:bullet|箇条書き)/i.test(text)) return "bullet_list";
-  if (/(?:reply|返信)/i.test(text)) return "reply";
-  if (/(?:summary|要約)/i.test(text)) return "summary";
-  if (/(?:analysis|分析)/i.test(text)) return "analysis";
+  const lower = text.toLowerCase();
+  if (includesAnyKeyword(lower, ["presentation", "プレゼン"])) return "presentation";
+  if (includesAnyKeyword(lower, ["comparison", "比較"])) return "comparison";
+  if (includesAnyKeyword(lower, ["bullet", "箇条書き"])) return "bullet_list";
+  if (includesAnyKeyword(lower, ["reply", "返信"])) return "reply";
+  if (includesAnyKeyword(lower, ["summary", "要約"])) return "summary";
+  if (includesAnyKeyword(lower, ["analysis", "分析"])) return "analysis";
   return "essay";
 }
 
 function detectLanguage(text: string) {
-  if (/(?:英語|english)/i.test(text)) return "en";
-  if (/(?:ロシア語|russian)/i.test(text)) return "ru";
+  const lower = text.toLowerCase();
+  if (includesAnyKeyword(lower, ["英語", "english"])) return "en";
+  if (includesAnyKeyword(lower, ["ロシア語", "russian"])) return "ru";
   return "ja";
 }
 
 function detectFinalizationPolicy(
   text: string
 ): "auto_when_ready" | "wait_for_user_confirm" | "wait_for_required_materials" {
-  if (/(?:確認してから|confirm first|wait for user)/i.test(text)) {
+  const lower = text.toLowerCase();
+  if (includesAnyKeyword(lower, ["確認してから", "confirm first", "wait for user"])) {
     return "wait_for_user_confirm";
   }
-  if (/(?:資料待ち|必要資料|required materials|wait for materials)/i.test(text)) {
+  if (includesAnyKeyword(lower, ["資料待ち", "必要資料", "required materials", "wait for materials"])) {
     return "wait_for_required_materials";
   }
   return "auto_when_ready";
 }
 
 function detectTone(text: string) {
-  if (/(?:formal|丁寧|フォーマル)/i.test(text)) return "formal";
-  if (/(?:casual|カジュアル)/i.test(text)) return "casual";
+  const lower = text.toLowerCase();
+  if (includesAnyKeyword(lower, ["formal", "丁寧", "フォーマル"])) return "formal";
+  if (includesAnyKeyword(lower, ["casual", "カジュアル"])) return "casual";
   return undefined;
 }
 
 function detectLength(text: string): "short" | "medium" | "long" | undefined {
-  if (/(?:short|短め)/i.test(text)) return "short";
-  if (/(?:long|長め|詳しく)/i.test(text)) return "long";
+  const lower = text.toLowerCase();
+  if (includesAnyKeyword(lower, ["short", "短く", "短め"])) return "short";
+  if (includesAnyKeyword(lower, ["long", "長く", "長め", "詳しく"])) return "long";
   return "medium";
 }
 
 function buildBaseTaskIntent(text: string): TaskIntent {
-  const normalized = text.normalize("NFKC");
+  const normalized = normalizeLegacyIntentPhraseText(text);
 
   return {
     mode: "task",
@@ -216,12 +289,10 @@ function buildBaseTaskIntent(text: string): TaskIntent {
       length: detectLength(text),
     },
     workflow: {
-      allowMaterialRequest: /(?:document|pdf|source|資料|原文)/i.test(normalized),
-      allowSearchRequest: /(?:検索|search|google)/i.test(normalized),
-      allowYoutubeTranscriptRequest: /(?:youtube|動画|文字起こし|transcript|コンテンツ取得|内容取得)/i.test(
-        normalized
-      ),
-      allowLibraryReference: /(?:library|ライブラリ|文献|資料参照)/i.test(normalized),
+      allowMaterialRequest: includesAnyKeyword(normalized, MATERIAL_KEYWORDS),
+      allowSearchRequest: includesAnyKeyword(normalized, SEARCH_KEYWORDS),
+      allowYoutubeTranscriptRequest: includesAnyKeyword(normalized, TRANSCRIPT_KEYWORDS),
+      allowLibraryReference: includesAnyKeyword(normalized, LIBRARY_KEYWORDS),
       finalizationPolicy: detectFinalizationPolicy(normalized),
     },
     constraints: [],
@@ -318,8 +389,17 @@ function removeFirstPhraseMatch(text: string, phrase: string) {
 }
 
 function hasResidualIntentReviewSignal(text: string) {
-  return /(?:\d|gpt|user|検索|search|google|youtube|動画|文字起こし|transcript|コンテンツ取得|内容取得|library|ライブラリ|文献|資料|文字)/i.test(
-    text
+  return (
+    /\d/.test(text) ||
+    includesAnyKeyword(text, [
+      ...ASK_GPT_KEYWORDS,
+      ...ASK_USER_KEYWORDS,
+      ...SEARCH_KEYWORDS,
+      ...TRANSCRIPT_KEYWORDS,
+      ...LIBRARY_KEYWORDS,
+      "文字",
+      "char",
+    ])
   );
 }
 
@@ -381,65 +461,6 @@ function shouldRunTaskIntentFallback(args: {
   return hasResidualIntentReviewSignal(remaining);
 }
 
-function tryParseJsonObject(text: string): Record<string, unknown> | null {
-  const trimmed = text.trim();
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, unknown>;
-    }
-  } catch {}
-
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    try {
-      const parsed = JSON.parse(trimmed.slice(start, end + 1));
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {}
-  }
-  return null;
-}
-
-function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
-  return [
-    "You are a task-intent parser.",
-    "Read the user's Japanese instruction and return JSON only.",
-    "No markdown. No explanation. No code fences.",
-    "",
-    "Return this JSON shape:",
-    "{",
-    '  "suggestedTitle": string | null,',
-    '  "candidates": [',
-    "    {",
-      '      "phrase": string,',
-    '      "draftText": string,',
-      '      "kind": "ask_gpt" | "ask_user" | "search_request" | "youtube_transcript_request" | "library_reference" | "char_limit",',
-    '      "count": number | null,',
-    '      "rule": "exact" | "at_least" | "up_to" | "around" | null,',
-    '      "charLimit": number | null',
-    "    }",
-    "  ]",
-    "}",
-    "",
-    "Only extract phrases that literally appear in USER_TEXT.",
-    "Do not infer values that are not explicitly stated.",
-    'Set "draftText" to a user-editable protocol phrase like "CAN search request up to 3 times".',
-    'Interpret "コンテンツ取得5回迄" or similar as kind "youtube_transcript_request" with rule "up_to".',
-    'Interpret "1000文字以上" or similar as kind "char_limit" with rule "at_least". Never change "以上" into "exact".',
-    'Set "suggestedTitle" to a short clear task title extracted from USER_TEXT.',
-    "",
-    `BASELINE_ALLOW_SEARCH_REQUEST: ${baseline.workflow?.allowSearchRequest ? "YES" : "NO"}`,
-    `BASELINE_ALLOW_YOUTUBE_TRANSCRIPT_REQUEST: ${baseline.workflow?.allowYoutubeTranscriptRequest ? "YES" : "NO"}`,
-    `BASELINE_ALLOW_LIBRARY_REFERENCE: ${baseline.workflow?.allowLibraryReference ? "YES" : "NO"}`,
-    "USER_TEXT_START",
-    input,
-    "USER_TEXT_END",
-  ].join("\n");
-}
-
 function asRule(value: unknown): TaskCountRule | null {
   return value === "exact" || value === "at_least" || value === "up_to" || value === "around"
     ? value
@@ -460,100 +481,6 @@ function buildIntentCandidateKey(candidate: {
     candidate.rule ?? "",
     candidate.charLimit ?? "",
   ].join("::");
-}
-
-function buildDeterministicIntentCandidate(params: {
-  sourceText: string;
-  phrase: string;
-  kind: IntentPhraseKind;
-  count?: number;
-  charLimit?: number;
-  rule: TaskCountRule;
-}): PendingIntentCandidate {
-  return {
-    id: `cand-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    phrase: params.phrase,
-    kind: params.kind,
-    count: params.kind === "char_limit" ? undefined : params.count,
-    charLimit: params.kind === "char_limit" ? params.charLimit : undefined,
-    rule: params.rule,
-    createdAt: new Date().toISOString(),
-    sourceText: params.sourceText,
-    draftText: formatIntentCandidateDraftText({
-      kind: params.kind,
-      count: params.count,
-      charLimit: params.charLimit,
-      rule: params.rule,
-    }),
-  };
-}
-
-function extractExplicitIntentCandidatesFromText(sourceText: string): PendingIntentCandidate[] {
-  const normalized = sourceText.normalize("NFKC");
-  const candidates: PendingIntentCandidate[] = [];
-  const seen = new Set<string>();
-
-  const addCandidate = (candidate: PendingIntentCandidate) => {
-    const key = buildIntentCandidateKey(candidate);
-    if (seen.has(key)) return;
-    seen.add(key);
-    candidates.push(candidate);
-  };
-
-  for (const match of normalized.matchAll(/((?:検索|search)\s*(\d+)\s*回(?:まで|迄|以内|以下)?)/gi)) {
-    const phrase = match[1]?.trim();
-    const count = Number(match[2]);
-    if (!phrase || !count) continue;
-    addCandidate(
-      buildDeterministicIntentCandidate({
-        sourceText,
-        phrase,
-        kind: "search_request",
-        count,
-        rule: detectTaskCountRule(phrase, "up_to"),
-      })
-    );
-  }
-
-  for (
-    const match of normalized.matchAll(
-      /((?:コンテンツ取得|内容取得|文字起こし取得|文字起こし|transcript request|content request)\s*(\d+)\s*回(?:まで|迄|以内|以下)?)/gi
-    )
-  ) {
-    const phrase = match[1]?.trim();
-    const count = Number(match[2]);
-    if (!phrase || !count) continue;
-    addCandidate(
-      buildDeterministicIntentCandidate({
-        sourceText,
-        phrase,
-        kind: "youtube_transcript_request",
-        count,
-        rule: detectTaskCountRule(phrase, "up_to"),
-      })
-    );
-  }
-
-  for (
-    const match of normalized.matchAll(
-      /((\d+)\s*文字(?:以上|以下|以内|程度|前後|ちょうど|ぴったり))/gi
-    )
-  ) {
-    const phrase = match[1]?.trim();
-    const charLimit = Number(match[2]);
-    if (!phrase || !charLimit) continue;
-    addCandidate(
-      buildDeterministicIntentCandidate({
-        sourceText,
-        phrase,
-        kind: "char_limit",
-        charLimit,
-        rule: detectTaskCountRule(phrase, "exact"),
-      })
-    );
-  }
-
-  return candidates;
 }
 
 function buildPendingCandidates(
@@ -616,27 +543,6 @@ function buildPendingCandidates(
 
   return candidates;
 }
-
-function mergePendingCandidates(
-  sourceText: string,
-  llmCandidates: PendingIntentCandidate[]
-): PendingIntentCandidate[] {
-  const merged = [...llmCandidates];
-  const seen = new Set(llmCandidates.map((candidate) => buildIntentCandidateKey(candidate)));
-
-  for (const candidate of extractExplicitIntentCandidatesFromText(sourceText)) {
-    const key = buildIntentCandidateKey(candidate);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(candidate);
-  }
-
-  return merged;
-}
-
-void tryParseJsonObject;
-void buildTaskIntentFallbackPrompt;
-void mergePendingCandidates;
 
 export function parseTaskIntentFromText(
   input: string,
@@ -733,6 +639,16 @@ export function looksLikeTaskInstruction(input: string): boolean {
   const text = normalizeText(input);
   return (
     /^TASK:/i.test(text) ||
-    /(?:Kinに|タスク|依頼|レポート|分析して|まとめて|提出して|検索\d+回|文字\d+)/i.test(text)
+    includesAnyKeyword(text, [
+      "Kinに",
+      "タスク",
+      "依頼",
+      "レポート",
+      "分析して",
+      "まとめて",
+      "提出して",
+      "検索3回",
+      "検索",
+    ])
   );
 }

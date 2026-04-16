@@ -34,7 +34,7 @@ When `page.tsx` gets smaller, another file often grows in its place.
 
 Avoid turning any of these into a new hub:
 
-- `useChatPageActions`
+- `useChatPageController`
 - `panelPropsBuilders`
 - one large drawer component
 - one large protocol utility
@@ -120,11 +120,11 @@ Keep these invariants:
 - per-item override is allowed
 - UI may filter by type, but storage and ranking stay unified
 
-If a future feature needs “special documents”, prefer adding a new item type instead of building a separate parallel library.
+If a future feature needs "special documents", prefer adding a new item type instead of building a separate parallel library.
 
 ## Panel Props Principle
 
-`GptPanelProps` should keep moving toward grouped sections:
+`GptPanel` rendering should stay centered on grouped sections:
 
 - `header`
 - `chat`
@@ -133,13 +133,22 @@ If a future feature needs “special documents”, prefer adding a new item type
 - `references`
 - `settings`
 
-Avoid adding new top-level flat props unless it is a temporary compatibility bridge.
+Use these contracts deliberately:
+
+- `BuildGptPanelArgs`
+  section-grouped builder input only
+- `GptPanelProps`
+  section-only render contract
+
+Do not reintroduce top-level flat fallback consumption in `GptPanel`.
+If temporary compatibility is unavoidable, isolate it outside the panel body and remove it quickly.
 
 When adding new props:
 
-1. put them in the correct section type
-2. build them in `panelPropsBuilders`
-3. consume them through the section object in the panel
+1. decide whether they belong to grouped builder input, render sections, or both
+2. put render-time data in the correct section type
+3. build or derive section values in `panelPropsBuilders`
+4. consume them through the section object in the panel
 
 ## Page Principle
 
@@ -162,10 +171,10 @@ Move out:
 
 These are safe next steps when needed:
 
-- reduce flat fallback usage in `GptPanel`
-- strengthen `panelPropsBuilders` as view-model builders
+- keep `GptPanel` section-only and avoid reviving flat compatibility paths
+- keep `panelPropsBuilders` focused on light view-model assembly, not action/controller ownership
 - split `KinPanel` props similarly if it starts growing fast
-- continue shrinking `useChatPageActions` façade responsibilities
+- keep `useChatPageController` grouped by domain actions and continue shrinking its coordinator responsibilities
 
 ## Smell Checklist
 

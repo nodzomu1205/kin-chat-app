@@ -32,15 +32,20 @@ Current role:
 - top-level state wiring
 - panel coordination
 - layout composition
-- final prop assembly through builder layers
+- page-level controller assembly through `useChatPageController`
+- final prop assembly through builder layers, with the GPT panel now split into:
+  - section-grouped builder input (`BuildGptPanelArgs`)
+  - section-only render props (`GptPanelProps`)
 
 Current risk:
 
 - `app/page.tsx` still acts as a broad orchestration point
-- panel prop wiring is thinner than before, but still broad
-- action / panel / effect / hook arg assembly now lives behind dedicated builders, but the page still owns too many boundaries
-- memory-rule candidate merging is still page-level glue instead of a narrower controller boundary
-- task-progress clear / archive behavior is now correctly routed through `useKinTaskProtocol`, but the surrounding page/controller boundary is still broader than ideal
+- `useChatPageController` now centralizes action / protocol-automation / panel-reset wiring and composes smaller domain controller hooks, but the controller boundary is still broad
+- `useChatPageComposition` now owns most controller-arg and panel-arg assembly that used to live inline in `app/page.tsx`
+- panel prop wiring is thinner than before, and GPT panel consumers are now mostly section-only
+- no-op page-level action / panel arg passthrough builders were removed, but the page still owns too many boundaries
+- memory-rule candidate queue merging now sits behind `usePendingMemoryRuleQueue`, but the surrounding memory / task authority boundary is still broader than ideal
+- task-protocol projection and completed-task archive lifecycle now sit behind dedicated hooks, but the surrounding page/controller boundary is still broader than ideal
 
 ### App flows
 
@@ -63,7 +68,7 @@ Current risk:
 
 - `sendToGptFlow.ts` is thinner now, but still remains the main execution coordinator
 - `sendToGptFlowHelpers.ts` is narrower after `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` were split out, but it still owns several response-shaping responsibilities
-- `sendToGptFlowHelpers.ts` still contains temporary compatibility wrappers and dead legacy helper bodies that should be physically removed once downstream call sites are fully migrated
+- `sendToGptFlowHelpers.ts` still contains temporary compatibility wrappers and remains a broad helper surface even after the dead legacy bodies were removed
 
 ### Memory
 
@@ -119,7 +124,7 @@ Current role:
 Current risk:
 
 - execution budget is implemented, but not yet modeled as a first-class domain object
-- `taskIntent.ts` active runtime is now LLM-primary plus approved-shortcut matching, but the file still contains compatibility-era dead helpers that should be removed so the runtime shape is easier to audit
+- `taskIntent.ts` active runtime is much cleaner and UTF-8-safe now, but the task-intent / approval / fallback boundary should be re-reviewed as one domain before larger task-protocol changes continue
 
 ### Server routes
 
@@ -180,18 +185,17 @@ The current refactor order is:
 
 Based on the current repository state, the best remaining cleanup order is:
 
-1. [`lib/taskIntent.ts`](../lib/taskIntent.ts)
-   - remove compatibility-era dead helpers and keep the active LLM-primary extraction path easy to verify
-2. [`lib/app/sendToGptFlowHelpers.ts`](../lib/app/sendToGptFlowHelpers.ts)
-   - remove temporary compatibility wrappers and dead legacy bodies after the `sendToGptText.ts` migration
-3. [`app/page.tsx`](../app/page.tsx)
+1. [`app/page.tsx`](../app/page.tsx)
    - much thinner than before, but still the broadest remaining UI orchestration point
-4. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+   - especially the `BuildGptPanelArgs` assembly and page-level memory / protocol glue
+2. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
    - still a large execution path even after context / builder / type extraction
-5. [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
+3. [`hooks/useChatPageController.ts`](../hooks/useChatPageController.ts)
+   - now owns direct page-level action composition and is the next likely coordinator bottleneck
+4. [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
    - large UI composition file with many field variants
    - likely needs section-level information architecture redesign, not only component splitting
-6. [`app/api/ingest/route.ts`](../app/api/ingest/route.ts) / [`hooks/useIngestActions.ts`](../hooks/useIngestActions.ts)
+5. [`app/api/ingest/route.ts`](../app/api/ingest/route.ts) / [`hooks/useIngestActions.ts`](../hooks/useIngestActions.ts)
    - likely next ingest-side integration point once page / GPT flow cleanup settles
 
 ## Current Working Rule

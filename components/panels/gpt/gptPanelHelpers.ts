@@ -1,4 +1,7 @@
-import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
+import type {
+  GptPanelSettingsProps,
+  GptPanelTaskProps,
+} from "@/components/panels/gpt/gptPanelTypes";
 import type { DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 
 export type BottomTabKey =
@@ -25,7 +28,7 @@ export type LocalMemorySettingsInput = {
 };
 
 export function toLocalSettings(
-  props: Pick<GptPanelProps, "memorySettings" | "defaultMemorySettings">
+  props: Pick<GptPanelSettingsProps, "memorySettings" | "defaultMemorySettings">
 ): LocalMemorySettingsInput {
   return {
     maxFacts: String(
@@ -47,7 +50,9 @@ export function toLocalSettings(
         0
     ),
     recentKeep: String(
-      props.memorySettings.recentKeep ?? props.defaultMemorySettings.recentKeep ?? 0
+      props.memorySettings.recentKeep ??
+        props.defaultMemorySettings.recentKeep ??
+        0
     ),
   };
 }
@@ -61,7 +66,7 @@ export function toPositiveInt(value: string, fallback: number) {
 export function resolveFloatingLabel(args: {
   activeDrawer: DrawerMode;
   bottomTab: BottomTabKey;
-  currentTaskDraft: GptPanelProps["currentTaskDraft"];
+  currentTaskDraft: GptPanelTaskProps["currentTaskDraft"];
   currentTopic?: string;
 }): FloatingLabel {
   const taskName =
@@ -126,13 +131,13 @@ export function resolveFloatingLabel(args: {
 export function getComposerPlaceholder(bottomTab: BottomTabKey) {
   if (bottomTab === "chat") return "メッセージを入力";
   if (bottomTab === "task_primary") {
-    return "タスク作成ボタン使用時。新規タスク内容を入力";
+    return "タスク準備ボタン使用中。補足やタスク方針を入力";
   }
   if (bottomTab === "task_secondary") {
-    return "タスク作成ボタン使用時。タスク整理に関する指示や追加データを入力";
+    return "タスク準備ボタン使用中。タスク更新に関する指示や追加データを入力";
   }
   if (bottomTab === "kin") {
-    return "タスク作成ボタン使用時。Kinへ送る指示を入力";
+    return "タスク準備ボタン使用中。Kin へ送る指示を入力";
   }
-  return "タスク作成ボタン使用時。ファイル取込や検索結果の追加内容を入力";
+  return "タスク準備ボタン使用中。ファイル添付や参考資料の追加方針を入力";
 }

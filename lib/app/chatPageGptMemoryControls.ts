@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Message } from "@/types/chat";
-import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
+import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { normalizeUsage } from "@/lib/tokenStats";
 
 export type GptMemoryRuntime = {

@@ -19,7 +19,7 @@ import {
   shouldTransformContent,
   transformTextWithIntent,
 } from "@/lib/app/transformIntent";
-import type { UseKinTransferActionsArgs } from "@/hooks/useChatPageActions";
+import type { UseKinTransferActionsArgs } from "@/hooks/chatPageActionTypes";
 
 export function useKinTransferActions(
   args: UseKinTransferActionsArgs,

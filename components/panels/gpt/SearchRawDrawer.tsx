@@ -2,14 +2,15 @@
 
 import React from "react";
 import ReceivedDocsDrawer from "@/components/panels/gpt/ReceivedDocsDrawer";
-import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
+import type {
+  GptPanelReferenceProps,
+  GptPanelSettingsProps,
+} from "@/components/panels/gpt/gptPanelTypes";
 
 type Props = Pick<
-  GptPanelProps,
+  GptPanelReferenceProps,
   | "multipartAssemblies"
   | "referenceLibraryItems"
-  | "libraryReferenceCount"
-  | "sourceDisplayCount"
   | "selectedTaskLibraryItemId"
   | "onSelectTaskLibraryItem"
   | "onMoveLibraryItem"
@@ -23,7 +24,8 @@ type Props = Pick<
   | "onDeleteStoredDocument"
   | "onDeleteSearchHistoryItem"
   | "onSaveStoredDocument"
->;
+> &
+  Pick<GptPanelSettingsProps, "libraryReferenceCount" | "sourceDisplayCount">;
 
 export default function SearchRawDrawer(props: Props) {
   return <ReceivedDocsDrawer {...props} initialTab="search" />;

@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import type {
-  GptPanelProps,
+  GptPanelReferenceProps,
+  GptPanelSettingsProps,
   LibraryItemModeOverride,
 } from "@/components/panels/gpt/gptPanelTypes";
 import { pillButton } from "@/components/panels/gpt/gptPanelStyles";
@@ -14,11 +15,9 @@ import {
 type LibraryTab = "all" | "kin" | "ingest" | "search";
 
 type Props = Pick<
-  GptPanelProps,
+  GptPanelReferenceProps,
   | "multipartAssemblies"
   | "referenceLibraryItems"
-  | "libraryReferenceCount"
-  | "sourceDisplayCount"
   | "selectedTaskLibraryItemId"
   | "onSelectTaskLibraryItem"
   | "onMoveLibraryItem"
@@ -32,7 +31,11 @@ type Props = Pick<
   | "onDeleteStoredDocument"
   | "onDeleteSearchHistoryItem"
   | "onSaveStoredDocument"
-> & {
+> &
+  Pick<
+    GptPanelSettingsProps,
+    "libraryReferenceCount" | "sourceDisplayCount"
+  > & {
   initialTab?: LibraryTab;
 };
 

@@ -29,12 +29,11 @@ Primary review points:
 - `lib/app/kinMultipart.ts`
 
 Current cleanup priority:
-1. `lib/taskIntent.ts`
-2. `lib/app/sendToGptFlowHelpers.ts`
-3. `app/page.tsx`
-4. `lib/app/sendToGptFlow.ts`
-5. `components/panels/gpt/GptSettingsSections.tsx`
-6. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
+1. `app/page.tsx`
+2. `lib/app/sendToGptFlow.ts`
+3. `hooks/useChatPageController.ts`
+4. `components/panels/gpt/GptSettingsSections.tsx`
+5. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
 
 ## Phase Plan
 
@@ -113,10 +112,21 @@ Done:
 - part of `app/page.tsx` orchestration extraction
 - `panelPropsBuilders.ts` now absorbs pending-injection progress, task-draft field callbacks, and settings count clamping
 - `useTaskDraftWorkspace.ts` now absorbs task-draft slot state and navigation from `app/page.tsx`
-- `app/page.tsx` action / panel / effect / hook inputs now assemble through dedicated builder layers instead of one large inline wiring surface
-- `useChatPageActions.ts` now acts more clearly as a thin coordinator and passes smaller arg slices to sub-hooks
+- `app/page.tsx` effect / hook inputs now call hooks directly after removing no-op passthrough builder layers
+- no-op page action / panel passthrough builders were removed after they stopped carrying real authority
+- `chatPageActionTypes.ts` now owns the shared page-action type contracts that other hooks and memory modules depend on
+- `useChatPageController.ts` now composes grouped domain action sets (`kin` / `gpt` / `task` / `protocol` / `memory`) through smaller controller hooks instead of delegating through an extra facade hook
+- `useChatPageController.ts` now owns the page-level wiring between chat actions, protocol automation, and panel reset actions
+- `useChatPageComposition.ts` now owns most controller-arg and panel-arg assembly that previously lived inline in `app/page.tsx`
+- `usePendingMemoryRuleQueue.ts` now owns the memory-rule candidate merge policy instead of leaving that closure inline in `app/page.tsx`
+- `useTaskProtocolProjection.ts` and `useArchiveCompletedTaskResults.ts` now own page-facing task-protocol projection and completed-task archive lifecycle glue
 - GPT settings now have a separate full-area workspace path with 3 icon entry points while the existing hanging drawers remain in place
 - GPT chat scroll position is now preserved when switching into and back out of the settings workspace
+- `KinPanel` now receives direct render props from `app/page.tsx`; its thin builder layer was removed
+- `GptPanel` now has a formal split between:
+  - `BuildGptPanelArgs` for section-grouped builder input
+  - `GptPanelProps` for section-only rendering
+- GPT drawer consumers now depend on section contracts instead of broad `GptPanelProps` picks where possible
 - `useGptMemory.ts` reduced to a smaller orchestration hook
 - `memoryInterpreter.ts` reduced through staged helper extraction
 - rejected memory-rule candidates now trigger immediate memory reapplication so tentative wrong topics can be cleared
@@ -124,10 +134,11 @@ Done:
 - task-progress view now supports direct user-side clear / archive when a drafted task should not proceed
 
 Next:
-- introduce `useChatAppController`
-- review whether the remaining `app/page.tsx` orchestration should stay as builders or move behind a higher-level controller hook
-- review whether the pending-memory-rule candidate merge path should move out of `app/page.tsx`
-- keep task-progress lifecycle controls (`start / archive / selection / approval refresh`) concentrated in the task protocol controller boundary instead of regrowing in page-level UI code
+- review whether `useChatPageController.ts` should stay as a thin page-only hook or become a wider `useChatAppController`
+- review whether the remaining `app/page.tsx` orchestration should stay as builders / explicit arg objects or move further behind the controller hook
+- decide whether pure-transfer GPT panel sections (`protocol` / `references` / parts of `settings`) should eventually be assembled outside `panelPropsBuilders`
+- review whether the remaining memory-rule / task coordination should move behind a narrower controller boundary
+- keep task-progress lifecycle controls (`start / archive / selection / approval refresh`) concentrated in the task protocol controller boundary instead of regrowing in `useChatPageController.ts` or page-level UI code
 
 ### 2.5. Task Protocol Hook Thinning
 Status: In progress
@@ -200,7 +211,7 @@ Done:
   - protocol event / search-context derivation extracted from `sendToGptFlowHelpers.ts`
 - [`lib/app/sendToGptText.ts`](../lib/app/sendToGptText.ts)
   - UTF-8-safe request text and task-info text helpers extracted so the main `sendToGpt` path no longer depends on mojibake-prone literals
-  - `sendToGptFlowHelpers.ts` currently keeps thin compatibility wrappers while remaining call sites are migrated
+  - `sendToGptFlowHelpers.ts` currently keeps thin compatibility wrappers while text-domain migration finishes
 - [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
   - request / search / protocol / memory / UI args now grouped through shared flow-slice types
 - [`lib/app/memoryInterpreterText.ts`](../lib/app/memoryInterpreterText.ts)
@@ -220,10 +231,12 @@ Done:
   - approved-rule matching and fallback prompt / JSON helpers extracted from `memoryInterpreter.ts`
 - [`lib/app/gptMemoryStorage.ts`](../lib/app/gptMemoryStorage.ts)
   - local storage and kin-memory-map load/save helpers extracted from `useGptMemory.ts`
-- [`lib/app/gptMemoryUpdatePreparation.ts`](../lib/app/gptMemoryUpdatePreparation.ts)
+- [`lib/app/gptMemoryCandidatePreparation.ts`](../lib/app/gptMemoryCandidatePreparation.ts)
   - fallback evaluation, candidate filtering, and candidate-memory preparation extracted from `useGptMemory.ts`
-- [`lib/app/gptMemoryUpdateFlow.ts`](../lib/app/gptMemoryUpdateFlow.ts)
-  - summarize branch and summarized-state resolution extracted from `useGptMemory.ts`
+- [`lib/app/gptMemoryUpdateCoordinator.ts`](../lib/app/gptMemoryUpdateCoordinator.ts)
+  - summarize branch and finalized update orchestration extracted from `useGptMemory.ts`
+- [`lib/app/gptMemorySummaryResolution.ts`](../lib/app/gptMemorySummaryResolution.ts)
+  - summarized-state resolution extracted from `useGptMemory.ts`
 - [`lib/app/gptMemoryReapply.ts`](../lib/app/gptMemoryReapply.ts)
   - approved-rule merge and reapplicable-recent selection extracted from `useGptMemory.ts`
 - [`lib/app/gptMemoryRegistry.ts`](../lib/app/gptMemoryRegistry.ts)
@@ -244,7 +257,7 @@ Next:
 - keep `memoryInterpreter.ts` and `useGptMemory.ts` stable unless a correctness issue is found
 - thin `app/page.tsx` by moving panel prop assembly and orchestration glue outward
 - keep thinning `sendToGptFlowHelpers.ts` / `sendToGptFlow.ts` by moving protocol / search / transcript shaping logic out in small slices
-- remove temporary compatibility wrappers and dead unreachable helper bodies from `sendToGptFlowHelpers.ts` once the `sendToGptText.ts` migration is complete
+- remove temporary compatibility wrappers from `sendToGptFlowHelpers.ts` once the `sendToGptText.ts` migration is complete
 - consider the next `sendToGptFlow` slice around request-text normalization or transcript request handling
 - continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
 - review `app/api/ingest/route.ts` and `hooks/useIngestActions.ts` as the next ingest-side integration point
@@ -296,8 +309,9 @@ Done:
 - [`lib/app/memoryInterpreterContext.test.ts`](../lib/app/memoryInterpreterContext.test.ts)
 - [`lib/app/memoryInterpreterFallbackHelpers.test.ts`](../lib/app/memoryInterpreterFallbackHelpers.test.ts)
 - [`lib/app/gptMemoryStorage.test.ts`](../lib/app/gptMemoryStorage.test.ts)
-- [`lib/app/gptMemoryUpdatePreparation.test.ts`](../lib/app/gptMemoryUpdatePreparation.test.ts)
-- [`lib/app/gptMemoryUpdateFlow.test.ts`](../lib/app/gptMemoryUpdateFlow.test.ts)
+- [`lib/app/gptMemoryCandidatePreparation.test.ts`](../lib/app/gptMemoryCandidatePreparation.test.ts)
+- [`lib/app/gptMemoryUpdateCoordinator.test.ts`](../lib/app/gptMemoryUpdateCoordinator.test.ts)
+- [`lib/app/gptMemorySummaryResolution.test.ts`](../lib/app/gptMemorySummaryResolution.test.ts)
 - [`lib/app/gptMemoryReapply.test.ts`](../lib/app/gptMemoryReapply.test.ts)
 - [`lib/app/gptMemoryRegistry.test.ts`](../lib/app/gptMemoryRegistry.test.ts)
 - [`hooks/useMemoryRuleActions.test.ts`](../hooks/useMemoryRuleActions.test.ts)

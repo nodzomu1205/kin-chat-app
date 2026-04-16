@@ -6,7 +6,7 @@ import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
-import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
+import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
 import { normalizeText } from "@/lib/app/memoryInterpreterText";
 

@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 
 import React from "react";
-import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
+import type { GptPanelProtocolProps } from "@/components/panels/gpt/gptPanelTypes";
 import { sectionCardStyle } from "@/components/panels/gpt/gptDrawerShared";
 
 type Props = Pick<
-  GptPanelProps,
+  GptPanelProtocolProps,
   | "protocolPrompt"
   | "protocolRulebook"
   | "onChangeProtocolPrompt"
@@ -53,7 +53,7 @@ export default function ProtocolDrawer({
       <section style={sectionCardStyle}>
         <div style={{ fontSize: 12, color: "#64748b" }}>常設 Prompt</div>
         <div style={{ marginTop: 6, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-          Kindroid の prompt 欄に入れる短い基本ルールです。ここで挙動を固定します。
+          Kindroid の prompt 欄に入れる固定ルールです。ここで整理した内容を基準に運用します。
         </div>
         <textarea
           value={protocolPrompt}
@@ -63,9 +63,9 @@ export default function ProtocolDrawer({
       </section>
 
       <section style={sectionCardStyle}>
-        <div style={{ fontSize: 12, color: "#64748b" }}>詳細ルールブック</div>
+        <div style={{ fontSize: 12, color: "#64748b" }}>指示ルールブック</div>
         <div style={{ marginTop: 6, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-          `SYS_INFO` として Kin に送る詳細運用ルールです。必要に応じて随時更新できます。
+          `SYS_INFO` として Kin に送る指示規約ルールです。必要に応じて編集し、最新内容で同期できます。
         </div>
         <textarea
           value={protocolRulebook}
@@ -77,7 +77,7 @@ export default function ProtocolDrawer({
             既定値に戻す
           </button>
           <button type="button" style={buttonStyle} onClick={onSetProtocolRulebookToKinDraft}>
-            Kin送信欄にセット
+            Kin送信用にセット
           </button>
           <button
             type="button"

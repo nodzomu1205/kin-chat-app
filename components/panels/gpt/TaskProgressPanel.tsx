@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import type { GptPanelProps, TaskProgressView } from "@/components/panels/gpt/gptPanelTypes";
+import type {
+  GptPanelTaskProps,
+  TaskProgressView,
+} from "@/components/panels/gpt/gptPanelTypes";
 import { countText, sectionCardStyle } from "@/components/panels/gpt/gptDrawerShared";
 
 type Props = Pick<
-  GptPanelProps,
+  GptPanelTaskProps,
   | "taskProgressView"
   | "taskProgressCount"
   | "activeTaskProgressIndex"

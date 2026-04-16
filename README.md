@@ -80,7 +80,8 @@ Recent progress includes:
 - panel-prop builder extraction for `app/page.tsx`
 - chat-page action / panel / effect / hook arg builders extracted from `app/page.tsx`
 - task-draft workspace extraction from `app/page.tsx`
-- `useChatPageActions` narrowed toward a thin coordinator with sub-hook specific arg slices
+- `useChatPageController` now composes smaller domain controller hooks while shared page-action contracts live in `chatPageActionTypes.ts`
+- `useChatPageComposition` now owns most controller/panel argument assembly that used to sit inline in `app/page.tsx`
 - shared recent-message / memory-update helper extraction for `sendToGptFlow`
 - `sendToGptFlow` split into dedicated `context` / `builders` / `helpers` / `types` modules
 - `memoryInterpreter` topic-tail and sentence-pattern helpers extracted into shared text modules

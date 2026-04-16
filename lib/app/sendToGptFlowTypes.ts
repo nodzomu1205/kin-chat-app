@@ -2,7 +2,7 @@ import type { Message, SourceItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Memory } from "@/lib/memory";
-import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
+import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { GptInstructionMode, ResponseMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { ReferenceLibraryItem } from "@/types/chat";
 import type { TaskProtocolEvent, TaskRuntimeState } from "@/types/taskProtocol";

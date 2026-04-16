@@ -27,7 +27,7 @@ import type {
   SendToGptFlowUiArgs,
 } from "@/lib/app/sendToGptFlowTypes";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
-import type { UseGptMessageActionsArgs } from "@/hooks/useChatPageActions";
+import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
 import type { Message, SourceItem } from "@/types/chat";
 
 export function useGptMessageActions(args: UseGptMessageActionsArgs) {

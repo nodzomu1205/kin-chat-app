@@ -11,7 +11,7 @@ import type {
   PostIngestAction,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { UseFileIngestActionsArgs } from "@/hooks/useChatPageActions";
+import type { UseFileIngestActionsArgs } from "@/hooks/chatPageActionTypes";
 
 export function useFileIngestActions(args: UseFileIngestActionsArgs) {
   const injectFileToKinDraft = async (

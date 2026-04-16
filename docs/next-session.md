@@ -54,7 +54,7 @@ Done:
 - `memoryInterpreter.ts` is now much closer to a facade/orchestrator
 - topic extraction, utterance classification, fallback orchestration, topic reduction, context reduction, state assembly, fact extraction, list extraction, and context phrasing are now split into separate modules
 - `useGptMemory` now delegates update/reapply/store work through coordinators rather than holding most of the orchestration inline
-- `app/page.tsx` and `useChatPageActions` were thinned through shared builders/helpers
+- `app/page.tsx` and `useChatPageController` were thinned through shared builders/helpers
 
 Important:
 

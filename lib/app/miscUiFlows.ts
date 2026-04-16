@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from "react";
+﻿import type { Dispatch, SetStateAction } from "react";
 import { generateId } from "@/lib/uuid";
 import {
   getSavedProtocolDefaults,
@@ -10,6 +10,8 @@ import type {
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
 import {
+  normalizeApprovedIntentPhrase,
+  normalizePendingIntentCandidate,
   parseIntentCandidateDraftText,
   resolveTaskIntentWithFallback,
 } from "@/lib/taskIntent";
@@ -57,7 +59,7 @@ export function prepareTaskSyncFlow(args: {
     args.appendGptMessage({
       id: generateId(),
       role: "gpt",
-      text: "進行中のタスクが無いため、再同期メッセージは作成できません。",
+      text: "現在のタスクが見つからないため、同期メッセージは準備できませんでした。",
       meta: {
         kind: "task_info",
         sourceType: "manual",
@@ -93,7 +95,7 @@ export function prepareTaskSuspendFlow(args: {
     args.appendGptMessage({
       id: generateId(),
       role: "gpt",
-      text: "進行中のタスクが無いため、中断メッセージは作成できません。",
+      text: "現在のタスクが見つからないため、中断メッセージは準備できませんでした。",
       meta: {
         kind: "task_info",
         sourceType: "manual",
@@ -158,9 +160,13 @@ export function approveIntentCandidateFlow(args: {
 }) {
   const candidate = args.pendingIntentCandidates.find((item) => item.id === args.candidateId);
   if (!candidate) return;
+  const sanitizedCandidate = normalizePendingIntentCandidate(candidate);
   const normalizedCandidate = {
-    ...candidate,
-    ...parseIntentCandidateDraftText(candidate.draftText || candidate.phrase, candidate),
+    ...sanitizedCandidate,
+    ...parseIntentCandidateDraftText(
+      sanitizedCandidate.draftText || sanitizedCandidate.phrase,
+      sanitizedCandidate
+    ),
   };
 
   args.setApprovedIntentPhrases((prev) => {
@@ -212,9 +218,13 @@ export function buildNextApprovedIntentPhrasesOnApprove(args: {
 }) {
   const candidate = args.pendingIntentCandidates.find((item) => item.id === args.candidateId);
   if (!candidate) return args.approvedIntentPhrases;
+  const sanitizedCandidate = normalizePendingIntentCandidate(candidate);
   const normalizedCandidate = {
-    ...candidate,
-    ...parseIntentCandidateDraftText(candidate.draftText || candidate.phrase, candidate),
+    ...sanitizedCandidate,
+    ...parseIntentCandidateDraftText(
+      sanitizedCandidate.draftText || sanitizedCandidate.phrase,
+      sanitizedCandidate
+    ),
   };
 
   const existing = args.approvedIntentPhrases.find(
@@ -262,10 +272,10 @@ export function buildNextApprovedIntentPhrasesOnUpdate(args: {
 }) {
   return args.approvedIntentPhrases.map((item) =>
     item.id === args.phraseId
-      ? {
+      ? normalizeApprovedIntentPhrase({
           ...item,
           ...args.patch,
-        }
+        })
       : item
   );
 }

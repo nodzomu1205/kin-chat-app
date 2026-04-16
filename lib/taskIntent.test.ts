@@ -13,13 +13,15 @@ import {
   extractTaskIntentFallbackPayload,
 } from "@/lib/taskIntentFallback";
 
+const CLEAN_INPUT =
+  "資料に関する動画をYouTubeで見つけて分析してレポートを提出して。1000文字以上。検索3回まで。コンテンツ取得5回まで。";
+
 describe("parseTaskIntentFromText", () => {
   it("keeps count-based workflow empty until phrases are approved", () => {
-    const intent = parseTaskIntentFromText(
-      "縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して。1000文字以上。検索3回迄。コンテンツ取得5回迄。"
-    );
+    const intent = parseTaskIntentFromText(CLEAN_INPUT);
 
     expect(intent.workflow?.allowSearchRequest).toBe(true);
+    expect(intent.workflow?.allowYoutubeTranscriptRequest).toBe(true);
     expect(intent.workflow?.searchRequestCount).toBeUndefined();
     expect(intent.workflow?.youtubeTranscriptRequestCount).toBeUndefined();
   });
@@ -28,7 +30,7 @@ describe("parseTaskIntentFromText", () => {
     const approved: ApprovedIntentPhrase[] = [
       {
         id: "approved-1",
-        phrase: "検索3回迄",
+        phrase: "検索3回まで",
         kind: "search_request",
         count: 3,
         rule: "up_to",
@@ -36,7 +38,7 @@ describe("parseTaskIntentFromText", () => {
       },
       {
         id: "approved-2",
-        phrase: "コンテンツ取得5回迄",
+        phrase: "コンテンツ取得5回まで",
         kind: "youtube_transcript_request",
         count: 5,
         rule: "up_to",
@@ -45,7 +47,7 @@ describe("parseTaskIntentFromText", () => {
     ];
 
     const intent = parseTaskIntentFromText(
-      "縄文時代について調べてください。検索3回迄。コンテンツ取得5回迄。",
+      "資料に関して調べてください。検索3回まで。コンテンツ取得5回まで。",
       approved
     );
 
@@ -66,10 +68,10 @@ describe("resolveTaskIntentWithFallback", () => {
       ok: true,
       json: async () => ({
         reply: JSON.stringify({
-          suggestedTitle: "縄文時代YouTube動画分析",
+          suggestedTitle: "資料に関するYouTube調査",
           candidates: [
             {
-              phrase: "検索3回迄",
+              phrase: "検索3回まで",
               draftText: "CAN search request up to 3 times",
               kind: "search_request",
               count: 3,
@@ -77,7 +79,7 @@ describe("resolveTaskIntentWithFallback", () => {
               charLimit: null,
             },
             {
-              phrase: "コンテンツ取得5回迄",
+              phrase: "コンテンツ取得5回まで",
               draftText: "CAN content request up to 5 times",
               kind: "youtube_transcript_request",
               count: 5,
@@ -91,26 +93,25 @@ describe("resolveTaskIntentWithFallback", () => {
     } as Response);
 
     const result = await resolveTaskIntentWithFallback({
-      input:
-        "縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して。1000文字以上。検索3回迄。コンテンツ取得5回迄。",
+      input: CLEAN_INPUT,
     });
 
     expect(result.usedFallback).toBe(true);
-    expect(result.suggestedTitle).toBe("縄文時代YouTube動画分析");
+    expect(result.suggestedTitle).toBe("資料に関するYouTube調査");
     expect(result.intent.workflow?.searchRequestCount).toBeUndefined();
     expect(result.intent.workflow?.youtubeTranscriptRequestCount).toBeUndefined();
     expect(result.pendingCandidates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           kind: "search_request",
-          phrase: "検索3回迄",
+          phrase: "検索3回まで",
           draftText: "CAN search request up to 3 times",
           count: 3,
           rule: "up_to",
         }),
         expect.objectContaining({
           kind: "youtube_transcript_request",
-          phrase: "コンテンツ取得5回迄",
+          phrase: "コンテンツ取得5回まで",
           draftText: "CAN content request up to 5 times",
           count: 5,
           rule: "up_to",
@@ -123,11 +124,11 @@ describe("resolveTaskIntentWithFallback", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     const result = await resolveTaskIntentWithFallback({
-      input: "検索3回迄",
+      input: "検索3回まで",
       approvedPhrases: [
         {
           id: "approved-1",
-          phrase: "検索3回迄",
+          phrase: "検索3回まで",
           kind: "search_request",
           count: 3,
           rule: "up_to",
@@ -146,11 +147,11 @@ describe("resolveTaskIntentWithFallback", () => {
 describe("taskIntentFallback prompt", () => {
   it("contains clean guidance for transcript and character constraints", () => {
     const prompt = buildTaskIntentFallbackPrompt(
-      "縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して。1000文字以上。検索3回迄。コンテンツ取得5回迄。",
-      parseTaskIntentFromText("縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して。1000文字以上。検索3回迄。コンテンツ取得5回迄。")
+      CLEAN_INPUT,
+      parseTaskIntentFromText(CLEAN_INPUT)
     );
 
-    expect(prompt).toContain('If USER_TEXT contains "コンテンツ取得5回迄"');
+    expect(prompt).toContain('If USER_TEXT contains "コンテンツ取得5回まで"');
     expect(prompt).toContain('If USER_TEXT contains "1000文字以上"');
     expect(prompt).toContain('"kind": "youtube_transcript_request"');
     expect(prompt).toContain('"rule": "at_least"');
@@ -160,10 +161,10 @@ describe("taskIntentFallback prompt", () => {
     expect(
       extractTaskIntentFallbackPayload(
         JSON.stringify({
-          suggestedTitle: "縄文時代に関する動画分析",
+          suggestedTitle: "資料に関する動画調査",
           candidates: [
             {
-              phrase: "コンテンツ取得5回迄",
+              phrase: "コンテンツ取得5回まで",
               draftText: "CAN content request up to 5 times",
               kind: "youtube_transcript_request",
               count: 5,
@@ -182,10 +183,10 @@ describe("taskIntentFallback prompt", () => {
         })
       )
     ).toEqual({
-      suggestedTitle: "縄文時代に関する動画分析",
+      suggestedTitle: "資料に関する動画調査",
       candidates: [
         {
-          phrase: "コンテンツ取得5回迄",
+          phrase: "コンテンツ取得5回まで",
           draftText: "CAN content request up to 5 times",
           kind: "youtube_transcript_request",
           count: 5,
@@ -237,7 +238,7 @@ describe("approved intent shortcuts", () => {
   it("treats highly approved exact matches as strong shortcuts", () => {
     const phrase: ApprovedIntentPhrase = {
       id: "approved-1",
-      phrase: "検索3回迄",
+      phrase: "検索3回まで",
       kind: "search_request",
       count: 3,
       rule: "up_to",
@@ -246,9 +247,9 @@ describe("approved intent shortcuts", () => {
       createdAt: "2026-04-13T00:00:00.000Z",
     };
 
-    expect(buildApprovedIntentPhraseMatchScore("検索3回迄", phrase)).toBeGreaterThanOrEqual(6);
+    expect(buildApprovedIntentPhraseMatchScore("検索3回まで", phrase)).toBeGreaterThanOrEqual(6);
     expect(
-      findBestApprovedIntentPhraseMatchWithScore("検索3回迄", [phrase]).phrase?.id
+      findBestApprovedIntentPhraseMatchWithScore("検索3回まで", [phrase]).phrase?.id
     ).toBe("approved-1");
   });
 
@@ -264,6 +265,6 @@ describe("approved intent shortcuts", () => {
       createdAt: "2026-04-13T00:00:00.000Z",
     };
 
-    expect(buildApprovedIntentPhraseMatchScore("検索3回迄", phrase)).toBeLessThan(6);
+    expect(buildApprovedIntentPhraseMatchScore("検索3回まで", phrase)).toBeLessThan(6);
   });
 });

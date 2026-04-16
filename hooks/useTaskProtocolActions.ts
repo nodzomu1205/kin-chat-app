@@ -19,7 +19,7 @@ import type {
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
 import { parseIntentCandidateDraftText } from "@/lib/taskIntent";
-import type { UseTaskProtocolActionsArgs } from "@/hooks/useChatPageActions";
+import type { UseTaskProtocolActionsArgs } from "@/hooks/chatPageActionTypes";
 
 export function useTaskProtocolActions(
   args: UseTaskProtocolActionsArgs,

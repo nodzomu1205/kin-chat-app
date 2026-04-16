@@ -6,7 +6,7 @@ import {
   normalizeText,
 } from "@/lib/app/memoryInterpreterText";
 import { trimMemoryState } from "@/lib/app/gptMemoryStateHelpers";
-import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
+import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { Message } from "@/types/chat";
 
 function getLatestMeaningfulUserText(recentMessages: Message[]) {

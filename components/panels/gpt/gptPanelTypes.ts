@@ -104,6 +104,18 @@ export type GptPanelChatProps = {
   gptInput: string;
   setGptInput: Dispatch<SetStateAction<string>>;
   sendToGpt: (instructionMode?: GptInstructionMode) => void | Promise<void>;
+  onInjectFile: (
+    file: File,
+    options: {
+      kind: UploadKind;
+      mode: IngestMode;
+      detail: ImageDetail;
+      action: PostIngestAction;
+      readPolicy: FileReadPolicy;
+      compactCharLimit: number;
+      simpleImageCharLimit: number;
+    }
+  ) => void | Promise<void>;
   resetGptForCurrentKin: () => void;
   loading: boolean;
   gptBottomRef: RefObject<HTMLDivElement | null>;
@@ -278,190 +290,10 @@ export type GptPanelSettingsProps = {
 };
 
 export type GptPanelProps = {
-  currentKin: string | null;
-  currentKinLabel: string | null;
-  kinStatus: string;
-  gptState: GptStateLike;
-  gptMessages: Message[];
-  gptInput: string;
-  setGptInput: Dispatch<SetStateAction<string>>;
-  sendToGpt: (instructionMode?: GptInstructionMode) => void | Promise<void>;
-  runPrepTaskFromInput: () => void | Promise<void>;
-  runDeepenTaskFromLast: () => void | Promise<void>;
-  runUpdateTaskFromInput: () => void | Promise<void>;
-  runUpdateTaskFromLastGptMessage: () => void | Promise<void>;
-  runAttachSearchResultToTask: () => void | Promise<void>;
-  sendLatestGptContentToKin: () => void | Promise<void>;
-  sendCurrentTaskContentToKin: () => void | Promise<void>;
-  receiveLastKinResponseToGptInput: () => void | Promise<void>;
-  resetGptForCurrentKin: () => void;
-  sendLastGptToKinDraft: () => void | Promise<void>;
-  injectFileToKinDraft: (
-    file: File,
-    options: {
-      kind: UploadKind;
-      mode: IngestMode;
-      detail: ImageDetail;
-      action: PostIngestAction;
-      readPolicy: FileReadPolicy;
-      compactCharLimit: number;
-      simpleImageCharLimit: number;
-    }
-  ) => void | Promise<void>;
-  canInjectFile: boolean;
-  loading: boolean;
-  ingestLoading: boolean;
-  gptBottomRef: RefObject<HTMLDivElement | null>;
-  memorySettings: MemorySettings;
-  defaultMemorySettings: MemorySettings;
-  onSaveMemorySettings: (next: MemorySettings) => void;
-  onResetMemorySettings: () => void;
-  tokenStats: TokenStats;
-  responseMode: ResponseMode;
-  onChangeResponseMode: (value: ResponseMode) => void;
-  uploadKind: UploadKind;
-  ingestMode: IngestMode;
-  imageDetail: ImageDetail;
-  postIngestAction: PostIngestAction;
-  fileReadPolicy: FileReadPolicy;
-  onChangeUploadKind: (value: UploadKind) => void;
-  onChangeIngestMode: (value: IngestMode) => void;
-  onChangeImageDetail: (value: ImageDetail) => void;
-  compactCharLimit: number;
-  simpleImageCharLimit: number;
-  onChangeCompactCharLimit: (value: number) => void;
-  onChangeSimpleImageCharLimit: (value: number) => void;
-  onChangePostIngestAction: (value: PostIngestAction) => void;
-  onChangeFileReadPolicy: (value: FileReadPolicy) => void;
-  searchMode: SearchMode;
-  searchEngines: SearchEngine[];
-  searchLocation: string;
-  sourceDisplayCount: number;
-  autoLibraryReferenceEnabled: boolean;
-  libraryReferenceMode: LibraryReferenceMode;
-  libraryIndexResponseCount: number;
-  libraryReferenceCount: number;
-  libraryStorageMB: number;
-  libraryReferenceEstimatedTokens: number;
-  autoSendKinSysInput: boolean;
-  autoCopyKinSysResponseToGpt: boolean;
-  autoSendGptSysInput: boolean;
-  autoCopyGptSysResponseToKin: boolean;
-  autoCopyFileIngestSysInfoToKin: boolean;
-  memoryInterpreterSettings: MemoryInterpreterSettings;
-  pendingMemoryRuleCandidates: PendingMemoryRuleCandidate[];
-  approvedMemoryRules: ApprovedMemoryRule[];
-  onChangeSearchMode: (value: SearchMode) => void;
-  onChangeSearchEngines: (value: SearchEngine[]) => void;
-  onChangeSearchLocation: (value: string) => void;
-  onChangeSourceDisplayCount: (value: number) => void;
-  onChangeAutoLibraryReferenceEnabled: (value: boolean) => void;
-  onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
-  onChangeLibraryIndexResponseCount: (value: number) => void;
-  onChangeLibraryReferenceCount: (value: number) => void;
-  onChangeAutoSendKinSysInput: (value: boolean) => void;
-  onChangeAutoCopyKinSysResponseToGpt: (value: boolean) => void;
-  onChangeAutoSendGptSysInput: (value: boolean) => void;
-  onChangeAutoCopyGptSysResponseToKin: (value: boolean) => void;
-  onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) => void;
-  onChangeMemoryInterpreterSettings: (
-    patch: Partial<MemoryInterpreterSettings>
-  ) => void;
-  onApproveMemoryRuleCandidate: (candidateId: string) => void;
-  onRejectMemoryRuleCandidate: (candidateId: string) => void;
-  onUpdateMemoryRuleCandidate: (
-    candidateId: string,
-    patch: Partial<PendingMemoryRuleCandidate>
-  ) => void;
-  onDeleteApprovedMemoryRule: (ruleId: string) => void;
-  onDeleteSearchHistoryItem: (rawResultId: string) => void;
-  multipartAssemblies: MultipartAssembly[];
-  onLoadMultipartAssemblyToGptInput: (assemblyId: string) => void;
-  onDownloadMultipartAssembly: (assemblyId: string) => void;
-  onDeleteMultipartAssembly: (assemblyId: string) => void;
-  storedDocuments: StoredDocument[];
-  referenceLibraryItems: ReferenceLibraryItem[];
-  selectedTaskLibraryItemId: string;
-  onLoadStoredDocumentToGptInput: (documentId: string) => void;
-  onDownloadStoredDocument: (documentId: string) => void;
-  onDeleteStoredDocument: (documentId: string) => void;
-  onMoveStoredDocument: (documentId: string, direction: "up" | "down") => void;
-  onMoveLibraryItem: (itemId: string, direction: "up" | "down") => void;
-  onSelectTaskLibraryItem: (itemId: string) => void;
-  onChangeLibraryItemMode: (
-    itemId: string,
-    mode: LibraryItemModeOverride
-  ) => void;
-  onStartAskAiModeSearch: (query: string) => void | Promise<void>;
-  onImportYouTubeTranscript: (source: SourceItem) => void | Promise<void>;
-  onSendYouTubeTranscriptToKin: (source: SourceItem) => void | Promise<void>;
-  onSaveStoredDocument: (
-    documentId: string,
-    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
-  ) => void;
-  pendingIntentCandidates: PendingIntentCandidate[];
-  approvedIntentPhrases: ApprovedIntentPhrase[];
-  onUpdateIntentCandidate: (
-    candidateId: string,
-    patch: Partial<PendingIntentCandidate>
-  ) => void;
-  onApproveIntentCandidate: (candidateId: string) => void;
-  onRejectIntentCandidate: (candidateId: string) => void;
-  onUpdateApprovedIntentPhrase: (
-    phraseId: string,
-    patch: Partial<ApprovedIntentPhrase>
-  ) => void;
-  onDeleteApprovedIntentPhrase: (phraseId: string) => void;
-  lastSearchContext: SearchContext | null;
-  searchHistory: SearchContext[];
-  selectedTaskSearchResultId: string;
-  onSelectTaskSearchResult: (rawResultId: string) => void;
-  onMoveSearchHistoryItem: (
-    rawResultId: string,
-    direction: "up" | "down"
-  ) => void;
-  pendingInjectionCurrentPart: number;
-  pendingInjectionTotalParts: number;
-  onSwitchPanel: () => void;
-  isMobile: boolean;
-  currentTaskDraft: TaskDraft;
-  taskDraftCount: number;
-  activeTaskDraftIndex: number;
-  onChangeTaskTitle: (value: string) => void;
-  onChangeTaskUserInstruction: (value: string) => void;
-  onChangeTaskBody: (value: string) => void;
-  onSaveTaskSnapshot?: () => void;
-  onSelectPreviousTaskDraft?: () => void;
-  onSelectNextTaskDraft?: () => void;
-  protocolPrompt: string;
-  protocolRulebook: string;
-  onChangeProtocolPrompt: (value: string) => void;
-  onChangeProtocolRulebook: (value: string) => void;
-  onResetProtocolDefaults: () => void;
-  onSaveProtocolDefaults: () => void;
-  onSetProtocolRulebookToKinDraft: () => void | Promise<void>;
-  onSendProtocolRulebookToKin: () => void | Promise<void>;
-  taskProgressView?: TaskProgressView;
-  taskProgressCount: number;
-  activeTaskProgressIndex: number;
-  onAnswerTaskRequest?: (requestId: string) => void;
-  onPrepareTaskRequestAck?: (requestId: string) => void;
-  onPrepareTaskSync?: (note: string) => void;
-  onPrepareTaskSuspend?: (note: string) => void;
-  onUpdateTaskProgressCounts?: (params: {
-    requirementId: string;
-    completedCount: number;
-    targetCount?: number;
-  }) => void;
-  onClearTaskProgress?: (taskId: string) => void;
-  onSelectPreviousTaskProgress?: () => void;
-  onSelectNextTaskProgress?: () => void;
-  onStartKinTask?: () => void | Promise<void>;
-  onResetTaskContext?: () => void;
-  header?: GptPanelHeaderProps;
-  chat?: GptPanelChatProps;
-  task?: GptPanelTaskProps;
-  protocol?: GptPanelProtocolProps;
-  references?: GptPanelReferenceProps;
-  settings?: GptPanelSettingsProps;
+  header: GptPanelHeaderProps;
+  chat: GptPanelChatProps;
+  task: GptPanelTaskProps;
+  protocol: GptPanelProtocolProps;
+  references: GptPanelReferenceProps;
+  settings: GptPanelSettingsProps;
 };

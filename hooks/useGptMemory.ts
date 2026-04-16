@@ -33,7 +33,7 @@ import type {
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
-import type { MemoryUpdateOptions } from "@/hooks/useChatPageActions";
+import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { KinMemoryState, Message } from "@/types/chat";
 
 export type { TokenUsage } from "@/lib/app/gptMemoryStateHelpers";

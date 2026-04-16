@@ -6,12 +6,24 @@ import GptMetaDrawer from "@/components/panels/gpt/GptMetaDrawer";
 import GptSettingsDrawer from "@/components/panels/gpt/GptSettingsDrawer";
 import GptTaskDrawer from "@/components/panels/gpt/GptTaskDrawer";
 import ReceivedDocsDrawer from "@/components/panels/gpt/ReceivedDocsDrawer";
-import type { GptPanelProps } from "@/components/panels/gpt/gptPanelTypes";
+import type {
+  GptPanelChatProps,
+  GptPanelHeaderProps,
+  GptPanelProtocolProps,
+  GptPanelReferenceProps,
+  GptPanelSettingsProps,
+  GptPanelTaskProps,
+} from "@/components/panels/gpt/gptPanelTypes";
 import type { LocalMemorySettingsInput } from "@/components/panels/gpt/gptPanelHelpers";
 
 type Props = {
   activeDrawer: DrawerMode;
-  props: GptPanelProps;
+  header: GptPanelHeaderProps;
+  chat: GptPanelChatProps;
+  task: GptPanelTaskProps;
+  protocol: GptPanelProtocolProps;
+  references: GptPanelReferenceProps;
+  settings: GptPanelSettingsProps;
   localSettings: LocalMemorySettingsInput;
   setLocalSettings: React.Dispatch<React.SetStateAction<LocalMemorySettingsInput>>;
   memoryUsed: number;
@@ -30,7 +42,12 @@ type Props = {
 
 export default function GptDrawerRouter({
   activeDrawer,
-  props,
+  header,
+  chat,
+  task,
+  protocol,
+  references,
+  settings,
   localSettings,
   setLocalSettings,
   memoryUsed,
@@ -46,153 +63,11 @@ export default function GptDrawerRouter({
   setShowMemoryContent,
   toPositiveInt,
 }: Props) {
-  const task = props.task ?? {
-    currentTaskDraft: props.currentTaskDraft,
-    taskDraftCount: props.taskDraftCount,
-    activeTaskDraftIndex: props.activeTaskDraftIndex,
-    taskProgressView: props.taskProgressView,
-    taskProgressCount: props.taskProgressCount,
-    activeTaskProgressIndex: props.activeTaskProgressIndex,
-    pendingInjectionCurrentPart: props.pendingInjectionCurrentPart,
-    pendingInjectionTotalParts: props.pendingInjectionTotalParts,
-    runPrepTaskFromInput: props.runPrepTaskFromInput,
-    runDeepenTaskFromLast: props.runDeepenTaskFromLast,
-    runUpdateTaskFromInput: props.runUpdateTaskFromInput,
-    runUpdateTaskFromLastGptMessage: props.runUpdateTaskFromLastGptMessage,
-    runAttachSearchResultToTask: props.runAttachSearchResultToTask,
-    sendLatestGptContentToKin: props.sendLatestGptContentToKin,
-    sendCurrentTaskContentToKin: props.sendCurrentTaskContentToKin,
-    receiveLastKinResponseToGptInput: props.receiveLastKinResponseToGptInput,
-    sendLastGptToKinDraft: props.sendLastGptToKinDraft,
-    onChangeTaskTitle: props.onChangeTaskTitle,
-    onChangeTaskUserInstruction: props.onChangeTaskUserInstruction,
-    onChangeTaskBody: props.onChangeTaskBody,
-    onSaveTaskSnapshot: props.onSaveTaskSnapshot,
-    onSelectPreviousTaskDraft: props.onSelectPreviousTaskDraft,
-    onSelectNextTaskDraft: props.onSelectNextTaskDraft,
-    onAnswerTaskRequest: props.onAnswerTaskRequest,
-    onPrepareTaskRequestAck: props.onPrepareTaskRequestAck,
-    onPrepareTaskSync: props.onPrepareTaskSync,
-    onPrepareTaskSuspend: props.onPrepareTaskSuspend,
-    onUpdateTaskProgressCounts: props.onUpdateTaskProgressCounts,
-    onClearTaskProgress: props.onClearTaskProgress,
-    onSelectPreviousTaskProgress: props.onSelectPreviousTaskProgress,
-    onSelectNextTaskProgress: props.onSelectNextTaskProgress,
-    onStartKinTask: props.onStartKinTask,
-    onResetTaskContext: props.onResetTaskContext,
-  };
-  const protocol = props.protocol ?? {
-    protocolPrompt: props.protocolPrompt,
-    protocolRulebook: props.protocolRulebook,
-    pendingIntentCandidates: props.pendingIntentCandidates,
-    approvedIntentPhrases: props.approvedIntentPhrases,
-    onChangeProtocolPrompt: props.onChangeProtocolPrompt,
-    onChangeProtocolRulebook: props.onChangeProtocolRulebook,
-    onResetProtocolDefaults: props.onResetProtocolDefaults,
-    onSaveProtocolDefaults: props.onSaveProtocolDefaults,
-    onSetProtocolRulebookToKinDraft: props.onSetProtocolRulebookToKinDraft,
-    onSendProtocolRulebookToKin: props.onSendProtocolRulebookToKin,
-    onUpdateIntentCandidate: props.onUpdateIntentCandidate,
-    onApproveIntentCandidate: props.onApproveIntentCandidate,
-    onRejectIntentCandidate: props.onRejectIntentCandidate,
-    onUpdateApprovedIntentPhrase: props.onUpdateApprovedIntentPhrase,
-    onDeleteApprovedIntentPhrase: props.onDeleteApprovedIntentPhrase,
-  };
-  const references = props.references ?? {
-    lastSearchContext: props.lastSearchContext,
-    searchHistory: props.searchHistory,
-    selectedTaskSearchResultId: props.selectedTaskSearchResultId,
-    multipartAssemblies: props.multipartAssemblies,
-    storedDocuments: props.storedDocuments,
-    referenceLibraryItems: props.referenceLibraryItems,
-    selectedTaskLibraryItemId: props.selectedTaskLibraryItemId,
-    onSelectTaskSearchResult: props.onSelectTaskSearchResult,
-    onMoveSearchHistoryItem: props.onMoveSearchHistoryItem,
-    onDeleteSearchHistoryItem: props.onDeleteSearchHistoryItem,
-    onLoadMultipartAssemblyToGptInput: props.onLoadMultipartAssemblyToGptInput,
-    onDownloadMultipartAssembly: props.onDownloadMultipartAssembly,
-    onDeleteMultipartAssembly: props.onDeleteMultipartAssembly,
-    onLoadStoredDocumentToGptInput: props.onLoadStoredDocumentToGptInput,
-    onDownloadStoredDocument: props.onDownloadStoredDocument,
-    onDeleteStoredDocument: props.onDeleteStoredDocument,
-    onMoveStoredDocument: props.onMoveStoredDocument,
-    onMoveLibraryItem: props.onMoveLibraryItem,
-    onSelectTaskLibraryItem: props.onSelectTaskLibraryItem,
-      onChangeLibraryItemMode: props.onChangeLibraryItemMode,
-      onStartAskAiModeSearch: props.onStartAskAiModeSearch,
-      onImportYouTubeTranscript: props.onImportYouTubeTranscript,
-      onSendYouTubeTranscriptToKin: props.onSendYouTubeTranscriptToKin,
-      onSaveStoredDocument: props.onSaveStoredDocument,
-  };
-  const settings = props.settings ?? {
-    currentTopic: props.gptState?.memory?.context?.currentTopic,
-    memorySettings: props.memorySettings,
-    defaultMemorySettings: props.defaultMemorySettings,
-    tokenStats: props.tokenStats,
-    responseMode: props.responseMode,
-    uploadKind: props.uploadKind,
-    ingestMode: props.ingestMode,
-    imageDetail: props.imageDetail,
-    postIngestAction: props.postIngestAction,
-    fileReadPolicy: props.fileReadPolicy,
-    compactCharLimit: props.compactCharLimit,
-    simpleImageCharLimit: props.simpleImageCharLimit,
-    ingestLoading: props.ingestLoading,
-    canInjectFile: props.canInjectFile,
-    searchMode: props.searchMode,
-    searchEngines: props.searchEngines,
-    searchLocation: props.searchLocation,
-    sourceDisplayCount: props.sourceDisplayCount,
-    autoLibraryReferenceEnabled: props.autoLibraryReferenceEnabled,
-    libraryReferenceMode: props.libraryReferenceMode,
-    libraryIndexResponseCount: props.libraryIndexResponseCount,
-    libraryReferenceCount: props.libraryReferenceCount,
-    libraryStorageMB: props.libraryStorageMB,
-    libraryReferenceEstimatedTokens: props.libraryReferenceEstimatedTokens,
-    autoSendKinSysInput: props.autoSendKinSysInput,
-    autoCopyKinSysResponseToGpt: props.autoCopyKinSysResponseToGpt,
-    autoSendGptSysInput: props.autoSendGptSysInput,
-    autoCopyGptSysResponseToKin: props.autoCopyGptSysResponseToKin,
-    autoCopyFileIngestSysInfoToKin: props.autoCopyFileIngestSysInfoToKin,
-    memoryInterpreterSettings: props.memoryInterpreterSettings,
-    pendingMemoryRuleCandidates: props.pendingMemoryRuleCandidates,
-    approvedMemoryRules: props.approvedMemoryRules,
-    onSaveMemorySettings: props.onSaveMemorySettings,
-    onResetMemorySettings: props.onResetMemorySettings,
-    onChangeResponseMode: props.onChangeResponseMode,
-    onChangeUploadKind: props.onChangeUploadKind,
-    onChangeIngestMode: props.onChangeIngestMode,
-    onChangeImageDetail: props.onChangeImageDetail,
-    onChangeCompactCharLimit: props.onChangeCompactCharLimit,
-    onChangeSimpleImageCharLimit: props.onChangeSimpleImageCharLimit,
-    onChangePostIngestAction: props.onChangePostIngestAction,
-    onChangeFileReadPolicy: props.onChangeFileReadPolicy,
-    onChangeSearchMode: props.onChangeSearchMode,
-    onChangeSearchEngines: props.onChangeSearchEngines,
-    onChangeSearchLocation: props.onChangeSearchLocation,
-    onChangeSourceDisplayCount: props.onChangeSourceDisplayCount,
-    onChangeAutoLibraryReferenceEnabled: props.onChangeAutoLibraryReferenceEnabled,
-    onChangeLibraryReferenceMode: props.onChangeLibraryReferenceMode,
-    onChangeLibraryIndexResponseCount: props.onChangeLibraryIndexResponseCount,
-    onChangeLibraryReferenceCount: props.onChangeLibraryReferenceCount,
-    onChangeAutoSendKinSysInput: props.onChangeAutoSendKinSysInput,
-    onChangeAutoCopyKinSysResponseToGpt: props.onChangeAutoCopyKinSysResponseToGpt,
-    onChangeAutoSendGptSysInput: props.onChangeAutoSendGptSysInput,
-    onChangeAutoCopyGptSysResponseToKin: props.onChangeAutoCopyGptSysResponseToKin,
-    onChangeAutoCopyFileIngestSysInfoToKin:
-      props.onChangeAutoCopyFileIngestSysInfoToKin,
-    onChangeMemoryInterpreterSettings: props.onChangeMemoryInterpreterSettings,
-    onUpdateMemoryRuleCandidate: props.onUpdateMemoryRuleCandidate,
-    onApproveMemoryRuleCandidate: props.onApproveMemoryRuleCandidate,
-    onRejectMemoryRuleCandidate: props.onRejectMemoryRuleCandidate,
-    onDeleteApprovedMemoryRule: props.onDeleteApprovedMemoryRule,
-  };
-
   if (activeDrawer === "memory") {
     return (
       <GptMetaDrawer
         mode="memory"
-        gptState={props.gptState}
+        gptState={chat.gptState}
         tokenStats={settings.tokenStats}
         recent5Chat={rolling5Usage}
         totalUsage={totalUsage}
@@ -207,7 +82,7 @@ export default function GptDrawerRouter({
         maxPreferences={settings.memorySettings.maxPreferences}
         showMemoryContent={showMemoryContent}
         onToggleMemoryContent={() => setShowMemoryContent((prev) => !prev)}
-        isMobile={props.isMobile}
+        isMobile={header.isMobile}
       />
     );
   }
@@ -216,7 +91,7 @@ export default function GptDrawerRouter({
     return (
       <GptMetaDrawer
         mode="tokens"
-        gptState={props.gptState}
+        gptState={chat.gptState}
         tokenStats={settings.tokenStats}
         recent5Chat={rolling5Usage}
         totalUsage={totalUsage}
@@ -231,7 +106,7 @@ export default function GptDrawerRouter({
         maxPreferences={settings.memorySettings.maxPreferences}
         showMemoryContent={showMemoryContent}
         onToggleMemoryContent={() => setShowMemoryContent((prev) => !prev)}
-        isMobile={props.isMobile}
+        isMobile={header.isMobile}
       />
     );
   }
@@ -260,7 +135,7 @@ export default function GptDrawerRouter({
           onClearTaskProgress={task.onClearTaskProgress}
           onSelectPreviousTaskProgress={task.onSelectPreviousTaskProgress}
           onSelectNextTaskProgress={task.onSelectNextTaskProgress}
-          isMobile={props.isMobile}
+          isMobile={header.isMobile}
         />
     );
   }
@@ -399,7 +274,7 @@ export default function GptDrawerRouter({
         onRejectIntentCandidate={protocol.onRejectIntentCandidate}
         onUpdateApprovedIntentPhrase={protocol.onUpdateApprovedIntentPhrase}
         onDeleteApprovedIntentPhrase={protocol.onDeleteApprovedIntentPhrase}
-        isMobile={props.isMobile}
+        isMobile={header.isMobile}
       />
     );
   }
