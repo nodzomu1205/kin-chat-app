@@ -1,9 +1,7 @@
 import type {
   ChatPageActionArgGroups,
   ChatPageActionGroups,
-  UseChatPageActionsArgs,
 } from "@/hooks/chatPageActionTypes";
-import { flattenChatPageActionArgGroups } from "@/hooks/chatPageActionTypes";
 import { useChatPageMemoryActions } from "@/hooks/useChatPageMemoryActions";
 import { useChatPageMessagingDomainActions } from "@/hooks/useChatPageMessagingDomainActions";
 import { useChatPagePanelDomainActions } from "@/hooks/useChatPagePanelDomainActions";
@@ -21,22 +19,19 @@ export type ChatPageControllerGroups = ChatPageActionGroups & {
 };
 
 export function useChatPageController(args: UseChatPageControllerArgs) {
-  const actions: UseChatPageActionsArgs = flattenChatPageActionArgGroups(
-    args.actions
-  );
   const { kin: kinActions, gpt: gptActions } =
-    useChatPageMessagingDomainActions(actions);
+    useChatPageMessagingDomainActions(args.actions);
 
   const {
     task: taskActions,
     protocol: protocolActions,
     injectFileToKinDraft,
-  } = useChatPageTaskDomainActions(actions, {
+  } = useChatPageTaskDomainActions(args.actions, {
     sendKinMessage: kinActions.sendKinMessage,
   });
 
   const memoryActions = useChatPageMemoryActions({
-    gptMemorySettingsControls: actions.gptMemorySettingsControls,
+    services: args.actions.services,
   });
   const panelActions = useChatPagePanelDomainActions({
     protocolAutomation: args.protocolAutomation,

@@ -1,11 +1,6 @@
 import { generateId } from "@/lib/uuid";
 import { prepareSendToGptRequest } from "@/lib/app/sendToGptFlowRequestPreparation";
 import {
-  buildSendToGptFinalizeArgs,
-  buildSendToGptMemoryBundle,
-  buildSendToGptRequestArtifactsArgs,
-} from "@/lib/app/sendToGptFlowBundles";
-import {
   runPrePreparationGates,
   runPreparedRequestGates,
 } from "@/lib/app/sendToGptFlowGuards";
@@ -23,6 +18,10 @@ import type {
 import { extractInlineUrlTarget } from "@/lib/app/sendToGptShortcutFlows";
 import { requestGptAssistantArtifacts } from "@/lib/app/sendToGptFlowRequest";
 import { finalizeSendToGptFlow } from "@/lib/app/sendToGptFlowFinalize";
+import {
+  resolveMemoryUpdateContext,
+  resolveRequestMemory,
+} from "@/lib/app/sendToGptFlowState";
 
 export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
   SendToGptFlowSearchArgs &
@@ -134,10 +133,13 @@ export async function runSendToGptFlow({
     return;
   }
 
-  const { memoryContext, requestMemory } = buildSendToGptMemoryBundle({
-    gptStateRef,
-    userMsg: preparedRequest.userMsg,
+  const memoryContext = resolveMemoryUpdateContext({
+    gptState: gptStateRef.current,
+    userMessage: preparedRequest.userMsg,
     chatRecentLimit,
+  });
+  const requestMemory = resolveRequestMemory({
+    gptState: gptStateRef.current,
   });
   setGptMessages((prev) => [...prev, preparedRequest.userMsg]);
   setGptInput("");
@@ -145,37 +147,58 @@ export async function runSendToGptFlow({
 
   try {
     const { data, assistantText, normalizedSources } =
-      await requestGptAssistantArtifacts(
-        buildSendToGptRequestArtifactsArgs({
-          requestMemory,
-          recentMessages: memoryContext.recentWithUser,
-          preparedRequest,
-          instructionMode,
-          responseMode,
-          parseWrappedSearchResponse,
-          currentTaskId,
-          recordSearchContext,
-        })
-      );
-
-    await finalizeSendToGptFlow(
-      buildSendToGptFinalizeArgs({
-        data,
-        assistantText,
-        normalizedSources,
-        memoryContext,
-        chatRecentLimit,
-        preparedRequest,
-        ingestProtocolMessage,
-        taskProtocolAnswerPendingRequest,
-        setGptMessages,
-        applySearchUsage,
-        applyChatUsage,
+      await requestGptAssistantArtifacts({
+        requestMemory,
+        recentMessages: memoryContext.recentWithUser,
+        finalRequestText: preparedRequest.finalRequestText,
+        storedDocumentContext:
+          preparedRequest.effectiveDocumentReferenceContext,
+        storedLibraryContext: preparedRequest.libraryReferenceContext,
+        cleanQuery: preparedRequest.continuationDetails.cleanQuery,
+        searchRequestEvent: preparedRequest.searchRequestEvent,
+        effectiveParsedSearchQuery:
+          preparedRequest.effectiveParsedSearchQuery,
+        searchSeriesId: preparedRequest.searchSeriesId,
+        continuationToken: preparedRequest.continuationToken,
+        askAiModeLink: preparedRequest.askAiModeLink,
+        effectiveSearchMode: preparedRequest.effectiveSearchMode,
+        effectiveSearchEngines: preparedRequest.effectiveSearchEngines,
+        effectiveSearchLocation: preparedRequest.effectiveSearchLocation,
+        instructionMode,
+        responseMode,
+        parseWrappedSearchResponse,
+        askGptEvent: preparedRequest.askGptEvent,
+        currentTaskId,
+        requestToAnswer: preparedRequest.requestToAnswer,
+        requestAnswerBody: preparedRequest.requestAnswerBody,
         recordSearchContext,
-        handleGptMemory,
-        applySummaryUsage,
-      })
-    );
+      });
+
+    await finalizeSendToGptFlow({
+      data,
+      assistantText,
+      normalizedSources,
+      memoryContext,
+      chatRecentLimit,
+      searchRequestEvent: preparedRequest.searchRequestEvent,
+      effectiveSearchMode: preparedRequest.effectiveSearchMode,
+      effectiveSearchEngines: preparedRequest.effectiveSearchEngines,
+      effectiveSearchLocation: preparedRequest.effectiveSearchLocation,
+      searchSeriesId: preparedRequest.searchSeriesId,
+      cleanQuery: preparedRequest.continuationDetails.cleanQuery,
+      effectiveParsedSearchQuery: preparedRequest.effectiveParsedSearchQuery,
+      finalRequestText: preparedRequest.finalRequestText,
+      ingestProtocolMessage,
+      requestToAnswer: preparedRequest.requestToAnswer,
+      requestAnswerBody: preparedRequest.requestAnswerBody,
+      taskProtocolAnswerPendingRequest,
+      setGptMessages,
+      applySearchUsage,
+      applyChatUsage,
+      recordSearchContext,
+      handleGptMemory,
+      applySummaryUsage,
+    });
   } catch (error) {
     console.error(error);
     setGptMessages((prev) => [

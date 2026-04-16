@@ -1,8 +1,8 @@
 "use client";
 
 import type {
+  ChatPageActionArgGroups,
   ChatPageActionGroups,
-  UseChatPageActionsArgs,
 } from "@/hooks/chatPageActionTypes";
 import {
   buildFileIngestActionArgs,
@@ -14,7 +14,7 @@ import { useTaskDraftActions } from "@/hooks/useTaskDraftActions";
 import { useTaskProtocolActions } from "@/hooks/useTaskProtocolActions";
 
 export function useChatPageTaskDomainActions(
-  actions: UseChatPageActionsArgs,
+  actions: ChatPageActionArgGroups,
   deps: { sendKinMessage: (text: string) => Promise<void> }
 ): {
   task: ChatPageActionGroups["task"];

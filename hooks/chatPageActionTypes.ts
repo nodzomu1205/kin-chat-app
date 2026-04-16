@@ -200,19 +200,6 @@ export type ChatPageActionArgGroups = {
   services: ChatPageServicesArgs;
 };
 
-export function flattenChatPageActionArgGroups(
-  groups: ChatPageActionArgGroups
-): UseChatPageActionsArgs {
-  return {
-    ...groups.identity,
-    ...groups.uiState,
-    ...groups.task,
-    ...groups.protocol,
-    ...groups.search,
-    ...groups.services,
-  };
-}
-
 export type UseGptMessageActionsArgs = Pick<
   UseChatPageActionsArgs,
   | "applyChatUsage"

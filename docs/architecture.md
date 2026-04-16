@@ -32,8 +32,8 @@ Current role:
 - top-level state wiring
 - panel coordination
 - layout composition
-- page-level controller assembly through `useChatPageController`
-- final prop assembly through builder layers, with the GPT panel now split into:
+- page-level controller and panel composition now funneled through `useChatPagePanelsComposition`
+- final GPT prop assembly still flows through builder layers, with the GPT panel now split into:
   - section-grouped builder input (`BuildGptPanelArgs`)
   - section-only render props (`GptPanelProps`)
 
@@ -43,10 +43,16 @@ Current risk:
 - `useChatPageController` now acts mainly as a composition hub across domain hooks, while protocol automation and panel reset live behind `useChatPagePanelDomainActions`
 - GPT / Kin composition now sits behind `useChatPageMessagingDomainActions`, so `useChatPageController` no longer wires those two messaging surfaces independently
 - task / protocol / file-ingest composition now sits behind `useChatPageTaskDomainActions`, so `useChatPageController` no longer wires those three surfaces independently
+- `useChatPagePanelsComposition.tsx` now owns the final page-side controller + panel composition, so `app/page.tsx` no longer instantiates `useChatPageController`, `KinPanel`, `GptPanel`, or `buildGptPanelProps(...)` directly
+- `useChatPagePanelsView.tsx` now owns shared panel-app wiring plus task-snapshot glue, so `app/page.tsx` no longer duplicates `app` / `taskProtocolView` across both panel branches
+- `useChatPageWorkspaceView.tsx` now owns the page-facing controller + panel source wiring, so `app/page.tsx` passes source-of-truth UI / task / protocol / search / reference / memory groups instead of duplicating controller and panel composition trees
+- `chatPageWorkspaceViewBuilders.ts` now splits that workspace-view wiring into controller-source and panel-source builders, keeping `useChatPageWorkspaceView.tsx` itself close to a thin page adapter
 - `useChatPageControllerArgs`, `useChatPageKinPanelProps`, and `useChatPageGptPanelArgs` now own the controller/panel argument assembly that used to live inline in `app/page.tsx`
-- `useChatPageControllerArgs` now passes `identity / uiState / task / protocol / search / services` as grouped controller args instead of a single flat action bag
+- `useChatPageControllerArgs` now passes `identity / uiState / task / protocol / search / services` as grouped controller args, and the controller-side domain hooks now consume those grouped sources directly instead of flattening back to one broad action bag
 - panel prop wiring is thinner than before, and GPT panel consumers are now mostly section-only
-- no-op page-level action / panel arg passthrough builders were removed, but the page still owns too many boundaries
+- no-op page-level action / panel arg passthrough builders were removed, but the page still owns a large composition-input surface
+- page is thinner than before, but `useChatPageWorkspaceView(...)` still receives a broad source bundle and remains the next page-side boundary to watch
+- `GptSettingsSections.tsx` now acts as a lighter settings entry surface while rules and protocol blocks live behind dedicated section modules plus shared settings primitives
 - memory-rule candidate queue merging now sits behind `usePendingMemoryRuleQueue`, but the surrounding memory / task authority boundary is still broader than ideal
 - task-protocol projection and completed-task archive lifecycle now sit behind dedicated hooks, but the surrounding page/controller boundary is still broader than ideal
 
@@ -75,7 +81,7 @@ Current risk:
 - `sendToGptFlowRequestPreparation.ts` now owns the combined `prepareSendToGptRequest` step; inside it, `buildPreparedRequestArtifacts` isolates the pure request-ready enrichment and `resolveInjectedTaskContext` isolates task-bridge context injection
 - `sendToGptFlowContext.ts` is now internally split into protocol interaction extraction, protocol limit resolution, derived search resolution, and the composed `deriveProtocolSearchContext` entrypoint
 - `sendToGptFlowGuards.ts` now exposes `runPrePreparationGates` and `runPreparedRequestGates`, so the main flow reads as a short gate pipeline rather than five inline guard blocks
-- `sendToGptFlowBundles.ts` now owns request-artifact, finalize-artifact, and memory bundles so the main coordinator no longer hand-assembles long argument objects inline
+- low-value `sendToGptFlowBundles.ts` staging was removed; the main coordinator now passes prepared request and finalize values directly while `sendToGptFlowState.ts` owns the meaningful memory-context helpers
 - `sendToGptFlowState.ts` now owns recent-message shaping, implicit-search usage handling, protocol post-response side effects, and memory-update context helpers
 - `useGptMessageActions.ts` now delegates common `runSendToGptFlow` arg assembly to `sendToGptFlowArgBuilders.ts`
 - chat API request execution and response-artifact shaping are now split out of `sendToGptFlow.ts` into `sendToGptFlowRequest.ts`, whose fetch and payload-preparation concerns are also separated internally
@@ -199,7 +205,7 @@ Based on the current repository state, the best remaining cleanup order is:
 
 1. [`app/page.tsx`](../app/page.tsx)
    - much thinner than before, but still the broadest remaining UI orchestration point
-   - especially the `BuildGptPanelArgs` assembly and page-level memory / protocol glue
+   - especially the large `useChatPagePanelsComposition(...)` input bundle and page-level memory / protocol glue
 2. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
    - still a large execution path even after context / builder / type extraction
 3. [`hooks/useChatPageController.ts`](../hooks/useChatPageController.ts)

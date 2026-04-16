@@ -82,10 +82,16 @@ Recent progress includes:
 - task-draft workspace extraction from `app/page.tsx`
 - `useChatPageController` now composes smaller domain controller hooks while shared page-action contracts live in `chatPageActionTypes.ts`
 - `useChatPageControllerArgs`, `useChatPageKinPanelProps`, and `useChatPageGptPanelArgs` now own most controller/panel argument assembly that used to sit inline in `app/page.tsx`
-- the page-to-controller action contract is now grouped by domain before it is flattened inside the controller
+- `useChatPagePanelsComposition.tsx` now owns the final page-side controller + panel composition, so `app/page.tsx` no longer instantiates the controller hook or panel builder/render chain directly
+- `useChatPagePanelsView.tsx` now owns shared panel-app wiring and task-snapshot glue, so `app/page.tsx` no longer duplicates that setup across both panel branches
+- `useChatPageWorkspaceView.tsx` now owns the page-facing source wiring for controller + panel composition, so `app/page.tsx` passes source-of-truth domain groups instead of duplicating nested controller and panel trees
+- `chatPageWorkspaceViewBuilders.ts` now keeps that workspace-view wiring split into controller-source and panel-source builders, so the new page adapter does not become another monolithic hotspot
+- the page-to-controller action contract is now grouped by domain, and controller-side domain hooks consume those grouped sources directly
 - shared recent-message / memory-update helper extraction for `sendToGptFlow`
 - `sendToGptFlow` split into dedicated `context` / `builders` / `helpers` / `types` modules
+- low-value `sendToGptFlowBundles.ts` staging was removed so the GPT flow now passes prepared request/finalize data directly
 - `memoryInterpreter` topic-tail and sentence-pattern helpers extracted into shared text modules
+- GPT settings rules / protocol UI split into dedicated section modules plus shared settings primitives
 - GPT settings workspace split from the old hanging-drawer UI
 - task drawer unification plus multi-draft / multi-progress task workflow support
 - task suspend / hold support through `TASK_CONFIRM`
@@ -156,7 +162,7 @@ Before large new features, continue maintainability work in this order:
    - especially `lib/taskIntent.ts`
    - and the remaining broad helper surfaces inside `lib/app/sendToGptFlowRequestPreparation.ts` and `lib/app/sendToGptFlowState.ts`
 2. residual `app/page.tsx` orchestration review and cleanup of any regrown glue
-   - especially page-level candidate merge / controller-style coordination that still sits above narrower domain modules
+   - especially the broad `useChatPageWorkspaceView(...)` source bundle and page-level candidate merge / controller-style coordination that still sits above narrower domain modules
 3. `lib/app/sendToGptFlowRequestPreparation.ts` / `lib/app/sendToGptFlowState.ts` / `lib/app/sendToGptFlow.ts` flow-surface thinning
    - keep `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` aligned with that thinning so the GPT flow keeps a clean domain boundary
 4. `components/panels/gpt/GptSettingsSections.tsx` settings information architecture redesign

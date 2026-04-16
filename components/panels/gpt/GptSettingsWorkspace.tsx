@@ -24,9 +24,18 @@ import {
   SEARCH_MODE_PRESETS,
   sectionCard,
   subtleCard,
-  selectStyle,
   tabButton,
 } from "@/components/panels/gpt/GptSettingsSections";
+import {
+  CountBadge,
+  ItemActionRow,
+  LabeledSelect,
+  LabeledTextArea,
+  NumberField,
+  SectionHeaderRow,
+  SettingsItemCard,
+  TextField,
+} from "@/components/panels/gpt/GptSettingsShared";
 import {
   inferPrimarySearchModeFromEngines,
   isPrimarySearchMode,
@@ -137,26 +146,6 @@ function formatIntentPhraseKindLabel(
   }
 }
 
-function NumberField(props: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  help?: string;
-}) {
-  return (
-    <div>
-      <div style={labelStyle}>{props.label}</div>
-      <input
-        inputMode="numeric"
-        value={props.value}
-        onChange={(e) => props.onChange(e.target.value)}
-        style={inputStyle}
-      />
-      {props.help ? <div style={helpTextStyle}>{props.help}</div> : null}
-    </div>
-  );
-}
-
 function IngestSettingsSection(props: {
   isMobile?: boolean;
   ingestMode: IngestMode;
@@ -173,20 +162,17 @@ function IngestSettingsSection(props: {
   return (
     <div style={sectionCard}>
       <div style={{ display: "grid", gap: 12 }}>
-        <div>
-          <div style={labelStyle}>ファイル読み取り方針</div>
-          <select
-            value={props.fileReadPolicy}
-            onChange={(e) =>
-              props.onChangeFileReadPolicy(e.target.value as FileReadPolicy)
-            }
-            style={selectStyle}
-          >
+        <LabeledSelect
+          label="ファイル読み取り方針"
+          value={props.fileReadPolicy}
+          onChange={(value) =>
+            props.onChangeFileReadPolicy(value as FileReadPolicy)
+          }
+        >
             <option value="text_first">テキスト優先</option>
             <option value="visual_first">見た目優先</option>
             <option value="text_and_layout">両方</option>
-          </select>
-        </div>
+        </LabeledSelect>
         <div
           style={{
             display: "grid",
@@ -197,18 +183,15 @@ function IngestSettingsSection(props: {
           }}
         >
           <div style={subtleCard}>
-            <div style={labelStyle}>テキスト取込</div>
-            <select
+            <LabeledSelect
+              label="テキスト取込"
               value={props.ingestMode}
-              onChange={(e) =>
-                props.onChangeIngestMode(e.target.value as IngestMode)
-              }
-              style={selectStyle}
+              onChange={(value) => props.onChangeIngestMode(value as IngestMode)}
             >
               <option value="compact">compact</option>
               <option value="detailed">detailed</option>
               <option value="max">max</option>
-            </select>
+            </LabeledSelect>
             <div style={{ marginTop: 8 }}>
               <NumberField
                 label="文字数上限"
@@ -218,18 +201,15 @@ function IngestSettingsSection(props: {
             </div>
           </div>
           <div style={subtleCard}>
-            <div style={labelStyle}>画像 / PDF 取込</div>
-            <select
+            <LabeledSelect
+              label="画像 / PDF 取込"
               value={props.imageDetail}
-              onChange={(e) =>
-                props.onChangeImageDetail(e.target.value as ImageDetail)
-              }
-              style={selectStyle}
+              onChange={(value) => props.onChangeImageDetail(value as ImageDetail)}
             >
               <option value="simple">simple</option>
               <option value="detailed">detailed</option>
               <option value="max">max</option>
-            </select>
+            </LabeledSelect>
             <div style={{ marginTop: 8 }}>
               <NumberField
                 label="文字数上限"
@@ -264,52 +244,28 @@ function RuleApprovalSection(props: {
 }) {
   return (
     <div style={sectionCard}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <div style={{ ...labelStyle, marginBottom: 0 }}>{props.sectionTitle}</div>
-          <span
-            style={{
-              borderRadius: 999,
-              background: "#eff6ff",
-              color: "#1d4ed8",
-              border: "1px solid #bfdbfe",
-              padding: "2px 8px",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            {props.approvedLabel} {props.approvedCount}
-          </span>
-          <span
-            style={{
-              borderRadius: 999,
-              background: props.pendingCount > 0 ? "#fef3c7" : "#f1f5f9",
-              color: props.pendingCount > 0 ? "#92400e" : "#475569",
-              border: `1px solid ${props.pendingCount > 0 ? "#fcd34d" : "#cbd5e1"}`,
-              padding: "2px 8px",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            {props.pendingLabel} {props.pendingCount}
-          </span>
-        </div>
-        <button
+      <SectionHeaderRow
+        title={props.sectionTitle}
+        badges={
+          <>
+            <CountBadge label={props.approvedLabel} count={props.approvedCount} tone="info" />
+            <CountBadge
+              label={props.pendingLabel}
+              count={props.pendingCount}
+              tone={props.pendingCount > 0 ? "warning" : "neutral"}
+            />
+          </>
+        }
+        action={
+          <button
           type="button"
           style={tabButton(props.showApproved)}
           onClick={props.onToggleApproved}
         >
           {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
-        </button>
-      </div>
+          </button>
+        }
+      />
 
       {props.showApproved ? (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
@@ -317,26 +273,16 @@ function RuleApprovalSection(props: {
             <div style={helpTextStyle}>{props.approvedEmptyText}</div>
           ) : (
             props.approvedItems.map((item) => (
-              <div key={item.id} style={subtleCard}>
-                <div style={{ fontSize: 12, fontWeight: 800 }}>{item.title}</div>
+              <SettingsItemCard key={item.id} title={item.title}>
                 {item.meta ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>{item.meta}</div>
                 ) : null}
                 {item.extra ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>{item.extra}</div>
                 ) : null}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 8,
-                    marginTop: 10,
-                  }}
-                >
-                  <div style={helpTextStyle}>
-                    {item.createdAt ? `登録日: ${item.createdAt.slice(0, 10)}` : ""}
-                  </div>
+                <ItemActionRow
+                  meta={item.createdAt ? `登録日: ${item.createdAt.slice(0, 10)}` : ""}
+                  actions={
                   <button
                     type="button"
                     style={buttonSecondaryWide}
@@ -344,8 +290,9 @@ function RuleApprovalSection(props: {
                   >
                     削除
                   </button>
-                </div>
-              </div>
+                  }
+                />
+              </SettingsItemCard>
             ))
           )}
         </div>
@@ -357,8 +304,7 @@ function RuleApprovalSection(props: {
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {props.pendingItems.map((item) => (
-            <div key={item.id} style={subtleCard}>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>{item.title}</div>
+            <SettingsItemCard key={item.id} title={item.title}>
               {item.meta ? (
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>{item.meta}</div>
               ) : null}
@@ -374,33 +320,29 @@ function RuleApprovalSection(props: {
               >
                 {item.sourceText}
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  marginTop: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ ...helpTextStyle, width: "100%", marginTop: 0 }}>
-                  左が確定、右が却下です。
-                </div>
-                <button
-                  type="button"
-                  style={buttonPrimary}
-                  onClick={() => props.onApprove(item.id)}
-                >
-                  承認
-                </button>
-                <button
-                  type="button"
-                  style={buttonSecondaryWide}
-                  onClick={() => props.onReject(item.id)}
-                >
-                  却下
-                </button>
-              </div>
-            </div>
+              <ItemActionRow
+                meta="左が確定、右が却下です。"
+                stacked
+                actions={
+                  <>
+                    <button
+                      type="button"
+                      style={buttonPrimary}
+                      onClick={() => props.onApprove(item.id)}
+                    >
+                      承認
+                    </button>
+                    <button
+                      type="button"
+                      style={buttonSecondaryWide}
+                      onClick={() => props.onReject(item.id)}
+                    >
+                      却下
+                    </button>
+                  </>
+                }
+              />
+            </SettingsItemCard>
           ))}
         </div>
       )}
@@ -461,52 +403,28 @@ function MemoryApprovalSection(props: {
 
   return (
     <div style={sectionCard}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <div style={{ ...labelStyle, marginBottom: 0 }}>文脈レビュー</div>
-          <span
-            style={{
-              borderRadius: 999,
-              background: "#eff6ff",
-              color: "#1d4ed8",
-              border: "1px solid #bfdbfe",
-              padding: "2px 8px",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            承認済み {props.approvedCount}
-          </span>
-          <span
-            style={{
-              borderRadius: 999,
-              background: props.pendingCount > 0 ? "#fef3c7" : "#f1f5f9",
-              color: props.pendingCount > 0 ? "#92400e" : "#475569",
-              border: `1px solid ${props.pendingCount > 0 ? "#fcd34d" : "#cbd5e1"}`,
-              padding: "2px 8px",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            承認待ち {props.pendingCount}
-          </span>
-        </div>
-        <button
+      <SectionHeaderRow
+        title="文脈レビュー"
+        badges={
+          <>
+            <CountBadge label="承認済み" count={props.approvedCount} tone="info" />
+            <CountBadge
+              label="承認待ち"
+              count={props.pendingCount}
+              tone={props.pendingCount > 0 ? "warning" : "neutral"}
+            />
+          </>
+        }
+        action={
+          <button
           type="button"
           style={tabButton(props.showApproved)}
           onClick={props.onToggleApproved}
         >
           {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
-        </button>
-      </div>
+          </button>
+        }
+      />
 
       {props.showApproved ? (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
@@ -514,7 +432,10 @@ function MemoryApprovalSection(props: {
             <div style={helpTextStyle}>登録済みの文脈レビューはありません。</div>
           ) : (
             props.approvedRules.map((rule) => (
-              <div key={rule.id} style={subtleCard}>
+              <SettingsItemCard
+                key={rule.id}
+                title={rule.kind === "utterance_review" ? "utterance review" : rule.kind}
+              >
                 <div
                   style={{
                     display: "none",
@@ -544,9 +465,6 @@ function MemoryApprovalSection(props: {
                     </div>
                   ) : null}
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 800 }}>
-                  {rule.kind === "utterance_review" ? "utterance review" : rule.kind}
-                </div>
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>入力語: {rule.phrase}</div>
                 {rule.intent ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>意図: {rule.intent}</div>
@@ -561,16 +479,9 @@ function MemoryApprovalSection(props: {
                     トピック候補: {rule.normalizedValue}
                   </div>
                 ) : null}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 8,
-                    marginTop: 10,
-                  }}
-                >
-                  <div style={helpTextStyle}>登録日: {rule.createdAt.slice(0, 10)}</div>
+                <ItemActionRow
+                  meta={`登録日: ${rule.createdAt.slice(0, 10)}`}
+                  actions={
                   <button
                     type="button"
                     style={buttonSecondaryWide}
@@ -578,8 +489,9 @@ function MemoryApprovalSection(props: {
                   >
                     削除
                   </button>
-                </div>
-              </div>
+                  }
+                />
+              </SettingsItemCard>
             ))
           )}
         </div>
@@ -591,7 +503,10 @@ function MemoryApprovalSection(props: {
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {props.pendingCandidates.map((candidate) => (
-            <div key={candidate.id} style={subtleCard}>
+            <SettingsItemCard
+              key={candidate.id}
+              title={candidate.kind === "utterance_review" ? "utterance review" : candidate.kind}
+            >
               <div
                 style={{
                   display: "none",
@@ -615,9 +530,6 @@ function MemoryApprovalSection(props: {
                   トピック: {candidate.normalizedValue || "(keep の場合は空) "}
                 </div>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {candidate.kind === "utterance_review" ? "utterance review" : candidate.kind}
-              </div>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>実際のコメント: {candidate.phrase}</div>
               <div
                 style={{
@@ -638,30 +550,29 @@ function MemoryApprovalSection(props: {
                 }}
               >
                 <div>
-                  <div style={labelStyle}>ユーザー意図</div>
-                  <select
+                  <LabeledSelect
+                    label="ユーザー意図"
                     value={getCandidateIntentValue(candidate)}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       props.onUpdate(candidate.id, {
                         kind: "utterance_review",
-                        intent: e.target.value as UserUtteranceIntent,
+                        intent: value as UserUtteranceIntent,
                       })
                     }
-                    style={selectStyle}
                   >
                     {intentOptions.map((option) => (
                       <option key={option} value={option}>
                         {formatIntentLabel(option)}
                       </option>
                     ))}
-                  </select>
+                  </LabeledSelect>
                 </div>
                 <div>
-                  <div style={labelStyle}>トピック判定</div>
-                  <select
+                  <LabeledSelect
+                    label="トピック判定"
                     value={getCandidateTopicDecisionValue(candidate)}
-                    onChange={(e) => {
-                      const nextDecision = e.target.value as TopicDecision;
+                    onChange={(value) => {
+                      const nextDecision = value as TopicDecision;
                       const originalSuggested =
                         originalSuggestedTopics[candidate.id] || candidate.normalizedValue || "";
                       props.onUpdate(candidate.id, {
@@ -673,54 +584,50 @@ function MemoryApprovalSection(props: {
                             : currentTopic || candidate.normalizedValue || "",
                       });
                     }}
-                    style={selectStyle}
                   >
                     {topicDecisionOptions.map((option) => (
                       <option key={option} value={option}>
                         {formatTopicDecisionLabel(option)}
                       </option>
                     ))}
-                  </select>
+                  </LabeledSelect>
                 </div>
                 <div style={{ gridColumn: props.isMobile ? undefined : "1 / -1" }}>
-                  <div style={labelStyle}>トピック</div>
-                  <input
+                  <TextField
+                    label="トピック"
                     value={resolveCandidateTopicInputValue(candidate)}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       props.onUpdate(candidate.id, {
                         kind: "utterance_review",
-                        normalizedValue: e.target.value,
+                        normalizedValue: value,
                       })
                     }
                     placeholder="keep の場合は空のまま"
-                    style={inputStyle}
                   />
                 </div>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  marginTop: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <button
-                  type="button"
-                  style={buttonPrimary}
-                  onClick={() => props.onApprove(candidate.id)}
-                >
-                  確定
-                </button>
-                <button
-                  type="button"
-                  style={buttonSecondaryWide}
-                  onClick={() => props.onReject(candidate.id)}
-                >
-                  却下
-                </button>
-              </div>
-            </div>
+              <ItemActionRow
+                stacked
+                actions={
+                  <>
+                    <button
+                      type="button"
+                      style={buttonPrimary}
+                      onClick={() => props.onApprove(candidate.id)}
+                    >
+                      確定
+                    </button>
+                    <button
+                      type="button"
+                      style={buttonSecondaryWide}
+                      onClick={() => props.onReject(candidate.id)}
+                    >
+                      却下
+                    </button>
+                  </>
+                }
+              />
+            </SettingsItemCard>
           ))}
         </div>
       )}
@@ -743,46 +650,24 @@ function SysRuleApprovalSection(props: {
 }) {
   return (
     <div style={sectionCard}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <div style={{ ...labelStyle, marginBottom: 0 }}>SYSフォーマットルール</div>
-          <span
-            style={{
-              borderRadius: 999,
-              background: "#eff6ff",
-              color: "#1d4ed8",
-              padding: "3px 8px",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            承認済み {props.approvedCount}
-          </span>
-          <span
-            style={{
-              borderRadius: 999,
-              background: "#fff7ed",
-              color: "#c2410c",
-              padding: "3px 8px",
-              fontSize: 11,
-              fontWeight: 800,
-            }}
-          >
-            承認待ち {props.pendingCount}
-          </span>
-        </div>
-        <button type="button" style={tabButton(props.showApproved)} onClick={props.onToggleApproved}>
-          {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
-        </button>
-      </div>
+      <SectionHeaderRow
+        title="SYSフォーマットルール"
+        badges={
+          <>
+            <CountBadge label="承認済み" count={props.approvedCount} tone="info" />
+            <CountBadge
+              label="承認待ち"
+              count={props.pendingCount}
+              tone={props.pendingCount > 0 ? "warning" : "neutral"}
+            />
+          </>
+        }
+        action={
+          <button type="button" style={tabButton(props.showApproved)} onClick={props.onToggleApproved}>
+            {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
+          </button>
+        }
+      />
 
       <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認待ち</div>
       {props.pendingCandidates.length === 0 ? (
@@ -790,10 +675,7 @@ function SysRuleApprovalSection(props: {
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {props.pendingCandidates.map((candidate) => (
-            <div key={candidate.id} style={subtleCard}>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {formatIntentPhraseKindLabel(candidate.kind)}
-              </div>
+            <SettingsItemCard key={candidate.id} title={formatIntentPhraseKindLabel(candidate.kind)}>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
                 元の検出語: {candidate.phrase}
               </div>
@@ -801,34 +683,34 @@ function SysRuleApprovalSection(props: {
                 {candidate.sourceText}
               </div>
               <div style={{ marginTop: 10 }}>
-                <div style={labelStyle}>承認文面</div>
-                <textarea
+                <LabeledTextArea
+                  label="承認文面"
                   value={candidate.draftText || candidate.phrase}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     props.onUpdate(candidate.id, {
-                      draftText: e.target.value,
+                      draftText: value,
                     })
                   }
-                  style={{
-                    ...inputStyle,
-                    minHeight: 74,
-                    resize: "vertical",
-                    whiteSpace: "pre-wrap",
-                  }}
+                  minHeight={74}
                 />
               </div>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
                 正しければ承認、少しズレていれば修正して承認、方向が違えば却下します。
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                <button type="button" style={buttonPrimary} onClick={() => props.onApprove(candidate.id)}>
-                  承認
-                </button>
-                <button type="button" style={buttonSecondaryWide} onClick={() => props.onReject(candidate.id)}>
-                  却下
-                </button>
-              </div>
-            </div>
+              <ItemActionRow
+                stacked
+                actions={
+                  <>
+                    <button type="button" style={buttonPrimary} onClick={() => props.onApprove(candidate.id)}>
+                      承認
+                    </button>
+                    <button type="button" style={buttonSecondaryWide} onClick={() => props.onReject(candidate.id)}>
+                      却下
+                    </button>
+                  </>
+                }
+              />
+            </SettingsItemCard>
           ))}
         </div>
       )}
@@ -838,48 +720,34 @@ function SysRuleApprovalSection(props: {
           <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認済み</div>
           <div style={{ display: "grid", gap: 8 }}>
             {props.approvedPhrases.map((phrase) => (
-              <div key={phrase.id} style={subtleCard}>
-                <div style={{ fontSize: 12, fontWeight: 800 }}>
-                  {formatIntentPhraseKindLabel(phrase.kind)}
-                </div>
+              <SettingsItemCard key={phrase.id} title={formatIntentPhraseKindLabel(phrase.kind)}>
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
                   元の検出語: {phrase.phrase}
                 </div>
                 <div style={{ marginTop: 10 }}>
-                  <div style={labelStyle}>承認文面</div>
-                  <textarea
+                  <LabeledTextArea
+                    label="承認文面"
                     value={phrase.draftText || phrase.phrase}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       props.onUpdateApproved(phrase.id, {
-                        draftText: e.target.value,
+                        draftText: value,
                       })
                     }
-                    style={{
-                      ...inputStyle,
-                      minHeight: 64,
-                      resize: "vertical",
-                      whiteSpace: "pre-wrap",
-                    }}
+                    minHeight={64}
                   />
                 </div>
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
                   承認回数: {phrase.approvedCount ?? 0} / 却下回数: {phrase.rejectedCount ?? 0}
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 8,
-                    marginTop: 10,
-                  }}
-                >
-                  <div style={helpTextStyle}>作成日: {phrase.createdAt.slice(0, 10)}</div>
+                <ItemActionRow
+                  meta={`作成日: ${phrase.createdAt.slice(0, 10)}`}
+                  actions={
                   <button type="button" style={buttonSecondaryWide} onClick={() => props.onDelete(phrase.id)}>
                     削除
                   </button>
-                </div>
-              </div>
+                  }
+                />
+              </SettingsItemCard>
             ))}
           </div>
         </>

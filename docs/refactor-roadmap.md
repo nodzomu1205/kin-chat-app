@@ -118,7 +118,11 @@ Done:
 - `useChatPageController.ts` now composes grouped domain action sets (`kin` / `gpt` / `task` / `protocol` / `memory`) through smaller controller hooks instead of delegating through an extra facade hook
 - `useChatPageController.ts` now owns the page-level wiring between chat actions, protocol automation, and panel reset actions
 - `useChatPageControllerArgs.ts`, `useChatPageKinPanelProps.ts`, and `useChatPageGptPanelArgs.ts` now own the controller/panel argument assembly that previously lived inline in `app/page.tsx`
-- `page -> controller` action wiring now crosses the boundary as grouped `identity / uiState / task / protocol / search / services` args and is flattened only inside `useChatPageController.ts`
+- `useChatPagePanelsComposition.tsx` now owns the final page-side controller + panel composition, so `app/page.tsx` no longer instantiates `useChatPageController`, `KinPanel`, `GptPanel`, or `buildGptPanelProps(...)` directly
+- `useChatPagePanelsView.tsx` now owns shared panel-app wiring and task-snapshot glue, so `app/page.tsx` no longer duplicates `app` / `taskProtocolView` or local snapshot handlers across both panel branches
+- `useChatPageWorkspaceView.tsx` now owns the page-facing source wiring for controller + panel composition, so `app/page.tsx` passes source-of-truth domain groups instead of duplicating nested controller and panel trees
+- `chatPageWorkspaceViewBuilders.ts` now owns workspace-view controller/panel source builders, keeping `useChatPageWorkspaceView.tsx` thin instead of letting a new monolithic adapter regrow there
+- `page -> controller` action wiring now crosses the boundary as grouped `identity / uiState / task / protocol / search / services` args, and controller-side domain hooks now consume those grouped sources directly without a broad flatten step
 - `chatPageControllerArgBuilders.ts` now owns the sub-hook input reshaping that used to sit inline in `useChatPageController.ts`
 - `useChatPageMessagingDomainActions.ts` now owns the GPT / Kin controller-side composition, allowing the thin wrappers `useChatPageGptActions.ts` and `useChatPageKinActions.ts` to be removed
 - `useChatPageTaskDomainActions.ts` now owns the task / protocol / file-ingest controller-side composition, allowing the thin wrappers `useChatPageTaskActions.ts` and `useChatPageProtocolActions.ts` to be removed
@@ -132,6 +136,7 @@ Done:
   - `BuildGptPanelArgs` for section-grouped builder input
   - `GptPanelProps` for section-only rendering
 - GPT drawer consumers now depend on section contracts instead of broad `GptPanelProps` picks where possible
+- GPT settings rules / protocol UI is now split into dedicated section modules plus shared settings primitives, so `GptSettingsSections.tsx` no longer carries those two large blocks inline
 - `useGptMemory.ts` reduced to a smaller orchestration hook
 - `memoryInterpreter.ts` reduced through staged helper extraction
 - rejected memory-rule candidates now trigger immediate memory reapplication so tentative wrong topics can be cleared
@@ -140,7 +145,7 @@ Done:
 
 Next:
 - review whether `useChatPageController.ts` should stay as a thin page-only hook or become a wider `useChatAppController`
-- review whether the remaining `app/page.tsx` orchestration should stay as builders / explicit arg objects or move further behind the controller hook
+- review whether the remaining `app/page.tsx` orchestration should stay as explicit `useChatPageWorkspaceView(...)` source groups or move further behind page-facing composition hooks
 - decide whether pure-transfer GPT panel sections (`protocol` / `references` / parts of `settings`) should eventually be assembled outside `panelPropsBuilders`
 - review whether the remaining memory-rule / task coordination should move behind a narrower controller boundary
 - keep task-progress lifecycle controls (`start / archive / selection / approval refresh`) concentrated in the task protocol controller boundary instead of regrowing in `useChatPageController.ts` or page-level UI code
@@ -217,8 +222,6 @@ Done:
   - shared recent-message / previous-topic memory-update helpers
 - [`lib/app/sendToGptFlowGuards.ts`](../lib/app/sendToGptFlowGuards.ts)
   - now grouped into pre-preparation and post-preparation gate pipelines for the main `sendToGpt` coordinator
-- [`lib/app/sendToGptFlowBundles.ts`](../lib/app/sendToGptFlowBundles.ts)
-  - request-artifact, finalize-artifact, and memory bundle builders extracted from the main `sendToGpt` coordinator
 - [`lib/app/sendToGptProtocolBuilders.ts`](../lib/app/sendToGptProtocolBuilders.ts)
   - protocol request / response block builders extracted from the former monolithic `sendToGptFlowHelpers.ts`
 - [`lib/app/sendToGptFlowTypes.ts`](../lib/app/sendToGptFlowTypes.ts)
@@ -240,6 +243,7 @@ Done:
     - assistant finalize side effects, implicit search handling, and memory follow-up extracted from the back half of `runSendToGptFlow`
 - [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
   - request / search / protocol / memory / UI args now grouped through shared flow-slice types
+  - low-value request/finalize bundle staging was removed so the coordinator now passes prepared request data directly into `request` and `finalize`
 - [`lib/app/memoryInterpreterText.ts`](../lib/app/memoryInterpreterText.ts)
   - shared text normalization / topic candidate helpers extracted from `memoryInterpreter.ts`
   - search-directive detection is now anchored to a UTF-8-safe shared prefix regex

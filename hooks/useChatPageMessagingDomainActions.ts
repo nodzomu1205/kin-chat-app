@@ -1,8 +1,8 @@
 "use client";
 
 import type {
+  ChatPageActionArgGroups,
   ChatPageActionGroups,
-  UseChatPageActionsArgs,
 } from "@/hooks/chatPageActionTypes";
 import {
   buildGptMessageActionArgs,
@@ -12,7 +12,7 @@ import { useGptMessageActions } from "@/hooks/useGptMessageActions";
 import { useKinTransferActions } from "@/hooks/useKinTransferActions";
 
 export function useChatPageMessagingDomainActions(
-  actions: UseChatPageActionsArgs
+  actions: ChatPageActionArgGroups
 ): {
   kin: ChatPageActionGroups["kin"];
   gpt: Omit<ChatPageActionGroups["gpt"], "injectFileToKinDraft">;

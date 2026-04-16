@@ -1,3 +1,4 @@
+import { createEmptyMemory, type Memory } from "@/lib/memory";
 import type {
   ChatApiSearchLike,
   GptStateSnapshotLike,
@@ -27,6 +28,12 @@ export function resolveMemoryUpdateContext(params: {
     recentWithUser,
     previousCommittedTopic,
   };
+}
+
+export function resolveRequestMemory(params: {
+  gptState: GptStateSnapshotLike;
+}): Memory {
+  return (params.gptState.memory as Memory | undefined) || createEmptyMemory();
 }
 
 export function appendRecentAssistantMessage(params: {

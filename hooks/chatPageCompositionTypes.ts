@@ -24,6 +24,7 @@ import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
+import type { AutoBridgeSettings } from "@/hooks/useAutoBridgeSettings";
 
 export type TaskProtocolView = ReturnType<typeof useTaskProtocolProjection>;
 
@@ -234,4 +235,214 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     ) => void;
     onDeleteApprovedMemoryRule: (ruleId: string) => void;
   };
+};
+
+export type ChatPagePanelsCompositionArgs = {
+  controller: ChatPageControllerCompositionArgs;
+  kinPanel: Omit<ChatPageKinPanelCompositionArgs, "controller">;
+  gptPanel: Omit<ChatPageGptPanelCompositionArgs, "controller">;
+};
+
+export type ChatPagePanelsViewArgs = {
+  controller: ChatPageControllerCompositionArgs;
+  panelApp: ChatPagePanelBaseArgs["app"];
+  taskProtocolView: TaskProtocolView;
+  kinPanel: Omit<
+    ChatPageKinPanelCompositionArgs,
+    "app" | "taskProtocolView" | "controller"
+  >;
+  gptPanel: Omit<
+    ChatPageGptPanelCompositionArgs,
+    "app" | "taskProtocolView" | "controller" | "task"
+  > & {
+    task: Omit<ChatPageGptPanelCompositionArgs["task"], "onSaveTaskSnapshot">;
+  };
+  taskSnapshot: {
+    currentTaskDraft: TaskDraft;
+    recordIngestedDocument: UseChatPageActionsArgs["recordIngestedDocument"];
+  };
+};
+
+export type ChatPageWorkspaceViewArgs = {
+  app: ChatPagePanelBaseArgs["app"] &
+    Pick<ChatPageControllerCompositionArgs["app"], "setActiveTab" | "setKinConnectionState">;
+  ui: ChatPageControllerCompositionArgs["uiState"] & {
+    kinBottomRef: ChatPageKinPanelCompositionArgs["kinState"]["kinBottomRef"];
+    gptBottomRef: ChatPageGptPanelCompositionArgs["gptState"]["gptBottomRef"];
+  };
+  task: ChatPageControllerCompositionArgs["task"] & {
+    taskDraftCount: ChatPageGptPanelCompositionArgs["task"]["taskDraftCount"];
+    activeTaskDraftIndex: ChatPageGptPanelCompositionArgs["task"]["activeTaskDraftIndex"];
+    updateTaskDraftFields: ChatPageGptPanelCompositionArgs["task"]["updateTaskDraftFields"];
+    buildTaskRequestAnswerDraft: ChatPageGptPanelCompositionArgs["task"]["buildTaskRequestAnswerDraft"];
+    onSelectPreviousTaskDraft?: ChatPageGptPanelCompositionArgs["task"]["onSelectPreviousTaskDraft"];
+    onSelectNextTaskDraft?: ChatPageGptPanelCompositionArgs["task"]["onSelectNextTaskDraft"];
+  };
+  protocol: ChatPageControllerCompositionArgs["protocol"] &
+    ChatPageGptPanelCompositionArgs["protocolState"];
+  search: ChatPageControllerCompositionArgs["search"] & {
+    searchHistory: ChatPageGptPanelCompositionArgs["references"]["searchHistory"];
+    selectedTaskSearchResultId:
+      ChatPageGptPanelCompositionArgs["references"]["selectedTaskSearchResultId"];
+    onMoveSearchHistoryItem:
+      ChatPageGptPanelCompositionArgs["references"]["onMoveSearchHistoryItem"];
+    onSelectTaskSearchResult:
+      ChatPageGptPanelCompositionArgs["references"]["onSelectTaskSearchResult"];
+    onDeleteSearchHistoryItem:
+      ChatPageGptPanelCompositionArgs["references"]["onDeleteSearchHistoryItem"];
+    sourceDisplayCount: ChatPageGptPanelCompositionArgs["settings"]["sourceDisplayCount"];
+    onChangeSearchMode:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeSearchMode"];
+    onChangeSearchEngines:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeSearchEngines"];
+    onChangeSearchLocation:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeSearchLocation"];
+    onChangeSourceDisplayCount:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeSourceDisplayCount"];
+  };
+  references: {
+    multipartAssemblies: ChatPageGptPanelCompositionArgs["references"]["multipartAssemblies"];
+    storedDocuments: ChatPageGptPanelCompositionArgs["references"]["storedDocuments"];
+    referenceLibraryItems:
+      ChatPageGptPanelCompositionArgs["references"]["referenceLibraryItems"];
+    selectedTaskLibraryItemId:
+      ChatPageGptPanelCompositionArgs["references"]["selectedTaskLibraryItemId"];
+    onDeleteMultipartAssembly:
+      ChatPageGptPanelCompositionArgs["references"]["onDeleteMultipartAssembly"];
+    onLoadMultipartAssemblyToGptInput:
+      ChatPageGptPanelCompositionArgs["references"]["onLoadMultipartAssemblyToGptInput"];
+    onDownloadMultipartAssembly:
+      ChatPageGptPanelCompositionArgs["references"]["onDownloadMultipartAssembly"];
+    onLoadStoredDocumentToGptInput:
+      ChatPageGptPanelCompositionArgs["references"]["onLoadStoredDocumentToGptInput"];
+    onDownloadStoredDocument:
+      ChatPageGptPanelCompositionArgs["references"]["onDownloadStoredDocument"];
+    onDeleteStoredDocument:
+      ChatPageGptPanelCompositionArgs["references"]["onDeleteStoredDocument"];
+    onMoveStoredDocument:
+      ChatPageGptPanelCompositionArgs["references"]["onMoveStoredDocument"];
+    onMoveLibraryItem:
+      ChatPageGptPanelCompositionArgs["references"]["onMoveLibraryItem"];
+    onSelectTaskLibraryItem:
+      ChatPageGptPanelCompositionArgs["references"]["onSelectTaskLibraryItem"];
+    onChangeLibraryItemMode:
+      ChatPageGptPanelCompositionArgs["references"]["onChangeLibraryItemMode"];
+    onSaveStoredDocument:
+      ChatPageGptPanelCompositionArgs["references"]["onSaveStoredDocument"];
+    buildLibraryReferenceContext:
+      ChatPageControllerCompositionArgs["services"]["buildLibraryReferenceContext"];
+    autoLibraryReferenceEnabled:
+      ChatPageGptPanelCompositionArgs["settings"]["autoLibraryReferenceEnabled"];
+    onChangeAutoLibraryReferenceEnabled:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoLibraryReferenceEnabled"];
+    libraryReferenceMode:
+      ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceMode"];
+    onChangeLibraryReferenceMode:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryReferenceMode"];
+    libraryIndexResponseCount:
+      ChatPageGptPanelCompositionArgs["settings"]["libraryIndexResponseCount"];
+    onChangeLibraryIndexResponseCount:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryIndexResponseCount"];
+    libraryReferenceCount:
+      ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceCount"];
+    onChangeLibraryReferenceCount:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryReferenceCount"];
+    libraryStorageMB: ChatPageGptPanelCompositionArgs["settings"]["libraryStorageMB"];
+    libraryReferenceEstimatedTokens:
+      ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceEstimatedTokens"];
+  };
+  gpt: {
+    gptState: ChatPageGptPanelCompositionArgs["gptState"]["gptState"];
+    resetGptForCurrentKin:
+      ChatPageControllerCompositionArgs["reset"]["resetGptForCurrentKin"];
+    gptMemoryRuntime: ChatPageControllerCompositionArgs["services"]["gptMemoryRuntime"];
+    responseMode: ChatPageControllerCompositionArgs["services"]["responseMode"];
+    onChangeResponseMode:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeResponseMode"];
+    uploadKind: ChatPageGptPanelCompositionArgs["settings"]["uploadKind"];
+    onChangeUploadKind:
+      ChatPageControllerCompositionArgs["services"]["setUploadKind"];
+    ingestMode: ChatPageGptPanelCompositionArgs["settings"]["ingestMode"];
+    onChangeIngestMode:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeIngestMode"];
+    imageDetail: ChatPageGptPanelCompositionArgs["settings"]["imageDetail"];
+    onChangeImageDetail:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeImageDetail"];
+    compactCharLimit:
+      ChatPageGptPanelCompositionArgs["settings"]["compactCharLimit"];
+    onChangeCompactCharLimit:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeCompactCharLimit"];
+    simpleImageCharLimit:
+      ChatPageGptPanelCompositionArgs["settings"]["simpleImageCharLimit"];
+    onChangeSimpleImageCharLimit:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeSimpleImageCharLimit"];
+    postIngestAction:
+      ChatPageGptPanelCompositionArgs["settings"]["postIngestAction"];
+    onChangePostIngestAction:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangePostIngestAction"];
+    fileReadPolicy: ChatPageGptPanelCompositionArgs["settings"]["fileReadPolicy"];
+    onChangeFileReadPolicy:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeFileReadPolicy"];
+    defaultMemorySettings:
+      ChatPageGptPanelCompositionArgs["settings"]["defaultMemorySettings"];
+    gptMemorySettingsControls:
+      ChatPageControllerCompositionArgs["services"]["gptMemorySettingsControls"];
+  };
+  bridge: {
+    autoBridgeSettings: AutoBridgeSettings;
+    onChangeAutoSendKinSysInput:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoSendKinSysInput"];
+    onChangeAutoCopyKinSysResponseToGpt:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoCopyKinSysResponseToGpt"];
+    onChangeAutoSendGptSysInput:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoSendGptSysInput"];
+    onChangeAutoCopyGptSysResponseToKin:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoCopyGptSysResponseToKin"];
+    onChangeAutoCopyFileIngestSysInfoToKin:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoCopyFileIngestSysInfoToKin"];
+  };
+  memory: {
+    tokenStats: ChatPageGptPanelCompositionArgs["settings"]["tokenStats"];
+    memorySettings: ChatPageGptPanelCompositionArgs["settings"]["memorySettings"];
+    memoryInterpreterSettings: ChatPageGptPanelCompositionArgs["memoryState"]["memoryInterpreterSettings"];
+    pendingMemoryRuleCandidates:
+      ChatPageGptPanelCompositionArgs["memoryState"]["pendingMemoryRuleCandidates"];
+    approvedMemoryRules:
+      ChatPageGptPanelCompositionArgs["memoryState"]["approvedMemoryRules"];
+    onChangeMemoryInterpreterSettings:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeMemoryInterpreterSettings"];
+    onApproveMemoryRuleCandidate:
+      ChatPageGptPanelCompositionArgs["memoryState"]["onApproveMemoryRuleCandidate"];
+    onRejectMemoryRuleCandidate:
+      ChatPageGptPanelCompositionArgs["memoryState"]["onRejectMemoryRuleCandidate"];
+    onUpdateMemoryRuleCandidate:
+      ChatPageGptPanelCompositionArgs["memoryState"]["onUpdateMemoryRuleCandidate"];
+    onDeleteApprovedMemoryRule:
+      ChatPageGptPanelCompositionArgs["memoryState"]["onDeleteApprovedMemoryRule"];
+  };
+  usage: Pick<
+    ChatPageControllerCompositionArgs["services"],
+    | "applySearchUsage"
+    | "applyChatUsage"
+    | "applySummaryUsage"
+    | "applyTaskUsage"
+    | "applyIngestUsage"
+    | "recordIngestedDocument"
+  >;
+  kin: {
+    kinIdInput: ChatPageKinPanelCompositionArgs["kinState"]["kinIdInput"];
+    setKinIdInput: ChatPageKinPanelCompositionArgs["kinState"]["setKinIdInput"];
+    kinNameInput: ChatPageKinPanelCompositionArgs["kinState"]["kinNameInput"];
+    setKinNameInput: ChatPageKinPanelCompositionArgs["kinState"]["setKinNameInput"];
+    renameKin: ChatPageKinPanelCompositionArgs["kinState"]["renameKin"];
+  };
+  reset: Pick<
+    ChatPageControllerCompositionArgs["reset"],
+    | "resetTokenStats"
+    | "connectKin"
+    | "switchKin"
+    | "disconnectKin"
+    | "removeKinState"
+    | "removeKin"
+  >;
 };

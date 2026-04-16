@@ -1,15 +1,17 @@
 "use client";
 
 import type {
+  ChatPageActionArgGroups,
   ChatPageActionGroups,
-  UseChatPageActionsArgs,
 } from "@/hooks/chatPageActionTypes";
 
 export function useChatPageMemoryActions(
-  args: Pick<UseChatPageActionsArgs, "gptMemorySettingsControls">
+  args: Pick<ChatPageActionArgGroups, "services">
 ): ChatPageActionGroups["memory"] {
   return {
-    handleSaveMemorySettings: args.gptMemorySettingsControls.updateMemorySettings,
-    handleResetMemorySettings: args.gptMemorySettingsControls.resetMemorySettings,
+    handleSaveMemorySettings:
+      args.services.gptMemorySettingsControls.updateMemorySettings,
+    handleResetMemorySettings:
+      args.services.gptMemorySettingsControls.resetMemorySettings,
   };
 }
