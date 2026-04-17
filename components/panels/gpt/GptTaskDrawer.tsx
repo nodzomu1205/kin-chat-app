@@ -5,6 +5,7 @@ import GptTaskStatusDrawer from "@/components/panels/gpt/GptTaskStatusDrawer";
 import TaskProgressPanel from "@/components/panels/gpt/TaskProgressPanel";
 import type { GptPanelTaskProps } from "@/components/panels/gpt/gptPanelTypes";
 import { sectionCardStyle } from "@/components/panels/gpt/gptDrawerShared";
+import { GPT_TASK_TEXT } from "@/components/panels/gpt/gptUiText";
 
 type TaskView = "draft" | "progress";
 
@@ -86,10 +87,10 @@ export default function GptTaskDrawer({
         >
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
-              タスク
+              {GPT_TASK_TEXT.drawerTitle}
             </div>
             <div style={{ marginTop: 4, fontSize: 12, color: "#64748b" }}>
-              タスク形成とタスク進捗をここで切り替えます。
+              {GPT_TASK_TEXT.drawerSubtitle}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -98,14 +99,14 @@ export default function GptTaskDrawer({
               onClick={() => setActiveView("draft")}
               style={toggleStyle(activeView === "draft")}
             >
-              タスク形成
+              {GPT_TASK_TEXT.draftTab}
             </button>
             <button
               type="button"
               onClick={() => setActiveView("progress")}
               style={toggleStyle(activeView === "progress")}
             >
-              タスク進捗
+              {GPT_TASK_TEXT.progressTab}
             </button>
           </div>
         </div>

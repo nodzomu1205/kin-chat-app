@@ -1,12 +1,15 @@
 import { generateId } from "@/lib/uuid";
 import { handleYoutubeTranscriptFlow } from "@/lib/app/sendToGptYoutubeFlow";
 import { runInlineUrlShortcut } from "@/lib/app/sendToGptShortcutFlows";
+import {
+  resolvePrePreparationGateDecision,
+  resolvePreparedRequestGateDecision,
+} from "@/lib/app/sendToGptFlowDecisionState";
 import type { Dispatch, SetStateAction } from "react";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type {
   ParsedInputLike,
-  ProtocolTaskEventLike,
 } from "@/lib/app/sendToGptFlowTypes";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
 
@@ -45,25 +48,28 @@ export async function runPrePreparationGates(args: {
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
 }) {
-  if (
-    handleMultipartImportGate({
-      rawText: args.rawText,
-      processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-      setGptMessages: args.setGptMessages,
-      setGptInput: args.setGptInput,
-    })
-  ) {
+  const multipartHandled = handleMultipartImportGate({
+    rawText: args.rawText,
+    processMultipartTaskDoneText: args.processMultipartTaskDoneText,
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+  });
+  const gateDecision = resolvePrePreparationGateDecision({
+    multipartHandled,
+    inlineUrlTarget: args.extractInlineUrlTarget(args.rawText),
+  });
+
+  if (gateDecision.type === "multipart_import") {
     return true;
   }
 
-  const inlineUrlTarget = args.extractInlineUrlTarget(args.rawText);
-  if (!inlineUrlTarget) {
+  if (gateDecision.type !== "inline_url") {
     return false;
   }
 
   await handleInlineUrlGate({
     rawText: args.rawText,
-    inlineUrlTarget,
+    inlineUrlTarget: gateDecision.inlineUrlTarget,
     setGptMessages: args.setGptMessages,
     setGptInput: args.setGptInput,
     setGptLoading: args.setGptLoading,
@@ -247,13 +253,20 @@ export async function runPreparedRequestGates(args: {
   ) => Promise<{ summaryUsage?: unknown }>;
   applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
+  const gateDecision = resolvePreparedRequestGateDecision({
+    isTaskDirectiveOnly: args.shouldRespondToTaskDirectiveOnlyInput({
+      parsedInput: args.preparedRequest.parsedInput,
+      effectiveParsedSearchQuery:
+        args.preparedRequest.effectiveParsedSearchQuery,
+    }),
+    limitViolation: args.preparedRequest.limitViolation,
+    youtubeTranscriptUrl: args.preparedRequest.youtubeTranscriptRequestEvent?.url,
+  });
+
   if (
+    gateDecision.type === "task_directive_only" &&
     handleTaskDirectiveOnlyGate({
-      isTaskDirectiveOnly: args.shouldRespondToTaskDirectiveOnlyInput({
-        parsedInput: args.preparedRequest.parsedInput,
-        effectiveParsedSearchQuery:
-          args.preparedRequest.effectiveParsedSearchQuery,
-      }),
+      isTaskDirectiveOnly: true,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       taskDirectiveOnlyResponseText: args.taskDirectiveOnlyResponseText,
@@ -263,14 +276,19 @@ export async function runPreparedRequestGates(args: {
   }
 
   if (
+    gateDecision.type === "protocol_limit_violation" &&
     handleProtocolLimitViolationGate({
-      limitViolation: args.preparedRequest.limitViolation,
+      limitViolation: gateDecision.violationText,
       userMsg: args.preparedRequest.userMsg,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
     })
   ) {
     return true;
+  }
+
+  if (gateDecision.type !== "youtube_transcript") {
+    return false;
   }
 
   return handleYoutubeTranscriptGate({

@@ -3,6 +3,7 @@
 import React from "react";
 import type { GptPanelProtocolProps } from "@/components/panels/gpt/gptPanelTypes";
 import { sectionCardStyle } from "@/components/panels/gpt/gptDrawerShared";
+import { GPT_PROTOCOL_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 
 type Props = Pick<
   GptPanelProtocolProps,
@@ -51,9 +52,11 @@ export default function ProtocolDrawer({
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <section style={sectionCardStyle}>
-        <div style={{ fontSize: 12, color: "#64748b" }}>常設 Prompt</div>
+        <div style={{ fontSize: 12, color: "#64748b" }}>
+          {GPT_PROTOCOL_DRAWER_TEXT.promptTitle}
+        </div>
         <div style={{ marginTop: 6, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-          Kindroid の prompt 欄に入れる固定ルールです。ここで整理した内容を基準に運用します。
+          {GPT_PROTOCOL_DRAWER_TEXT.promptHelp}
         </div>
         <textarea
           value={protocolPrompt}
@@ -63,9 +66,11 @@ export default function ProtocolDrawer({
       </section>
 
       <section style={sectionCardStyle}>
-        <div style={{ fontSize: 12, color: "#64748b" }}>指示ルールブック</div>
+        <div style={{ fontSize: 12, color: "#64748b" }}>
+          {GPT_PROTOCOL_DRAWER_TEXT.rulebookTitle}
+        </div>
         <div style={{ marginTop: 6, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-          `SYS_INFO` として Kin に送る指示規約ルールです。必要に応じて編集し、最新内容で同期できます。
+          {GPT_PROTOCOL_DRAWER_TEXT.rulebookHelp}
         </div>
         <textarea
           value={protocolRulebook}
@@ -74,10 +79,10 @@ export default function ProtocolDrawer({
         />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
           <button type="button" style={buttonStyle} onClick={onResetProtocolDefaults}>
-            既定値に戻す
+            {GPT_PROTOCOL_DRAWER_TEXT.resetDefaults}
           </button>
           <button type="button" style={buttonStyle} onClick={onSetProtocolRulebookToKinDraft}>
-            Kin送信用にセット
+            {GPT_PROTOCOL_DRAWER_TEXT.setKinDraft}
           </button>
           <button
             type="button"
@@ -89,7 +94,7 @@ export default function ProtocolDrawer({
             }}
             onClick={onSendProtocolRulebookToKin}
           >
-            SYS_INFO として Kin に送る
+            {GPT_PROTOCOL_DRAWER_TEXT.sendSysInfo}
           </button>
         </div>
       </section>

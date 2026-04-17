@@ -5,11 +5,9 @@ import {
   SEARCH_MODE_PRESETS,
   type PrimarySearchMode,
 } from "@/lib/search-domain/presets";
-import type { SearchEngine, SearchMode } from "@/types/task";
+import type { SearchEngine } from "@/types/task";
 import type { LibraryReferenceMode } from "./gptPanelTypes";
 import {
-  buttonPrimary,
-  buttonSecondaryWide,
   helpTextStyle,
   inputStyle,
   labelStyle,
@@ -25,6 +23,7 @@ import {
   textAreaStyle,
   ToggleButtons,
 } from "./GptSettingsShared";
+import { GPT_SETTINGS_SECTION_TEXT } from "./gptSettingsText";
 export { RulesSettingsSection } from "./GptSettingsRulesSection";
 export { ProtocolSettingsSection } from "./GptSettingsProtocolSection";
 
@@ -52,7 +51,9 @@ export function SearchSettingsSection(props: {
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={sectionCard}>
-        <div style={{ ...labelStyle, marginBottom: 8 }}>検索プリセット</div>
+        <div style={{ ...labelStyle, marginBottom: 8 }}>
+          {GPT_SETTINGS_SECTION_TEXT.searchPresetTitle}
+        </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {(["normal", "ai", "integrated", "news", "geo", "youtube"] as PrimarySearchMode[]).map(
             (mode) => (
@@ -63,16 +64,16 @@ export function SearchSettingsSection(props: {
                 onClick={() => props.onSetSearchPreset(mode)}
               >
                 {mode === "normal"
-                  ? "標準"
+                  ? GPT_SETTINGS_SECTION_TEXT.searchPresetLabels.normal
                   : mode === "ai"
-                    ? "AI"
+                    ? GPT_SETTINGS_SECTION_TEXT.searchPresetLabels.ai
                     : mode === "integrated"
-                      ? "統合"
+                      ? GPT_SETTINGS_SECTION_TEXT.searchPresetLabels.integrated
                       : mode === "news"
-                        ? "News"
+                        ? GPT_SETTINGS_SECTION_TEXT.searchPresetLabels.news
                         : mode === "geo"
-                          ? "Maps / Local"
-                          : "YouTube"}
+                          ? GPT_SETTINGS_SECTION_TEXT.searchPresetLabels.geo
+                          : GPT_SETTINGS_SECTION_TEXT.searchPresetLabels.youtube}
               </button>
             )
           )}
@@ -89,19 +90,19 @@ export function SearchSettingsSection(props: {
           }}
         >
           <div>
-            <div style={labelStyle}>Location</div>
+            <div style={labelStyle}>{GPT_SETTINGS_SECTION_TEXT.locationLabel}</div>
             <input
               value={props.searchLocation}
               onChange={(e) => props.onChangeSearchLocation(e.target.value)}
-              placeholder="例: Japan / Johannesburg, South Africa"
+              placeholder={GPT_SETTINGS_SECTION_TEXT.locationPlaceholder}
               style={inputStyle}
             />
             <div style={helpTextStyle}>
-              Protocol の `LOCATION` に使う主要な地域設定です。
+              {GPT_SETTINGS_SECTION_TEXT.locationHelp}
             </div>
           </div>
           <div>
-            <div style={labelStyle}>Engines</div>
+            <div style={labelStyle}>{GPT_SETTINGS_SECTION_TEXT.enginesLabel}</div>
             <div
               style={{
                 display: "flex",
@@ -122,12 +123,12 @@ export function SearchSettingsSection(props: {
               ))}
             </div>
             <div style={helpTextStyle}>
-              利用可能: `google_search / google_ai_mode / google_news / google_maps / google_local / youtube_search`
+              {GPT_SETTINGS_SECTION_TEXT.enginesHelp}
             </div>
           </div>
           <div>
             <NumberField
-              label="リンク表示件数"
+              label={GPT_SETTINGS_SECTION_TEXT.sourceDisplayCountLabel}
               value={props.sourceDisplayCountInput}
               onChange={(value) =>
                 props.onChangeSourceDisplayCountInput(
@@ -136,7 +137,7 @@ export function SearchSettingsSection(props: {
               }
               onBlur={props.onCommitSourceDisplayCount}
               onEnter={props.onCommitSourceDisplayCount}
-              help="検索結果カードや関連リンクカードで表示する件数です。"
+              help={GPT_SETTINGS_SECTION_TEXT.sourceDisplayCountHelp}
             />
           </div>
         </div>
@@ -170,14 +171,14 @@ export function LibrarySettingsSection(props: {
         }}
       >
         <ToggleButtons
-          label="ライブラリ自動参照"
+          label={GPT_SETTINGS_SECTION_TEXT.autoLibraryReferenceLabel}
           checked={props.autoLibraryReferenceEnabled}
           onChange={props.onChangeAutoLibraryReferenceEnabled}
-          help="Kin の会話・投入文書・検索結果などをもとに、ライブラリ候補も参照対象に含めます。"
+          help={GPT_SETTINGS_SECTION_TEXT.autoLibraryReferenceHelp}
         />
         <div style={subtleCard}>
           <LabeledSelect
-            label="ライブラリ参照モード"
+            label={GPT_SETTINGS_SECTION_TEXT.libraryReferenceModeLabel}
             value={props.libraryReferenceMode}
             onChange={(value) =>
               props.onChangeLibraryReferenceMode(value as LibraryReferenceMode)
@@ -188,7 +189,7 @@ export function LibrarySettingsSection(props: {
           </LabeledSelect>
         </div>
         <NumberField
-          label="ライブラリ index 件数"
+          label={GPT_SETTINGS_SECTION_TEXT.libraryIndexResponseCountLabel}
           value={String(props.libraryIndexResponseCount)}
           onChange={(value) =>
             props.onChangeLibraryIndexResponseCount(
@@ -197,7 +198,7 @@ export function LibrarySettingsSection(props: {
           }
         />
         <NumberField
-          label="ライブラリ参照件数"
+          label={GPT_SETTINGS_SECTION_TEXT.libraryReferenceCountLabel}
           value={String(props.libraryReferenceCount)}
           onChange={(value) =>
             props.onChangeLibraryReferenceCount(
@@ -206,12 +207,12 @@ export function LibrarySettingsSection(props: {
           }
         />
         <ReadonlyStatField
-          label="ライブラリ容量"
+          label={GPT_SETTINGS_SECTION_TEXT.libraryStorageLabel}
           value={`${props.libraryStorageMB.toFixed(3)} MB`}
         />
         <ReadonlyStatField
-          label="ライブラリ推定トークン"
-          value={`約 ${props.libraryReferenceEstimatedTokens}`}
+          label={GPT_SETTINGS_SECTION_TEXT.libraryEstimatedTokensLabel}
+          value={`${GPT_SETTINGS_SECTION_TEXT.libraryEstimatedTokensValuePrefix}${props.libraryReferenceEstimatedTokens}`}
         />
       </div>
     </div>

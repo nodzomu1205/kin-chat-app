@@ -43,17 +43,23 @@ export const STRONG_APPROVED_INTENT_MATCH_SCORE = 6;
 const SEARCH_KEYWORDS = ["検索", "search", "google"];
 const TRANSCRIPT_KEYWORDS = [
   "youtube",
-  "動画",
   "文字起こし",
+  "動画書き起こし",
   "transcript",
   "content request",
-  "内容取得",
   "コンテンツ取得",
+  "動画内容取得",
 ];
-const LIBRARY_KEYWORDS = ["library", "ライブラリ", "文献", "資料参照", "資料"];
-const MATERIAL_KEYWORDS = ["document", "pdf", "source", "資料", "原文"];
+const LIBRARY_KEYWORDS = ["library", "ライブラリ", "保存資料", "資料庫", "資料"];
+const MATERIAL_KEYWORDS = ["document", "pdf", "source", "資料", "文書"];
 const ASK_GPT_KEYWORDS = ["gpt", "chatgpt", "ask gpt", "gptに質問"];
-const ASK_USER_KEYWORDS = ["ask user", "userに質問", "ユーザーに質問", "確認して", "質問して"];
+const ASK_USER_KEYWORDS = [
+  "ask user",
+  "userに質問",
+  "ユーザーに質問",
+  "確認して",
+  "質問して",
+];
 const AT_LEAST_KEYWORDS = [
   "at least",
   "minimum",
@@ -73,7 +79,6 @@ const UP_TO_KEYWORDS = [
   "以下",
   "以内",
   "まで",
-  "迄",
 ];
 const AROUND_KEYWORDS = ["around", "about", "approximately", "前後", "程度"];
 const EXACT_KEYWORDS = ["exactly", "ちょうど", "ぴったり", "正確に"];
@@ -164,15 +169,19 @@ export function parseIntentCandidateDraftText(
   const count = countMatch?.[1] ? Number(countMatch[1]) : fallback.count;
 
   const rule = detectTaskCountRule(normalized, fallback.rule || "exact");
-
   const lower = normalized.toLowerCase();
   const kind: IntentPhraseKind = includesAnyKeyword(lower, ASK_GPT_KEYWORDS)
     ? "ask_gpt"
     : includesAnyKeyword(lower, ASK_USER_KEYWORDS)
       ? "ask_user"
-      : includesAnyKeyword(lower, ["content request", "transcript", "文字起こし", "内容取得"])
+      : includesAnyKeyword(lower, [
+            "content request",
+            "transcript",
+            "文字起こし",
+            "コンテンツ取得",
+          ])
         ? "youtube_transcript_request"
-        : includesAnyKeyword(lower, ["library reference", "ライブラリ参照", "文献参照"])
+        : includesAnyKeyword(lower, ["library reference", "ライブラリ参照", "資料参照"])
           ? "library_reference"
           : /japanese characters|文字/.test(lower)
             ? "char_limit"
@@ -195,22 +204,10 @@ function detectTaskCountRule(
 ): TaskCountRule {
   const lower = normalizeLegacyIntentPhraseText(text).toLowerCase();
 
-  if (includesAnyKeyword(lower, AT_LEAST_KEYWORDS)) {
-    return "at_least";
-  }
-
-  if (includesAnyKeyword(lower, UP_TO_KEYWORDS)) {
-    return "up_to";
-  }
-
-  if (includesAnyKeyword(lower, AROUND_KEYWORDS)) {
-    return "around";
-  }
-
-  if (includesAnyKeyword(lower, EXACT_KEYWORDS)) {
-    return "exact";
-  }
-
+  if (includesAnyKeyword(lower, AT_LEAST_KEYWORDS)) return "at_least";
+  if (includesAnyKeyword(lower, UP_TO_KEYWORDS)) return "up_to";
+  if (includesAnyKeyword(lower, AROUND_KEYWORDS)) return "around";
+  if (includesAnyKeyword(lower, EXACT_KEYWORDS)) return "exact";
   return fallbackRule;
 }
 
@@ -222,8 +219,7 @@ function normalizePhraseForMatch(input: string) {
   return normalizeLegacyIntentPhraseText(input)
     .toLowerCase()
     .replace(/\s+/g, "")
-    .replace(/[、。.,!?'"`()[\]{}<>:;/-]+/g, "")
-    .replace(/(?:への|へ|は|が|を|に|で|と|も|の|まで|迄)+/g, "")
+    .replace(/[、。，．,!！?？"'`()[\]{}<>:：;；/\\-]+/g, "")
     .trim();
 }
 
@@ -256,7 +252,14 @@ function detectFinalizationPolicy(
   if (includesAnyKeyword(lower, ["確認してから", "confirm first", "wait for user"])) {
     return "wait_for_user_confirm";
   }
-  if (includesAnyKeyword(lower, ["資料待ち", "必要資料", "required materials", "wait for materials"])) {
+  if (
+    includesAnyKeyword(lower, [
+      "資料待ち",
+      "必要資料",
+      "required materials",
+      "wait for materials",
+    ])
+  ) {
     return "wait_for_required_materials";
   }
   return "auto_when_ready";
@@ -271,8 +274,8 @@ function detectTone(text: string) {
 
 function detectLength(text: string): "short" | "medium" | "long" | undefined {
   const lower = text.toLowerCase();
-  if (includesAnyKeyword(lower, ["short", "短く", "短め"])) return "short";
-  if (includesAnyKeyword(lower, ["long", "長く", "長め", "詳しく"])) return "long";
+  if (includesAnyKeyword(lower, ["short", "短い", "短め"])) return "short";
+  if (includesAnyKeyword(lower, ["long", "長い", "長め", "詳しく"])) return "long";
   return "medium";
 }
 
@@ -321,30 +324,25 @@ function applyApprovedIntentPhrases(
       next.workflow!.askGptCount = phrase.count;
       next.workflow!.askGptCountRule = phrase.rule || "exact";
     }
-
     if (phrase.kind === "ask_user" && phrase.count) {
       next.workflow!.askUserCount = phrase.count;
       next.workflow!.askUserCountRule = phrase.rule || "exact";
     }
-
     if (phrase.kind === "search_request" && phrase.count) {
       next.workflow!.searchRequestCount = phrase.count;
       next.workflow!.searchRequestCountRule = phrase.rule || "exact";
       next.workflow!.allowSearchRequest = true;
     }
-
     if (phrase.kind === "youtube_transcript_request" && phrase.count) {
       next.workflow!.youtubeTranscriptRequestCount = phrase.count;
       next.workflow!.youtubeTranscriptRequestCountRule = phrase.rule || "exact";
       next.workflow!.allowYoutubeTranscriptRequest = true;
     }
-
     if (phrase.kind === "library_reference" && phrase.count) {
       next.workflow!.libraryReferenceCount = phrase.count;
       next.workflow!.libraryReferenceCountRule = phrase.rule || "exact";
       next.workflow!.allowLibraryReference = true;
     }
-
     if (phrase.kind === "char_limit" && phrase.charLimit) {
       const nextConstraints = (next.constraints || []).filter(
         (item) => !/Japanese characters/i.test(item)
@@ -642,11 +640,10 @@ export function looksLikeTaskInstruction(input: string): boolean {
     includesAnyKeyword(text, [
       "Kinに",
       "タスク",
-      "依頼",
+      "提出",
       "レポート",
       "分析して",
       "まとめて",
-      "提出して",
       "検索3回",
       "検索",
     ])

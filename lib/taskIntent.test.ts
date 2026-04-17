@@ -14,7 +14,7 @@ import {
 } from "@/lib/taskIntentFallback";
 
 const CLEAN_INPUT =
-  "資料に関する動画をYouTubeで見つけて分析してレポートを提出して。1000文字以上。検索3回まで。コンテンツ取得5回まで。";
+  "資料に関するYouTubeを見つけて分析してレポートを提出して。1000文字以上、検索3回まで、コンテンツ取得5回まで。";
 
 describe("parseTaskIntentFromText", () => {
   it("keeps count-based workflow empty until phrases are approved", () => {
@@ -47,7 +47,7 @@ describe("parseTaskIntentFromText", () => {
     ];
 
     const intent = parseTaskIntentFromText(
-      "資料に関して調べてください。検索3回まで。コンテンツ取得5回まで。",
+      "資料に関して調べてください。検索3回まで、コンテンツ取得5回まで。",
       approved
     );
 
@@ -68,7 +68,7 @@ describe("resolveTaskIntentWithFallback", () => {
       ok: true,
       json: async () => ({
         reply: JSON.stringify({
-          suggestedTitle: "資料に関するYouTube調査",
+          suggestedTitle: "資料に関するYouTubeタスク",
           candidates: [
             {
               phrase: "検索3回まで",
@@ -97,7 +97,7 @@ describe("resolveTaskIntentWithFallback", () => {
     });
 
     expect(result.usedFallback).toBe(true);
-    expect(result.suggestedTitle).toBe("資料に関するYouTube調査");
+    expect(result.suggestedTitle).toBe("資料に関するYouTubeタスク");
     expect(result.intent.workflow?.searchRequestCount).toBeUndefined();
     expect(result.intent.workflow?.youtubeTranscriptRequestCount).toBeUndefined();
     expect(result.pendingCandidates).toEqual(
@@ -161,7 +161,7 @@ describe("taskIntentFallback prompt", () => {
     expect(
       extractTaskIntentFallbackPayload(
         JSON.stringify({
-          suggestedTitle: "資料に関する動画調査",
+          suggestedTitle: "資料に関するYouTubeタスク",
           candidates: [
             {
               phrase: "コンテンツ取得5回まで",
@@ -183,7 +183,7 @@ describe("taskIntentFallback prompt", () => {
         })
       )
     ).toEqual({
-      suggestedTitle: "資料に関する動画調査",
+      suggestedTitle: "資料に関するYouTubeタスク",
       candidates: [
         {
           phrase: "コンテンツ取得5回まで",

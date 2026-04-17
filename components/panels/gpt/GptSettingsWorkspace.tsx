@@ -27,6 +27,18 @@ import {
   tabButton,
 } from "@/components/panels/gpt/GptSettingsSections";
 import {
+  GPT_SETTINGS_DRAWER_TEXT,
+  GPT_SETTINGS_WORKSPACE_TEXT,
+} from "@/components/panels/gpt/gptSettingsText";
+import {
+  formatIntentLabel,
+  formatIntentPhraseKindLabel,
+  formatTopicDecisionLabel,
+  getCandidateIntentValue,
+  getCandidateTopicDecisionValue,
+  GPT_SETTINGS_REVIEW_TEXT,
+} from "@/components/panels/gpt/gptSettingsText";
+import {
   CountBadge,
   ItemActionRow,
   LabeledSelect,
@@ -80,72 +92,7 @@ type ApprovalSectionPendingItem = {
   sourceText: string;
 };
 
-function getCandidateIntentValue(candidate: PendingMemoryRuleCandidate): UserUtteranceIntent {
-  if (candidate.intent) return candidate.intent;
-  if (candidate.kind === "closing_reply") return "acknowledgement";
-  if (candidate.kind === "topic_alias") return "question";
-  return "unknown";
-}
-
-function getCandidateTopicDecisionValue(candidate: PendingMemoryRuleCandidate): TopicDecision {
-  if (candidate.topicDecision) return candidate.topicDecision;
-  if (candidate.kind === "closing_reply") return "keep";
-  if (candidate.kind === "topic_alias") return "switch";
-  return "unclear";
-}
-
-function formatIntentLabel(intent: UserUtteranceIntent) {
-  switch (intent) {
-    case "agreement":
-      return "同意";
-    case "disagreement":
-      return "否定";
-    case "question":
-      return "質問";
-    case "request":
-      return "依頼";
-    case "statement":
-      return "叙述";
-    case "suggestion":
-      return "提案";
-    case "acknowledgement":
-      return "相槌";
-    default:
-      return "不明";
-  }
-}
-
-function formatTopicDecisionLabel(decision: TopicDecision) {
-  switch (decision) {
-    case "keep":
-      return "維持";
-    case "switch":
-      return "切替";
-    default:
-      return "保留";
-  }
-}
-
-function formatIntentPhraseKindLabel(
-  kind: GptPanelProtocolProps["pendingIntentCandidates"][number]["kind"]
-) {
-  switch (kind) {
-    case "ask_gpt":
-      return "GPT依頼回数";
-    case "ask_user":
-      return "ユーザー確認回数";
-    case "search_request":
-      return "検索依頼回数";
-    case "youtube_transcript_request":
-      return "コンテンツ取得回数";
-    case "library_reference":
-      return "ライブラリ参照回数";
-    case "char_limit":
-      return "文字数制約";
-    default:
-      return kind;
-  }
-}
+const WORKSPACE_REVIEW_TEXT = GPT_SETTINGS_REVIEW_TEXT;
 
 function IngestSettingsSection(props: {
   isMobile?: boolean;
@@ -164,15 +111,15 @@ function IngestSettingsSection(props: {
     <div style={sectionCard}>
       <div style={{ display: "grid", gap: 12 }}>
         <LabeledSelect
-          label="ファイル読み取り方針"
+          label={GPT_SETTINGS_DRAWER_TEXT.fileReadPolicy}
           value={props.fileReadPolicy}
           onChange={(value) =>
             props.onChangeFileReadPolicy(value as FileReadPolicy)
           }
         >
-            <option value="text_first">テキスト優先</option>
-            <option value="visual_first">見た目優先</option>
-            <option value="text_and_layout">両方</option>
+            <option value="text_first">{GPT_SETTINGS_DRAWER_TEXT.fileReadPolicyOptions.text_first}</option>
+            <option value="visual_first">{GPT_SETTINGS_DRAWER_TEXT.fileReadPolicyOptions.visual_first}</option>
+            <option value="text_and_layout">{GPT_SETTINGS_DRAWER_TEXT.fileReadPolicyOptions.text_and_layout}</option>
         </LabeledSelect>
         <div
           style={{
@@ -185,7 +132,7 @@ function IngestSettingsSection(props: {
         >
           <div style={subtleCard}>
             <LabeledSelect
-              label="テキスト取込"
+              label={GPT_SETTINGS_DRAWER_TEXT.textIngest}
               value={props.ingestMode}
               onChange={(value) => props.onChangeIngestMode(value as IngestMode)}
             >
@@ -195,7 +142,7 @@ function IngestSettingsSection(props: {
             </LabeledSelect>
             <div style={{ marginTop: 8 }}>
               <NumberField
-                label="文字数上限"
+                label={GPT_SETTINGS_DRAWER_TEXT.charLimit}
                 value={String(props.compactCharLimit)}
                 onChange={(v) => props.onChangeCompactCharLimit(Number(v || 0))}
               />
@@ -203,7 +150,7 @@ function IngestSettingsSection(props: {
           </div>
           <div style={subtleCard}>
             <LabeledSelect
-              label="画像 / PDF 取込"
+              label={GPT_SETTINGS_DRAWER_TEXT.imagePdfIngest}
               value={props.imageDetail}
               onChange={(value) => props.onChangeImageDetail(value as ImageDetail)}
             >
@@ -213,7 +160,7 @@ function IngestSettingsSection(props: {
             </LabeledSelect>
             <div style={{ marginTop: 8 }}>
               <NumberField
-                label="文字数上限"
+                label={GPT_SETTINGS_DRAWER_TEXT.charLimit}
                 value={String(props.simpleImageCharLimit)}
                 onChange={(v) =>
                   props.onChangeSimpleImageCharLimit(Number(v || 0))
@@ -263,7 +210,7 @@ function RuleApprovalSection(props: {
           style={tabButton(props.showApproved)}
           onClick={props.onToggleApproved}
         >
-          {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
+          {props.showApproved ? WORKSPACE_REVIEW_TEXT.hideApproved : WORKSPACE_REVIEW_TEXT.showApproved}
           </button>
         }
       />
@@ -282,14 +229,18 @@ function RuleApprovalSection(props: {
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>{item.extra}</div>
                 ) : null}
                 <ItemActionRow
-                  meta={item.createdAt ? `登録日: ${item.createdAt.slice(0, 10)}` : ""}
+                  meta={
+                    item.createdAt
+                      ? `${WORKSPACE_REVIEW_TEXT.createdAt}: ${item.createdAt.slice(0, 10)}`
+                      : ""
+                  }
                   actions={
                   <button
                     type="button"
                     style={buttonSecondaryWide}
                     onClick={() => props.onDelete(item.id)}
                   >
-                    削除
+                    {WORKSPACE_REVIEW_TEXT.delete}
                   </button>
                   }
                 />
@@ -299,7 +250,7 @@ function RuleApprovalSection(props: {
         </div>
       ) : null}
 
-      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認待ち</div>
+      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>{WORKSPACE_REVIEW_TEXT.pending}</div>
       {props.pendingItems.length === 0 ? (
         <div style={helpTextStyle}>{props.pendingEmptyText}</div>
       ) : (
@@ -322,7 +273,7 @@ function RuleApprovalSection(props: {
                 {item.sourceText}
               </div>
               <ItemActionRow
-                meta="左が確定、右が却下です。"
+                meta={WORKSPACE_REVIEW_TEXT.pendingMeta}
                 stacked
                 actions={
                   <>
@@ -331,14 +282,14 @@ function RuleApprovalSection(props: {
                       style={buttonPrimary}
                       onClick={() => props.onApprove(item.id)}
                     >
-                      承認
+                      {WORKSPACE_REVIEW_TEXT.approve}
                     </button>
                     <button
                       type="button"
                       style={buttonSecondaryWide}
                       onClick={() => props.onReject(item.id)}
                     >
-                      却下
+                      {WORKSPACE_REVIEW_TEXT.reject}
                     </button>
                   </>
                 }
@@ -405,12 +356,12 @@ function MemoryApprovalSection(props: {
   return (
     <div style={sectionCard}>
       <SectionHeaderRow
-        title="文脈レビュー"
+        title={WORKSPACE_REVIEW_TEXT.memoryReviewTitle}
         badges={
           <>
-            <CountBadge label="承認済み" count={props.approvedCount} tone="info" />
+            <CountBadge label={WORKSPACE_REVIEW_TEXT.approved} count={props.approvedCount} tone="info" />
             <CountBadge
-              label="承認待ち"
+              label={WORKSPACE_REVIEW_TEXT.pending}
               count={props.pendingCount}
               tone={props.pendingCount > 0 ? "warning" : "neutral"}
             />
@@ -422,7 +373,7 @@ function MemoryApprovalSection(props: {
           style={tabButton(props.showApproved)}
           onClick={props.onToggleApproved}
         >
-          {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
+          {props.showApproved ? WORKSPACE_REVIEW_TEXT.hideApproved : WORKSPACE_REVIEW_TEXT.showApproved}
           </button>
         }
       />
@@ -430,7 +381,7 @@ function MemoryApprovalSection(props: {
       {props.showApproved ? (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
           {props.approvedRules.length === 0 ? (
-            <div style={helpTextStyle}>登録済みの文脈レビューはありません。</div>
+            <div style={helpTextStyle}>{WORKSPACE_REVIEW_TEXT.noApprovedMemoryReview}</div>
           ) : (
             props.approvedRules.map((rule) => (
               <SettingsItemCard
@@ -448,47 +399,47 @@ function MemoryApprovalSection(props: {
                   }}
                 >
                   <div style={{ ...helpTextStyle, marginTop: 0 }}>
-                    実際のコメント: {rule.phrase}
+                    {WORKSPACE_REVIEW_TEXT.actualComment}: {rule.phrase}
                   </div>
                   {rule.intent ? (
                     <div style={{ ...helpTextStyle, marginTop: 4 }}>
-                      ユーザー意図: {rule.intent}
+                      {WORKSPACE_REVIEW_TEXT.userIntent}: {rule.intent}
                     </div>
                   ) : null}
                   {rule.topicDecision ? (
                     <div style={{ ...helpTextStyle, marginTop: 4 }}>
-                      トピック判定: {rule.topicDecision}
+                      {WORKSPACE_REVIEW_TEXT.topicDecision}: {rule.topicDecision}
                     </div>
                   ) : null}
                   {rule.normalizedValue ? (
                     <div style={{ ...helpTextStyle, marginTop: 4 }}>
-                      トピック: {rule.normalizedValue}
+                      {WORKSPACE_REVIEW_TEXT.topic}: {rule.normalizedValue}
                     </div>
                   ) : null}
                 </div>
-                <div style={{ ...helpTextStyle, marginTop: 6 }}>入力語: {rule.phrase}</div>
+                <div style={{ ...helpTextStyle, marginTop: 6 }}>{WORKSPACE_REVIEW_TEXT.sourcePhrase}: {rule.phrase}</div>
                 {rule.intent ? (
-                  <div style={{ ...helpTextStyle, marginTop: 6 }}>意図: {rule.intent}</div>
+                  <div style={{ ...helpTextStyle, marginTop: 6 }}>{WORKSPACE_REVIEW_TEXT.intent}: {rule.intent}</div>
                 ) : null}
                 {rule.topicDecision ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                    トピック判定: {rule.topicDecision}
+                    {WORKSPACE_REVIEW_TEXT.topicDecision}: {rule.topicDecision}
                   </div>
                 ) : null}
                 {rule.normalizedValue ? (
                   <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                    トピック候補: {rule.normalizedValue}
+                    {WORKSPACE_REVIEW_TEXT.topicCandidate}: {rule.normalizedValue}
                   </div>
                 ) : null}
                 <ItemActionRow
-                  meta={`登録日: ${rule.createdAt.slice(0, 10)}`}
+                  meta={`${WORKSPACE_REVIEW_TEXT.createdAt}: ${rule.createdAt.slice(0, 10)}`}
                   actions={
                   <button
                     type="button"
                     style={buttonSecondaryWide}
                     onClick={() => props.onDelete(rule.id)}
                   >
-                    削除
+                    {WORKSPACE_REVIEW_TEXT.delete}
                   </button>
                   }
                 />
@@ -498,9 +449,9 @@ function MemoryApprovalSection(props: {
         </div>
       ) : null}
 
-      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認待ち</div>
+      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>{WORKSPACE_REVIEW_TEXT.pending}</div>
       {props.pendingCandidates.length === 0 ? (
-        <div style={helpTextStyle}>未対応の文脈候補はありません。</div>
+        <div style={helpTextStyle}>{WORKSPACE_REVIEW_TEXT.noPendingMemoryReview}</div>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {props.pendingCandidates.map((candidate) => (
@@ -519,19 +470,19 @@ function MemoryApprovalSection(props: {
                 }}
               >
                 <div style={{ ...helpTextStyle, marginTop: 0 }}>
-                  実際のコメント: {candidate.phrase}
+                  {WORKSPACE_REVIEW_TEXT.actualComment}: {candidate.phrase}
                 </div>
                 <div style={{ ...helpTextStyle, marginTop: 4 }}>
-                  ユーザー意図: {getCandidateIntentValue(candidate)}
+                  {WORKSPACE_REVIEW_TEXT.userIntent}: {getCandidateIntentValue(candidate)}
                 </div>
                 <div style={{ ...helpTextStyle, marginTop: 4 }}>
-                  トピック判定: {getCandidateTopicDecisionValue(candidate)}
+                  {WORKSPACE_REVIEW_TEXT.topicDecision}: {getCandidateTopicDecisionValue(candidate)}
                 </div>
                 <div style={{ ...helpTextStyle, marginTop: 4 }}>
-                  トピック: {candidate.normalizedValue || "(keep の場合は空) "}
+                  {WORKSPACE_REVIEW_TEXT.topic}: {candidate.normalizedValue || WORKSPACE_REVIEW_TEXT.keepEmpty}
                 </div>
               </div>
-              <div style={{ ...helpTextStyle, marginTop: 6 }}>実際のコメント: {candidate.phrase}</div>
+              <div style={{ ...helpTextStyle, marginTop: 6 }}>{WORKSPACE_REVIEW_TEXT.actualComment}: {candidate.phrase}</div>
               <div
                 style={{
                   ...helpTextStyle,
@@ -552,7 +503,7 @@ function MemoryApprovalSection(props: {
               >
                 <div>
                   <LabeledSelect
-                    label="ユーザー意図"
+                    label={WORKSPACE_REVIEW_TEXT.userIntent}
                     value={getCandidateIntentValue(candidate)}
                     onChange={(value) =>
                       props.onUpdate(candidate.id, {
@@ -570,7 +521,7 @@ function MemoryApprovalSection(props: {
                 </div>
                 <div>
                   <LabeledSelect
-                    label="トピック判定"
+                    label={WORKSPACE_REVIEW_TEXT.topicDecision}
                     value={getCandidateTopicDecisionValue(candidate)}
                     onChange={(value) => {
                       const nextDecision = value as TopicDecision;
@@ -595,7 +546,7 @@ function MemoryApprovalSection(props: {
                 </div>
                 <div style={{ gridColumn: props.isMobile ? undefined : "1 / -1" }}>
                   <TextField
-                    label="トピック"
+                    label={WORKSPACE_REVIEW_TEXT.topic}
                     value={resolveCandidateTopicInputValue(candidate)}
                     onChange={(value) =>
                       props.onUpdate(candidate.id, {
@@ -603,7 +554,7 @@ function MemoryApprovalSection(props: {
                         normalizedValue: value,
                       })
                     }
-                    placeholder="keep の場合は空のまま"
+                    placeholder={WORKSPACE_REVIEW_TEXT.keepPlaceholder}
                   />
                 </div>
               </div>
@@ -616,14 +567,14 @@ function MemoryApprovalSection(props: {
                       style={buttonPrimary}
                       onClick={() => props.onApprove(candidate.id)}
                     >
-                      確定
+                      {WORKSPACE_REVIEW_TEXT.confirm}
                     </button>
                     <button
                       type="button"
                       style={buttonSecondaryWide}
                       onClick={() => props.onReject(candidate.id)}
                     >
-                      却下
+                      {WORKSPACE_REVIEW_TEXT.reject}
                     </button>
                   </>
                 }
@@ -652,12 +603,12 @@ function SysRuleApprovalSection(props: {
   return (
     <div style={sectionCard}>
       <SectionHeaderRow
-        title="SYSフォーマットルール"
+        title={WORKSPACE_REVIEW_TEXT.sysRuleTitle}
         badges={
           <>
-            <CountBadge label="承認済み" count={props.approvedCount} tone="info" />
+            <CountBadge label={WORKSPACE_REVIEW_TEXT.approved} count={props.approvedCount} tone="info" />
             <CountBadge
-              label="承認待ち"
+              label={WORKSPACE_REVIEW_TEXT.pending}
               count={props.pendingCount}
               tone={props.pendingCount > 0 ? "warning" : "neutral"}
             />
@@ -665,27 +616,27 @@ function SysRuleApprovalSection(props: {
         }
         action={
           <button type="button" style={tabButton(props.showApproved)} onClick={props.onToggleApproved}>
-            {props.showApproved ? "承認済みを閉じる" : "承認済みを表示"}
+            {props.showApproved ? WORKSPACE_REVIEW_TEXT.hideApproved : WORKSPACE_REVIEW_TEXT.showApproved}
           </button>
         }
       />
 
-      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認待ち</div>
+      <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>{WORKSPACE_REVIEW_TEXT.pending}</div>
       {props.pendingCandidates.length === 0 ? (
-        <div style={helpTextStyle}>未対応の SYS ルール候補はありません。</div>
+        <div style={helpTextStyle}>{WORKSPACE_REVIEW_TEXT.noPendingSysRules}</div>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {props.pendingCandidates.map((candidate) => (
             <SettingsItemCard key={candidate.id} title={formatIntentPhraseKindLabel(candidate.kind)}>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                元の検出語: {candidate.phrase}
+                {WORKSPACE_REVIEW_TEXT.detectedPhrase}: {candidate.phrase}
               </div>
               <div style={{ ...helpTextStyle, marginTop: 6, whiteSpace: "pre-wrap" }}>
                 {candidate.sourceText}
               </div>
               <div style={{ marginTop: 10 }}>
                 <LabeledTextArea
-                  label="承認文面"
+                  label={WORKSPACE_REVIEW_TEXT.approvedDraft}
                   value={candidate.draftText || candidate.phrase}
                   onChange={(value) =>
                     props.onUpdate(candidate.id, {
@@ -696,17 +647,17 @@ function SysRuleApprovalSection(props: {
                 />
               </div>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                正しければ承認、少しズレていれば修正して承認、方向が違えば却下します。
+                {WORKSPACE_REVIEW_TEXT.approvalHelp}
               </div>
               <ItemActionRow
                 stacked
                 actions={
                   <>
                     <button type="button" style={buttonPrimary} onClick={() => props.onApprove(candidate.id)}>
-                      承認
+                      {WORKSPACE_REVIEW_TEXT.approve}
                     </button>
                     <button type="button" style={buttonSecondaryWide} onClick={() => props.onReject(candidate.id)}>
-                      却下
+                      {WORKSPACE_REVIEW_TEXT.reject}
                     </button>
                   </>
                 }
@@ -718,16 +669,16 @@ function SysRuleApprovalSection(props: {
 
       {props.showApproved ? (
         <>
-          <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>承認済み</div>
+          <div style={{ ...labelStyle, marginTop: 12, marginBottom: 8 }}>{WORKSPACE_REVIEW_TEXT.approvedSection}</div>
           <div style={{ display: "grid", gap: 8 }}>
             {props.approvedPhrases.map((phrase) => (
               <SettingsItemCard key={phrase.id} title={formatIntentPhraseKindLabel(phrase.kind)}>
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  元の検出語: {phrase.phrase}
+                  {WORKSPACE_REVIEW_TEXT.detectedPhrase}: {phrase.phrase}
                 </div>
                 <div style={{ marginTop: 10 }}>
                   <LabeledTextArea
-                    label="承認文面"
+                    label={WORKSPACE_REVIEW_TEXT.approvedDraft}
                     value={phrase.draftText || phrase.phrase}
                     onChange={(value) =>
                       props.onUpdateApproved(phrase.id, {
@@ -738,13 +689,13 @@ function SysRuleApprovalSection(props: {
                   />
                 </div>
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  承認回数: {phrase.approvedCount ?? 0} / 却下回数: {phrase.rejectedCount ?? 0}
+                  {WORKSPACE_REVIEW_TEXT.approvalCount}: {phrase.approvedCount ?? 0} / {WORKSPACE_REVIEW_TEXT.rejectionCount}: {phrase.rejectedCount ?? 0}
                 </div>
                 <ItemActionRow
-                  meta={`作成日: ${phrase.createdAt.slice(0, 10)}`}
+                  meta={`${WORKSPACE_REVIEW_TEXT.createdAt}: ${phrase.createdAt.slice(0, 10)}`}
                   actions={
                   <button type="button" style={buttonSecondaryWide} onClick={() => props.onDelete(phrase.id)}>
-                    削除
+                    {WORKSPACE_REVIEW_TEXT.delete}
                   </button>
                   }
                 />
@@ -919,20 +870,8 @@ export default function GptSettingsWorkspace({
           }}
         >
           <WorkspaceSectionTitle
-            title={
-              activeView === "chat"
-                ? "チャット設定"
-                : activeView === "task"
-                  ? "タスク設定"
-                  : "ライブラリ設定"
-            }
-            subtitle={
-              activeView === "chat"
-                ? "文脈承認、記憶設定、出力モード"
-                : activeView === "task"
-                  ? "SYSルール、プロトコル自動化、プロンプト"
-                  : "ライブラリ、検索、取込"
-            }
+            title={GPT_SETTINGS_WORKSPACE_TEXT.viewTitles[activeView]}
+            subtitle={GPT_SETTINGS_WORKSPACE_TEXT.viewSubtitles[activeView]}
           />
           <div
             style={{
@@ -951,16 +890,12 @@ export default function GptSettingsWorkspace({
                   style={tabButton(activeView === view)}
                   onClick={() => onChangeView(view)}
                 >
-                  {view === "chat"
-                    ? "チャット"
-                    : view === "task"
-                      ? "タスク"
-                      : "ライブラリ"}
+                  {GPT_SETTINGS_WORKSPACE_TEXT.viewTabs[view]}
                 </button>
               ))}
             </div>
             <button type="button" style={buttonSecondaryWide} onClick={onClose}>
-              閉じる
+              {GPT_SETTINGS_WORKSPACE_TEXT.close}
             </button>
           </div>
         </div>
@@ -1000,7 +935,7 @@ export default function GptSettingsWorkspace({
                   onChange={(v) =>
                     setLocalSettings((prev) => ({ ...prev, maxFacts: v }))
                   }
-                  help="facts の最大数"
+                  help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxFacts}
                 />
                 <NumberField
                   label="MAX_PREFERENCES"
@@ -1008,7 +943,7 @@ export default function GptSettingsWorkspace({
                   onChange={(v) =>
                     setLocalSettings((prev) => ({ ...prev, maxPreferences: v }))
                   }
-                  help="preferences の最大数"
+                  help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxPreferences}
                 />
                 <NumberField
                   label="CHAT_RECENT_LIMIT"
@@ -1016,7 +951,7 @@ export default function GptSettingsWorkspace({
                   onChange={(v) =>
                     setLocalSettings((prev) => ({ ...prev, chatRecentLimit: v }))
                   }
-                  help="recentMessages の保持数"
+                  help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.chatRecentLimit}
                 />
                 <NumberField
                   label="SUMMARIZE_THRESHOLD"
@@ -1027,7 +962,7 @@ export default function GptSettingsWorkspace({
                       summarizeThreshold: v,
                     }))
                   }
-                  help="要約を始める閾値"
+                  help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.summarizeThreshold}
                 />
                 <NumberField
                   label="RECENT_KEEP"
@@ -1035,10 +970,12 @@ export default function GptSettingsWorkspace({
                   onChange={(v) =>
                     setLocalSettings((prev) => ({ ...prev, recentKeep: v }))
                   }
-                  help="要約後に残す recentMessages 数"
+                  help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.recentKeep}
                 />
                 <div>
-                  <div style={labelStyle}>メモリ容量プレビュー</div>
+                  <div style={labelStyle}>
+                    {GPT_SETTINGS_WORKSPACE_TEXT.memoryCapacityPreviewLabel}
+                  </div>
                   <div
                     style={{
                       ...inputStyle,
@@ -1048,9 +985,12 @@ export default function GptSettingsWorkspace({
                       fontWeight: 800,
                     }}
                   >
-                    合計 {memoryCapacityPreview}
+                    {GPT_SETTINGS_WORKSPACE_TEXT.memoryCapacityPreviewPrefix}
+                    {memoryCapacityPreview}
                   </div>
-                  <div style={helpTextStyle}>recent + facts + preferences</div>
+                  <div style={helpTextStyle}>
+                    {GPT_SETTINGS_WORKSPACE_TEXT.memoryCapacityPreviewHelp}
+                  </div>
                 </div>
               </div>
               <div
@@ -1067,20 +1007,22 @@ export default function GptSettingsWorkspace({
                   style={buttonSecondaryWide}
                   onClick={handleResetMemorySettings}
                 >
-                  リセット
+                  {GPT_SETTINGS_WORKSPACE_TEXT.reset}
                 </button>
                 <button
                   type="button"
                   style={buttonPrimary}
                   onClick={handleSaveMemorySettings}
                 >
-                  保存
+                  {GPT_SETTINGS_WORKSPACE_TEXT.save}
                 </button>
               </div>
             </div>
 
             <div style={sectionCard}>
-              <div style={{ ...labelStyle, marginBottom: 8 }}>出力モード</div>
+              <div style={{ ...labelStyle, marginBottom: 8 }}>
+                {GPT_SETTINGS_WORKSPACE_TEXT.outputMode}
+              </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {(["creative", "strict"] as ResponseMode[]).map((mode) => (
                   <button

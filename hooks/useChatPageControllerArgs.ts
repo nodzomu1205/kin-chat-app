@@ -10,7 +10,7 @@ import type {
   ChatPageTaskArgs,
   ChatPageUiStateArgs,
 } from "@/hooks/chatPageActionTypes";
-import type { ChatPageControllerCompositionArgs } from "@/hooks/chatPageCompositionTypes";
+import type { ChatPageControllerCompositionArgs } from "@/hooks/chatPageControllerCompositionTypes";
 
 export function useChatPageControllerArgs(
   args: ChatPageControllerCompositionArgs

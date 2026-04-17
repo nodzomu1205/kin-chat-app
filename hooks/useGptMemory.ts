@@ -48,28 +48,35 @@ type UseGptMemoryOptions = {
   ) => void;
 };
 
+function loadInitialGptMemoryState(currentKin: string | null) {
+  const settings = loadStoredGptMemorySettings();
+  const kinMemoryMap = loadStoredKinMemoryMap(settings);
+  const gptState = resolveActiveKinMemoryState(currentKin, kinMemoryMap, settings);
+
+  return {
+    settings,
+    kinMemoryMap,
+    gptState,
+  };
+}
+
 export function useGptMemory(
   currentKin: string | null,
   config: UseGptMemoryOptions
 ) {
-  const [settings, setSettings] = useState<MemorySettings>(DEFAULT_MEMORY_SETTINGS);
-  const [gptState, setGptState] = useState<KinMemoryState>(createEmptyKinMemoryState());
-  const gptStateRef = useRef<KinMemoryState>(createEmptyKinMemoryState());
-  const [kinMemoryMap, setKinMemoryMap] = useState<Record<string, KinMemoryState>>({});
-  const kinMemoryMapRef = useRef<Record<string, KinMemoryState>>({});
-
-  useEffect(() => {
-    setSettings(loadStoredGptMemorySettings());
-  }, []);
+  const [initialState] = useState(() => loadInitialGptMemoryState(currentKin));
+  const [settings, setSettings] = useState<MemorySettings>(initialState.settings);
+  const [gptState, setGptState] = useState<KinMemoryState>(initialState.gptState);
+  const gptStateRef = useRef<KinMemoryState>(initialState.gptState);
+  const [kinMemoryMap, setKinMemoryMap] = useState<Record<string, KinMemoryState>>(
+    initialState.kinMemoryMap
+  );
+  const kinMemoryMapRef = useRef<Record<string, KinMemoryState>>(
+    initialState.kinMemoryMap
+  );
 
   useEffect(() => {
     persistStoredGptMemorySettings(settings);
-  }, [settings]);
-
-  useEffect(() => {
-    const saved = loadStoredKinMemoryMap(settings);
-    setKinMemoryMap(saved);
-    kinMemoryMapRef.current = saved;
   }, [settings]);
 
   useEffect(() => {
@@ -173,7 +180,6 @@ export function useGptMemory(
     },
     [
       applyUpdateCycleResult,
-      applyPersistedState,
       config.memoryInterpreterSettings,
       config.approvedMemoryRules,
       config.onAddPendingMemoryRuleCandidates,
@@ -210,7 +216,6 @@ export function useGptMemory(
     },
     [
       applyUpdateCycleResult,
-      applyPersistedState,
       config.approvedMemoryRules,
       config.memoryInterpreterSettings,
       config.onAddPendingMemoryRuleCandidates,
@@ -239,7 +244,6 @@ export function useGptMemory(
     },
     [
       applyUpdateCycleResult,
-      applyPersistedState,
       config.approvedMemoryRules,
       config.memoryInterpreterSettings,
       config.onAddPendingMemoryRuleCandidates,
@@ -269,7 +273,6 @@ export function useGptMemory(
     },
     [
       applyUpdateCycleResult,
-      applyPersistedState,
       config.approvedMemoryRules,
       config.memoryInterpreterSettings,
       config.onAddPendingMemoryRuleCandidates,

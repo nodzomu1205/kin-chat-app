@@ -1,7 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import ChatMessages from "@/components/ChatMessages";
+import {
+  createInitialKinPanelVisibility,
+  getKinLoadingText,
+  getKinPendingInjectionLabel,
+  resolveKinPanelVisibility,
+  shouldShowKinManagementDrawer,
+  toggleKinPanelConnectVisibility,
+  toggleKinPanelListVisibility,
+} from "@/lib/app/kinPanelVisibility";
 import type { KinPanelProps } from "./kinPanelTypes";
 import KinHeader from "./KinHeader";
 import KinManagementDrawer from "./KinManagementDrawer";
@@ -42,24 +51,16 @@ export default function KinPanel(props: KinPanelProps) {
     onSwitchPanel,
     loading,
   } = props;
-
-  const [showKinList, setShowKinList] = useState(!isMobile);
-  const [showConnectForm, setShowConnectForm] = useState(
-    !isMobile || kinList.length === 0
+  const [visibilityState, setVisibilityState] = useState(() =>
+    createInitialKinPanelVisibility({
+      isMobile,
+      kinCount: kinList.length,
+    })
   );
-
-  useEffect(() => {
-    if (!isMobile) {
-      setShowKinList(true);
-      setShowConnectForm(true);
-      return;
-    }
-
-    setShowConnectForm((prev) => {
-      if (kinList.length === 0) return true;
-      return prev;
-    });
-  }, [isMobile, kinList.length]);
+  const visibility = resolveKinPanelVisibility(visibilityState, {
+    isMobile,
+    kinCount: kinList.length,
+  });
 
   return (
     <div
@@ -73,16 +74,25 @@ export default function KinPanel(props: KinPanelProps) {
       <KinHeader
         currentKinLabel={currentKinLabel}
         kinStatus={kinStatus}
-        onToggleKinList={() => setShowKinList((prev) => !prev)}
-        onToggleConnectForm={() => setShowConnectForm((prev) => !prev)}
+        onToggleKinList={() =>
+          setVisibilityState((prev) => toggleKinPanelListVisibility(prev))
+        }
+        onToggleConnectForm={() =>
+          setVisibilityState((prev) =>
+            toggleKinPanelConnectVisibility(prev, {
+              isMobile,
+              kinCount: kinList.length,
+            })
+          )
+        }
         isMobile={isMobile}
       />
 
-      {(showKinList || showConnectForm) && (
+      {shouldShowKinManagementDrawer(visibility) && (
         <div style={drawerWrapStyle}>
           <KinManagementDrawer
-            showKinList={showKinList}
-            showConnectForm={showConnectForm}
+            showKinList={visibility.showKinList}
+            showConnectForm={visibility.showConnectForm}
             kinList={kinList}
             currentKin={currentKin}
             switchKin={switchKin}
@@ -110,7 +120,7 @@ export default function KinPanel(props: KinPanelProps) {
         <ChatMessages
           messages={kinMessages}
           bottomRef={kinBottomRef}
-          loadingText={loading ? "Kindroidが応答中…" : null}
+          loadingText={getKinLoadingText(loading)}
         />
       </div>
 
@@ -128,7 +138,10 @@ export default function KinPanel(props: KinPanelProps) {
               marginBottom: 8,
             }}
           >
-            注入送信中 {pendingInjectionCurrentPart}/{pendingInjectionTotalParts}
+            {getKinPendingInjectionLabel({
+              currentPart: pendingInjectionCurrentPart,
+              totalParts: pendingInjectionTotalParts,
+            })}
           </div>
         )}
 

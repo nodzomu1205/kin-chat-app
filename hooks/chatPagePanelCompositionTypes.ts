@@ -1,126 +1,19 @@
-"use client";
-
 import type { KinPanelProps } from "@/components/panels/kin/kinPanelTypes";
-import type { UseChatPageActionsArgs } from "@/hooks/chatPageActionTypes";
-import type {
-  ChatPageControllerGroups,
-  UseChatPageControllerArgs,
-} from "@/hooks/useChatPageController";
-import type { useTaskProtocolProjection } from "@/hooks/useTaskProtocolProjection";
+import type { ChatPageControllerCompositionArgs, TaskProtocolView } from "@/hooks/chatPageControllerCompositionTypes";
+import type { ChatPageControllerGroups } from "@/hooks/useChatPageController";
 import type { BuildGptPanelArgs } from "@/lib/app/panelPropsBuilders";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
-import type { ChatBridgeSettings } from "@/types/taskProtocol";
-import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
-import type { SearchContext, SearchEngine, TaskDraft } from "@/types/task";
-import type {
-  GptMemoryRuntime,
-  GptMemorySettingsControls,
-} from "@/lib/app/chatPageGptMemoryControls";
+import type { AutoBridgeSettings } from "@/hooks/useAutoBridgeSettings";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
-import type { AutoBridgeSettings } from "@/hooks/useAutoBridgeSettings";
-
-export type TaskProtocolView = ReturnType<typeof useTaskProtocolProjection>;
-
-export type ChatPageControllerCompositionArgs = {
-  app: {
-    currentKin: string | null;
-    kinList: Array<{ id: string; label: string }>;
-    isMobile: boolean;
-    setActiveTab: React.Dispatch<React.SetStateAction<"kin" | "gpt">>;
-    setKinConnectionState: React.Dispatch<
-      React.SetStateAction<"idle" | "connected" | "error">
-    >;
-  };
-  uiState: {
-    gptInput: string;
-    kinInput: string;
-    gptLoading: boolean;
-    kinLoading: boolean;
-    ingestLoading: boolean;
-    gptMessages: Message[];
-    kinMessages: Message[];
-    pendingKinInjectionBlocks: string[];
-    pendingKinInjectionIndex: number;
-    setKinInput: React.Dispatch<React.SetStateAction<string>>;
-    setGptInput: React.Dispatch<React.SetStateAction<string>>;
-    setKinMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-    setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
-    setKinLoading: React.Dispatch<React.SetStateAction<boolean>>;
-    setGptLoading: React.Dispatch<React.SetStateAction<boolean>>;
-    setIngestLoading: React.Dispatch<React.SetStateAction<boolean>>;
-    setPendingKinInjectionBlocks: React.Dispatch<React.SetStateAction<string[]>>;
-    setPendingKinInjectionIndex: React.Dispatch<React.SetStateAction<number>>;
-  };
-  task: {
-    currentTaskDraft: TaskDraft;
-    setCurrentTaskDraft: React.Dispatch<React.SetStateAction<TaskDraft>>;
-    getTaskBaseText: () => string;
-    getTaskLibraryItem: () => ReferenceLibraryItem | null;
-    getResolvedTaskTitle: UseChatPageActionsArgs["getResolvedTaskTitle"];
-    resolveTaskTitleFromDraft: UseChatPageActionsArgs["resolveTaskTitleFromDraft"];
-    getTaskSlotLabel: () => string;
-    syncTaskDraftFromProtocol: UseChatPageActionsArgs["syncTaskDraftFromProtocol"];
-    applyPrefixedTaskFieldsFromText: UseChatPageActionsArgs["applyPrefixedTaskFieldsFromText"];
-    getCurrentTaskCharConstraint: UseChatPageActionsArgs["getCurrentTaskCharConstraint"];
-    resetCurrentTaskDraft: () => void;
-    taskProtocol: UseChatPageActionsArgs["taskProtocol"];
-    taskProtocolView: TaskProtocolView;
-  };
-  protocol: {
-    approvedIntentPhrases: ApprovedIntentPhrase[];
-    rejectedIntentCandidateSignatures: string[];
-    pendingIntentCandidates: PendingIntentCandidate[];
-    protocolPrompt: string;
-    protocolRulebook: string;
-    chatBridgeSettings: ChatBridgeSettings;
-    setPendingIntentCandidates: UseChatPageActionsArgs["setPendingIntentCandidates"];
-    setApprovedIntentPhrases: UseChatPageActionsArgs["setApprovedIntentPhrases"];
-    setRejectedIntentCandidateSignatures:
-      UseChatPageActionsArgs["setRejectedIntentCandidateSignatures"];
-    setProtocolPrompt: React.Dispatch<React.SetStateAction<string>>;
-    setProtocolRulebook: React.Dispatch<React.SetStateAction<string>>;
-    promptDefaultKey: string;
-    rulebookDefaultKey: string;
-  };
-  search: {
-    lastSearchContext: SearchContext | null;
-    searchMode: UseChatPageActionsArgs["searchMode"];
-    searchEngines: SearchEngine[];
-    searchLocation: string;
-    processMultipartTaskDoneText: UseChatPageActionsArgs["processMultipartTaskDoneText"];
-    recordSearchContext: UseChatPageActionsArgs["recordSearchContext"];
-    getContinuationTokenForSeries: (seriesId: string) => string;
-    getAskAiModeLinkForQuery: (query: string) => string;
-    clearSearchHistory: () => void;
-    deleteSearchHistoryItemBase: (rawResultId: string) => void;
-  };
-  services: {
-    responseMode: UseChatPageActionsArgs["responseMode"];
-    autoCopyFileIngestSysInfoToKin: boolean;
-    gptMemoryRuntime: GptMemoryRuntime;
-    setUploadKind: UseChatPageActionsArgs["setUploadKind"];
-    applySearchUsage: UseChatPageActionsArgs["applySearchUsage"];
-    applyChatUsage: UseChatPageActionsArgs["applyChatUsage"];
-    applySummaryUsage: UseChatPageActionsArgs["applySummaryUsage"];
-    applyTaskUsage: UseChatPageActionsArgs["applyTaskUsage"];
-    applyIngestUsage: UseChatPageActionsArgs["applyIngestUsage"];
-    buildLibraryReferenceContext: () => string;
-    referenceLibraryItems: ReferenceLibraryItem[];
-    libraryIndexResponseCount: number;
-    recordIngestedDocument: UseChatPageActionsArgs["recordIngestedDocument"];
-    gptMemorySettingsControls: GptMemorySettingsControls;
-    ingestProtocolMessage: UseChatPageActionsArgs["ingestProtocolMessage"];
-  };
-  reset: UseChatPageControllerArgs["panelReset"];
-  automation: UseChatPageControllerArgs["protocolAutomation"];
-};
+import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
+import type { SearchContext, TaskDraft } from "@/types/task";
 
 export type ChatPagePanelBaseArgs = {
   app: {
@@ -237,35 +130,12 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
   };
 };
 
-export type ChatPagePanelsCompositionArgs = {
-  controller: ChatPageControllerCompositionArgs;
-  kinPanel: Omit<ChatPageKinPanelCompositionArgs, "controller">;
-  gptPanel: Omit<ChatPageGptPanelCompositionArgs, "controller">;
-};
-
-export type ChatPagePanelsViewArgs = {
-  controller: ChatPageControllerCompositionArgs;
-  panelApp: ChatPagePanelBaseArgs["app"];
-  taskProtocolView: TaskProtocolView;
-  kinPanel: Omit<
-    ChatPageKinPanelCompositionArgs,
-    "app" | "taskProtocolView" | "controller"
-  >;
-  gptPanel: Omit<
-    ChatPageGptPanelCompositionArgs,
-    "app" | "taskProtocolView" | "controller" | "task"
-  > & {
-    task: Omit<ChatPageGptPanelCompositionArgs["task"], "onSaveTaskSnapshot">;
-  };
-  taskSnapshot: {
-    currentTaskDraft: TaskDraft;
-    recordIngestedDocument: UseChatPageActionsArgs["recordIngestedDocument"];
-  };
-};
-
 export type ChatPageWorkspaceViewArgs = {
   app: ChatPagePanelBaseArgs["app"] &
-    Pick<ChatPageControllerCompositionArgs["app"], "setActiveTab" | "setKinConnectionState">;
+    Pick<
+      ChatPageControllerCompositionArgs["app"],
+      "setActiveTab" | "setKinConnectionState"
+    >;
   ui: ChatPageControllerCompositionArgs["uiState"] & {
     kinBottomRef: ChatPageKinPanelCompositionArgs["kinState"]["kinBottomRef"];
     gptBottomRef: ChatPageGptPanelCompositionArgs["gptState"]["gptBottomRef"];

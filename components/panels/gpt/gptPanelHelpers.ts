@@ -1,8 +1,10 @@
+import type { SetStateAction } from "react";
+import { CHAT_TEXTAREA_TEXT } from "@/components/ui/commonUiText";
+import type { DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import type {
   GptPanelSettingsProps,
   GptPanelTaskProps,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 
 export type BottomTabKey =
   | "chat"
@@ -26,6 +28,16 @@ export type LocalMemorySettingsInput = {
   summarizeThreshold: string;
   recentKeep: string;
 };
+
+const GPT_PANEL_HELPERS_TEXT = {
+  topic: "トピック",
+  task: "タスク",
+  taskPrimary: "タスク作成ボタン使用中。解決したいタスク内容を入力",
+  taskSecondary:
+    "タスク作成ボタン使用中。タスク更新に関する質問や追加データを入力",
+  kin: "タスク作成ボタン使用中。Kin へ送る質問を入力",
+  file: "タスク作成ボタン使用中。ファイル分析や画像解析の追加指示を入力",
+} as const;
 
 export function toLocalSettings(
   props: Pick<GptPanelSettingsProps, "memorySettings" | "defaultMemorySettings">
@@ -63,6 +75,54 @@ export function toPositiveInt(value: string, fallback: number) {
   return parsed;
 }
 
+export function buildLocalSettingsSourceKey(
+  props: Pick<
+    GptPanelSettingsProps,
+    "memorySettings" | "defaultMemorySettings"
+  > & {
+    currentKin: string | null;
+  }
+) {
+  return JSON.stringify({
+    currentKin: props.currentKin,
+    memorySettings: props.memorySettings,
+    defaultMemorySettings: props.defaultMemorySettings,
+  });
+}
+
+export function resolveLocalSettingsState(args: {
+  localSettingsState: LocalMemorySettingsInput;
+  localSettingsSourceKey: string;
+  settingsSourceKey: string;
+  sourceLocalSettings: LocalMemorySettingsInput;
+}) {
+  if (args.localSettingsSourceKey === args.settingsSourceKey) {
+    return args.localSettingsState;
+  }
+  return args.sourceLocalSettings;
+}
+
+export function applyLocalSettingsUpdate(args: {
+  value: SetStateAction<LocalMemorySettingsInput>;
+  localSettingsState: LocalMemorySettingsInput;
+  localSettingsSourceKey: string;
+  settingsSourceKey: string;
+  sourceLocalSettings: LocalMemorySettingsInput;
+}) {
+  const baseState =
+    args.localSettingsSourceKey === args.settingsSourceKey
+      ? args.localSettingsState
+      : args.sourceLocalSettings;
+
+  if (typeof args.value === "function") {
+    return (
+      args.value as (prevState: LocalMemorySettingsInput) => LocalMemorySettingsInput
+    )(baseState);
+  }
+
+  return args.value;
+}
+
 export function resolveFloatingLabel(args: {
   activeDrawer: DrawerMode;
   bottomTab: BottomTabKey;
@@ -81,7 +141,7 @@ export function resolveFloatingLabel(args: {
 
   if (!taskFocused && currentTopic) {
     return {
-      kind: "トピック",
+      kind: GPT_PANEL_HELPERS_TEXT.topic,
       value: currentTopic,
       updatedAt: "",
       accent: "#0f766e",
@@ -91,7 +151,7 @@ export function resolveFloatingLabel(args: {
 
   if (taskFocused && taskName) {
     return {
-      kind: "タスク",
+      kind: GPT_PANEL_HELPERS_TEXT.task,
       value: taskName,
       updatedAt: args.currentTaskDraft.updatedAt || "",
       accent: "#b45309",
@@ -101,7 +161,7 @@ export function resolveFloatingLabel(args: {
 
   if (currentTopic) {
     return {
-      kind: "トピック",
+      kind: GPT_PANEL_HELPERS_TEXT.topic,
       value: currentTopic,
       updatedAt: "",
       accent: "#0f766e",
@@ -111,7 +171,7 @@ export function resolveFloatingLabel(args: {
 
   if (taskName) {
     return {
-      kind: "タスク",
+      kind: GPT_PANEL_HELPERS_TEXT.task,
       value: taskName,
       updatedAt: args.currentTaskDraft.updatedAt || "",
       accent: "#b45309",
@@ -129,15 +189,15 @@ export function resolveFloatingLabel(args: {
 }
 
 export function getComposerPlaceholder(bottomTab: BottomTabKey) {
-  if (bottomTab === "chat") return "メッセージを入力";
+  if (bottomTab === "chat") return CHAT_TEXTAREA_TEXT.placeholder;
   if (bottomTab === "task_primary") {
-    return "タスク準備ボタン使用中。補足やタスク方針を入力";
+    return GPT_PANEL_HELPERS_TEXT.taskPrimary;
   }
   if (bottomTab === "task_secondary") {
-    return "タスク準備ボタン使用中。タスク更新に関する指示や追加データを入力";
+    return GPT_PANEL_HELPERS_TEXT.taskSecondary;
   }
   if (bottomTab === "kin") {
-    return "タスク準備ボタン使用中。Kin へ送る指示を入力";
+    return GPT_PANEL_HELPERS_TEXT.kin;
   }
-  return "タスク準備ボタン使用中。ファイル添付や参考資料の追加方針を入力";
+  return GPT_PANEL_HELPERS_TEXT.file;
 }

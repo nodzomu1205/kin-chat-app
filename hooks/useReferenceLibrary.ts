@@ -5,6 +5,14 @@ import type {
 } from "@/components/panels/gpt/gptPanelTypes";
 import type { ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import type { SearchContext } from "@/types/task";
+import {
+  buildReferenceLibraryContext,
+  estimateReferenceLibraryTokens,
+  getTaskLibraryItemBySelection,
+  moveReferenceLibraryOrderItem,
+  reconcileReferenceLibraryOrder,
+  resolveSelectedLibraryItemId,
+} from "@/lib/app/referenceLibraryState";
 
 const LIBRARY_ORDER_KEY = "reference_library_order";
 const LIBRARY_AUTO_REFERENCE_ENABLED_KEY = "library_auto_reference_enabled";
@@ -18,10 +26,85 @@ export const DEFAULT_LIBRARY_REFERENCE_COUNT = 4;
 export const DEFAULT_LIBRARY_REFERENCE_MODE: LibraryReferenceMode = "summary_only";
 export const DEFAULT_LIBRARY_INDEX_RESPONSE_COUNT = 12;
 
-function estimateTokenCount(text: string) {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return Math.max(1, Math.ceil(trimmed.length / 4));
+function loadInitialReferenceLibraryState() {
+  const initialState = {
+    libraryOrder: [] as string[],
+    autoLibraryReferenceEnabled: true,
+    libraryReferenceCount: DEFAULT_LIBRARY_REFERENCE_COUNT,
+    libraryReferenceMode: DEFAULT_LIBRARY_REFERENCE_MODE,
+    libraryIndexResponseCount: DEFAULT_LIBRARY_INDEX_RESPONSE_COUNT,
+    libraryItemModeOverrides: {} as Record<string, LibraryItemModeOverride>,
+    selectedTaskLibraryItemId: "",
+  };
+
+  if (typeof window === "undefined") {
+    return initialState;
+  }
+
+  const savedOrder = window.localStorage.getItem(LIBRARY_ORDER_KEY);
+  const savedAutoEnabled = window.localStorage.getItem(
+    LIBRARY_AUTO_REFERENCE_ENABLED_KEY
+  );
+  const savedCount = window.localStorage.getItem(LIBRARY_REFERENCE_COUNT_KEY);
+  const savedMode = window.localStorage.getItem(LIBRARY_REFERENCE_MODE_KEY);
+  const savedIndexCount = window.localStorage.getItem(
+    LIBRARY_INDEX_RESPONSE_COUNT_KEY
+  );
+  const savedOverrides = window.localStorage.getItem(
+    LIBRARY_ITEM_MODE_OVERRIDES_KEY
+  );
+  const savedSelectedTaskLibraryItemId = window.localStorage.getItem(
+    SELECTED_TASK_LIBRARY_ITEM_ID_KEY
+  );
+
+  if (savedOrder) {
+    try {
+      const parsed = JSON.parse(savedOrder) as string[];
+      if (Array.isArray(parsed)) {
+        initialState.libraryOrder = parsed.filter(Boolean);
+      }
+    } catch {}
+  }
+
+  if (savedAutoEnabled) {
+    initialState.autoLibraryReferenceEnabled = savedAutoEnabled === "true";
+  }
+
+  if (savedCount) {
+    const parsed = Number(savedCount);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      initialState.libraryReferenceCount = parsed;
+    }
+  }
+
+  if (savedMode === "summary_only" || savedMode === "summary_with_excerpt") {
+    initialState.libraryReferenceMode = savedMode;
+  }
+
+  if (savedIndexCount) {
+    const parsed = Number(savedIndexCount);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      initialState.libraryIndexResponseCount = parsed;
+    }
+  }
+
+  if (savedOverrides) {
+    try {
+      const parsed = JSON.parse(savedOverrides) as Record<
+        string,
+        LibraryItemModeOverride
+      >;
+      if (parsed && typeof parsed === "object") {
+        initialState.libraryItemModeOverrides = parsed;
+      }
+    } catch {}
+  }
+
+  if (savedSelectedTaskLibraryItemId) {
+    initialState.selectedTaskLibraryItemId = savedSelectedTaskLibraryItemId;
+  }
+
+  return initialState;
 }
 
 function buildFallbackSummary(text: string, fallbackTitle: string) {
@@ -124,81 +207,27 @@ export function useReferenceLibrary(params: {
     sourceDisplayCount = 3,
   } = params;
 
-  const [libraryOrder, setLibraryOrder] = useState<string[]>([]);
-  const [autoLibraryReferenceEnabled, setAutoLibraryReferenceEnabled] = useState(true);
+  const [initialState] = useState(loadInitialReferenceLibraryState);
+  const [storedLibraryOrder, setStoredLibraryOrder] = useState<string[]>(
+    initialState.libraryOrder
+  );
+  const [autoLibraryReferenceEnabled, setAutoLibraryReferenceEnabled] = useState(
+    initialState.autoLibraryReferenceEnabled
+  );
   const [libraryReferenceCount, setLibraryReferenceCount] = useState(
-    DEFAULT_LIBRARY_REFERENCE_COUNT
+    initialState.libraryReferenceCount
   );
   const [libraryReferenceMode, setLibraryReferenceMode] =
-    useState<LibraryReferenceMode>(DEFAULT_LIBRARY_REFERENCE_MODE);
+    useState<LibraryReferenceMode>(initialState.libraryReferenceMode);
   const [libraryIndexResponseCount, setLibraryIndexResponseCount] = useState(
-    DEFAULT_LIBRARY_INDEX_RESPONSE_COUNT
+    initialState.libraryIndexResponseCount
   );
   const [libraryItemModeOverrides, setLibraryItemModeOverrides] = useState<
     Record<string, LibraryItemModeOverride>
-  >({});
-  const [selectedTaskLibraryItemId, setSelectedTaskLibraryItemId] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const savedOrder = window.localStorage.getItem(LIBRARY_ORDER_KEY);
-    const savedAutoEnabled = window.localStorage.getItem(
-      LIBRARY_AUTO_REFERENCE_ENABLED_KEY
-    );
-    const savedCount = window.localStorage.getItem(LIBRARY_REFERENCE_COUNT_KEY);
-    const savedMode = window.localStorage.getItem(LIBRARY_REFERENCE_MODE_KEY);
-    const savedIndexCount = window.localStorage.getItem(LIBRARY_INDEX_RESPONSE_COUNT_KEY);
-    const savedOverrides = window.localStorage.getItem(
-      LIBRARY_ITEM_MODE_OVERRIDES_KEY
-    );
-    const savedSelectedTaskLibraryItemId = window.localStorage.getItem(
-      SELECTED_TASK_LIBRARY_ITEM_ID_KEY
-    );
-
-    if (savedOrder) {
-      try {
-        const parsed = JSON.parse(savedOrder) as string[];
-        if (Array.isArray(parsed)) setLibraryOrder(parsed.filter(Boolean));
-      } catch {}
-    }
-
-    if (savedAutoEnabled) {
-      setAutoLibraryReferenceEnabled(savedAutoEnabled === "true");
-    }
-
-    if (savedCount) {
-      const parsed = Number(savedCount);
-      if (Number.isFinite(parsed) && parsed >= 0) setLibraryReferenceCount(parsed);
-    }
-
-    if (savedMode === "summary_only" || savedMode === "summary_with_excerpt") {
-      setLibraryReferenceMode(savedMode);
-    }
-
-    if (savedIndexCount) {
-      const parsed = Number(savedIndexCount);
-      if (Number.isFinite(parsed) && parsed >= 1) setLibraryIndexResponseCount(parsed);
-    }
-
-    if (savedOverrides) {
-      try {
-        const parsed = JSON.parse(savedOverrides) as Record<
-          string,
-          LibraryItemModeOverride
-        >;
-        if (parsed && typeof parsed === "object") setLibraryItemModeOverrides(parsed);
-      } catch {}
-    }
-    if (savedSelectedTaskLibraryItemId) {
-      setSelectedTaskLibraryItemId(savedSelectedTaskLibraryItemId);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(LIBRARY_ORDER_KEY, JSON.stringify(libraryOrder));
-  }, [libraryOrder]);
+  >(initialState.libraryItemModeOverrides);
+  const [selectedTaskLibraryItemId, setSelectedTaskLibraryItemId] = useState(
+    initialState.selectedTaskLibraryItemId
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -256,16 +285,19 @@ export function useReferenceLibrary(params: {
       (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
     );
   }, [searchHistory, storedDocuments]);
+  const libraryOrder = useMemo(
+    () =>
+      reconcileReferenceLibraryOrder(
+        baseItems.map((item) => item.id),
+        storedLibraryOrder
+      ),
+    [baseItems, storedLibraryOrder]
+  );
 
   useEffect(() => {
-    setLibraryOrder((prev) => {
-      const ids = new Set(baseItems.map((item) => item.id));
-      const kept = prev.filter((id) => ids.has(id));
-      const missing = baseItems.map((item) => item.id).filter((id) => !kept.includes(id));
-      if (missing.length === 0 && kept.length === prev.length) return prev;
-      return [...missing, ...kept];
-    });
-  }, [baseItems]);
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LIBRARY_ORDER_KEY, JSON.stringify(libraryOrder));
+  }, [libraryOrder]);
 
   const libraryItems = useMemo(() => {
     if (libraryOrder.length === 0) return baseItems;
@@ -289,22 +321,33 @@ export function useReferenceLibrary(params: {
       })),
     [libraryItemModeOverrides, libraryItems]
   );
+  const resolvedSelectedTaskLibraryItemId = useMemo(
+    () =>
+      resolveSelectedLibraryItemId(
+        selectedTaskLibraryItemId,
+        libraryItemsWithOverrides
+      ),
+    [libraryItemsWithOverrides, selectedTaskLibraryItemId]
+  );
 
   const moveLibraryItem = (itemId: string, direction: "up" | "down") => {
-    setLibraryOrder((prev) => {
-      const next = prev.length > 0 ? [...prev] : libraryItems.map((item) => item.id);
-      const index = next.findIndex((id) => id === itemId);
-      if (index < 0) return next;
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= next.length) return next;
-      const [moved] = next.splice(index, 1);
-      next.splice(targetIndex, 0, moved);
-      return next;
-    });
+    setStoredLibraryOrder((prev) =>
+      moveReferenceLibraryOrderItem(
+        reconcileReferenceLibraryOrder(
+          libraryItems.map((item) => item.id),
+          prev
+        ),
+        itemId,
+        direction
+      )
+    );
   };
 
   const getTaskLibraryItem = () =>
-    libraryItemsWithOverrides.find((item) => item.id === selectedTaskLibraryItemId) || null;
+    getTaskLibraryItemBySelection(
+      libraryItemsWithOverrides,
+      resolvedSelectedTaskLibraryItemId
+    );
 
   const setLibraryItemModeOverride = (
     itemId: string,
@@ -324,70 +367,26 @@ export function useReferenceLibrary(params: {
     });
   };
 
-  const getEffectiveMode = (itemId: string): LibraryReferenceMode =>
-    libraryItemModeOverrides[itemId] &&
-    libraryItemModeOverrides[itemId] !== "default"
-      ? (libraryItemModeOverrides[itemId] as LibraryReferenceMode)
-      : libraryReferenceMode;
-
   const buildLibraryReferenceContext = () => {
-    if (!autoLibraryReferenceEnabled || libraryReferenceCount <= 0) return "";
-    const targets = libraryItemsWithOverrides.slice(0, libraryReferenceCount);
-    if (targets.length === 0) return "";
-
-    const lines = ["<<STORED_LIBRARY_CONTEXT>>"];
-
-    targets.forEach((item, index) => {
-      const effectiveMode = getEffectiveMode(item.id);
-      lines.push(`[LIB ${index + 1}]`);
-      lines.push(`TITLE: ${item.title}`);
-      lines.push(`SUMMARY: ${item.summary}`);
-      if (effectiveMode === "summary_with_excerpt" && item.excerptText.trim()) {
-        lines.push(`EXCERPT: ${item.excerptText.trim().slice(0, 1200)}`);
-      }
-      if (
-        effectiveMode === "summary_with_excerpt" &&
-        item.itemType === "search" &&
-        item.sources?.length
-      ) {
-        lines.push("SOURCES:");
-        item.sources.slice(0, Math.max(1, sourceDisplayCount)).forEach((source) => {
-          lines.push(`- ${source.title}${source.link ? ` | ${source.link}` : ""}`);
-        });
-      }
-      lines.push("");
+    return buildReferenceLibraryContext({
+      autoLibraryReferenceEnabled,
+      libraryReferenceCount,
+      libraryItems: libraryItemsWithOverrides,
+      libraryReferenceMode,
+      libraryItemModeOverrides,
+      sourceDisplayCount,
     });
-
-    lines.push("<<END_STORED_LIBRARY_CONTEXT>>");
-    return lines.join("\n").trim();
   };
 
   const estimateLibraryReferenceTokens = () => {
-    if (!autoLibraryReferenceEnabled || libraryReferenceCount <= 0) return 0;
-    const targets = libraryItemsWithOverrides.slice(0, libraryReferenceCount);
-    if (targets.length === 0) return 0;
-    const text = targets
-      .map((item, index) => {
-        const effectiveMode = getEffectiveMode(item.id);
-        const parts = [
-          `[LIB ${index + 1}]`,
-          `TITLE: ${item.title}`,
-          `SUMMARY: ${item.summary}`,
-        ];
-        if (effectiveMode === "summary_with_excerpt" && item.excerptText.trim()) {
-          parts.push(`EXCERPT: ${item.excerptText.trim().slice(0, 1200)}`);
-        }
-        if (effectiveMode === "summary_with_excerpt" && item.itemType === "search" && item.sources?.length) {
-          parts.push(
-            ...item.sources
-              .slice(0, Math.max(1, sourceDisplayCount))
-              .map((source) => `SOURCE: ${source.title}${source.link ? ` | ${source.link}` : ""}`)
-          );
-        }
-        return parts.join("\n");
-      })
-      .join("\n\n");
-    return estimateTokenCount(text);
+    return estimateReferenceLibraryTokens({
+      autoLibraryReferenceEnabled,
+      libraryReferenceCount,
+      libraryItems: libraryItemsWithOverrides,
+      libraryReferenceMode,
+      libraryItemModeOverrides,
+      sourceDisplayCount,
+    });
   };
 
   const libraryStorageMB =
@@ -395,7 +394,7 @@ export function useReferenceLibrary(params: {
 
   return {
     libraryItems: libraryItemsWithOverrides,
-    selectedTaskLibraryItemId,
+    selectedTaskLibraryItemId: resolvedSelectedTaskLibraryItemId,
     setSelectedTaskLibraryItemId,
     autoLibraryReferenceEnabled,
     setAutoLibraryReferenceEnabled,

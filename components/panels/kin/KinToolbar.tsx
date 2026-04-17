@@ -4,6 +4,7 @@ import {
   buttonSwitch,
   buttonTransfer,
 } from "./kinPanelStyles";
+import { KIN_PANEL_TEXT } from "./kinUiText";
 
 type Props = {
   isMobile?: boolean;
@@ -31,17 +32,27 @@ export default function KinToolbar({
       }}
     >
       {isMobile && onSwitchPanel && (
-        <button type="button" style={buttonSwitch} onClick={onSwitchPanel} title="切替">
-          ⇄
+        <button
+          type="button"
+          style={buttonSwitch}
+          onClick={onSwitchPanel}
+          title={KIN_PANEL_TEXT.switchTitle}
+        >
+          {KIN_PANEL_TEXT.switchButton}
         </button>
       )}
 
       <button type="button" style={buttonTransfer} onClick={onTransfer}>
-        GPTに送る
+        {KIN_PANEL_TEXT.sendToGpt}
       </button>
 
-      <button type="button" style={buttonReset} onClick={onReset} title="リセット">
-        ↻
+      <button
+        type="button"
+        style={buttonReset}
+        onClick={onReset}
+        title={KIN_PANEL_TEXT.resetTitle}
+      >
+        {KIN_PANEL_TEXT.resetButton}
       </button>
     </div>
   );

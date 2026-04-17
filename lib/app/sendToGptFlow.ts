@@ -18,6 +18,7 @@ import type {
 import { extractInlineUrlTarget } from "@/lib/app/sendToGptShortcutFlows";
 import { requestGptAssistantArtifacts } from "@/lib/app/sendToGptFlowRequest";
 import { finalizeSendToGptFlow } from "@/lib/app/sendToGptFlowFinalize";
+import { resolveSendToGptFlowStart } from "@/lib/app/sendToGptFlowDecisionState";
 import {
   resolveMemoryUpdateContext,
   resolveRequestMemory,
@@ -69,9 +70,13 @@ export async function runSendToGptFlow({
   setActiveTabToKin,
   recordIngestedDocument,
 }: RunSendToGptFlowArgs) {
-  if (!gptInput.trim() || gptLoading) return;
+  const startDecision = resolveSendToGptFlowStart({
+    gptInput,
+    gptLoading,
+  });
+  if (startDecision.type === "skip") return;
 
-  const rawText = gptInput.trim();
+  const { rawText } = startDecision;
   if (
     await runPrePreparationGates({
       rawText,

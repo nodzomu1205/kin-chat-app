@@ -9,6 +9,7 @@ import type {
   IngestMode,
   PostIngestAction,
 } from "./gptPanelTypes";
+import { GPT_COMPOSER_TEXT } from "./gptUiText";
 
 type Props = {
   value: string;
@@ -118,23 +119,17 @@ export default function GptComposer({
   imageDetail,
   postIngestAction,
   onChangeUploadKind,
-  onChangeIngestMode,
-  onChangeImageDetail,
   onChangePostIngestAction,
   showFileTools,
   fileReadPolicy,
   compactCharLimit,
   simpleImageCharLimit,
-  isMobile = false,
 }: Props) {
   const [blink, setBlink] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
-    if (!loading && !ingestLoading) {
-      setBlink(false);
-      return;
-    }
+    if (!loading && !ingestLoading) return;
 
     const id = window.setInterval(() => {
       setBlink((prev) => !prev);
@@ -233,43 +228,92 @@ export default function GptComposer({
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>対象:</span>
-              <button type="button" style={choiceButton(uploadKind === "text")} onClick={() => onChangeUploadKind("text")}>テキスト</button>
-              <button type="button" style={choiceButton(uploadKind === "image" || uploadKind === "pdf" || uploadKind === "mixed")} onClick={() => onChangeUploadKind("image")}>画像 / PDF</button>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>
+                {GPT_COMPOSER_TEXT.target}
+              </span>
+              <button
+                type="button"
+                style={choiceButton(uploadKind === "text")}
+                onClick={() => onChangeUploadKind("text")}
+              >
+                {GPT_COMPOSER_TEXT.uploadKindText}
+              </button>
+              <button
+                type="button"
+                style={choiceButton(
+                  uploadKind === "image" || uploadKind === "pdf" || uploadKind === "mixed"
+                )}
+                onClick={() => onChangeUploadKind("image")}
+              >
+                {GPT_COMPOSER_TEXT.uploadKindImagePdf}
+              </button>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>注入後処理:</span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>
+                {GPT_COMPOSER_TEXT.postIngestAction}
+              </span>
               <select
                 value={postIngestAction}
                 onChange={(e) => onChangePostIngestAction(e.target.value as PostIngestAction)}
                 style={selectStyle}
-                title="注入後にどこまで自動処理するか"
+                title={GPT_COMPOSER_TEXT.postIngestActionTitle}
               >
-                <option value="inject_only">注入のみ</option>
-                <option value="inject_and_prep">注入＋整理</option>
-                <option value="inject_prep_deepen">注入＋整理＋深堀り</option>
-                <option value="attach_to_current_task">現在タスクに追加</option>
+                <option value="inject_only">
+                  {GPT_COMPOSER_TEXT.postIngestOptions.inject_only}
+                </option>
+                <option value="inject_and_prep">
+                  {GPT_COMPOSER_TEXT.postIngestOptions.inject_and_prep}
+                </option>
+                <option value="inject_prep_deepen">
+                  {GPT_COMPOSER_TEXT.postIngestOptions.inject_prep_deepen}
+                </option>
+                <option value="attach_to_current_task">
+                  {GPT_COMPOSER_TEXT.postIngestOptions.attach_to_current_task}
+                </option>
               </select>
             </div>
 
-            <div style={{ fontSize: 12, color: dragActive ? "#166534" : "#64748b", fontWeight: 700 }}>
-              {dragActive ? "ここにドロップして取込" : "クリック選択またはドラッグ＆ドロップで取込"}
+            <div
+              style={{
+                fontSize: 12,
+                color: dragActive ? "#166534" : "#64748b",
+                fontWeight: 700,
+              }}
+            >
+              {dragActive ? GPT_COMPOSER_TEXT.dragActive : GPT_COMPOSER_TEXT.dragIdle}
             </div>
           </div>
 
           {injectDisabled ? (
-            <div style={{ ...verticalButtonStyle, cursor: "default", opacity: blink ? 0.55 : 0.8 }} title="ファイルを読み込んでタスク整理用の情報を作成">
-              {ingestLoading ? "変換中" : "注入"}
+            <div
+              style={{
+                ...verticalButtonStyle,
+                cursor: "default",
+                opacity: blink ? 0.55 : 0.8,
+              }}
+              title={GPT_COMPOSER_TEXT.ingestButtonTitle}
+            >
+              {ingestLoading ? GPT_COMPOSER_TEXT.ingesting : GPT_COMPOSER_TEXT.ingest}
             </div>
           ) : (
-            <label style={{ ...verticalButtonStyle, cursor: "pointer", opacity: 1 }} title="ファイルを選択">
-              {ingestLoading ? "変換中" : "注入"}
+            <label
+              style={{ ...verticalButtonStyle, cursor: "pointer", opacity: 1 }}
+              title={GPT_COMPOSER_TEXT.selectFileTitle}
+            >
+              {ingestLoading ? GPT_COMPOSER_TEXT.ingesting : GPT_COMPOSER_TEXT.ingest}
               <input
                 type="file"
                 accept={accept}
                 onChange={handleFileChange}
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  opacity: 0,
+                  cursor: "pointer",
+                }}
               />
             </label>
           )}
@@ -282,7 +326,7 @@ export default function GptComposer({
             <button
               type="button"
               onClick={() => onChange("")}
-              title="入力内容をクリア"
+              title={GPT_COMPOSER_TEXT.clearInputTitle}
               style={{
                 position: "absolute",
                 top: 8,
@@ -300,7 +344,7 @@ export default function GptComposer({
                 zIndex: 2,
               }}
             >
-              ×
+              {GPT_COMPOSER_TEXT.clearInputButton}
             </button>
           )}
 
@@ -322,9 +366,9 @@ export default function GptComposer({
           }}
           onClick={onSubmit}
           disabled={sendDisabled}
-          title="ChatGPTへ送信"
+          title={GPT_COMPOSER_TEXT.submitTitle}
         >
-          {loading ? "通信中" : "送信"}
+          {loading ? GPT_COMPOSER_TEXT.sending : GPT_COMPOSER_TEXT.send}
         </button>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import ChatTextarea from "@/components/ChatTextarea";
+import { KIN_PANEL_TEXT } from "./kinUiText";
 
 type Props = {
   value: string;
@@ -21,10 +22,7 @@ export default function KinComposer({
   const [blink, setBlink] = useState(false);
 
   useEffect(() => {
-    if (!loading) {
-      setBlink(false);
-      return;
-    }
+    if (!loading) return;
 
     const id = window.setInterval(() => {
       setBlink((prev) => !prev);
@@ -47,7 +45,7 @@ export default function KinComposer({
           <button
             type="button"
             onClick={() => onChange("")}
-            title="入力内容をクリア"
+            title={KIN_PANEL_TEXT.clearInputTitle}
             style={{
               position: "absolute",
               top: 8,
@@ -65,7 +63,7 @@ export default function KinComposer({
               zIndex: 2,
             }}
           >
-            ×
+            {KIN_PANEL_TEXT.clearInputButton}
           </button>
         )}
 
@@ -107,7 +105,7 @@ export default function KinComposer({
         onClick={onSubmit}
         disabled={loading}
       >
-        {loading ? "通信中" : "送信"}
+        {loading ? KIN_PANEL_TEXT.sending : KIN_PANEL_TEXT.send}
       </button>
     </div>
   );

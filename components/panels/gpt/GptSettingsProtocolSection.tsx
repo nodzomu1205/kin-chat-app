@@ -12,6 +12,7 @@ import {
   textAreaStyle,
   ToggleButtons,
 } from "./GptSettingsShared";
+import { GPT_PROTOCOL_SETTINGS_TEXT } from "./gptSettingsText";
 
 function ProtocolAutomationSection(props: {
   autoSendKinSysInput: boolean;
@@ -25,40 +26,49 @@ function ProtocolAutomationSection(props: {
   onChangeAutoCopyGptSysResponseToKin: (value: boolean) => void;
   onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) => void;
 }) {
+  const automationItems = [
+    {
+      checked: props.autoSendKinSysInput,
+      onChange: props.onChangeAutoSendKinSysInput,
+      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[0],
+    },
+    {
+      checked: props.autoCopyKinSysResponseToGpt,
+      onChange: props.onChangeAutoCopyKinSysResponseToGpt,
+      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[1],
+    },
+    {
+      checked: props.autoSendGptSysInput,
+      onChange: props.onChangeAutoSendGptSysInput,
+      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[2],
+    },
+    {
+      checked: props.autoCopyGptSysResponseToKin,
+      onChange: props.onChangeAutoCopyGptSysResponseToKin,
+      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[3],
+    },
+    {
+      checked: props.autoCopyFileIngestSysInfoToKin,
+      onChange: props.onChangeAutoCopyFileIngestSysInfoToKin,
+      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[4],
+    },
+  ];
+
   return (
     <div style={sectionCard}>
-      <div style={{ ...labelStyle, marginBottom: 8 }}>自動化フロー</div>
+      <div style={{ ...labelStyle, marginBottom: 8 }}>
+        {GPT_PROTOCOL_SETTINGS_TEXT.automationTitle}
+      </div>
       <div style={{ display: "grid", gap: 10 }}>
-        <ToggleButtons
-          label="A. Kin入力後に SYS を自動送信"
-          checked={props.autoSendKinSysInput}
-          onChange={props.onChangeAutoSendKinSysInput}
-          help="Kin に入力した直後、必要な SYS ブロックを自動送信します。"
-        />
-        <ToggleButtons
-          label="B. Kin の SYS 応答を GPT 入力欄へ自動コピー"
-          checked={props.autoCopyKinSysResponseToGpt}
-          onChange={props.onChangeAutoCopyKinSysResponseToGpt}
-          help="Kin の最新メッセージに SYS ブロックがあれば、GPT の入力欄へ自動反映します。"
-        />
-        <ToggleButtons
-          label="C. GPT入力後に SYS を自動送信"
-          checked={props.autoSendGptSysInput}
-          onChange={props.onChangeAutoSendGptSysInput}
-          help="GPT に入力した直後、必要な SYS ブロックを自動送信します。"
-        />
-        <ToggleButtons
-          label="D. GPT の SYS 応答を Kin 入力欄へ自動コピー"
-          checked={props.autoCopyGptSysResponseToKin}
-          onChange={props.onChangeAutoCopyGptSysResponseToKin}
-          help="GPT の最新メッセージに SYS ブロックがあれば、Kin の入力欄へ自動反映します。"
-        />
-        <ToggleButtons
-          label="E. 文書取込後の SYS_INFO を Kin 入力欄へ自動コピー"
-          checked={props.autoCopyFileIngestSysInfoToKin}
-          onChange={props.onChangeAutoCopyFileIngestSysInfoToKin}
-          help="ファイル取込後に生成された SYS_INFO を Kin 入力欄へ自動セットします。"
-        />
+        {automationItems.map(({ checked, onChange, text }) => (
+          <ToggleButtons
+            key={text.label}
+            label={text.label}
+            checked={checked}
+            onChange={onChange}
+            help={text.help}
+          />
+        ))}
       </div>
     </div>
   );
@@ -73,7 +83,7 @@ function ProtocolEditorSection(props: {
   return (
     <>
       <div style={sectionCard}>
-        <div style={labelStyle}>プロンプト</div>
+        <div style={labelStyle}>{GPT_PROTOCOL_SETTINGS_TEXT.promptLabel}</div>
         <textarea
           value={props.protocolPrompt}
           onChange={(e) => props.onChangeProtocolPrompt(e.target.value)}
@@ -82,15 +92,14 @@ function ProtocolEditorSection(props: {
       </div>
 
       <div style={sectionCard}>
-        <div style={labelStyle}>ルールブック</div>
+        <div style={labelStyle}>{GPT_PROTOCOL_SETTINGS_TEXT.rulebookLabel}</div>
         <textarea
           value={props.protocolRulebook}
           onChange={(e) => props.onChangeProtocolRulebook(e.target.value)}
           style={{ ...textAreaStyle, minHeight: 260 }}
         />
         <div style={{ ...helpTextStyle, marginTop: 8 }}>
-          検索プロトコルでは `ENGINE: google_search / google_ai_mode / google_news / google_local`
-          と `LOCATION: Japan` のような設定を使えます。
+          {GPT_PROTOCOL_SETTINGS_TEXT.rulebookHelp}
         </div>
       </div>
     </>
@@ -117,28 +126,28 @@ function ProtocolActionSection(props: {
         style={buttonSecondaryWide}
         onClick={props.onResetProtocolDefaults}
       >
-        既定値に戻す
+        {GPT_PROTOCOL_SETTINGS_TEXT.resetDefaults}
       </button>
       <button
         type="button"
         style={buttonSecondaryWide}
         onClick={props.onSaveProtocolDefaults}
       >
-        既定値として保存
+        {GPT_PROTOCOL_SETTINGS_TEXT.saveDefaults}
       </button>
       <button
         type="button"
         style={buttonSecondaryWide}
         onClick={() => void props.onSetProtocolRulebookToKinDraft()}
       >
-        Kin 入力欄へセット
+        {GPT_PROTOCOL_SETTINGS_TEXT.setKinDraft}
       </button>
       <button
         type="button"
         style={buttonPrimary}
         onClick={() => void props.onSendProtocolRulebookToKin()}
       >
-        SYS_INFO として送信
+        {GPT_PROTOCOL_SETTINGS_TEXT.sendSysInfo}
       </button>
     </div>
   );

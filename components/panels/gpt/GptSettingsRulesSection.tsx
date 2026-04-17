@@ -26,37 +26,17 @@ import {
   tabButton,
   ToggleButtons,
 } from "./GptSettingsShared";
+import {
+  formatIntentLabel,
+  formatIntentPhraseKindLabel,
+  formatMemoryRuleKind,
+  formatTopicDecisionLabel,
+  getCandidateIntentValue,
+  getCandidateTopicDecisionValue,
+  GPT_SETTINGS_RULES_TEXT,
+} from "./gptSettingsText";
 
-function getCandidateIntentValue(
-  candidate: PendingMemoryRuleCandidate
-): UserUtteranceIntent {
-  if (candidate.intent) return candidate.intent;
-  if (candidate.kind === "closing_reply") return "acknowledgement";
-  if (candidate.kind === "topic_alias") return "question";
-  return "unknown";
-}
-
-function getCandidateTopicDecisionValue(
-  candidate: PendingMemoryRuleCandidate
-): TopicDecision {
-  if (candidate.topicDecision) return candidate.topicDecision;
-  if (candidate.kind === "closing_reply") return "keep";
-  if (candidate.kind === "topic_alias") return "switch";
-  return "unclear";
-}
-
-function formatMemoryRuleKind(
-  kind: PendingMemoryRuleCandidate["kind"] | ApprovedMemoryRule["kind"]
-) {
-  switch (kind) {
-    case "utterance_review":
-      return "発話レビュー";
-    case "topic_alias":
-      return "topic 関連";
-    default:
-      return "closing reply 関連";
-  }
-}
+const RULES_TEXT = GPT_SETTINGS_RULES_TEXT;
 
 function MemoryInterpreterSection(props: {
   memoryInterpreterSettings: MemoryInterpreterSettings;
@@ -66,27 +46,29 @@ function MemoryInterpreterSection(props: {
 }) {
   return (
     <div style={sectionCard}>
-      <div style={{ ...labelStyle, marginBottom: 8 }}>Memory Interpreter</div>
+      <div style={{ ...labelStyle, marginBottom: 8 }}>
+        {RULES_TEXT.interpreterTitle}
+      </div>
       <div style={{ display: "grid", gap: 10 }}>
         <ToggleButtons
-          label="LLM fallback"
+          label={RULES_TEXT.llmFallback}
           checked={props.memoryInterpreterSettings.llmFallbackEnabled}
           onChange={(value) =>
             props.onChangeMemoryInterpreterSettings({
               llmFallbackEnabled: value,
             })
           }
-          help="判定しにくい topic / closing reply を LLM で補完判定します。"
+          help={RULES_TEXT.llmFallbackHelp}
         />
         <ToggleButtons
-          label="候補を保存"
+          label={RULES_TEXT.saveCandidates}
           checked={props.memoryInterpreterSettings.saveRuleCandidates}
           onChange={(value) =>
             props.onChangeMemoryInterpreterSettings({
               saveRuleCandidates: value,
             })
           }
-          help="LLM fallback が見つけた Memory ルール候補をレビュー用キューへ残します。"
+          help={RULES_TEXT.saveCandidatesHelp}
         />
       </div>
     </div>
@@ -117,22 +99,22 @@ function PendingMemoryRuleCandidatesSection(props: {
 
   return (
     <div style={sectionCard}>
-      <div style={{ ...labelStyle, marginBottom: 8 }}>Memory ルール候補</div>
+      <div style={{ ...labelStyle, marginBottom: 8 }}>
+        {RULES_TEXT.pendingMemoryTitle}
+      </div>
       <div style={{ ...helpTextStyle, marginBottom: 8 }}>
-        判定が難しい発話について、会話全体の文脈を LLM で補完して候補化します。
+        {RULES_TEXT.pendingMemoryHelp}
       </div>
       {props.pendingMemoryRuleCandidates.length === 0 ? (
-        <div style={helpTextStyle}>
-          現在、レビュー待ちの Memory ルール候補はありません。
-        </div>
+        <div style={helpTextStyle}>{RULES_TEXT.pendingMemoryEmpty}</div>
       ) : (
         props.pendingMemoryRuleCandidates.map((candidate) => (
           <div key={candidate.id} style={{ ...subtleCard, marginTop: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 800 }}>
-              {formatMemoryRuleKind(candidate.kind)}候補
+              {formatMemoryRuleKind(candidate.kind)}
             </div>
             <div style={{ ...helpTextStyle, marginTop: 6 }}>
-              入力語句: {candidate.phrase}
+              {RULES_TEXT.sourcePhrase}: {candidate.phrase}
             </div>
             <div
               style={{
@@ -154,54 +136,54 @@ function PendingMemoryRuleCandidatesSection(props: {
               }}
             >
               <div>
-                <div style={labelStyle}>ユーザー意図</div>
+                <div style={labelStyle}>{RULES_TEXT.userIntent}</div>
                 <select
                   value={getCandidateIntentValue(candidate)}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     props.onUpdateMemoryRuleCandidate(candidate.id, {
                       kind: "utterance_review",
-                      intent: e.target.value as UserUtteranceIntent,
+                      intent: event.target.value as UserUtteranceIntent,
                     })
                   }
                   style={selectStyle}
                 >
                   {intentOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {formatIntentLabel(option)}
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <div style={labelStyle}>トピック判定</div>
+                <div style={labelStyle}>{RULES_TEXT.topicDecision}</div>
                 <select
                   value={getCandidateTopicDecisionValue(candidate)}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     props.onUpdateMemoryRuleCandidate(candidate.id, {
                       kind: "utterance_review",
-                      topicDecision: e.target.value as TopicDecision,
+                      topicDecision: event.target.value as TopicDecision,
                     })
                   }
                   style={selectStyle}
                 >
                   {topicDecisionOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {formatTopicDecisionLabel(option)}
                     </option>
                   ))}
                 </select>
               </div>
               <div style={{ gridColumn: props.isMobile ? undefined : "1 / -1" }}>
-                <div style={labelStyle}>トピック</div>
+                <div style={labelStyle}>{RULES_TEXT.topic}</div>
                 <input
                   value={candidate.normalizedValue || ""}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     props.onUpdateMemoryRuleCandidate(candidate.id, {
                       kind: "utterance_review",
-                      normalizedValue: e.target.value,
+                      normalizedValue: event.target.value,
                     })
                   }
-                  placeholder="keep の場合の話題名"
+                  placeholder={RULES_TEXT.topicPlaceholder}
                   style={inputStyle}
                 />
               </div>
@@ -219,14 +201,14 @@ function PendingMemoryRuleCandidatesSection(props: {
                 style={buttonPrimary}
                 onClick={() => props.onApproveMemoryRuleCandidate(candidate.id)}
               >
-                承認
+                {RULES_TEXT.approve}
               </button>
               <button
                 type="button"
                 style={buttonSecondaryWide}
                 onClick={() => props.onRejectMemoryRuleCandidate(candidate.id)}
               >
-                却下
+                {RULES_TEXT.reject}
               </button>
             </div>
           </div>
@@ -245,7 +227,7 @@ function ApprovedMemoryRulesSection(props: {
   return (
     <div style={sectionCard}>
       <div style={{ ...helpTextStyle, marginBottom: 8 }}>
-        承認済みルールは、必要時に LLM fallback で topic や facts の補正に使われます。
+        {RULES_TEXT.approvedMemoryHelp}
       </div>
       <button
         type="button"
@@ -253,8 +235,8 @@ function ApprovedMemoryRulesSection(props: {
         onClick={props.onToggleApprovedMemoryRules}
       >
         {props.showApprovedMemoryRules
-          ? "承認済み Memory ルールを閉じる"
-          : `承認済み Memory ルールを表示 (${props.approvedMemoryRules.length})`}
+          ? RULES_TEXT.hideApprovedMemory
+          : `${RULES_TEXT.showApprovedMemory} (${props.approvedMemoryRules.length})`}
       </button>
       {props.showApprovedMemoryRules ? (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
@@ -264,21 +246,21 @@ function ApprovedMemoryRulesSection(props: {
                 {formatMemoryRuleKind(rule.kind)}
               </div>
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                入力語句: {rule.phrase}
+                {RULES_TEXT.sourcePhrase}: {rule.phrase}
               </div>
               {rule.intent ? (
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  意図: {rule.intent}
+                  {RULES_TEXT.userIntent}: {formatIntentLabel(rule.intent)}
                 </div>
               ) : null}
               {rule.topicDecision ? (
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  トピック判定: {rule.topicDecision}
+                  {RULES_TEXT.topicDecision}: {formatTopicDecisionLabel(rule.topicDecision)}
                 </div>
               ) : null}
               {rule.normalizedValue ? (
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  トピック正規化: {rule.normalizedValue}
+                  {RULES_TEXT.topic}: {rule.normalizedValue}
                 </div>
               ) : null}
               <div
@@ -291,14 +273,14 @@ function ApprovedMemoryRulesSection(props: {
                 }}
               >
                 <div style={helpTextStyle}>
-                  作成日: {rule.createdAt.slice(0, 10)}
+                  {RULES_TEXT.createdAt}: {rule.createdAt.slice(0, 10)}
                 </div>
                 <button
                   type="button"
                   style={buttonSecondaryWide}
                   onClick={() => props.onDeleteApprovedMemoryRule(rule.id)}
                 >
-                  削除
+                  {RULES_TEXT.delete}
                 </button>
               </div>
             </div>
@@ -317,20 +299,18 @@ function PendingIntentRulesSection(props: {
   return (
     <div style={sectionCard}>
       <div style={{ ...labelStyle, marginBottom: 8 }}>
-        SYS フォーマットルール候補
+        {RULES_TEXT.pendingSysTitle}
       </div>
       <div style={{ ...helpTextStyle, marginBottom: 8 }}>
-        こちらは SYS フォーマットや要求表現の候補です。Memory 関連候補とは別系統です。
+        {RULES_TEXT.pendingSysHelp}
       </div>
       {props.pendingIntentCandidates.length === 0 ? (
-        <div style={helpTextStyle}>
-          現在、SYS フォーマットルール候補はありません。
-        </div>
+        <div style={helpTextStyle}>{RULES_TEXT.pendingSysEmpty}</div>
       ) : (
         props.pendingIntentCandidates.map((candidate) => (
           <div key={candidate.id} style={{ ...subtleCard, marginTop: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 800 }}>
-              {candidate.kind} / {candidate.phrase}
+              {formatIntentPhraseKindLabel(candidate.kind)} / {candidate.phrase}
             </div>
             <div
               style={{
@@ -354,14 +334,14 @@ function PendingIntentRulesSection(props: {
                 style={buttonPrimary}
                 onClick={() => props.onApproveIntentCandidate(candidate.id)}
               >
-                承認
+                {RULES_TEXT.approve}
               </button>
               <button
                 type="button"
                 style={buttonSecondaryWide}
                 onClick={() => props.onRejectIntentCandidate(candidate.id)}
               >
-                却下
+                {RULES_TEXT.reject}
               </button>
             </div>
           </div>
@@ -385,15 +365,15 @@ function ApprovedIntentRulesSection(props: {
         onClick={props.onToggleApprovedIntentRules}
       >
         {props.showApprovedIntentRules
-          ? "承認済み SYS ルールを閉じる"
-          : `承認済み SYS ルールを表示 (${props.approvedIntentPhrases.length})`}
+          ? RULES_TEXT.hideApprovedSys
+          : `${RULES_TEXT.showApprovedSys} (${props.approvedIntentPhrases.length})`}
       </button>
       {props.showApprovedIntentRules ? (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
           {props.approvedIntentPhrases.map((phrase) => (
             <div key={phrase.id} style={subtleCard}>
               <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {phrase.kind} / {phrase.phrase}
+                {formatIntentPhraseKindLabel(phrase.kind)} / {phrase.phrase}
               </div>
               <div
                 style={{
@@ -405,14 +385,14 @@ function ApprovedIntentRulesSection(props: {
                 }}
               >
                 <div style={helpTextStyle}>
-                  作成日: {phrase.createdAt.slice(0, 10)}
+                  {RULES_TEXT.createdAt}: {phrase.createdAt.slice(0, 10)}
                 </div>
                 <button
                   type="button"
                   style={buttonSecondaryWide}
                   onClick={() => props.onDeleteApprovedIntentPhrase(phrase.id)}
                 >
-                  削除
+                  {RULES_TEXT.delete}
                 </button>
               </div>
             </div>

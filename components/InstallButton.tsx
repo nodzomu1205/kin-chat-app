@@ -1,15 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { INSTALL_BUTTON_TEXT } from "@/components/ui/commonUiText";
+
+type BeforeInstallPromptChoice = {
+  outcome: "accepted" | "dismissed";
+  platform: string;
+};
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<BeforeInstallPromptChoice>;
+};
 
 export default function InstallButton() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
+    const handler = (event: Event) => {
+      const installEvent = event as BeforeInstallPromptEvent;
+      event.preventDefault();
+      setDeferredPrompt(installEvent);
       setVisible(true);
     };
 
@@ -50,7 +62,7 @@ export default function InstallButton() {
         zIndex: 9999,
       }}
     >
-      アプリをインストール
+      {INSTALL_BUTTON_TEXT.install}
     </button>
   );
 }

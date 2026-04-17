@@ -15,9 +15,9 @@ If input is <<SYS...>>, reply only with <<SYS_...>> ... <<END_SYS_...>>. Do not 
 Multiple SYS blocks in one reply are allowed. Nested blocks are forbidden.
 
 For <<SYS_INFO>>, reply:
-<<SYS_KIN_RESPONSE>>
+<<KIN_RESPONSE>>
 Received.
-<<END_SYS_KIN_RESPONSE>>
+<<END_KIN_RESPONSE>>
 
 When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.
 
@@ -25,18 +25,17 @@ You may use youtube_search inside <<SYS_SEARCH_REQUEST>> when video discovery is
 You may use <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> when a specific YouTube URL must be read in full via transcript.
 One transcript request may contain up to 3 YouTube URLs in URLS when GPT should fetch and deliver them in sequence.
 Whenever GPT sends a transcript part or asks to continue queued delivery, reply with:
-<<SYS_KIN_RESPONSE>>
+<<KIN_RESPONSE>>
 Received. Send the next part.
-<<END_SYS_KIN_RESPONSE>>`;
+<<END_KIN_RESPONSE>>`;
 
     const migrated = migrateLegacyProtocolLimits(legacyPrompt);
 
     expect(migrated).not.toContain("youtube_search inside <<SYS_SEARCH_REQUEST>>");
-    expect(migrated).toContain("<<SYS_KIN_RESPONSE>>");
-    expect(migrated).not.toContain("<<KIN_RESPONSE>>");
+    expect(migrated).toContain("<<KIN_RESPONSE>>");
     expect(migrated).toContain("Received.");
     expect(migrated).toContain("keep each message at or under 700 characters");
-    expect(migrated).toContain("<<END_SYS_KIN_RESPONSE>>");
+    expect(migrated).toContain("<<END_KIN_RESPONSE>>");
   });
 
   it("normalizes the legacy default rulebook to the shorter clearer version", () => {
@@ -61,10 +60,24 @@ CONTENT:
     const migrated = migrateLegacyProtocolLimits(legacyRulebook);
 
     expect(migrated).toContain("Fast reply rules:");
-    expect(migrated).toContain("<<SYS_KIN_RESPONSE>>");
+    expect(migrated).toContain("<<KIN_RESPONSE>>");
     expect(migrated).toContain("Core task flow:");
     expect(migrated).toContain("Library flow:");
     expect(migrated).not.toContain("Means GPT's detailed response for one specific stored library item.");
     expect(migrated).toContain("Every SYS block you send must end with the matching <<END_SYS_...>> line.");
+  });
+
+  it("upgrades legacy response block names to the current KIN_RESPONSE format", () => {
+    const legacy = `For <<SYS_INFO>>, reply:
+<<SYS_KIN_RESPONSE>>
+Received.
+<<END_SYS_KIN_RESPONSE>>`;
+
+    const migrated = migrateLegacyProtocolLimits(legacy);
+
+    expect(migrated).toContain("<<KIN_RESPONSE>>");
+    expect(migrated).toContain("<<END_KIN_RESPONSE>>");
+    expect(migrated).not.toContain("<<SYS_KIN_RESPONSE>>");
+    expect(migrated).not.toContain("<<END_SYS_KIN_RESPONSE>>");
   });
 });

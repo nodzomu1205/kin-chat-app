@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { GPT_DRAWER_TABS_TEXT } from "./gptUiText";
 
 export type TopTabKey =
   | "memory"
@@ -75,28 +76,28 @@ export default function DrawerTabs({
           onClick={() => toggle("memory")}
           style={topTabStyle(activeDrawer === "memory", isMobile)}
         >
-          メモリ
+          {GPT_DRAWER_TABS_TEXT.memory}
         </button>
         <button
           type="button"
           onClick={() => toggle("tokens")}
           style={topTabStyle(activeDrawer === "tokens", isMobile)}
         >
-          トークン
+          {GPT_DRAWER_TABS_TEXT.tokens}
         </button>
         <button
           type="button"
           onClick={() => toggle("task")}
           style={topTabStyle(activeDrawer === "task", isMobile)}
         >
-          タスク
+          {GPT_DRAWER_TABS_TEXT.task}
         </button>
         <button
           type="button"
           onClick={() => toggle("received_docs")}
           style={topTabStyle(activeDrawer === "received_docs", isMobile)}
         >
-          ライブラリ
+          {GPT_DRAWER_TABS_TEXT.receivedDocs}
         </button>
       </div>
     </>

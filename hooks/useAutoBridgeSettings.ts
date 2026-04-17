@@ -1,57 +1,31 @@
 import { useEffect, useState } from "react";
+import {
+  AUTO_BRIDGE_SETTINGS_STORAGE_KEY,
+  loadAutoBridgeSettings,
+  mergeAutoBridgeSettings,
+  type AutoBridgeSettings,
+} from "@/lib/app/autoBridgeSettingsState";
 
-export type AutoBridgeSettings = {
-  autoSendKinSysInput: boolean;
-  autoCopyKinSysResponseToGpt: boolean;
-  autoSendGptSysInput: boolean;
-  autoCopyGptSysResponseToKin: boolean;
-  autoCopyFileIngestSysInfoToKin: boolean;
-};
-
-const STORAGE_KEY = "auto_bridge_settings";
-
-const DEFAULT_SETTINGS: AutoBridgeSettings = {
-  autoSendKinSysInput: false,
-  autoCopyKinSysResponseToGpt: false,
-  autoSendGptSysInput: false,
-  autoCopyGptSysResponseToKin: false,
-  autoCopyFileIngestSysInfoToKin: true,
-};
+export type { AutoBridgeSettings } from "@/lib/app/autoBridgeSettingsState";
 
 export function useAutoBridgeSettings() {
   const [autoBridgeSettings, setAutoBridgeSettings] =
-    useState<AutoBridgeSettings>(DEFAULT_SETTINGS);
+    useState<AutoBridgeSettings>(() =>
+      loadAutoBridgeSettings(
+        typeof window === "undefined" ? null : window.localStorage
+      )
+    );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved) as Partial<AutoBridgeSettings>;
-      setAutoBridgeSettings({
-        autoSendKinSysInput: !!parsed.autoSendKinSysInput,
-        autoCopyKinSysResponseToGpt: !!parsed.autoCopyKinSysResponseToGpt,
-        autoSendGptSysInput: !!parsed.autoSendGptSysInput,
-        autoCopyGptSysResponseToKin: !!parsed.autoCopyGptSysResponseToKin,
-        autoCopyFileIngestSysInfoToKin:
-          parsed.autoCopyFileIngestSysInfoToKin !== false,
-      });
-    } catch {
-      setAutoBridgeSettings(DEFAULT_SETTINGS);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(autoBridgeSettings));
+    window.localStorage.setItem(
+      AUTO_BRIDGE_SETTINGS_STORAGE_KEY,
+      JSON.stringify(autoBridgeSettings)
+    );
   }, [autoBridgeSettings]);
 
   const updateAutoBridgeSettings = (patch: Partial<AutoBridgeSettings>) => {
-    setAutoBridgeSettings((prev) => ({
-      ...prev,
-      ...patch,
-    }));
+    setAutoBridgeSettings((prev) => mergeAutoBridgeSettings(prev, patch));
   };
 
   return {

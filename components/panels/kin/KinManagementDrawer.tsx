@@ -1,4 +1,5 @@
 import React from "react";
+import { KIN_MANAGEMENT_TEXT } from "./kinManagementText";
 
 const buttonPrimary: React.CSSProperties = {
   padding: "10px 14px",
@@ -71,7 +72,7 @@ export default function KinManagementDrawer({
 }: Props) {
   return (
     <>
-      {showKinList && (
+      {showKinList ? (
         <div
           style={{
             border: "1px solid #e5e7eb",
@@ -96,7 +97,7 @@ export default function KinManagementDrawer({
                 color: "#374151",
               }}
             >
-              登録済みKin
+              {KIN_MANAGEMENT_TEXT.savedKinTitle}
             </div>
 
             <button
@@ -108,15 +109,15 @@ export default function KinManagementDrawer({
               }}
               onClick={disconnectKin}
               disabled={!currentKin}
-              title="どのKinとも接続しない状態にします"
+              title={KIN_MANAGEMENT_TEXT.disconnectTitle}
             >
-              接続解除
+              {KIN_MANAGEMENT_TEXT.disconnect}
             </button>
           </div>
 
           {kinList.length === 0 ? (
             <div style={{ fontSize: 12, color: "#6b7280" }}>
-              まだKinが登録されていません。
+              {KIN_MANAGEMENT_TEXT.empty}
             </div>
           ) : (
             <div
@@ -186,7 +187,7 @@ export default function KinManagementDrawer({
                           flexShrink: 0,
                         }}
                       >
-                        {active && (
+                        {active ? (
                           <span
                             style={{
                               fontSize: 10,
@@ -199,16 +200,16 @@ export default function KinManagementDrawer({
                               whiteSpace: "nowrap",
                             }}
                           >
-                            接続中
+                            {KIN_MANAGEMENT_TEXT.active}
                           </span>
-                        )}
+                        ) : null}
 
                         <button
                           type="button"
                           style={miniButton}
                           onClick={() => removeKin(kin.id)}
                         >
-                          削除
+                          {KIN_MANAGEMENT_TEXT.remove}
                         </button>
                       </div>
                     </div>
@@ -228,9 +229,9 @@ export default function KinManagementDrawer({
 
                     <input
                       defaultValue={kin.label}
-                      onBlur={(e) => renameKin(kin.id, e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.currentTarget.blur();
+                      onBlur={(event) => renameKin(kin.id, event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") event.currentTarget.blur();
                       }}
                       style={{
                         width: "100%",
@@ -249,9 +250,9 @@ export default function KinManagementDrawer({
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
-      {showConnectForm && (
+      {showConnectForm ? (
         <div
           style={{
             border: "1px solid #e5e7eb",
@@ -261,14 +262,14 @@ export default function KinManagementDrawer({
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
-            新規接続
+            {KIN_MANAGEMENT_TEXT.newConnectionTitle}
           </div>
 
           <div style={{ display: "flex", gap: 8 }}>
             <input
               value={kinIdInput}
-              onChange={(e) => setKinIdInput(e.target.value)}
-              placeholder="Kin ID"
+              onChange={(event) => setKinIdInput(event.target.value)}
+              placeholder={KIN_MANAGEMENT_TEXT.kinIdPlaceholder}
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -281,8 +282,8 @@ export default function KinManagementDrawer({
 
             <input
               value={kinNameInput}
-              onChange={(e) => setKinNameInput(e.target.value)}
-              placeholder="表示名"
+              onChange={(event) => setKinNameInput(event.target.value)}
+              placeholder={KIN_MANAGEMENT_TEXT.displayNamePlaceholder}
               style={{
                 width: isMobile ? 84 : 120,
                 padding: "10px 12px",
@@ -293,11 +294,11 @@ export default function KinManagementDrawer({
             />
 
             <button type="button" style={buttonPrimary} onClick={connectKin}>
-              接続
+              {KIN_MANAGEMENT_TEXT.connectButton}
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

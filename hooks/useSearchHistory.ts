@@ -1,4 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  getAskAiModeLinkFromSearchHistory,
+  getContinuationTokenFromSearchHistory,
+  getVisibleSearchHistory,
+  moveSearchHistoryEntry,
+  resolveSelectedSearchResultId,
+  resolveTaskSearchContext,
+} from "@/lib/app/searchHistoryState";
 import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
 import type { SearchContext, SearchEngine, SearchMode } from "@/types/task";
 
@@ -27,90 +35,126 @@ const ALLOWED_SEARCH_ENGINES: SearchEngine[] = [
   "amazon_search",
 ];
 
-function normalizeSearchTextKey(text: string) {
-  return text.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
-}
+function loadSearchHistoryState() {
+  const initialState = {
+    lastSearchContext: null as SearchContext | null,
+    searchHistory: [] as SearchContext[],
+    selectedTaskSearchResultId: "",
+    searchHistoryLimit: DEFAULT_SEARCH_HISTORY_LIMIT,
+    searchMode: DEFAULT_SEARCH_MODE,
+    searchEngines: [] as SearchEngine[],
+    searchLocation: "",
+    sourceDisplayCount: DEFAULT_SOURCE_DISPLAY_COUNT,
+  };
 
-type AskAiModeCandidate = {
-  question?: string;
-  title?: string;
-  snippet?: string;
-  link?: string;
-  serpapi_link?: string;
-};
+  if (typeof window === "undefined") {
+    return initialState;
+  }
 
-export function useSearchHistory() {
-  const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(null);
-  const [searchHistory, setSearchHistory] = useState<SearchContext[]>([]);
-  const [selectedTaskSearchResultId, setSelectedTaskSearchResultId] = useState("");
-  const [searchHistoryLimit, setSearchHistoryLimit] = useState(DEFAULT_SEARCH_HISTORY_LIMIT);
-  const [searchMode, setSearchMode] = useState<SearchMode>(DEFAULT_SEARCH_MODE);
-  const [searchEngines, setSearchEngines] = useState<SearchEngine[]>([]);
-  const [searchLocation, setSearchLocation] = useState("");
-  const [sourceDisplayCount, setSourceDisplayCount] = useState(
-    DEFAULT_SOURCE_DISPLAY_COUNT
+  const savedSearchContext = window.localStorage.getItem(LAST_SEARCH_CONTEXT_KEY);
+  const savedSearchHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
+  const savedSearchHistoryLimit = window.localStorage.getItem(SEARCH_HISTORY_LIMIT_KEY);
+  const savedSearchMode = window.localStorage.getItem(SEARCH_MODE_KEY);
+  const savedSearchEngines = window.localStorage.getItem(SEARCH_ENGINES_KEY);
+  const savedSearchLocation = window.localStorage.getItem(SEARCH_LOCATION_KEY);
+  const savedSourceDisplayCount = window.localStorage.getItem(
+    SOURCE_DISPLAY_COUNT_KEY
   );
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  if (savedSearchHistoryLimit) {
+    const parsed = Number(savedSearchHistoryLimit);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      initialState.searchHistoryLimit = parsed;
+    }
+  }
 
-    const savedSearchContext = window.localStorage.getItem(LAST_SEARCH_CONTEXT_KEY);
-    const savedSearchHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
-    const savedSearchHistoryLimit = window.localStorage.getItem(SEARCH_HISTORY_LIMIT_KEY);
-    const savedSearchMode = window.localStorage.getItem(SEARCH_MODE_KEY);
-    const savedSearchEngines = window.localStorage.getItem(SEARCH_ENGINES_KEY);
-    const savedSearchLocation = window.localStorage.getItem(SEARCH_LOCATION_KEY);
-    const savedSourceDisplayCount = window.localStorage.getItem(
-      SOURCE_DISPLAY_COUNT_KEY
-    );
+  if (savedSearchMode) {
+    initialState.searchMode = normalizeStoredSearchMode(savedSearchMode);
+  }
 
-    if (savedSearchHistoryLimit) {
-      const parsed = Number(savedSearchHistoryLimit);
-      if (Number.isFinite(parsed) && parsed > 0) setSearchHistoryLimit(parsed);
-    }
-    if (savedSearchMode) {
-      setSearchMode(normalizeStoredSearchMode(savedSearchMode));
-    }
-    if (savedSearchEngines) {
-      try {
-        const parsed = JSON.parse(savedSearchEngines) as string[];
-        if (Array.isArray(parsed)) {
-          setSearchEngines(
-            parsed.filter((engine): engine is SearchEngine =>
-              ALLOWED_SEARCH_ENGINES.includes(engine as SearchEngine)
-            )
-          );
-        }
-      } catch {}
-    }
-    if (savedSearchLocation) {
-      setSearchLocation(savedSearchLocation);
-    }
-    if (savedSourceDisplayCount) {
-      const parsed = Number(savedSourceDisplayCount);
-      if (Number.isFinite(parsed) && parsed >= 1) {
-        setSourceDisplayCount(parsed);
+  if (savedSearchEngines) {
+    try {
+      const parsed = JSON.parse(savedSearchEngines) as string[];
+      if (Array.isArray(parsed)) {
+        initialState.searchEngines = parsed.filter(
+          (engine): engine is SearchEngine =>
+            ALLOWED_SEARCH_ENGINES.includes(engine as SearchEngine)
+        );
       }
+    } catch {}
+  }
+
+  if (savedSearchLocation) {
+    initialState.searchLocation = savedSearchLocation;
+  }
+
+  if (savedSourceDisplayCount) {
+    const parsed = Number(savedSourceDisplayCount);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      initialState.sourceDisplayCount = parsed;
     }
-    if (savedSearchContext) {
-      try {
-        const parsed = JSON.parse(savedSearchContext) as SearchContext;
-        if (parsed?.rawResultId && parsed?.query) setLastSearchContext(parsed);
-      } catch {}
-    }
-    if (savedSearchHistory) {
-      try {
-        const parsed = JSON.parse(savedSearchHistory) as SearchContext[];
-        if (Array.isArray(parsed)) {
-          setSearchHistory(
-            parsed
-              .filter((item) => item?.rawResultId && item?.query)
-              .slice(0, DEFAULT_SEARCH_HISTORY_LIMIT)
-          );
-        }
-      } catch {}
-    }
-  }, []);
+  }
+
+  if (savedSearchContext) {
+    try {
+      const parsed = JSON.parse(savedSearchContext) as SearchContext;
+      if (parsed?.rawResultId && parsed?.query) {
+        initialState.lastSearchContext = parsed;
+      }
+    } catch {}
+  }
+
+  if (savedSearchHistory) {
+    try {
+      const parsed = JSON.parse(savedSearchHistory) as SearchContext[];
+      if (Array.isArray(parsed)) {
+        initialState.searchHistory = parsed
+          .filter((item) => item?.rawResultId && item?.query)
+          .slice(0, initialState.searchHistoryLimit);
+      }
+    } catch {}
+  }
+
+  return initialState;
+}
+
+export function useSearchHistory() {
+  const [initialState] = useState(loadSearchHistoryState);
+  const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(
+    initialState.lastSearchContext
+  );
+  const [searchHistory, setSearchHistory] = useState<SearchContext[]>(
+    initialState.searchHistory
+  );
+  const [selectedTaskSearchResultId, setSelectedTaskSearchResultId] = useState(
+    initialState.selectedTaskSearchResultId
+  );
+  const [searchHistoryLimit, setSearchHistoryLimit] = useState(
+    initialState.searchHistoryLimit
+  );
+  const [searchMode, setSearchMode] = useState<SearchMode>(initialState.searchMode);
+  const [searchEngines, setSearchEngines] = useState<SearchEngine[]>(
+    initialState.searchEngines
+  );
+  const [searchLocation, setSearchLocation] = useState(
+    initialState.searchLocation
+  );
+  const [sourceDisplayCount, setSourceDisplayCount] = useState(
+    initialState.sourceDisplayCount
+  );
+  const visibleSearchHistory = useMemo(
+    () => getVisibleSearchHistory(searchHistory, searchHistoryLimit),
+    [searchHistory, searchHistoryLimit]
+  );
+  const resolvedSelectedTaskSearchResultId = useMemo(
+    () =>
+      resolveSelectedSearchResultId({
+        selectedTaskSearchResultId,
+        visibleSearchHistory,
+        lastSearchContext,
+      }),
+    [lastSearchContext, selectedTaskSearchResultId, visibleSearchHistory]
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -154,49 +198,26 @@ export function useSearchHistory() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistory));
-  }, [searchHistory]);
-
-  useEffect(() => {
-    setSearchHistory((prev) => prev.slice(0, searchHistoryLimit));
-  }, [searchHistoryLimit]);
-
-  useEffect(() => {
-    if (!lastSearchContext) return;
-    setSearchHistory((prev) => {
-      if (prev.some((item) => item.rawResultId === lastSearchContext.rawResultId)) {
-        return prev;
-      }
-      return [lastSearchContext, ...prev].slice(0, searchHistoryLimit);
-    });
-  }, [lastSearchContext, searchHistoryLimit]);
-
-  useEffect(() => {
-    if (!selectedTaskSearchResultId) return;
-    if (searchHistory.some((item) => item.rawResultId === selectedTaskSearchResultId)) return;
-    if (lastSearchContext?.rawResultId === selectedTaskSearchResultId) return;
-    setSelectedTaskSearchResultId("");
-  }, [lastSearchContext?.rawResultId, searchHistory, selectedTaskSearchResultId]);
+    window.localStorage.setItem(
+      SEARCH_HISTORY_KEY,
+      JSON.stringify(visibleSearchHistory)
+    );
+  }, [visibleSearchHistory]);
 
   const getTaskSearchContext = () =>
-    searchHistory.find((item) => item.rawResultId === selectedTaskSearchResultId) ||
-    (selectedTaskSearchResultId &&
-    lastSearchContext?.rawResultId === selectedTaskSearchResultId
-      ? lastSearchContext
-      : null) ||
-    searchHistory[0] ||
-    lastSearchContext ||
-    null;
+    resolveTaskSearchContext({
+      visibleSearchHistory,
+      resolvedSelectedTaskSearchResultId,
+      lastSearchContext,
+    });
 
   const moveSearchHistoryItem = (rawResultId: string, direction: "up" | "down") => {
     setSearchHistory((prev) => {
-      const index = prev.findIndex((item) => item.rawResultId === rawResultId);
-      if (index < 0) return prev;
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(index, 1);
-      next.splice(targetIndex, 0, moved);
+      const next = moveSearchHistoryEntry({
+        searchHistory: prev,
+        rawResultId,
+        direction,
+      });
       return next;
     });
   };
@@ -241,64 +262,19 @@ export function useSearchHistory() {
   };
 
   const getContinuationTokenForSeries = (seriesId: string) => {
-    const normalizedSeriesId = seriesId.trim();
-    if (!normalizedSeriesId) return "";
-
-    const pool = [...(lastSearchContext ? [lastSearchContext] : []), ...searchHistory];
-    const matched = pool.find((item) => {
-      const itemSeriesId =
-        typeof item.seriesId === "string"
-          ? item.seriesId
-          : typeof item.metadata?.seriesId === "string"
-            ? String(item.metadata?.seriesId)
-            : "";
-      return itemSeriesId === normalizedSeriesId;
+    return getContinuationTokenFromSearchHistory({
+      seriesId,
+      visibleSearchHistory,
+      lastSearchContext,
     });
-
-    if (!matched) return "";
-    if (typeof matched.continuationToken === "string" && matched.continuationToken.trim()) {
-      return matched.continuationToken.trim();
-    }
-    if (
-      typeof matched.metadata?.subsequentRequestToken === "string" &&
-      String(matched.metadata?.subsequentRequestToken).trim()
-    ) {
-      return String(matched.metadata?.subsequentRequestToken).trim();
-    }
-    return "";
   };
 
   const getAskAiModeLinkForQuery = (query: string) => {
-    const normalizedQuery = normalizeSearchTextKey(query);
-    if (!normalizedQuery) return "";
-
-    const pool = [...(lastSearchContext ? [lastSearchContext] : []), ...searchHistory];
-    for (const item of pool) {
-      const candidates = Array.isArray(item.metadata?.askAiModeItems)
-        ? (item.metadata?.askAiModeItems as AskAiModeCandidate[])
-        : [];
-
-      for (const candidate of candidates) {
-        const labels = [candidate.question, candidate.title, candidate.snippet]
-          .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-          .map((value) => normalizeSearchTextKey(value));
-
-        if (!labels.includes(normalizedQuery)) continue;
-
-        if (
-          typeof candidate.serpapi_link === "string" &&
-          candidate.serpapi_link.trim()
-        ) {
-          return candidate.serpapi_link.trim();
-        }
-
-        if (typeof candidate.link === "string" && candidate.link.trim()) {
-          return candidate.link.trim();
-        }
-      }
-    }
-
-    return "";
+    return getAskAiModeLinkFromSearchHistory({
+      query,
+      visibleSearchHistory,
+      lastSearchContext,
+    });
   };
 
   const clearSearchHistory = () => {
@@ -315,19 +291,18 @@ export function useSearchHistory() {
 
   const searchHistoryStorageMB = useMemo(() => {
     try {
-      const bytes = new TextEncoder().encode(JSON.stringify(searchHistory)).length;
+      const bytes = new TextEncoder().encode(JSON.stringify(visibleSearchHistory)).length;
       return bytes / (1024 * 1024);
     } catch {
       return 0;
     }
-  }, [searchHistory]);
+  }, [visibleSearchHistory]);
 
   return {
     lastSearchContext,
     setLastSearchContext,
-    searchHistory,
-    setSearchHistory,
-    selectedTaskSearchResultId,
+    searchHistory: visibleSearchHistory,
+    selectedTaskSearchResultId: resolvedSelectedTaskSearchResultId,
     setSelectedTaskSearchResultId,
     searchHistoryLimit,
     setSearchHistoryLimit,

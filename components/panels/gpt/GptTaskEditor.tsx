@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { TaskDraft } from "@/types/task";
+import { GPT_TASK_TEXT } from "./gptUiText";
 
 type Props = {
   taskDraft: TaskDraft;
@@ -60,21 +61,21 @@ export default function GptTaskEditor({
   return (
     <div style={cardStyle(isMobile)}>
       <div>
-        <div style={labelStyle}>タイトル</div>
+        <div style={labelStyle}>{GPT_TASK_TEXT.editor.title}</div>
         <input
           value={taskDraft.title}
           onChange={(event) => onChangeTitle(event.target.value)}
-          placeholder="タスクの主題"
+          placeholder={GPT_TASK_TEXT.editor.titlePlaceholder}
           style={inputStyle(isMobile)}
         />
       </div>
 
       <div>
-        <div style={labelStyle}>タスク追加指示</div>
+        <div style={labelStyle}>{GPT_TASK_TEXT.editor.instruction}</div>
         <textarea
           value={taskDraft.userInstruction}
           onChange={(event) => onChangeUserInstruction(event.target.value)}
-          placeholder="例: 日本人旅行者向けに簡潔に / 500文字以内 / 箇条書き"
+          placeholder={GPT_TASK_TEXT.editor.instructionPlaceholder}
           rows={compact ? 2 : 3}
           style={textareaStyle(isMobile, compact ? 2 : 3)}
         />
@@ -82,11 +83,11 @@ export default function GptTaskEditor({
 
       {!compact && (
         <div>
-          <div style={labelStyle}>AI整理本文</div>
+          <div style={labelStyle}>{GPT_TASK_TEXT.editor.body}</div>
           <textarea
             value={taskDraft.body}
             onChange={(event) => onChangeBody(event.target.value)}
-            placeholder="AIが整理した本文。手動で微修正もできます。"
+            placeholder={GPT_TASK_TEXT.editor.bodyPlaceholder}
             rows={8}
             style={textareaStyle(isMobile, 8)}
           />

@@ -1,5 +1,6 @@
 import React from "react";
 import { pillButton, statusDotStyle } from "../gpt/gptPanelStyles";
+import { KIN_PANEL_TEXT } from "./kinUiText";
 
 type Props = {
   currentKinLabel: string | null;
@@ -41,7 +42,7 @@ export default function KinHeader({
             flexShrink: 0,
           }}
         >
-          Kindroid
+          {KIN_PANEL_TEXT.brand}
         </div>
 
         <div
@@ -55,9 +56,9 @@ export default function KinHeader({
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
-          title={currentKinLabel || "未接続"}
+          title={currentKinLabel || KIN_PANEL_TEXT.currentKinFallback}
         >
-          {currentKinLabel || "未接続"}
+          {currentKinLabel || KIN_PANEL_TEXT.currentKinFallback}
         </div>
 
         <span style={statusDotStyle(kinStatus)} aria-label={kinStatus} />
@@ -65,11 +66,11 @@ export default function KinHeader({
         <div style={{ flex: 1 }} />
 
         <button type="button" style={pillButton} onClick={onToggleKinList}>
-          Kin一覧
+          {KIN_PANEL_TEXT.kinList}
         </button>
 
         <button type="button" style={pillButton} onClick={onToggleConnectForm}>
-          接続
+          {KIN_PANEL_TEXT.connect}
         </button>
       </div>
     </div>

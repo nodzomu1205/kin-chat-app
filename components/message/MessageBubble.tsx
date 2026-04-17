@@ -1,6 +1,7 @@
 import React from "react";
 import MessageContent from "./MessageContent";
 import MessageSources from "./MessageSources";
+import { MESSAGE_BUBBLE_TEXT } from "@/components/message/messageText";
 import type { SourceItem } from "@/types/chat";
 
 type Props = {
@@ -59,7 +60,7 @@ export default function MessageBubble({
             letterSpacing: 0.2,
           }}
         >
-          {isKin ? "Kindroid" : "ChatGPT"}
+          {isKin ? MESSAGE_BUBBLE_TEXT.kin : MESSAGE_BUBBLE_TEXT.gpt}
         </div>
       )}
 

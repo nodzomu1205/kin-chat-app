@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { TASK_PROGRESS_TEXT } from "@/components/ui/commonUiText";
 import type {
   TaskRequirementProgress,
   UserFacingTaskRequest,
@@ -30,28 +31,28 @@ export default function TaskProgressPanel({
   userFacingRequests,
   onAnswerRequest,
 }: Props) {
-  const requiredItems = requirementProgress.filter((x) => x.category === "required");
-  const optionalItems = requirementProgress.filter((x) => x.category === "optional");
+  const requiredItems = requirementProgress.filter((item) => item.category === "required");
+  const optionalItems = requirementProgress.filter((item) => item.category === "optional");
 
   return (
     <div className="space-y-3 text-sm">
       <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="text-xs text-slate-500">現在タスク</div>
+        <div className="text-xs text-slate-500">{TASK_PROGRESS_TEXT.currentTask}</div>
         <div className="mt-1 font-semibold text-slate-800">
           {taskId ? `#${taskId} ` : ""}
-          {taskTitle || "未設定"}
+          {taskTitle || TASK_PROGRESS_TEXT.unset}
         </div>
-        <div className="mt-2 text-xs text-slate-500">ゴール</div>
+        <div className="mt-2 text-xs text-slate-500">{TASK_PROGRESS_TEXT.goal}</div>
         <div className="mt-1 whitespace-pre-wrap text-slate-700">
-          {goal || "まだタスクがありません。"}
+          {goal || TASK_PROGRESS_TEXT.noGoal}
         </div>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="font-semibold text-slate-800">必須要件</div>
+        <div className="font-semibold text-slate-800">{TASK_PROGRESS_TEXT.requiredProgress}</div>
         <div className="mt-2 space-y-2">
           {requiredItems.length === 0 ? (
-            <div className="text-slate-500">なし</div>
+            <div className="text-slate-500">{TASK_PROGRESS_TEXT.noItems}</div>
           ) : (
             requiredItems.map((item) => (
               <div
@@ -69,10 +70,10 @@ export default function TaskProgressPanel({
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="font-semibold text-slate-800">可能要件</div>
+        <div className="font-semibold text-slate-800">{TASK_PROGRESS_TEXT.optionalProgress}</div>
         <div className="mt-2 space-y-2">
           {optionalItems.length === 0 ? (
-            <div className="text-slate-500">なし</div>
+            <div className="text-slate-500">{TASK_PROGRESS_TEXT.noItems}</div>
           ) : (
             optionalItems.map((item) => (
               <div
@@ -90,32 +91,39 @@ export default function TaskProgressPanel({
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-3">
-        <div className="font-semibold text-slate-800">ユーザーへの依頼</div>
+        <div className="font-semibold text-slate-800">{TASK_PROGRESS_TEXT.userRequests}</div>
         <div className="mt-2 space-y-2">
           {userFacingRequests.length === 0 ? (
-            <div className="text-slate-500">現在はありません。</div>
+            <div className="text-slate-500">{TASK_PROGRESS_TEXT.noRequests}</div>
           ) : (
-            userFacingRequests.map((req) => (
+            userFacingRequests.map((request) => (
               <div
-                key={req.requestId}
+                key={request.requestId}
                 className="rounded-xl border border-slate-100 px-3 py-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="font-medium text-slate-700">
-                    [{req.requestId}] {req.kind === "question" ? "確認" : "資料要求"}
+                    [{request.requestId}]{" "}
+                    {request.kind === "question"
+                      ? TASK_PROGRESS_TEXT.question
+                      : TASK_PROGRESS_TEXT.materialRequest}
                   </div>
-                  <div className="text-xs text-slate-500">{req.status}</div>
+                  <div className="text-xs text-slate-500">{request.status}</div>
                 </div>
-                <div className="mt-1 whitespace-pre-wrap text-slate-700">{req.body}</div>
+                <div className="mt-1 whitespace-pre-wrap text-slate-700">{request.body}</div>
                 <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-                  <span>{req.required ? "必須" : "任意"}</span>
+                  <span>
+                    {request.required
+                      ? TASK_PROGRESS_TEXT.required
+                      : TASK_PROGRESS_TEXT.optional}
+                  </span>
                   {onAnswerRequest ? (
                     <button
                       type="button"
                       className="rounded-lg border border-slate-200 px-2 py-1 text-slate-700 hover:bg-slate-50"
-                      onClick={() => onAnswerRequest(req.requestId)}
+                      onClick={() => onAnswerRequest(request.requestId)}
                     >
-                      この依頼に回答
+                      {TASK_PROGRESS_TEXT.answerThis}
                     </button>
                   ) : null}
                 </div>

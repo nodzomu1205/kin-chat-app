@@ -12,6 +12,7 @@ import {
   buttonTransfer,
   buttonTranslate,
 } from "./gptPanelStyles";
+import { GPT_TOOLBAR_TEXT } from "./gptUiText";
 
 type GptBottomTab = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
 
@@ -91,8 +92,13 @@ function ActionRow({
 }: Omit<Props, "onChangeTab">) {
   const maybeSwitch =
     isMobile && onSwitchPanel ? (
-      <button type="button" style={buttonSwitch} onClick={onSwitchPanel} title="画面切替">
-        ⇄
+      <button
+        type="button"
+        style={buttonSwitch}
+        onClick={onSwitchPanel}
+        title={GPT_TOOLBAR_TEXT.mobileSwitchTitle}
+      >
+        {GPT_TOOLBAR_TEXT.mobileSwitchButton}
       </button>
     ) : null;
 
@@ -101,19 +107,19 @@ function ActionRow({
       <>
         {maybeSwitch}
         <button type="button" style={resetLike(buttonTranslate)} onClick={() => onAction("translate_explain")}>
-          解説
+          {GPT_TOOLBAR_TEXT.translate}
         </button>
         <button type="button" style={resetLike(buttonReply)} onClick={() => onAction("reply_only")}>
-          返答のみ
+          {GPT_TOOLBAR_TEXT.replyOnly}
         </button>
         <button type="button" style={resetLike(buttonPolish)} onClick={() => onAction("polish")}>
-          整える
+          {GPT_TOOLBAR_TEXT.polish}
         </button>
         <button type="button" style={resetLike(buttonTransfer)} onClick={onTransfer}>
-          Kinに送る
+          {GPT_TOOLBAR_TEXT.sendToKin}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↻
+        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+          {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
     );
@@ -124,13 +130,13 @@ function ActionRow({
       <>
         {maybeSwitch}
         <button type="button" style={tint(buttonTask, "#93c5fd", "#eff6ff", "#1d4ed8")} onClick={onRunTask}>
-          タスク化
+          {GPT_TOOLBAR_TEXT.runTask}
         </button>
         <button type="button" style={tint(buttonTask, "#93c5fd", "#eff6ff", "#1d4ed8")} onClick={onRunTaskUpdate}>
-          更新
+          {GPT_TOOLBAR_TEXT.updateTask}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↻
+        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+          {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
     );
@@ -141,16 +147,16 @@ function ActionRow({
       <>
         {maybeSwitch}
         <button type="button" style={tint(buttonDeepen, "#86efac", "#f0fdf4", "#15803d")} onClick={onRunDeepen}>
-          深掘り
+          {GPT_TOOLBAR_TEXT.deepen}
         </button>
         <button type="button" style={tint(buttonTask, "#86efac", "#f0fdf4", "#15803d")} onClick={onImportLastResponse}>
-          レス取込
+          {GPT_TOOLBAR_TEXT.importResponse}
         </button>
         <button type="button" style={tint(buttonTask, "#86efac", "#f0fdf4", "#15803d")} onClick={onAttachSearchResult}>
-          データ取込
+          {GPT_TOOLBAR_TEXT.attachSearchResult}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↻
+        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+          {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
     );
@@ -165,20 +171,20 @@ function ActionRow({
           style={tint(buttonTransfer, "#d8b4fe", "#faf5ff", "#7e22ce")}
           onClick={onSendLatestResponseToKin}
         >
-          レス送信
+          {GPT_TOOLBAR_TEXT.sendLatestResponse}
         </button>
         <button
           type="button"
           style={tint(buttonTransfer, "#d8b4fe", "#faf5ff", "#7e22ce")}
           onClick={onSendCurrentTaskToKin}
         >
-          タスク送信
+          {GPT_TOOLBAR_TEXT.sendCurrentTask}
         </button>
         <button type="button" style={tint(buttonTask, "#d8b4fe", "#faf5ff", "#7e22ce")} onClick={onReceiveKinResponse}>
-          レス受取
+          {GPT_TOOLBAR_TEXT.receiveKinResponse}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset}>
-          ↻
+        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+          {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
     );
@@ -186,7 +192,7 @@ function ActionRow({
 
   return (
     <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "0 4px" }}>
-      ファイル取込は下の「投入」エリアから操作できます。
+      {GPT_TOOLBAR_TEXT.fileImportHint}
     </div>
   );
 }
@@ -214,27 +220,27 @@ export default function GptToolbar(props: Props) {
         }}
       >
         <button type="button" onClick={() => onChangeTab("chat")} style={tabButtonStyle(activeTab === "chat", isMobile)}>
-          チャット
+          {GPT_TOOLBAR_TEXT.chatTab}
         </button>
         <button
           type="button"
           onClick={() => onChangeTab("task_primary")}
           style={tabButtonStyle(activeTab === "task_primary", isMobile)}
         >
-          タスク1
+          {GPT_TOOLBAR_TEXT.taskPrimaryTab}
         </button>
         <button
           type="button"
           onClick={() => onChangeTab("task_secondary")}
           style={tabButtonStyle(activeTab === "task_secondary", isMobile)}
         >
-          タスク2
+          {GPT_TOOLBAR_TEXT.taskSecondaryTab}
         </button>
         <button type="button" onClick={() => onChangeTab("kin")} style={tabButtonStyle(activeTab === "kin", isMobile)}>
-          Kin
+          {GPT_TOOLBAR_TEXT.kinTab}
         </button>
         <button type="button" onClick={() => onChangeTab("file")} style={tabButtonStyle(activeTab === "file", isMobile)}>
-          ファイル
+          {GPT_TOOLBAR_TEXT.fileTab}
         </button>
       </div>
 

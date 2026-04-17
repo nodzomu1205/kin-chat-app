@@ -42,6 +42,7 @@ import {
   subtleCard,
   tabButton,
 } from "./GptSettingsSections";
+import { GPT_SETTINGS_DRAWER_TEXT } from "./gptSettingsText";
 
 export type LocalMemorySettingsInput = {
   maxFacts: string;
@@ -143,19 +144,6 @@ type Props = {
   isMobile?: boolean;
 };
 
-const textAreaStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: 12,
-  padding: "10px 12px",
-  fontSize: 13,
-  lineHeight: 1.6,
-  color: "#0f172a",
-  resize: "vertical",
-  background: "#fff",
-  boxSizing: "border-box",
-};
-
 function NumberField(props: {
   label: string;
   value: string;
@@ -193,13 +181,13 @@ export default function GptSettingsDrawer(props: Props) {
         : "normal";
 
   const tabs: [Tab, string][] = [
-    ["memory", "メモリ"],
-    ["ingest", "取込"],
-    ["search", "検索"],
-    ["library", "ライブラリ"],
-    ["rules", "ルール"],
-    ["output", "出力"],
-    ["protocol", "プロトコル"],
+    ["memory", GPT_SETTINGS_DRAWER_TEXT.tabs.memory],
+    ["ingest", GPT_SETTINGS_DRAWER_TEXT.tabs.ingest],
+    ["search", GPT_SETTINGS_DRAWER_TEXT.tabs.search],
+    ["library", GPT_SETTINGS_DRAWER_TEXT.tabs.library],
+    ["rules", GPT_SETTINGS_DRAWER_TEXT.tabs.rules],
+    ["output", GPT_SETTINGS_DRAWER_TEXT.tabs.output],
+    ["protocol", GPT_SETTINGS_DRAWER_TEXT.tabs.protocol],
   ];
 
   const setSearchPreset = (mode: PrimarySearchMode) => {
@@ -260,34 +248,34 @@ export default function GptSettingsDrawer(props: Props) {
                 label="MAX_FACTS"
                 value={props.localSettings.maxFacts}
                 onChange={(v) => props.onFieldChange("maxFacts", v)}
-                help="facts の最大数"
+                help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxFacts}
               />
               <NumberField
                 label="MAX_PREFERENCES"
                 value={props.localSettings.maxPreferences}
                 onChange={(v) => props.onFieldChange("maxPreferences", v)}
-                help="preferences の最大数"
+                help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxPreferences}
               />
               <NumberField
                 label="CHAT_RECENT_LIMIT"
                 value={props.localSettings.chatRecentLimit}
                 onChange={(v) => props.onFieldChange("chatRecentLimit", v)}
-                help="recentMessages の保持数"
+                help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.chatRecentLimit}
               />
               <NumberField
                 label="SUMMARIZE_THRESHOLD"
                 value={props.localSettings.summarizeThreshold}
                 onChange={(v) => props.onFieldChange("summarizeThreshold", v)}
-                help="要約を始める閾値"
+                help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.summarizeThreshold}
               />
               <NumberField
                 label="RECENT_KEEP"
                 value={props.localSettings.recentKeep}
                 onChange={(v) => props.onFieldChange("recentKeep", v)}
-                help="要約後に残す recentMessages 数"
+                help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.recentKeep}
               />
               <div>
-                <div style={labelStyle}>メモリ容量プレビュー</div>
+                <div style={labelStyle}>{GPT_SETTINGS_DRAWER_TEXT.memoryCapacityPreviewLabel}</div>
                 <div
                   style={{
                     ...inputStyle,
@@ -297,9 +285,10 @@ export default function GptSettingsDrawer(props: Props) {
                     fontWeight: 800,
                   }}
                 >
-                  合計 {props.memoryCapacityPreview}
+                  {GPT_SETTINGS_DRAWER_TEXT.memoryCapacityPreviewPrefix}
+                  {props.memoryCapacityPreview}
                 </div>
-                <div style={helpTextStyle}>recent + facts + preferences</div>
+                <div style={helpTextStyle}>{GPT_SETTINGS_DRAWER_TEXT.memoryCapacityPreviewHelp}</div>
               </div>
             </div>
           </div>
@@ -312,10 +301,10 @@ export default function GptSettingsDrawer(props: Props) {
             }}
           >
             <button type="button" style={buttonSecondaryWide} onClick={props.onReset}>
-              リセット
+              {GPT_SETTINGS_DRAWER_TEXT.reset}
             </button>
             <button type="button" style={buttonPrimary} onClick={props.onSave}>
-              保存
+              {GPT_SETTINGS_DRAWER_TEXT.save}
             </button>
           </div>
         </>
@@ -325,7 +314,7 @@ export default function GptSettingsDrawer(props: Props) {
         <div style={sectionCard}>
           <div style={{ display: "grid", gap: 12 }}>
             <div>
-              <div style={labelStyle}>ファイル読み取り方針</div>
+              <div style={labelStyle}>{GPT_SETTINGS_DRAWER_TEXT.fileReadPolicy}</div>
               <select
                 value={props.fileReadPolicy}
                 onChange={(e) =>
@@ -333,9 +322,9 @@ export default function GptSettingsDrawer(props: Props) {
                 }
                 style={selectStyle}
               >
-                <option value="text_first">テキスト優先</option>
-                <option value="visual_first">見た目優先</option>
-                <option value="text_and_layout">両方</option>
+                <option value="text_first">{GPT_SETTINGS_DRAWER_TEXT.fileReadPolicyOptions.text_first}</option>
+                <option value="visual_first">{GPT_SETTINGS_DRAWER_TEXT.fileReadPolicyOptions.visual_first}</option>
+                <option value="text_and_layout">{GPT_SETTINGS_DRAWER_TEXT.fileReadPolicyOptions.text_and_layout}</option>
               </select>
             </div>
             <div
@@ -348,7 +337,7 @@ export default function GptSettingsDrawer(props: Props) {
               }}
             >
               <div style={subtleCard}>
-                <div style={labelStyle}>テキスト取込</div>
+                <div style={labelStyle}>{GPT_SETTINGS_DRAWER_TEXT.textIngest}</div>
                 <select
                   value={props.ingestMode}
                   onChange={(e) =>
@@ -362,14 +351,14 @@ export default function GptSettingsDrawer(props: Props) {
                 </select>
                 <div style={{ marginTop: 8 }}>
                   <NumberField
-                    label="文字数上限"
+                    label={GPT_SETTINGS_DRAWER_TEXT.charLimit}
                     value={String(props.compactCharLimit)}
                     onChange={(v) => props.onChangeCompactCharLimit(Number(v || 0))}
                   />
                 </div>
               </div>
               <div style={subtleCard}>
-                <div style={labelStyle}>画像 / PDF 取込</div>
+                <div style={labelStyle}>{GPT_SETTINGS_DRAWER_TEXT.imagePdfIngest}</div>
                 <select
                   value={props.imageDetail}
                   onChange={(e) =>
@@ -383,7 +372,7 @@ export default function GptSettingsDrawer(props: Props) {
                 </select>
                 <div style={{ marginTop: 8 }}>
                   <NumberField
-                    label="文字数上限"
+                    label={GPT_SETTINGS_DRAWER_TEXT.charLimit}
                     value={String(props.simpleImageCharLimit)}
                     onChange={(v) => props.onChangeSimpleImageCharLimit(Number(v || 0))}
                   />
@@ -450,7 +439,7 @@ export default function GptSettingsDrawer(props: Props) {
 
       {activeTab === "output" ? (
         <div style={sectionCard}>
-          <div style={{ ...labelStyle, marginBottom: 8 }}>出力モード</div>
+          <div style={{ ...labelStyle, marginBottom: 8 }}>{GPT_SETTINGS_DRAWER_TEXT.outputMode}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {(["creative", "strict"] as ResponseMode[]).map((mode) => (
               <button
@@ -464,7 +453,7 @@ export default function GptSettingsDrawer(props: Props) {
             ))}
           </div>
           <div style={{ ...helpTextStyle, marginTop: 8 }}>
-            `Balanced` は旧互換モードで、現在は `Strict` と同じ扱いです。混乱防止のため表示を外しています。
+            {GPT_SETTINGS_DRAWER_TEXT.outputModeHelp}
           </div>
         </div>
       ) : null}

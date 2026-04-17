@@ -7,12 +7,13 @@ import {
   tokenLeftLabelStyle,
   tokenMetaStyle,
 } from "./gptPanelStyles";
+import { GPT_TASK_TEXT } from "./gptUiText";
 
 const statusLabelMap = {
-  idle: "未作成",
-  prepared: "形成済み",
-  deepened: "深掘り済み",
-  formatted: "Kin送信用",
+  idle: GPT_TASK_TEXT.status.idle,
+  prepared: GPT_TASK_TEXT.status.prepared,
+  deepened: GPT_TASK_TEXT.status.deepened,
+  formatted: GPT_TASK_TEXT.status.formatted,
 } as const;
 
 const buttonStyle: React.CSSProperties = {
@@ -67,10 +68,8 @@ const textareaStyle: React.CSSProperties = {
 
 function formatUpdatedAt(value: string) {
   if (!value) return "-";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-
   return date.toLocaleString("ja-JP", {
     month: "2-digit",
     day: "2-digit",
@@ -118,7 +117,8 @@ export default function GptTaskStatusDrawer({
   const taskIdLabel = `#${String(
     taskDraft.slot && taskDraft.slot > 0 ? taskDraft.slot : 1
   ).padStart(2, "0")}`;
-  const taskName = taskDraft.title || taskDraft.taskName || "未設定";
+  const taskName =
+    taskDraft.title || taskDraft.taskName || GPT_TASK_TEXT.status.unset;
   const latestLabel = latestSource?.label || "-";
   const latestType = latestSource?.type || "-";
 
@@ -142,7 +142,7 @@ export default function GptTaskStatusDrawer({
       taskDraft.deepenText?.trim() ||
       taskDraft.prepText?.trim() ||
       "";
-    if (!text) return "まだ本文はありません。";
+    if (!text) return GPT_TASK_TEXT.status.emptyBody;
     return text.length > 220 ? `${text.slice(0, 220)}...` : text;
   }, [
     taskDraft.body,
@@ -152,13 +152,7 @@ export default function GptTaskStatusDrawer({
   ]);
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr",
-        gap: 12,
-      }}
-    >
+    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
       <div style={tokenCardStyle}>
         <div
           style={{
@@ -171,7 +165,7 @@ export default function GptTaskStatusDrawer({
           }}
         >
           <div>
-            <div style={tokenLeftLabelStyle}>タスク切替</div>
+            <div style={tokenLeftLabelStyle}>{GPT_TASK_TEXT.status.taskSwitch}</div>
             <div style={{ ...tokenMetaStyle, marginTop: 4 }}>
               {activeTaskDraftIndex + 1} / {taskDraftCount}
             </div>
@@ -184,11 +178,10 @@ export default function GptTaskStatusDrawer({
               style={{
                 ...navButtonStyle,
                 opacity: activeTaskDraftIndex > 0 ? 1 : 0.45,
-                cursor:
-                  activeTaskDraftIndex > 0 ? "pointer" : "not-allowed",
+                cursor: activeTaskDraftIndex > 0 ? "pointer" : "not-allowed",
               }}
             >
-              ←
+              {"<"}
             </button>
             <div
               style={{
@@ -207,19 +200,13 @@ export default function GptTaskStatusDrawer({
               disabled={!onSelectNextTaskDraft}
               style={navButtonStyle}
             >
-              →
+              {">"}
             </button>
           </div>
         </div>
 
-        <div
-          style={{
-            fontSize: 12,
-            color: "#64748b",
-            lineHeight: 1.7,
-          }}
-        >
-          右矢印で次のタスクへ移動します。末尾で押すと新しい空タスクを追加します。
+        <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>
+          {GPT_TASK_TEXT.status.moveHint}
         </div>
       </div>
 
@@ -234,26 +221,28 @@ export default function GptTaskStatusDrawer({
             marginBottom: 8,
           }}
         >
-          <div style={tokenLeftLabelStyle}>現在のタスク</div>
-          <div
-            style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
-          >
-            <div style={tokenMetaStyle}>保持中: {taskDraftCount}件</div>
+          <div style={tokenLeftLabelStyle}>{GPT_TASK_TEXT.status.currentTask}</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={tokenMetaStyle}>
+              {GPT_TASK_TEXT.status.keepingCountPrefix}
+              {taskDraftCount}
+              {GPT_TASK_TEXT.status.keepingCountSuffix}
+            </div>
             {onSaveTaskSnapshot ? (
               <button
                 type="button"
                 onClick={() => {
                   onSaveTaskSnapshot();
-                  setSaveNotice("ライブラリに保存しました");
+                  setSaveNotice(GPT_TASK_TEXT.status.savedToLibrary);
                 }}
                 style={buttonStyle}
               >
-                保存
+                {GPT_TASK_TEXT.status.save}
               </button>
             ) : null}
             {onResetTaskContext ? (
               <button type="button" onClick={onResetTaskContext} style={buttonStyle}>
-                Clear
+                {GPT_TASK_TEXT.status.clear}
               </button>
             ) : null}
           </div>
@@ -295,35 +284,33 @@ export default function GptTaskStatusDrawer({
             lineHeight: 1.7,
           }}
         >
-          <div style={{ fontWeight: 800, color: "#334155" }}>状態</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.state}</div>
           <div>{statusLabelMap[taskDraft.status]}</div>
-
           <div style={{ fontWeight: 800, color: "#334155" }}>TASK_ID</div>
           <div>{taskIdLabel}</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>タスク名</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.taskName}</div>
           <div>{taskName}</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>指示</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.instruction}</div>
           <div>{instructionPreview}</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>検索語</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.searchQuery}</div>
           <div>{taskDraft.searchContext?.query || "-"}</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>ソース数</div>
-          <div>{taskDraft.sources.length}件</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>最新ソース</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.sourceCount}</div>
+          <div>
+            {taskDraft.sources.length}
+            {GPT_TASK_TEXT.status.keepingCountSuffix}
+          </div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.latestSource}</div>
           <div>{latestLabel}</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>種類</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.sourceType}</div>
           <div>{latestType}</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>更新日時</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.updatedAt}</div>
           <div suppressHydrationWarning>{formatUpdatedAt(taskDraft.updatedAt)}</div>
-
-          <div style={{ fontWeight: 800, color: "#334155" }}>Kin転送</div>
-          <div>{taskDraft.kinTaskText.trim() ? "転送準備あり" : "未作成"}</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.kinTransfer}</div>
+          <div>
+            {taskDraft.kinTaskText.trim()
+              ? GPT_TASK_TEXT.status.transferReady
+              : GPT_TASK_TEXT.status.idle}
+          </div>
         </div>
       </div>
 
@@ -338,27 +325,22 @@ export default function GptTaskStatusDrawer({
             marginBottom: 8,
           }}
         >
-          <div style={tokenLeftLabelStyle}>方針編集</div>
+          <div style={tokenLeftLabelStyle}>{GPT_TASK_TEXT.status.policyEdit}</div>
           <button
             type="button"
             onClick={() => setEditPolicyOpen((prev) => !prev)}
             style={buttonStyle}
           >
-            {editPolicyOpen ? "閉じる" : "編集"}
+            {editPolicyOpen ? GPT_TASK_TEXT.status.close : GPT_TASK_TEXT.status.edit}
           </button>
         </div>
 
         {!editPolicyOpen ? (
           <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-            タイトルと指示はここで編集できます。必要な時だけ開ける形にしています。
+            {GPT_TASK_TEXT.status.editHint}
           </div>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gap: 10,
-            }}
-          >
+          <div style={{ display: "grid", gap: 10 }}>
             <div>
               <div
                 style={{
@@ -368,12 +350,12 @@ export default function GptTaskStatusDrawer({
                   marginBottom: 6,
                 }}
               >
-                タイトル
+                {GPT_TASK_TEXT.editor.title}
               </div>
               <input
                 value={taskDraft.title || ""}
                 onChange={(event) => onChangeTaskTitle(event.target.value)}
-                placeholder="タスクのタイトル"
+                placeholder={GPT_TASK_TEXT.status.titlePlaceholder}
                 style={inputStyle}
               />
             </div>
@@ -387,31 +369,24 @@ export default function GptTaskStatusDrawer({
                   marginBottom: 6,
                 }}
               >
-                指示
+                {GPT_TASK_TEXT.status.instruction}
               </div>
               <textarea
                 value={taskDraft.userInstruction || ""}
                 onChange={(event) => onChangeTaskUserInstruction(event.target.value)}
-                placeholder="例: 日本市場向けに / 400字前後で"
+                placeholder={GPT_TASK_TEXT.status.instructionPlaceholder}
                 rows={isMobile ? 4 : 3}
                 style={textareaStyle}
               />
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={() => onChangeTaskUserInstruction("")}
                 style={buttonStyle}
               >
-                指示をクリア
+                {GPT_TASK_TEXT.status.clearInstruction}
               </button>
             </div>
           </div>
@@ -429,13 +404,13 @@ export default function GptTaskStatusDrawer({
             marginBottom: 8,
           }}
         >
-          <div style={tokenLeftLabelStyle}>AI形成本文</div>
+          <div style={tokenLeftLabelStyle}>{GPT_TASK_TEXT.status.aiBody}</div>
           <button
             type="button"
             onClick={() => setEditBodyOpen((prev) => !prev)}
             style={buttonStyle}
           >
-            {editBodyOpen ? "閉じる" : "本文を編集"}
+            {editBodyOpen ? GPT_TASK_TEXT.status.close : GPT_TASK_TEXT.status.editBody}
           </button>
         </div>
 
@@ -456,7 +431,7 @@ export default function GptTaskStatusDrawer({
           <textarea
             value={taskDraft.body || ""}
             onChange={(event) => onChangeTaskBody(event.target.value)}
-            placeholder="AI形成本文"
+            placeholder={GPT_TASK_TEXT.status.bodyPlaceholder}
             rows={isMobile ? 10 : 12}
             style={textareaStyle}
           />
@@ -464,11 +439,13 @@ export default function GptTaskStatusDrawer({
       </div>
 
       <div style={tokenCardStyle}>
-        <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>説明</div>
+        <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>
+          {GPT_TASK_TEXT.status.description}
+        </div>
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
           {hasTask
-            ? "編集内容はこのタスク表示にだけ反映されます。保存すると、タスク感を弱めた情報ドキュメントとしてライブラリに登録されます。"
-            : "まだタスクは形成されていません。上の入力や各アクションから形成を始められます。"}
+            ? GPT_TASK_TEXT.status.descriptionHasTask
+            : GPT_TASK_TEXT.status.descriptionEmpty}
         </div>
       </div>
     </div>

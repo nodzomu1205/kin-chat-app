@@ -1,23 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  loadMultipartAssembliesFromStorage,
+  MULTIPART_ASSEMBLIES_KEY,
+} from "@/lib/app/multipartAssembliesState";
 import type { MultipartAssembly } from "@/types/chat";
 
-const MULTIPART_ASSEMBLIES_KEY = "multipart_assemblies";
-
 export function useMultipartAssemblies() {
-  const [multipartAssemblies, setMultipartAssemblies] = useState<MultipartAssembly[]>([]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedMultipartAssemblies = window.localStorage.getItem(
-      MULTIPART_ASSEMBLIES_KEY
-    );
-    if (savedMultipartAssemblies) {
-      try {
-        const parsed = JSON.parse(savedMultipartAssemblies) as MultipartAssembly[];
-        if (Array.isArray(parsed)) setMultipartAssemblies(parsed);
-      } catch {}
-    }
-  }, []);
+  const [multipartAssemblies, setMultipartAssemblies] = useState<MultipartAssembly[]>(
+    loadMultipartAssembliesFromStorage
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;

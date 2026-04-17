@@ -8,6 +8,7 @@ import {
   tokenMetaStyle,
 } from "./gptPanelStyles";
 import { formatNumber, mergeUsage } from "./gptPanelUtils";
+import { GPT_META_DRAWER_TEXT } from "./gptUiText";
 
 type GptTopDrawerTab = "memory" | "tokens" | "settings" | null;
 
@@ -52,7 +53,7 @@ function RunCount({ count }: { count: number }) {
         fontWeight: 500,
       }}
     >
-      （{count}回）
+      （{count}{GPT_META_DRAWER_TEXT.runCountSuffix}）
     </span>
   );
 }
@@ -214,7 +215,6 @@ export default function GptMetaDrawer({
     mergeUsage(taskTotal, ingestTotal)
   );
 
-  const grandTotal = mergeUsage(conversationTrackedTotal, otherTrackedTotal);
   const facts = Array.isArray(gptState.memory?.facts) ? gptState.memory.facts : [];
   const preferences = Array.isArray(gptState.memory?.preferences)
     ? gptState.memory.preferences
@@ -252,66 +252,66 @@ export default function GptMetaDrawer({
               marginBottom: 8,
             }}
           >
-            <div style={tokenLeftLabelStyle}>メモリ容量</div>
-            <div style={tokenLineStyle}>合計 {memoryUsed}/{memoryCapacity}</div>
+            <div style={tokenLeftLabelStyle}>{GPT_META_DRAWER_TEXT.memoryCapacity}</div>
+            <div style={tokenLineStyle}>{GPT_META_DRAWER_TEXT.totalPrefix}{memoryUsed}/{memoryCapacity}</div>
           </div>
           <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-            recentMessages {recentCount}/{chatRecentLimit}
+            {GPT_META_DRAWER_TEXT.recentMessages} {recentCount}/{chatRecentLimit}
             {" ・ "}
-            事実 {factCount}/{maxFacts}
+            {GPT_META_DRAWER_TEXT.facts} {factCount}/{maxFacts}
             {" ・ "}
-            好み {preferenceCount}/{maxPreferences}
+            {GPT_META_DRAWER_TEXT.preferences} {preferenceCount}/{maxPreferences}
             {" ・ "}
-            コレクション {listCount}
+            {GPT_META_DRAWER_TEXT.collections} {listCount}
           </div>
         </div>
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>トピック</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>{GPT_META_DRAWER_TEXT.topic}</div>
           <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
             {gptState.memory?.context?.currentTopic || "-"}
           </div>
         </div>
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>会話目標</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>{GPT_META_DRAWER_TEXT.currentTask}</div>
           <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
             {gptState.memory?.context?.currentTask || "-"}
           </div>
         </div>
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>直近の意図</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>{GPT_META_DRAWER_TEXT.lastIntent}</div>
           <div style={{ ...longValueStyle, whiteSpace: "pre-wrap" }}>
             {gptState.memory?.context?.lastUserIntent || "-"}
           </div>
           {gptState.memory?.context?.followUpRule ? (
             <div style={{ ...tokenMetaStyle, marginTop: 10, lineHeight: 1.6 }}>
-              フォローアップ規則: {gptState.memory.context.followUpRule}
+              {GPT_META_DRAWER_TEXT.followUpRule}: {gptState.memory.context.followUpRule}
             </div>
           ) : null}
         </div>
 
         <MemoryListCard
-          title="事実"
+          title={GPT_META_DRAWER_TEXT.factsTitle}
           items={facts}
-          emptyText="会話から抽出された短い事実はまだありません。"
+          emptyText={GPT_META_DRAWER_TEXT.factsEmpty}
         />
 
         <MemoryListCard
-          title="好み"
+          title={GPT_META_DRAWER_TEXT.preferencesTitle}
           items={preferences}
-          emptyText="継続的な好みや出力条件はまだありません。"
+          emptyText={GPT_META_DRAWER_TEXT.preferencesEmpty}
         />
 
         <div style={tokenCardStyle}>
-          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>コレクション</div>
+          <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>{GPT_META_DRAWER_TEXT.collectionsTitle}</div>
           <div style={{ ...tokenMetaStyle, fontSize: 12, marginBottom: 10 }}>
-            会話から拾った構造化メモです。検索語や、人物ごとの作品群のようなまとまりを置きます。
+            {GPT_META_DRAWER_TEXT.collectionsHelp}
           </div>
           {namedLists.length === 0 ? (
             <div style={{ ...tokenMetaStyle, fontSize: 12 }}>
-              構造化されたコレクションはまだありません。
+              {GPT_META_DRAWER_TEXT.collectionsEmpty}
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
@@ -350,7 +350,7 @@ export default function GptMetaDrawer({
         {memoryInterpretDebug ? (
           <div style={tokenCardStyle}>
             <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>
-              Memory Interpret Debug
+              {GPT_META_DRAWER_TEXT.memoryInterpretDebug}
             </div>
             <pre
               style={{
@@ -379,7 +379,7 @@ export default function GptMetaDrawer({
               marginBottom: 8,
             }}
           >
-            <div style={tokenLeftLabelStyle}>メモリ詳細</div>
+              <div style={tokenLeftLabelStyle}>{GPT_META_DRAWER_TEXT.memoryDetail}</div>
 
             <button
               type="button"
@@ -395,7 +395,7 @@ export default function GptMetaDrawer({
                 color: "#475569",
               }}
             >
-              {showMemoryContent ? "閉じる" : "開く"}
+              {showMemoryContent ? GPT_META_DRAWER_TEXT.close : GPT_META_DRAWER_TEXT.open}
             </button>
           </div>
 
@@ -430,7 +430,7 @@ export default function GptMetaDrawer({
       }}
     >
       <div style={{ ...tokenLineStyle, padding: "0 2px" }}>
-        総トークン消費 <UsageTriple usage={grandTotal} />
+        {GPT_META_DRAWER_TEXT.totalTokenUsage} <UsageTriple usage={mergeUsage(totalUsage, otherTrackedTotal)} />
       </div>
 
       <div style={tokenCardStyle}>
@@ -444,20 +444,20 @@ export default function GptMetaDrawer({
             marginBottom: 8,
           }}
         >
-          <div style={tokenLeftLabelStyle}>会話トークン消費</div>
-          <div style={tokenMetaStyle}>(合計 / IN / OUT)</div>
+          <div style={tokenLeftLabelStyle}>{GPT_META_DRAWER_TEXT.conversationTokenUsage}</div>
+          <div style={tokenMetaStyle}>{GPT_META_DRAWER_TEXT.usageMeta}</div>
         </div>
 
         <div style={{ ...tokenLineStyle, marginBottom: 8 }}>
-          累積 <UsageTriple usage={conversationTrackedTotal} />
+          {GPT_META_DRAWER_TEXT.cumulative} <UsageTriple usage={conversationTrackedTotal} />
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-          直近1往復 <UsageTriple usage={toTokenUsage(tokenStats.lastChatUsage)} />
+          {GPT_META_DRAWER_TEXT.recent1} <UsageTriple usage={toTokenUsage(tokenStats.lastChatUsage)} />
           <br />
-          直近5往復 <UsageTriple usage={recent5Chat} />
+          {GPT_META_DRAWER_TEXT.recent5} <UsageTriple usage={recent5Chat} />
           <br />
-          要約 <RunCount count={toNumber(tokenStats.summaryRunCount)} />{" "}
+          {GPT_META_DRAWER_TEXT.summary} <RunCount count={toNumber(tokenStats.summaryRunCount)} />{" "}
           <UsageTriple usage={summaryTotal} />
         </div>
       </div>
@@ -473,22 +473,22 @@ export default function GptMetaDrawer({
             marginBottom: 8,
           }}
         >
-          <div style={tokenLeftLabelStyle}>その他トークン消費</div>
-          <div style={tokenMetaStyle}>(合計 / IN / OUT)</div>
+          <div style={tokenLeftLabelStyle}>{GPT_META_DRAWER_TEXT.otherTokenUsage}</div>
+          <div style={tokenMetaStyle}>{GPT_META_DRAWER_TEXT.usageMeta}</div>
         </div>
 
         <div style={{ ...tokenLineStyle, marginBottom: 8 }}>
-          累積 <UsageTriple usage={otherTrackedTotal} />
+          {GPT_META_DRAWER_TEXT.cumulative} <UsageTriple usage={otherTrackedTotal} />
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
-          検索 <RunCount count={toNumber(tokenStats.searchRunCount)} />{" "}
+          {GPT_META_DRAWER_TEXT.search} <RunCount count={toNumber(tokenStats.searchRunCount)} />{" "}
           <UsageTriple usage={searchTotal} />
           <br />
-          注入 <RunCount count={toNumber(tokenStats.ingestRunCount)} />{" "}
+          {GPT_META_DRAWER_TEXT.ingest} <RunCount count={toNumber(tokenStats.ingestRunCount)} />{" "}
           <UsageTriple usage={ingestTotal} />
           <br />
-          タスク <RunCount count={toNumber(tokenStats.taskRunCount)} />{" "}
+          {GPT_META_DRAWER_TEXT.task} <RunCount count={toNumber(tokenStats.taskRunCount)} />{" "}
           <UsageTriple usage={taskTotal} />
         </div>
       </div>

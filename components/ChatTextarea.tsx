@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { CHAT_TEXTAREA_TEXT } from "@/components/ui/commonUiText";
 
 type Props = {
   value: string;
@@ -21,49 +22,47 @@ export default function ChatTextarea({
   minRows = 3,
   maxRows = 12,
   disabled = false,
-  placeholder = "メッセージを入力",
+  placeholder = CHAT_TEXTAREA_TEXT.placeholder,
 }: Props) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   const resize = React.useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
+    const element = textareaRef.current;
+    if (!element) return;
 
-    el.style.height = "auto";
+    element.style.height = "auto";
 
     const lineHeight = 24;
     const minHeight = minRows * lineHeight;
     const maxHeight = maxRows * lineHeight;
 
-    // Keep empty composers visually identical even when placeholder text
-    // or mobile browser metrics would otherwise change scrollHeight.
     if (!value.trim()) {
-      el.style.height = `${minHeight}px`;
+      element.style.height = `${minHeight}px`;
       return;
     }
 
-    el.style.height = `${Math.min(
-      Math.max(el.scrollHeight, minHeight),
+    element.style.height = `${Math.min(
+      Math.max(element.scrollHeight, minHeight),
       maxHeight
     )}px`;
   }, [maxRows, minRows, value]);
 
   React.useEffect(() => {
     resize();
-  }, [value, resize]);
+  }, [resize, value]);
 
   return (
     <textarea
       ref={textareaRef}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       disabled={disabled}
       rows={minRows}
-      onKeyDown={(e) => {
+      onKeyDown={(event) => {
         if (!submitOnEnter) return;
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
           onSubmit();
         }
       }}

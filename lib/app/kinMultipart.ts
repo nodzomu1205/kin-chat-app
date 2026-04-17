@@ -3,7 +3,7 @@ import { splitTextIntoKinChunks } from "@/lib/app/transformIntent";
 export const DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES = [
   "MULTIPART_TASK_NOTICE:",
   "- This task is being delivered in multiple PART messages.",
-  "- Until the final PART arrives, reply only with <<SYS_KIN_RESPONSE>> Received. Send the next. <<END_SYS_RESPONSE>>",
+  "- Until the final PART arrives, reply only with <<KIN_RESPONSE>> Received. Send the next. <<END_KIN_RESPONSE>>",
   "- Do not begin execution, searching, transcript fetches, or any other action until the final PART arrives.",
   "- Start the task only after the last PART is received.",
 ];

@@ -1,5 +1,6 @@
 import React from "react";
 import { pillButton, statusDotStyle } from "./gptPanelStyles";
+import { GPT_PANEL_TEXT } from "./gptUiText";
 
 type GptTopDrawerTab = "memory" | "tokens" | "settings" | null;
 type Props = {
@@ -46,7 +47,7 @@ export default function GptHeader({
             flexShrink: 0,
           }}
         >
-          ChatGPT
+          {GPT_PANEL_TEXT.brand}
         </div>
 
         <div
@@ -60,9 +61,9 @@ export default function GptHeader({
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
-          title={currentKinLabel || "Kin未選択"}
+          title={currentKinLabel || GPT_PANEL_TEXT.currentKinFallback}
         >
-          {currentKinLabel || "Kin未選択"}
+          {currentKinLabel || GPT_PANEL_TEXT.currentKinFallback}
         </div>
 
         <span style={statusDotStyle(kinStatus)} aria-label={kinStatus} />
@@ -80,7 +81,7 @@ export default function GptHeader({
           }}
           onClick={onToggleSettings}
         >
-          設定
+          {GPT_PANEL_TEXT.settingsButton}
         </button>
       </div>
     </div>

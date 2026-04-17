@@ -11,6 +11,7 @@ import {
   formatUpdatedAt,
   sectionCardStyle,
 } from "@/components/panels/gpt/gptDrawerShared";
+import { GPT_RECEIVED_DOCS_TEXT } from "@/components/panels/gpt/gptUiText";
 
 type LibraryTab = "all" | "kin" | "ingest" | "search";
 
@@ -64,9 +65,7 @@ function iconButton(tone: "default" | "danger" = "default"): React.CSSProperties
 }
 
 function typeLabel(itemType: "search" | "kin_created" | "ingested_file") {
-  if (itemType === "search") return "検索データ";
-  if (itemType === "kin_created") return "Kin作成文書";
-  return "取込文書";
+  return GPT_RECEIVED_DOCS_TEXT.typeLabels[itemType];
 }
 
 function sectionTitle(text: string) {
@@ -142,7 +141,7 @@ export default function ReceivedDocsDrawer({
     return (
       <div style={sectionCardStyle}>
         <div style={{ fontSize: 13, color: "#64748b" }}>
-          まだライブラリ項目はありません。
+          {GPT_RECEIVED_DOCS_TEXT.emptyAll}
         </div>
       </div>
     );
@@ -152,22 +151,22 @@ export default function ReceivedDocsDrawer({
     <section style={sectionCardStyle}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" onClick={() => setActiveTab("all")} style={tabButton(activeTab === "all")}>
-          すべて
+          {GPT_RECEIVED_DOCS_TEXT.tabs.all}
         </button>
         <button type="button" onClick={() => setActiveTab("kin")} style={tabButton(activeTab === "kin")}>
-          Kin作成文書
+          {GPT_RECEIVED_DOCS_TEXT.tabs.kin}
         </button>
         <button type="button" onClick={() => setActiveTab("ingest")} style={tabButton(activeTab === "ingest")}>
-          取込文書
+          {GPT_RECEIVED_DOCS_TEXT.tabs.ingest}
         </button>
         <button type="button" onClick={() => setActiveTab("search")} style={tabButton(activeTab === "search")}>
-          検索データ
+          {GPT_RECEIVED_DOCS_TEXT.tabs.search}
         </button>
       </div>
 
       {visibleItems.length === 0 ? (
         <div style={{ marginTop: 12, fontSize: 13, color: "#64748b" }}>
-          このグループの項目はまだありません。
+          {GPT_RECEIVED_DOCS_TEXT.emptyFiltered}
         </div>
       ) : (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
@@ -259,7 +258,8 @@ export default function ReceivedDocsDrawer({
                           padding: "2px 8px",
                         }}
                       >
-                        Ref{priorityIndex}
+                        {GPT_RECEIVED_DOCS_TEXT.refPrefix}
+                        {priorityIndex}
                       </span>
                     ) : null}
                     {item.id === selectedTaskLibraryItemId ? (
@@ -274,14 +274,14 @@ export default function ReceivedDocsDrawer({
                           padding: "2px 8px",
                         }}
                       >
-                        タスク選択中
+                        {GPT_RECEIVED_DOCS_TEXT.taskSelected}
                       </span>
                     ) : null}
                     <button
                       type="button"
                       onClick={() => onMoveLibraryItem(item.id, "up")}
                       style={iconButton()}
-                      title="上へ移動"
+                      title={GPT_RECEIVED_DOCS_TEXT.moveUpTitle}
                     >
                       ↑
                     </button>
@@ -289,7 +289,7 @@ export default function ReceivedDocsDrawer({
                       type="button"
                       onClick={() => onMoveLibraryItem(item.id, "down")}
                       style={iconButton()}
-                      title="下へ移動"
+                      title={GPT_RECEIVED_DOCS_TEXT.moveDownTitle}
                     >
                       ↓
                     </button>
@@ -307,7 +307,7 @@ export default function ReceivedDocsDrawer({
                         onDeleteStoredDocument(item.sourceId);
                       }}
                       style={iconButton("danger")}
-                      title="削除"
+                      title={GPT_RECEIVED_DOCS_TEXT.deleteTitle}
                     >
                       ×
                     </button>
@@ -325,7 +325,7 @@ export default function ReceivedDocsDrawer({
                       border: "1px solid #d8b4fe",
                     }}
                   >
-                    タスクに使う
+                    {GPT_RECEIVED_DOCS_TEXT.useForTask}
                   </button>
 
                   {item.itemType !== "search" ? (
@@ -343,7 +343,7 @@ export default function ReceivedDocsDrawer({
                         border: "1px solid #bfdbfe",
                       }}
                     >
-                      ダウンロード
+                      {GPT_RECEIVED_DOCS_TEXT.download}
                     </button>
                   ) : null}
 
@@ -366,9 +366,9 @@ export default function ReceivedDocsDrawer({
                       padding: "0 10px",
                     }}
                   >
-                    <option value="default">全設定に従う</option>
-                    <option value="summary_only">summary only</option>
-                    <option value="summary_with_excerpt">summary + excerpt</option>
+                    <option value="default">{GPT_RECEIVED_DOCS_TEXT.modeOptions.default}</option>
+                    <option value="summary_only">{GPT_RECEIVED_DOCS_TEXT.modeOptions.summary_only}</option>
+                    <option value="summary_with_excerpt">{GPT_RECEIVED_DOCS_TEXT.modeOptions.summary_with_excerpt}</option>
                   </select>
 
                   {item.itemType !== "search" ? (
@@ -388,7 +388,7 @@ export default function ReceivedDocsDrawer({
                         border: "1px solid #99f6e4",
                       }}
                     >
-                      編集
+                      {GPT_RECEIVED_DOCS_TEXT.edit}
                     </button>
                   ) : null}
                 </div>
@@ -403,38 +403,41 @@ export default function ReceivedDocsDrawer({
                       gap: 8,
                     }}
                   >
-                    {sectionTitle("プレビュー")}
+                    {sectionTitle(GPT_RECEIVED_DOCS_TEXT.previewTitle)}
 
                     <div style={{ display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
                       <div>
-                        <strong>種別:</strong> {typeLabel(item.itemType)}
+                        <strong>{GPT_RECEIVED_DOCS_TEXT.fields.type}:</strong> {typeLabel(item.itemType)}
                       </div>
                       <div>
-                        <strong>Summary:</strong> {item.summary || "なし"}
+                        <strong>{GPT_RECEIVED_DOCS_TEXT.fields.summary}:</strong>{" "}
+                        {item.summary || GPT_RECEIVED_DOCS_TEXT.fields.none}
                       </div>
                       {item.taskTitle ? (
                         <div>
-                          <strong>タスク名:</strong> {item.taskTitle}
+                          <strong>{GPT_RECEIVED_DOCS_TEXT.fields.taskName}:</strong> {item.taskTitle}
                         </div>
                       ) : null}
                       {item.taskId ? (
                         <div>
-                          <strong>タスクID:</strong> #{item.taskId}
+                          <strong>{GPT_RECEIVED_DOCS_TEXT.fields.taskId}:</strong> #{item.taskId}
                         </div>
                       ) : null}
                       {item.kinName ? (
                         <div>
-                          <strong>Kin:</strong> {item.kinName}
+                          <strong>{GPT_RECEIVED_DOCS_TEXT.fields.kin}:</strong> {item.kinName}
                         </div>
                       ) : null}
                       {item.completedAt ? (
                         <div suppressHydrationWarning>
-                          <strong>完了日時:</strong> {formatUpdatedAt(item.completedAt)}
+                          <strong>{GPT_RECEIVED_DOCS_TEXT.fields.completedAt}:</strong>{" "}
+                          {formatUpdatedAt(item.completedAt)}
                         </div>
                       ) : null}
                       {multipartSource ? (
                         <div>
-                          <strong>分割:</strong> {multipartSource.parts.length}/
+                          <strong>{GPT_RECEIVED_DOCS_TEXT.fields.multipart}:</strong>{" "}
+                          {multipartSource.parts.length}/
                           {multipartSource.totalParts}
                         </div>
                       ) : null}
@@ -444,7 +447,7 @@ export default function ReceivedDocsDrawer({
                       <>
                         {askAiModeCandidates.length > 0 ? (
                           <div style={{ display: "grid", gap: 8 }}>
-                            {sectionTitle("Ask AI Mode")}
+                            {sectionTitle(GPT_RECEIVED_DOCS_TEXT.askAiModeTitle)}
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                               {askAiModeCandidates.map((candidate) => (
                                 <button
@@ -460,7 +463,7 @@ export default function ReceivedDocsDrawer({
                                   }}
                                   title={candidate.snippet || candidate.query}
                                 >
-                                  AIで続ける: {candidate.query}
+                                  {GPT_RECEIVED_DOCS_TEXT.askAiContinuePrefix} {candidate.query}
                                 </button>
                               ))}
                             </div>
@@ -496,9 +499,9 @@ export default function ReceivedDocsDrawer({
                                           background: "#fff",
                                           color: "#b91c1c",
                                           border: "1px solid #fca5a5",
-                                        }}
-                                      >
-                                        文字起こし取込
+                                      }}
+                                    >
+                                        {GPT_RECEIVED_DOCS_TEXT.importTranscript}
                                       </button>
                                       <button
                                         type="button"
@@ -512,7 +515,7 @@ export default function ReceivedDocsDrawer({
                                           border: "1px solid #c4b5fd",
                                         }}
                                       >
-                                        文字起こしKin送付
+                                        {GPT_RECEIVED_DOCS_TEXT.sendTranscriptToKin}
                                       </button>
                                     </div>
                                   ) : null}
@@ -605,7 +608,7 @@ export default function ReceivedDocsDrawer({
                               border: "1px solid #99f6e4",
                             }}
                           >
-                            保存
+                            {GPT_RECEIVED_DOCS_TEXT.save}
                           </button>
                           <button
                             type="button"
@@ -617,7 +620,7 @@ export default function ReceivedDocsDrawer({
                               border: "1px solid #cbd5e1",
                             }}
                           >
-                            キャンセル
+                            {GPT_RECEIVED_DOCS_TEXT.cancel}
                           </button>
                         </div>
                       </div>

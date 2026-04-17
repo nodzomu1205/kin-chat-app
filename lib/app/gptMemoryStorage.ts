@@ -8,7 +8,8 @@ export const KIN_MEMORY_MAP_KEY = "kin_memory_map";
 export const MEMORY_SETTINGS_KEY = "gpt_memory_settings";
 
 export function loadMemorySettingsFromStorage() {
-  const saved = localStorage.getItem(MEMORY_SETTINGS_KEY);
+  if (typeof window === "undefined") return null;
+  const saved = window.localStorage.getItem(MEMORY_SETTINGS_KEY);
   if (!saved) return null;
 
   try {
@@ -20,11 +21,13 @@ export function loadMemorySettingsFromStorage() {
 }
 
 export function saveMemorySettingsToStorage(settings: MemorySettings) {
-  localStorage.setItem(MEMORY_SETTINGS_KEY, JSON.stringify(settings));
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(MEMORY_SETTINGS_KEY, JSON.stringify(settings));
 }
 
 export function loadKinMemoryMapFromStorage(settings: MemorySettings) {
-  const saved = localStorage.getItem(KIN_MEMORY_MAP_KEY);
+  if (typeof window === "undefined") return null;
+  const saved = window.localStorage.getItem(KIN_MEMORY_MAP_KEY);
   if (!saved) return null;
 
   try {
@@ -43,7 +46,8 @@ export function loadKinMemoryMapFromStorage(settings: MemorySettings) {
 }
 
 export function saveKinMemoryMapToStorage(kinMemoryMap: Record<string, KinMemoryState>) {
-  localStorage.setItem(KIN_MEMORY_MAP_KEY, JSON.stringify(kinMemoryMap));
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(KIN_MEMORY_MAP_KEY, JSON.stringify(kinMemoryMap));
 }
 
 export function resolveCurrentKinState(

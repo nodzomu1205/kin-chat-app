@@ -3,10 +3,9 @@ import { generateId } from "@/lib/uuid";
 import type { Message } from "@/types/chat";
 import type { KinConnectionState } from "@/hooks/useKinManager";
 import {
-  buildProgressAckResponseBlock,
-  buildResendLastMessageBlock,
-  extractTaskProtocolEvents,
-} from "@/lib/taskRuntimeProtocol";
+  resolveKinFollowupInput,
+  resolvePendingKinInjectionAction,
+} from "@/lib/app/sendToKinFlowState";
 
 type RunSendKinMessageFlowArgs = {
   text: string;
@@ -31,22 +30,6 @@ type RunSendKinMessageFlowArgs = {
 type KindroidApiResponse = {
   reply?: string;
 };
-
-function extractTaskIdFromOutboundText(text: string): string | undefined {
-  const directMatch = text.match(/TASK_ID:\s*([^\n\r]+)/);
-  if (directMatch?.[1]?.trim()) return directMatch[1].trim();
-
-  const sysTaskMatch = text.match(/<<SYS_TASK>>[\s\S]*?#(\d{3,})/);
-  if (sysTaskMatch?.[1]) return sysTaskMatch[1];
-
-  return undefined;
-}
-
-function hasKinReceivedAck(text: string) {
-  return /<<SYS_KIN_RESPONSE>>[\s\S]*?Received\.\s*Send the next(?: part)?\.[\s\S]*?<<(?:END_SYS_KIN_RESPONSE|END_SYS_RESPONSE)>>/i.test(
-    text
-  );
-}
 
 export async function runSendKinMessageFlow({
   text,
@@ -105,39 +88,29 @@ export async function runSendKinMessageFlow({
 
     setKinConnectionState("connected");
 
-    const sentPendingPart =
-      typeof currentPendingBlock === "string" && text === currentPendingBlock.trim();
+    const pendingAction = resolvePendingKinInjectionAction({
+      text,
+      currentPendingBlock,
+      replyText,
+      pendingKinInjectionIndex,
+      pendingKinInjectionBlocks,
+    });
 
-    if (sentPendingPart && hasKinReceivedAck(replyText)) {
-      const nextIndex = pendingKinInjectionIndex + 1;
-
-      if (nextIndex < pendingKinInjectionBlocks.length) {
-        setPendingKinInjectionIndex(nextIndex);
-        setKinInput(pendingKinInjectionBlocks[nextIndex]);
-      } else {
-        clearPendingKinInjection();
-        await onPendingKinAck?.();
-      }
+    if (pendingAction.type === "advance") {
+      setPendingKinInjectionIndex(pendingAction.nextIndex);
+      setKinInput(pendingAction.nextInput);
+    } else if (pendingAction.type === "complete") {
+      clearPendingKinInjection();
+      await onPendingKinAck?.();
     }
 
     if (pendingKinInjectionBlocks.length === 0) {
-      const events = extractTaskProtocolEvents(replyText);
-      const hasProgress = events.some((event) => event.type === "task_progress");
-      const hasOtherRequestLikeEvent = events.some(
-        (event) =>
-          event.type !== "task_progress" &&
-          event.type !== "task_confirm"
-      );
-      const taskId = events.find((event) => event.taskId)?.taskId;
-
-      if (hasProgress && taskId && !hasOtherRequestLikeEvent) {
-        setKinInput(buildProgressAckResponseBlock({ taskId }));
-      } else if (replyText === "Kin did not return a usable response.") {
-        setKinInput(
-          buildResendLastMessageBlock({
-            taskId: extractTaskIdFromOutboundText(text),
-          })
-        );
+      const followupInput = resolveKinFollowupInput({
+        replyText,
+        outboundText: text,
+      });
+      if (followupInput) {
+        setKinInput(followupInput);
       }
     }
   } catch (error) {
@@ -153,8 +126,9 @@ export async function runSendKinMessageFlow({
         },
       ]);
       setKinInput(
-        buildResendLastMessageBlock({
-          taskId: extractTaskIdFromOutboundText(text),
+        resolveKinFollowupInput({
+          replyText: "Kin did not return a usable response.",
+          outboundText: text,
         })
       );
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatPageGptPanelCompositionArgs } from "@/hooks/chatPageCompositionTypes";
+import type { ChatPageGptPanelCompositionArgs } from "@/hooks/chatPagePanelCompositionTypes";
 import type { BuildGptPanelArgs } from "@/lib/app/panelPropsBuilders";
 
 export function useChatPageGptPanelArgs(

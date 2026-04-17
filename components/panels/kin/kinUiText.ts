@@ -1,0 +1,15 @@
+export const KIN_PANEL_TEXT = {
+  brand: "Kindroid",
+  currentKinFallback: "Kin未選択",
+  kinList: "Kin一覧",
+  connect: "接続",
+  switchTitle: "画面切替",
+  switchButton: "⇄",
+  sendToGpt: "GPTに送る",
+  resetTitle: "リセット",
+  resetButton: "↻",
+  clearInputTitle: "入力内容をクリア",
+  clearInputButton: "×",
+  sending: "送信中",
+  send: "送信",
+} as const;

@@ -49,7 +49,7 @@ describe("taskCompiler", () => {
 
     expect(prompt).toContain("Every SYS block you send must end with the matching <<END_SYS_...>> line.");
     expect(prompt).toContain(
-      "reply only with <<SYS_KIN_RESPONSE>> Received. Send the next. <<END_SYS_RESPONSE>> until the final part arrives."
+      "reply only with <<KIN_RESPONSE>> Received. Send the next. <<END_KIN_RESPONSE>> until the final part arrives."
     );
     expect(prompt).toContain("The final part must clearly say it is the last part.");
     expect(prompt.trim().endsWith("<<END_SYS_TASK>>")).toBe(true);

@@ -10,92 +10,32 @@ import {
   normalizePendingIntentCandidate,
 } from "@/lib/taskIntent";
 import {
-  DEFAULT_PROTOCOL_PROMPT,
-  DEFAULT_PROTOCOL_RULEBOOK,
-} from "@/lib/app/kinProtocolDefaults";
-import { migrateLegacyProtocolLimits } from "@/lib/app/kinProtocolMigration";
-import {
   APPROVED_INTENT_PHRASES_KEY,
   PENDING_INTENT_CANDIDATES_KEY,
-  PROTOCOL_PROMPT_DEFAULT_KEY,
   PROTOCOL_PROMPT_KEY,
-  PROTOCOL_RULEBOOK_DEFAULT_KEY,
   PROTOCOL_RULEBOOK_KEY,
   REJECTED_INTENT_CANDIDATES_KEY,
 } from "@/lib/app/chatPageStorageKeys";
+import { loadProtocolIntentSettingsState } from "@/lib/app/protocolIntentSettingsState";
 
 export function useProtocolIntentSettings() {
+  const [initialState] = useState(() =>
+    loadProtocolIntentSettingsState(
+      typeof window === "undefined" ? null : window.localStorage
+    )
+  );
   const [pendingIntentCandidates, setPendingIntentCandidates] = useState<
     PendingIntentCandidate[]
-  >([]);
+  >(initialState.pendingIntentCandidates);
   const [approvedIntentPhrases, setApprovedIntentPhrases] = useState<
     ApprovedIntentPhrase[]
-  >([]);
+  >(initialState.approvedIntentPhrases);
   const [rejectedIntentCandidateSignatures, setRejectedIntentCandidateSignatures] =
-    useState<string[]>([]);
-  const [protocolPrompt, setProtocolPrompt] = useState(DEFAULT_PROTOCOL_PROMPT);
+    useState<string[]>(initialState.rejectedIntentCandidateSignatures);
+  const [protocolPrompt, setProtocolPrompt] = useState(initialState.protocolPrompt);
   const [protocolRulebook, setProtocolRulebook] = useState(
-    DEFAULT_PROTOCOL_RULEBOOK
+    initialState.protocolRulebook
   );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const savedPrompt = window.localStorage.getItem(PROTOCOL_PROMPT_KEY);
-    const savedRulebook = window.localStorage.getItem(PROTOCOL_RULEBOOK_KEY);
-    const savedPromptDefault = window.localStorage.getItem(
-      PROTOCOL_PROMPT_DEFAULT_KEY
-    );
-    const savedRulebookDefault = window.localStorage.getItem(
-      PROTOCOL_RULEBOOK_DEFAULT_KEY
-    );
-    const savedPendingIntentCandidates = window.localStorage.getItem(
-      PENDING_INTENT_CANDIDATES_KEY
-    );
-    const savedApprovedIntentPhrases = window.localStorage.getItem(
-      APPROVED_INTENT_PHRASES_KEY
-    );
-    const savedRejectedIntentCandidates = window.localStorage.getItem(
-      REJECTED_INTENT_CANDIDATES_KEY
-    );
-
-    if (savedPrompt) {
-      setProtocolPrompt(migrateLegacyProtocolLimits(savedPrompt));
-    } else if (savedPromptDefault) {
-      setProtocolPrompt(migrateLegacyProtocolLimits(savedPromptDefault));
-    }
-
-    if (savedRulebook) {
-      setProtocolRulebook(migrateLegacyProtocolLimits(savedRulebook));
-    } else if (savedRulebookDefault) {
-      setProtocolRulebook(migrateLegacyProtocolLimits(savedRulebookDefault));
-    }
-
-    if (savedPendingIntentCandidates) {
-      try {
-        const parsed = JSON.parse(savedPendingIntentCandidates) as PendingIntentCandidate[];
-        if (Array.isArray(parsed)) {
-          setPendingIntentCandidates(parsed.map(normalizePendingIntentCandidate));
-        }
-      } catch {}
-    }
-
-    if (savedApprovedIntentPhrases) {
-      try {
-        const parsed = JSON.parse(savedApprovedIntentPhrases) as ApprovedIntentPhrase[];
-        if (Array.isArray(parsed)) {
-          setApprovedIntentPhrases(parsed.map(normalizeApprovedIntentPhrase));
-        }
-      } catch {}
-    }
-
-    if (savedRejectedIntentCandidates) {
-      try {
-        const parsed = JSON.parse(savedRejectedIntentCandidates) as string[];
-        if (Array.isArray(parsed)) setRejectedIntentCandidateSignatures(parsed);
-      } catch {}
-    }
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

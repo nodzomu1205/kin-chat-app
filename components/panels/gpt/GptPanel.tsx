@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import ChatMessages from "@/components/ChatMessages";
 import DrawerTabs, { type DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import GptDrawerRouter from "@/components/panels/gpt/GptDrawerRouter";
@@ -14,14 +14,26 @@ import type {
   GptPanelProps,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
+  applyLocalSettingsUpdate,
+  buildLocalSettingsSourceKey,
   getComposerPlaceholder,
-  type BottomTabKey,
   type FloatingLabel,
   type LocalMemorySettingsInput,
+  resolveLocalSettingsState,
   resolveFloatingLabel,
   toLocalSettings,
   toPositiveInt,
 } from "@/components/panels/gpt/gptPanelHelpers";
+import {
+  changeGptBottomTab,
+  changeGptDrawer,
+  closeGptSettingsWorkspace,
+  createInitialGptPanelViewState,
+  shouldShowGptChatBody,
+  shouldShowGptDrawer,
+  shouldShowGptSettingsWorkspace,
+  toggleGptSettingsWorkspace,
+} from "@/lib/app/gptPanelViewState";
 import {
   chatBodyStyle,
   drawerWrapStyle,
@@ -31,6 +43,7 @@ import {
 } from "@/components/panels/gpt/gptPanelStyles";
 import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
+import { GPT_PANEL_TEXT } from "@/components/panels/gpt/gptUiText";
 
 function headerIconButtonStyle(params: {
   active: boolean;
@@ -155,19 +168,40 @@ function LibrarySettingsIcon() {
 
 export default function GptPanel(props: GptPanelProps) {
   const { header, chat, task, protocol, references, settings } = props;
+  const settingsSourceKey = buildLocalSettingsSourceKey({
+    currentKin: header.currentKin,
+    memorySettings: settings.memorySettings,
+    defaultMemorySettings: settings.defaultMemorySettings,
+  });
+  const sourceLocalSettings = toLocalSettings(settings);
 
-  const [activeDrawer, setActiveDrawer] = useState<DrawerMode>(null);
-  const [activeSettingsWorkspace, setActiveSettingsWorkspace] =
-    useState<SettingsWorkspaceView | null>(null);
-  const [bottomTab, setBottomTab] = useState<BottomTabKey>("chat");
+  const [viewState, setViewState] = useState(createInitialGptPanelViewState);
   const [showMemoryContent, setShowMemoryContent] = useState(false);
-  const [localSettings, setLocalSettings] = useState<LocalMemorySettingsInput>(() =>
-    toLocalSettings(settings)
+  const [localSettingsState, setLocalSettingsState] =
+    useState<LocalMemorySettingsInput>(sourceLocalSettings);
+  const [localSettingsSourceKey, setLocalSettingsSourceKey] = useState(
+    settingsSourceKey
   );
-
-  useEffect(() => {
-    setLocalSettings(toLocalSettings(settings));
-  }, [settings.memorySettings, settings.defaultMemorySettings, header.currentKin]);
+  const localSettings = resolveLocalSettingsState({
+    localSettingsState,
+    localSettingsSourceKey,
+    settingsSourceKey,
+    sourceLocalSettings,
+  });
+  const setLocalSettings: React.Dispatch<
+    React.SetStateAction<LocalMemorySettingsInput>
+  > = (value) => {
+    setLocalSettingsSourceKey(settingsSourceKey);
+    setLocalSettingsState((prev) =>
+      applyLocalSettingsUpdate({
+        value,
+        localSettingsState: prev,
+        localSettingsSourceKey,
+        settingsSourceKey,
+        sourceLocalSettings,
+      })
+    );
+  };
 
   const recentCount = chat.gptState.recentMessages?.length ?? 0;
   const factCount = chat.gptState.memory?.facts?.length ?? 0;
@@ -179,13 +213,13 @@ export default function GptPanel(props: GptPanelProps) {
     (settings.memorySettings.maxFacts ?? 0) +
     (settings.memorySettings.maxPreferences ?? 0);
   const floatingLabel = useMemo<FloatingLabel>(() => resolveFloatingLabel({
-    activeDrawer,
-    bottomTab,
+    activeDrawer: viewState.activeDrawer,
+    bottomTab: viewState.bottomTab,
     currentTaskDraft: task.currentTaskDraft,
     currentTopic: chat.gptState.memory?.context?.currentTopic,
   }), [
-    activeDrawer,
-    bottomTab,
+    viewState.activeDrawer,
+    viewState.bottomTab,
     task.currentTaskDraft,
     chat.gptState.memory?.context?.currentTopic,
   ]);
@@ -218,13 +252,11 @@ export default function GptPanel(props: GptPanelProps) {
   };
 
   const handleDrawerChange = (next: DrawerMode) => {
-    setActiveSettingsWorkspace(null);
-    setActiveDrawer(next);
+    setViewState((prev) => changeGptDrawer(prev, next));
   };
 
   const toggleSettingsWorkspace = (next: SettingsWorkspaceView) => {
-    setActiveDrawer(null);
-    setActiveSettingsWorkspace((prev) => (prev === next ? null : next));
+    setViewState((prev) => toggleGptSettingsWorkspace(prev, next));
   };
 
   return (
@@ -278,9 +310,9 @@ export default function GptPanel(props: GptPanelProps) {
               overflow: "hidden",
               textOverflow: "ellipsis",
             }}
-            title={header.currentKinLabel || "Kin未選択"}
+            title={header.currentKinLabel || GPT_PANEL_TEXT.currentKinFallback}
           >
-            {header.currentKinLabel || "Kin未選択"}
+            {header.currentKinLabel || GPT_PANEL_TEXT.currentKinFallback}
           </div>
 
           <span style={statusDotStyle(header.kinStatus as "idle" | "connected" | "error")} aria-label={header.kinStatus} />
@@ -289,24 +321,24 @@ export default function GptPanel(props: GptPanelProps) {
 
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <HeaderIconButton
-              label="チャット設定"
-              active={activeSettingsWorkspace === "chat"}
+              label={GPT_PANEL_TEXT.chatSettings}
+              active={viewState.activeSettingsWorkspace === "chat"}
               hasPending={hasPendingMemoryApprovals}
               onClick={() => toggleSettingsWorkspace("chat")}
             >
               <ChatSettingsIcon />
             </HeaderIconButton>
             <HeaderIconButton
-              label="タスク設定"
-              active={activeSettingsWorkspace === "task"}
+              label={GPT_PANEL_TEXT.taskSettings}
+              active={viewState.activeSettingsWorkspace === "task"}
               hasPending={hasPendingSysApprovals}
               onClick={() => toggleSettingsWorkspace("task")}
             >
               <TaskSettingsIcon />
             </HeaderIconButton>
             <HeaderIconButton
-              label="ライブラリ設定"
-              active={activeSettingsWorkspace === "library"}
+              label={GPT_PANEL_TEXT.librarySettings}
+              active={viewState.activeSettingsWorkspace === "library"}
               hasPending={false}
               onClick={() => toggleSettingsWorkspace("library")}
             >
@@ -316,16 +348,16 @@ export default function GptPanel(props: GptPanelProps) {
         </div>
 
         <DrawerTabs
-          activeDrawer={activeDrawer}
+          activeDrawer={viewState.activeDrawer}
           isMobile={header.isMobile}
           onChange={handleDrawerChange}
         />
       </div>
 
-      {activeDrawer && !activeSettingsWorkspace ? (
+      {shouldShowGptDrawer(viewState) ? (
         <div style={drawerWrapStyle(header.isMobile)}>
           <GptDrawerRouter
-            activeDrawer={activeDrawer}
+            activeDrawer={viewState.activeDrawer}
             header={header}
             chat={chat}
             task={task}
@@ -352,7 +384,7 @@ export default function GptPanel(props: GptPanelProps) {
 
       <div
         style={{
-          display: activeSettingsWorkspace ? "none" : "flex",
+          display: shouldShowGptChatBody(viewState) ? "flex" : "none",
           flex: 1,
           minHeight: 0,
           flexDirection: "column",
@@ -371,7 +403,7 @@ export default function GptPanel(props: GptPanelProps) {
         <div
           style={{
             minHeight: 30,
-            padding: activeDrawer ? "18px 12px 8px 12px" : "22px 12px 10px 12px",
+            padding: viewState.activeDrawer ? "18px 12px 8px 12px" : "22px 12px 10px 12px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -438,7 +470,7 @@ export default function GptPanel(props: GptPanelProps) {
           <ChatMessages
             messages={chat.gptMessages}
             bottomRef={chat.gptBottomRef}
-            loadingText={chat.loading ? "ChatGPTが応答中…" : null}
+            loadingText={chat.loading ? GPT_PANEL_TEXT.loading : null}
             sourceDisplayCount={settings.sourceDisplayCount}
             onImportYouTubeTranscript={references.onImportYouTubeTranscript}
             onSendYouTubeTranscriptToKin={references.onSendYouTubeTranscriptToKin}
@@ -460,16 +492,18 @@ export default function GptPanel(props: GptPanelProps) {
                 marginBottom: 0,
               }}
             >
-              注入送信中 {task.pendingInjectionCurrentPart}/{task.pendingInjectionTotalParts}
+              {GPT_PANEL_TEXT.injectionSendingPrefix} {task.pendingInjectionCurrentPart}/{task.pendingInjectionTotalParts}
             </div>
           )}
 
           <div style={{ position: "relative", paddingTop: header.isMobile ? 0 : 0, marginTop: 0 }}>
             <GptToolbar
-              activeTab={bottomTab}
+              activeTab={viewState.bottomTab}
               isMobile={header.isMobile}
               onSwitchPanel={header.onSwitchPanel}
-              onChangeTab={setBottomTab}
+              onChangeTab={(next) =>
+                setViewState((prev) => changeGptBottomTab(prev, next))
+              }
               onAction={handleToolbarAction}
               onRunTask={() => void task.runPrepTaskFromInput()}
               onRunDeepen={() => void task.runDeepenTaskFromLast()}
@@ -490,7 +524,7 @@ export default function GptPanel(props: GptPanelProps) {
             onSubmit={() => void chat.sendToGpt("normal")}
             submitOnEnter={!header.isMobile}
             placeholder={
-              getComposerPlaceholder(bottomTab)
+              getComposerPlaceholder(viewState.bottomTab)
             }
             onInjectFile={chat.onInjectFile}
             loading={chat.loading}
@@ -507,7 +541,7 @@ export default function GptPanel(props: GptPanelProps) {
             onChangeIngestMode={settings.onChangeIngestMode}
             onChangeImageDetail={settings.onChangeImageDetail}
             onChangePostIngestAction={settings.onChangePostIngestAction}
-            showFileTools={bottomTab === "file"}
+            showFileTools={viewState.bottomTab === "file"}
             isMobile={header.isMobile}
           />
         </div>
@@ -515,17 +549,22 @@ export default function GptPanel(props: GptPanelProps) {
 
       <div
         style={{
-          display: activeSettingsWorkspace ? "flex" : "none",
-          flex: activeSettingsWorkspace ? 1 : undefined,
+          display: shouldShowGptSettingsWorkspace(viewState) ? "flex" : "none",
+          flex: shouldShowGptSettingsWorkspace(viewState) ? 1 : undefined,
           minHeight: 0,
           height: "100%",
           overflow: "hidden",
         }}
       >
-        {activeSettingsWorkspace ? (
+        {viewState.activeSettingsWorkspace ? (
           <GptSettingsWorkspace
-            activeView={activeSettingsWorkspace}
-            onChangeView={setActiveSettingsWorkspace}
+            activeView={viewState.activeSettingsWorkspace}
+            onChangeView={(next) =>
+              setViewState((prev) => ({
+                ...prev,
+                activeSettingsWorkspace: next,
+              }))
+            }
             settings={settings}
             protocol={protocol}
             localSettings={localSettings}
@@ -533,7 +572,9 @@ export default function GptPanel(props: GptPanelProps) {
             memoryCapacityPreview={memoryCapacityPreview}
             toPositiveInt={toPositiveInt}
             isMobile={header.isMobile}
-            onClose={() => setActiveSettingsWorkspace(null)}
+            onClose={() =>
+              setViewState((prev) => closeGptSettingsWorkspace(prev))
+            }
           />
         ) : null}
       </div>

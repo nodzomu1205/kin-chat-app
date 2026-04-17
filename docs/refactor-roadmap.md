@@ -119,9 +119,12 @@ Done:
 - `useChatPageController.ts` now owns the page-level wiring between chat actions, protocol automation, and panel reset actions
 - `useChatPageControllerArgs.ts`, `useChatPageKinPanelProps.ts`, and `useChatPageGptPanelArgs.ts` now own the controller/panel argument assembly that previously lived inline in `app/page.tsx`
 - `useChatPagePanelsComposition.tsx` now owns the final page-side controller + panel composition, so `app/page.tsx` no longer instantiates `useChatPageController`, `KinPanel`, `GptPanel`, or `buildGptPanelProps(...)` directly
-- `useChatPagePanelsView.tsx` now owns shared panel-app wiring and task-snapshot glue, so `app/page.tsx` no longer duplicates `app` / `taskProtocolView` or local snapshot handlers across both panel branches
-- `useChatPageWorkspaceView.tsx` now owns the page-facing source wiring for controller + panel composition, so `app/page.tsx` passes source-of-truth domain groups instead of duplicating nested controller and panel trees
-- `chatPageWorkspaceViewBuilders.ts` now owns workspace-view controller/panel source builders, keeping `useChatPageWorkspaceView.tsx` thin instead of letting a new monolithic adapter regrow there
+- `useChatPagePanelsComposition.tsx` now consumes page workspace groups directly and owns task-snapshot glue itself, so the no-op passthrough hooks `useChatPagePanelsView.tsx` and `useChatPageWorkspaceView.tsx` were removed
+- `chatPageControllerCompositionTypes.ts` and `chatPagePanelCompositionTypes.ts` now split the old page-composition type hub by authority boundary instead of keeping controller and panel contracts in one file
+- `chatPageControllerCompositionBuilders.ts` and `chatPagePanelCompositionBuilders.ts` now split workspace reshaping into controller-side and panel-side builders, making the remaining page composition path easier to audit
+- persisted page-side settings hooks now load storage through lazy initializers instead of mount-only `setState`, reducing React 19 `set-state-in-effect` debt across the page path
+- protocol default text is now centralized in `kinProtocolText.ts`, and protocol migration now auto-repairs stale legacy / mojibake saved defaults before they reappear in settings or task flows
+- legacy `SYS_KIN_RESPONSE` guidance is now migrated to the requested `KIN_RESPONSE` format while the Kin send flow still accepts old replies for compatibility
 - `page -> controller` action wiring now crosses the boundary as grouped `identity / uiState / task / protocol / search / services` args, and controller-side domain hooks now consume those grouped sources directly without a broad flatten step
 - `chatPageControllerArgBuilders.ts` now owns the sub-hook input reshaping that used to sit inline in `useChatPageController.ts`
 - `useChatPageMessagingDomainActions.ts` now owns the GPT / Kin controller-side composition, allowing the thin wrappers `useChatPageGptActions.ts` and `useChatPageKinActions.ts` to be removed
@@ -145,7 +148,7 @@ Done:
 
 Next:
 - review whether `useChatPageController.ts` should stay as a thin page-only hook or become a wider `useChatAppController`
-- review whether the remaining `app/page.tsx` orchestration should stay as explicit `useChatPageWorkspaceView(...)` source groups or move further behind page-facing composition hooks
+- review whether the remaining `app/page.tsx` orchestration should stay as explicit `useChatPagePanelsComposition(...)` source groups or move further behind page-facing composition hooks
 - decide whether pure-transfer GPT panel sections (`protocol` / `references` / parts of `settings`) should eventually be assembled outside `panelPropsBuilders`
 - review whether the remaining memory-rule / task coordination should move behind a narrower controller boundary
 - keep task-progress lifecycle controls (`start / archive / selection / approval refresh`) concentrated in the task protocol controller boundary instead of regrowing in `useChatPageController.ts` or page-level UI code
