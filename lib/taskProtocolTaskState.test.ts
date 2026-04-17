@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildReplacedTaskIntentState,
   buildStartedTaskState,
+  resolveTaskRecompileSourceInstruction,
 } from "@/lib/taskProtocolTaskState";
 import type { TaskIntent, TaskRuntimeState } from "@/types/taskProtocol";
 
@@ -10,6 +11,7 @@ function createRuntime(overrides: Partial<TaskRuntimeState> = {}): TaskRuntimeSt
     currentTaskId: null,
     currentTaskTitle: "",
     currentTaskIntent: null,
+    originalInstruction: "",
     compiledTaskPrompt: "",
     taskStatus: "idle",
     latestSummary: "",
@@ -40,6 +42,34 @@ const baseIntent: TaskIntent = {
 };
 
 describe("taskProtocolTaskState", () => {
+  it("prefers original instruction for task recompile input", () => {
+    expect(
+      resolveTaskRecompileSourceInstruction({
+        originalInstruction: "  farmers 360の再起戦略をまとめて。GPTへのリクエスト3回迄  ",
+        draftUserInstruction: "短いドラフト",
+        intentGoal: "要約済みgoal",
+      })
+    ).toBe("farmers 360の再起戦略をまとめて。GPTへのリクエスト3回迄");
+  });
+
+  it("falls back from draft instruction to goal when the runtime copy is empty", () => {
+    expect(
+      resolveTaskRecompileSourceInstruction({
+        originalInstruction: "   ",
+        draftUserInstruction: "  ドラフトの依頼文  ",
+        intentGoal: "要約済みgoal",
+      })
+    ).toBe("ドラフトの依頼文");
+
+    expect(
+      resolveTaskRecompileSourceInstruction({
+        originalInstruction: "",
+        draftUserInstruction: " ",
+        intentGoal: "  要約済みgoal  ",
+      })
+    ).toBe("要約済みgoal");
+  });
+
   it("builds a started task state with compiled prompt and log", () => {
     const result = buildStartedTaskState({
       prev: createRuntime(),
@@ -53,6 +83,7 @@ describe("taskProtocolTaskState", () => {
     expect(result.compiledTaskPrompt).toContain("<<SYS_TASK>>");
     expect(result.nextState.currentTaskId).toBe("123456");
     expect(result.nextState.taskStatus).toBe("running");
+    expect(result.nextState.originalInstruction).toBe("Analyze rivals");
     expect(result.nextState.protocolLog).toHaveLength(1);
   });
 
@@ -103,5 +134,6 @@ describe("taskProtocolTaskState", () => {
     expect(result.title).toBe("Old title");
     expect(result.nextState.requirementProgress[0]?.completedCount).toBe(2);
     expect(result.nextState.latestSummary).toBe("Analyze rivals");
+    expect(result.nextState.originalInstruction).toBe("");
   });
 });

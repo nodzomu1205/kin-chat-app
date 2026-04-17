@@ -1,11 +1,12 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { generateId } from "@/lib/uuid";
-import type { Message } from "@/types/chat";
+import type { KinMemoryState, Message } from "@/types/chat";
+import { normalizeUsage } from "@/lib/tokenStats";
 
 export type TaskMemoryBridgeArgs = {
-  setGptState: Dispatch<SetStateAction<any>>;
-  persistCurrentGptState?: (state: any) => void;
-  gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: any }>;
+  setGptState: Dispatch<SetStateAction<KinMemoryState>>;
+  persistCurrentGptState?: (state: KinMemoryState) => void;
+  gptStateRef: MutableRefObject<KinMemoryState>;
   recentMessages?: Message[];
   lastUserIntent?: string;
   activeReference?: {
@@ -14,6 +15,34 @@ export type TaskMemoryBridgeArgs = {
     sourceId?: string;
     excerpt?: string;
   } | null;
+};
+
+export type TaskFlowStartArgs = {
+  setGptMessages: Dispatch<SetStateAction<Message[]>>;
+  setGptInput: Dispatch<SetStateAction<string>>;
+  setGptLoading: Dispatch<SetStateAction<boolean>>;
+  userMessage?: Message;
+};
+
+export type TaskFlowAssistantResultArgs = {
+  setGptMessages: Dispatch<SetStateAction<Message[]>>;
+  assistantMessage: Message;
+} & TaskMemoryBridgeArgs;
+
+export type TaskFlowSummaryArgs = {
+  recentMessages: Message[];
+  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  handleGptMemory: (
+    recent: Message[],
+    options?: {
+      currentTaskTitleOverride?: string;
+      lastUserIntent?: string;
+      activeDocument?: Record<string, unknown> | null;
+    }
+  ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
+  currentTaskTitleOverride?: string;
+  lastUserIntent?: string;
+  activeDocument?: Record<string, unknown> | null;
 };
 
 export function appendTaskInfoMessage(
@@ -40,8 +69,8 @@ export function appendTaskInfoMessage(
 }
 
 export function applyTaskMemoryBridge(args: TaskMemoryBridgeArgs) {
-  const current = args.gptStateRef.current || {};
-  const currentMemory = current.memory || {};
+  const current = args.gptStateRef.current;
+  const currentMemory = current.memory;
   const currentLists = currentMemory.lists || {};
   const nextLists = {
     ...currentLists,
@@ -74,4 +103,49 @@ export function applyTaskMemoryBridge(args: TaskMemoryBridgeArgs) {
   }
   args.gptStateRef.current = nextState;
   args.setGptState(nextState);
+}
+
+export function getTaskFlowRecentMessages(
+  gptStateRef: MutableRefObject<KinMemoryState>
+) {
+  return gptStateRef.current.recentMessages || [];
+}
+
+export function appendTaskFlowRecentMessage(
+  recentMessages: Message[],
+  chatRecentLimit: number,
+  message: Message
+) {
+  return [...recentMessages, message].slice(-chatRecentLimit);
+}
+
+export function startTaskFlowRequest(args: TaskFlowStartArgs) {
+  if (args.userMessage) {
+    args.setGptMessages((prev) => [...prev, args.userMessage as Message]);
+  }
+  args.setGptInput("");
+  args.setGptLoading(true);
+}
+
+export function appendTaskFlowAssistantResult(args: TaskFlowAssistantResultArgs) {
+  args.setGptMessages((prev) => [...prev, args.assistantMessage]);
+  applyTaskMemoryBridge({
+    setGptState: args.setGptState,
+    persistCurrentGptState: args.persistCurrentGptState,
+    gptStateRef: args.gptStateRef,
+    recentMessages: args.recentMessages,
+    lastUserIntent: args.lastUserIntent,
+    activeReference: args.activeReference,
+  });
+}
+
+export async function applyTaskFlowSummaryUsage(args: TaskFlowSummaryArgs) {
+  const memoryResult = await args.handleGptMemory(args.recentMessages, {
+    currentTaskTitleOverride: args.currentTaskTitleOverride,
+    lastUserIntent: args.lastUserIntent,
+    activeDocument: args.activeDocument,
+  });
+  if (memoryResult.summaryUsage) {
+    args.applySummaryUsage(memoryResult.summaryUsage);
+  }
 }

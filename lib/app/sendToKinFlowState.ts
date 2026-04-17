@@ -20,6 +20,12 @@ export function hasKinReceivedAck(text: string) {
   );
 }
 
+export function hasKinReceipt(text: string) {
+  return /<<(?:SYS_KIN_RESPONSE|KIN_RESPONSE)>>[\s\S]*?Received\.[\s\S]*?<<(?:END_SYS_KIN_RESPONSE|END_SYS_RESPONSE|END_KIN_RESPONSE)>>/i.test(
+    text
+  );
+}
+
 export function resolvePendingKinInjectionAction(params: {
   text: string;
   currentPendingBlock: string | null;
@@ -31,14 +37,18 @@ export function resolvePendingKinInjectionAction(params: {
     typeof params.currentPendingBlock === "string" &&
     params.text === params.currentPendingBlock.trim();
 
-  if (!sentPendingPart || !hasKinReceivedAck(params.replyText)) {
+  const nextIndex = params.pendingKinInjectionIndex + 1;
+  const isFinalPart = nextIndex >= params.pendingKinInjectionBlocks.length;
+  const hasAck = hasKinReceivedAck(params.replyText);
+  const hasReceipt = hasKinReceipt(params.replyText);
+
+  if (!sentPendingPart || (!hasAck && !(isFinalPart && hasReceipt))) {
     return {
       type: "none" as const,
       nextIndex: params.pendingKinInjectionIndex,
     };
   }
 
-  const nextIndex = params.pendingKinInjectionIndex + 1;
   if (nextIndex < params.pendingKinInjectionBlocks.length) {
     return {
       type: "advance" as const,

@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-16
+Updated: 2026-04-17
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -15,7 +15,8 @@ The goal is not to rewrite everything at once. The goal is to keep shipping whil
 Current verification baseline:
 - `npx tsc --noEmit` passes
 - `npm test` passes
-- test status: `67 files / 288 tests`
+- `npm run build` passes
+- test status: `101 files / 441 tests`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -34,6 +35,219 @@ Current cleanup priority:
 3. `hooks/useChatPageController.ts`
 4. `components/panels/gpt/GptSettingsSections.tsx`
 5. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
+
+## Maintenance Checkpoint
+
+This section is the current checkpoint for deciding whether the repository is in
+"active refactor" or "maintenance watch" mode.
+
+### Ready To Treat As Stabilized
+
+These areas are not frozen forever, but they are stable enough that future work
+should default to small edits, regression tests, and boundary respect instead of
+new structural rewrites.
+
+- LLM-first task/topic intent boundary
+- task protocol refresh path from approval to draft/Kin sync
+- panel-mode authority and responsive focus routing
+- GPT settings / protocol text ownership
+- shared ingest request boundary
+- core workspace / protocol / ingest docs set
+
+### Still In Maintenance Watch
+
+These areas are much healthier than before, but should still be treated as
+high-signal review points before and after changes.
+
+- `app/page.tsx` and page-side composition boundaries
+- `lib/app/sendToGptFlow.ts` and adjacent request/finalize coordinators
+- legacy/current ingest split after the shared request + draft layers
+- remaining builder reshaping across controller/panel composition
+- future user-facing copy drift outside the text-owner files
+
+### Exit Criteria For "Maintenance Complete"
+
+We can treat the current maintainability program as complete when all of the
+following are true:
+
+1. legacy/current ingest paths share one practical post-request authority path
+2. `sendToGpt` no longer regrows mixed policy inside the top-level coordinator
+3. page/controller/panel composition stops regrowing no-op pass-through layers
+4. text / settings labels continue to change through owner files only
+5. new regressions are caught by tests before they reach manual device review
+
+## Immediate Action Plan
+
+This is the practical maintainability plan to follow next.
+It is intentionally ordered by regression risk, not by which files are easiest to split.
+
+### Priority 1: Freeze the LLM-first intent boundary
+
+Why first:
+- recent regressions showed that task generation becomes fragile when original user text is reduced, rewritten, or pre-classified before LLM review
+- the same rule must stay true for both task generation and topic generation
+
+Primary authority:
+- `lib/taskIntent.ts`
+- `lib/taskIntentFallback.ts`
+- `lib/taskCompiler.ts`
+- `hooks/useTaskProtocolActions.ts`
+- `lib/app/memoryInterpreterFallbackOrchestrator.ts`
+- `lib/app/memoryInterpreterFallbackFlow.ts`
+- `docs/architecture-guidelines.md`
+
+Boundary rules to keep:
+- entry text goes to LLM broadly
+- approval / rejection changes the live draft immediately
+- only exact strong-confidence approved fragments may shortcut later
+- no phrase-specific entry rules and no hidden fallback answer tables
+
+Mini phases:
+1. remove dead compatibility-era helpers from `lib/taskIntent.ts`
+2. document source-of-truth fields for task recompile input in one place
+3. add regression tests for "raw instruction survives approval / recompile / resend"
+4. re-check memory/topic fallback for the same shortcut boundary
+
+Done when:
+- `task intent` and `topic intent` both follow the same LLM-first rule
+- new work no longer needs guesswork about whether to read `goal`, `title`, or raw instruction
+
+### Priority 2: Untangle task runtime, draft sync, and Kin injection
+
+Why second:
+- task bugs have repeatedly come from mixing four different concerns in the same paths:
+  - user instruction interpretation
+  - approval state changes
+  - runtime mutation
+  - Kin draft / injection generation
+
+Primary authority:
+- `hooks/useTaskProtocolActions.ts`
+- `hooks/useTaskDraftHelpers.ts`
+- `lib/taskProtocolTaskState.ts`
+- `lib/app/kinTaskFlow.ts`
+- `lib/app/kinTransferFlows.ts`
+- `lib/app/miscUiFlows.ts`
+
+Target responsibility split:
+- `task intent + approval`
+  - candidate parsing, approval, rejection, approved shortcut state
+- `task runtime`
+  - current task id, title, intent, original instruction, progress state
+- `task draft sync`
+  - page-visible editable draft only
+- `Kin injection`
+  - compiled SYS block delivery only
+
+Mini phases:
+1. write a short contract comment for `originalInstruction`, `currentTaskIntent.goal`, and `currentTaskDraft.userInstruction`
+2. reduce repeated `sourceInstruction` fallback logic into one helper owned by the task-runtime boundary
+3. move Kin injection assembly behind a narrower helper so approval flows do not build transport details directly
+4. add a recompile-path test matrix: approve, edit, delete, resend
+
+Done when:
+- the same task edit does not need to touch UI draft sync and transport assembly in multiple places
+- approval flows no longer reconstruct transport details inline
+
+### Priority 3: Re-audit page-side composition before it regrows
+
+Why third:
+- `app/page.tsx` is thinner now, but the next risk is the broad workspace bundle flowing into page-side composition
+- if ignored, the old giant-page problem will come back one hook later
+
+Primary authority:
+- `app/page.tsx`
+- `hooks/useChatPagePanelsComposition.tsx`
+- `hooks/useChatPageController.ts`
+- `hooks/chatPageControllerCompositionBuilders.ts`
+- `hooks/chatPagePanelCompositionBuilders.ts`
+- `hooks/useChatPageControllerArgs.ts`
+- `hooks/useChatPageGptPanelArgs.ts`
+- `hooks/useChatPageKinPanelProps.ts`
+
+Target responsibility split:
+- `app/page.tsx`
+  - state roots, hook calls, final render only
+- `useChatPagePanelsComposition.tsx`
+  - page-side composition only
+- `useChatPageController.ts`
+  - grouped domain action composition only
+- composition builders
+  - shape conversion only, no new authority
+
+Mini phases:
+1. inventory the current `ChatPageWorkspaceViewArgs` bundle by domain
+2. remove any fields that are only pass-through noise
+3. stop builder files from quietly owning business decisions
+4. decide whether controller composition should stay page-only or become an app-level controller boundary
+
+Done when:
+- a new feature can identify one clear place for page composition work
+- builders stop becoming hidden policy owners
+
+### Priority 4: Unify responsive and panel-mode authority
+
+Why fourth:
+- recent regressions showed that layout mode, device heuristics, and panel toggles are still too loosely coupled
+- touch PCs and narrow desktop windows should not accidentally fall through to phone-only behavior
+
+Primary authority:
+- `hooks/useResponsive.ts`
+- `components/panels/kin/KinPanel.tsx`
+- `components/panels/gpt/GptPanel.tsx`
+- page/controller hooks that choose active panel or panel-mode state
+
+Target responsibility split:
+- device / viewport detection
+- layout mode decision
+- panel visibility / tab state
+
+Mini phases:
+1. map every place that decides `isMobile`, single-panel mode, or active tab defaults
+2. reduce duplicate heuristics
+3. add explicit tests for touch desktop, narrow desktop, and phone
+
+Done when:
+- "why did this become mobile UI?" has one answer path
+- connection / drawer toggle behavior does not depend on hidden device heuristics
+
+### Priority 5: Keep text and settings ownership boring
+
+Why fifth:
+- label regressions have been frequent, but ownership is now much better
+- the goal here is to keep that progress stable instead of letting ad-hoc strings creep back in
+
+Primary authority:
+- `components/panels/gpt/gptSettingsText.ts`
+- `components/panels/gpt/gptUiText.ts`
+- `components/panels/kin/kinUiText.ts`
+- `components/panels/kin/kinManagementText.ts`
+- high-churn settings / toolbar / drawer components
+
+Mini phases:
+1. finish normalizing garbled but still live text constants
+2. remove display-side emergency overrides once source text is safe to edit directly
+3. keep adding narrow UI regression tests for user-facing labels that drift often
+
+Done when:
+- user-facing labels have one obvious owner
+- copy fixes do not require hunting across multiple panels and helper files
+
+## File Responsibility Table
+
+Use this table before editing. If a change would cross multiple rows, pause and split the work.
+
+| Domain | Source of truth | Should own | Should not own |
+| --- | --- | --- | --- |
+| Task intent discovery | `lib/taskIntent.ts`, `lib/taskIntentFallback.ts` | candidate extraction and approval-aware interpretation | transport assembly, UI field sync |
+| Task runtime state | `lib/taskProtocolTaskState.ts`, `hooks/useKinTaskProtocol.ts` | task lifecycle state and protocol transitions | panel rendering or ad-hoc string formatting |
+| Task draft sync | `hooks/useTaskDraftHelpers.ts` | editable page draft projection | intent classification or Kin send policy |
+| Kin task transport | `lib/app/kinTaskFlow.ts`, `lib/app/kinTransferFlows.ts` | compiled SYS block delivery and injection | deciding what the task means |
+| Topic fallback | `lib/app/memoryInterpreterFallbackOrchestrator.ts` | approved-fragment shortcut and LLM fallback orchestration | broad entry-side pre-classification |
+| Page composition | `app/page.tsx`, `hooks/useChatPagePanelsComposition.tsx` | state roots and final composition | hidden business policy |
+| Controller composition | `hooks/useChatPageController.ts` | grouped domain action composition | page render concerns or raw panel formatting |
+| Responsive mode | `hooks/useResponsive.ts` | viewport/device heuristics | protocol or task policy |
+| Text ownership | `components/panels/gpt/gptSettingsText.ts`, `components/panels/gpt/gptUiText.ts`, `components/panels/kin/kinUiText.ts`, `components/panels/kin/kinManagementText.ts` | labels, user-facing copy, formatting helpers | runtime flow decisions |
 
 ## Phase Plan
 
@@ -97,11 +311,11 @@ Done:
 - `docs/architecture.md`
 - `docs/domain-model.md`
 - `docs/refactor-roadmap.md`
-
-Next:
 - `docs/protocol-actions.md`
 - `docs/ingest-pipeline.md`
 - `docs/workspace-model.md`
+
+Next:
 
 ### 2. Page / UI Thinning
 Status: Partially done
@@ -119,6 +333,9 @@ Done:
 - `useChatPageController.ts` now owns the page-level wiring between chat actions, protocol automation, and panel reset actions
 - `useChatPageControllerArgs.ts`, `useChatPageKinPanelProps.ts`, and `useChatPageGptPanelArgs.ts` now own the controller/panel argument assembly that previously lived inline in `app/page.tsx`
 - `useChatPagePanelsComposition.tsx` now owns the final page-side controller + panel composition, so `app/page.tsx` no longer instantiates `useChatPageController`, `KinPanel`, `GptPanel`, or `buildGptPanelProps(...)` directly
+- workspace view-args assembly with panel refs now also lives inside `useChatPagePanelsComposition.tsx`, so `app/page.tsx` only passes grouped workspace state/actions/services plus refs instead of constructing final composition view args itself
+- `chatPagePanelCompositionBuilders.ts` now shares one panel-base projection plus GPT references projection helpers instead of repeating the same workspace reshaping across both panel builders
+- `useChatPageController.ts` now assembles the grouped controller return through one helper, keeping the hook focused on domain-action wiring rather than inline return-shape construction
 - `useChatPagePanelsComposition.tsx` now consumes page workspace groups directly and owns task-snapshot glue itself, so the no-op passthrough hooks `useChatPagePanelsView.tsx` and `useChatPageWorkspaceView.tsx` were removed
 - `chatPageControllerCompositionTypes.ts` and `chatPagePanelCompositionTypes.ts` now split the old page-composition type hub by authority boundary instead of keeping controller and panel contracts in one file
 - `chatPageControllerCompositionBuilders.ts` and `chatPagePanelCompositionBuilders.ts` now split workspace reshaping into controller-side and panel-side builders, making the remaining page composition path easier to audit
@@ -164,6 +381,31 @@ Done:
 - empty runtime / requirement merge extraction
 - pending-answer / finalize mutation extraction
 - task start / replace-current-intent state builder extraction
+- task recompile source-of-truth fallback is now centralized so approval refresh uses one `originalInstruction -> draft -> goal` rule
+- `taskIntent` regression coverage now targets the live fallback/shortcut path directly, and old test-only public shortcut helpers were removed from the module surface
+- compiled Kin task multipart/input preparation now flows through one transport helper instead of being rebuilt inline inside approval refresh and task-start flows
+- approval-driven current-task refresh now has an explicit `resolve intent` step and a separate `apply runtime/draft/transport` step inside the flow
+- `useTaskProtocolActions.ts` now routes approve/update/delete through one shared current-task refresh helper instead of rebuilding the same refresh call three times
+- approved-candidate normalization now lives behind a task-intent-domain helper instead of being rebuilt inline inside UI flow code
+- `useTaskProtocolActions.test.ts` now locks the refresh boundary for approve/update/delete, including the `originalInstruction -> draft -> goal` source fallback order
+- approved-phrase collection transforms (`approve` / `update` / `delete`) now live in the task-intent domain instead of `miscUiFlows.ts`
+- current-task refresh orchestration now lives in its own app-flow module (`currentTaskIntentRefresh`) instead of sharing a general UI flow file
+- task draft protocol sync now uses a shared draft-projection helper and shared param type instead of rebuilding the projection shape inline inside the hook
+- task runtime start/replace now share one prompt-artifact helper for title / compiled prompt / requirement-progress generation instead of duplicating that assembly
+- `useKinTaskProtocol.ts` now routes most runtime mutations through shared commit/mutate helpers instead of repeating `runtime + snapshots` update wiring inline
+- archive fallback selection now has a pure helper in `taskRuntimeCollection.ts`, with tests covering active-task and non-active-task archive behavior
+- page composition now attaches panel scroll refs through a workspace-composition builder helper instead of doing a final inline `ui` spread in `app/page.tsx`
+- `useChatPagePanelsComposition.tsx` no longer returns an unused controller object, and task-snapshot save glue now lives behind panel-composition builders with regression tests
+- single-panel layout authority now routes through `usePanelLayout.ts` and `lib/app/panelLayout.ts`, so page-level active-panel normalization and action-side panel focusing no longer each own their own mobile checks
+- protocol automation, stored-document loading, multipart restore, file-ingest Kin focus, and GPT/Kin transfer flows now depend on shared `focusKinPanel` / `focusGptPanel` callbacks instead of scattering `if (isMobile) setActiveTab(...)`
+- task/protocol flows and `sendToGpt` arg builders now use the same shared panel-focus callbacks, and responsive tests now pin wide desktop, narrow desktop, and touch-desktop layout expectations
+- page/composition contracts now name panel visibility state as `activePanelTab` / `setActivePanelTab`, so panel-level navigation is easier to distinguish from local drawer/settings tabs
+- `useResponsive.ts` now documents that it only owns the single-panel-layout heuristic and must not choose which panel gets focus
+- panel composition now names cross-panel actions as `onSwitchToKinPanel` / `onSwitchToGptPanel`, reducing ambiguity with unrelated local `activeTab` setters inside drawers and settings
+- `app/test-task/page.tsx` now follows the same `usePanelLayout` / `isSinglePanelLayout` naming as the main page, so the sandbox panel route does not drift from production layout terminology
+- `chatPageWorkspaceCompositionBuilders.ts` no longer keeps a private no-refs workspace shape plus a second refs wrapper; the final workspace view args are now built in one pass
+- `useChatPageControllerArgs.ts` now consumes workspace view args directly, so controller composition no longer depends on a separate workspace-to-controller reshaping builder
+- protocol automation labels now live in dedicated text-owner modules (`gptProtocolAutomationText.ts`, `gptUiTextOverrides.ts`), and the GPT toolbar's `データ取込` label is no longer hardcoded inline in the render path
 - test coverage for parser, runtime, ingest, state, mutations, and task-state helpers
 - task intent approval flow rebuilt toward:
   - LLM-primary candidate extraction
@@ -174,7 +416,7 @@ Done:
 Next:
 - physically remove dead compatibility-era helpers from `lib/taskIntent.ts` so the active runtime path is easier to audit
 - decide whether `addPendingRequest` should also move to a pure helper
-- decide whether to continue thinning here or shift effort to `useGptMemory`
+- continue Priority 4 by deciding whether `useResponsive.ts` should stay heuristic-only or graduate into a broader layout-mode boundary with explicit narrow-desktop tests
 
 ### 3. Server Route Service Extraction
 Status: In progress
@@ -280,11 +522,41 @@ Done:
 - dead local inline search / URL helper functions removed from `sendToGptFlow.ts`
 - low-risk unused imports in `sendToGptFlow.ts` cleaned as part of iterative polishing
 - remaining dead inline URL fallback block removed from `sendToGptFlow.ts`
+- request-start UI mutation, shared GPT assistant-message creation, and request-failure append logic now live in `sendToGptFlowState.ts`, leaving `sendToGptFlow.ts` closer to orchestration-only
+- prepared-request limit-violation resolution and final-request-text assembly now live behind dedicated helpers in `sendToGptFlowRequestPreparation.ts`, so the remaining request-preparation path is easier to unit-test directly
+- protocol request-answer parsing and AI continuation artifact assembly now live behind dedicated helpers in `sendToGptFlowContext.ts`, with direct tests covering REQ parsing, continuation-token/link selection, and protocol limit priority
+- `preparedRequest` gate-time and execution-time projections now live behind dedicated helpers in `sendToGptFlowRequestPreparation.ts`, reducing deep property reads inside `sendToGptFlow.ts`
+- `PreparedRequestGateContext` / `PreparedRequestExecutionContext` now live in shared `sendToGptFlowTypes.ts`, and the GPT request payload assembly is exposed via a public helper in `sendToGptFlowRequest.ts` for direct tests
+- `PreparedRequestFinalizeContext` now carries the finalize-time subset into `sendToGptFlowFinalize.ts`, so `sendToGptFlow.ts` no longer manually fans out each finalize argument
+- explicit search-usage replay and memory-follow-up summary handling now live behind dedicated helpers in `sendToGptFlowFinalize.ts`, so finalize reads more like orchestration than a mixed side-effect block
+- task-directive, protocol-limit, and youtube-transcript gate projections now live behind dedicated helpers in `sendToGptFlowGuards.ts`, so `runPreparedRequestGates(...)` mostly coordinates decision-to-handler dispatch
+- multipart-import and inline-URL pre-preparation projections now also live in `sendToGptFlowGuards.ts`, and `prepareSendToGptMemoryContext(...)` now bundles memory-context + request-memory setup for `sendToGptFlow.ts`
+- ingest extraction shaping and GPT bridge-state updates now live behind dedicated helpers in `fileIngestFlow.ts`, with direct tests covering extracted-text normalization and `activeDocument` / recent-message bridge updates
+- Kin injection block assembly and post-ingest prepared/deepened task-draft projection now also live behind dedicated helpers in `fileIngestFlow.ts`, reducing late-stage branching inside `runFileIngestFlow(...)`
+- ingest summary-message assembly and attach-to-current-task input/draft projection also now live behind dedicated helpers in `fileIngestFlow.ts`, further shrinking the late-stage mixed string-building / draft-mutation block
+- ingest transform resolution and auto-prep / auto-deepen orchestration now also flow through dedicated helpers in `fileIngestFlow.ts`, while keeping the existing fallback strings and branching behavior unchanged
+- ingest-side GPT memory wiring now uses `KinMemoryState`-based runtime types instead of local `any` placeholders, tightening the `useFileIngestActions.ts` -> `fileIngestFlow.ts` boundary without changing behavior
+- `useFileIngestActions.ts` now builds a dedicated `runFileIngestFlow(...)` arg bundle instead of expanding the full call inline, and task-draft GPT memory bridging now also uses `KinMemoryState`-based types instead of local `any` placeholders
+- `useTaskDraftActions.ts` now builds dedicated flow-arg bundles through `taskDraftFlowArgBuilders.ts` instead of expanding every task-draft flow call inline
+- task-draft flow request start, recent-message slicing, assistant-result bridging, and summary-usage replay now flow through shared helpers in `taskDraftFlowShared.ts`, with direct tests pinning the sequence
+- prepared/deepened task-draft projection and library-source resolution now live in `taskDraftFlowProjection.ts`, reducing repeated `setCurrentTaskDraft(...)` shapes inside `taskDraftActionFlows.ts`
+- task-draft title resolution and GPT/manual source builders now live in `taskDraftFlowResolvers.ts`, so `taskDraftActionFlows.ts` no longer owns those task-domain decisions inline
+- `/api/ingest` now reads request/result normalization and line-budget helpers through shared `lib/server/ingest/routeHelpers.ts`, with direct tests covering output extraction, parsed-result normalization, and budget fallback behavior
+- `/api/ingest` prompt assembly now lives in `lib/server/ingest/promptBuilder.ts`, with direct tests covering visual/text-mode prompt guidance
+- `useIngestActions.ts` now routes legacy label/block/planner-transform helpers through `lib/app/legacyIngestHelpers.ts`, so the hook is less responsible for low-level ingest helper text assembly
+- `/api/ingest` selected-line / summary-level branching now also lives in `lib/server/ingest/resultSelection.ts`, so the route no longer owns the full result-budget decision tree inline
+- `useIngestActions.ts` now routes post-ingest auto prep/deepen resolution and ingest summary-message assembly through `lib/app/legacyIngestFlowHelpers.ts`, with direct tests covering both helper outputs
+- `app/api/ingest/route.ts` itself is now aligned to helper-backed orchestration, with local parsing/budget/prompt duplication removed in favor of server helper modules
+- `useIngestActions.ts` was rewritten around helper-backed orchestration as well, so the legacy hook no longer carries private low-level helper implementations inline
 - legacy local helper block removed from `route.ts`
+- `lib/app/ingestClient.ts` now owns shared `/api/ingest` request assembly, fetch, title resolution, and error resolution for both `useIngestActions.ts` and `fileIngestFlow.ts`
+- ingest-side task-draft projection now also flows through shared `ingestTaskDraftUpdates.ts`, so both the legacy ingest hook and `fileIngestFlow.ts` reuse the same attach/prep/deepen draft mutation helpers
+- `docs/ingest-pipeline.md` now documents the current ingest boundaries so the legacy hook and newer flow do not drift back into separate private helper stacks
 - approved-candidate reapply now uses the same formal memory recomputation path as approved-rule reapply
 - closing-reply detection now uses a single source of truth
 - chat topic adjudication flow was structurally rebuilt and reached a stable live-reviewed state
 - task title auto-generation was rebuilt around a clean naming pipeline
+- `currentTaskIntentRefresh.test.ts` now fixes the approval refresh path end-to-end at the flow boundary, covering LLM re-interpretation, runtime replace, task-draft sync, and Kin input refresh in one test
 
 Next:
 - keep `memoryInterpreter.ts` and `useGptMemory.ts` stable unless a correctness issue is found

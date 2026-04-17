@@ -11,6 +11,7 @@ import {
   buildTaskProgressView,
   getTaskProgressSelection,
   removeTaskRuntimeSnapshot,
+  resolveRuntimeAfterArchive,
   upsertTaskRuntimeSnapshot,
 } from "@/lib/taskRuntimeCollection";
 import { toUserFacingRequests } from "@/lib/taskProgress";
@@ -45,6 +46,21 @@ export function useKinTaskProtocol() {
     return `A${String(Date.now()).slice(-6)}`;
   }
 
+  function commitRuntimeState(nextState: TaskRuntimeState) {
+    setRuntime(nextState);
+    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextState));
+  }
+
+  function mutateRuntimeState(
+    updater: (currentRuntime: TaskRuntimeState) => TaskRuntimeState
+  ) {
+    setRuntime((prev) => {
+      const nextState = updater(prev);
+      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
+      return nextState;
+    });
+  }
+
   function startTask(params: {
     originalInstruction: string;
     intent: TaskIntent;
@@ -59,8 +75,7 @@ export function useKinTaskProtocol() {
       title: params.title,
       now: Date.now(),
     });
-    setRuntime(started.nextState);
-    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, started.nextState));
+    commitRuntimeState(started.nextState);
 
     return {
       taskId,
@@ -70,7 +85,7 @@ export function useKinTaskProtocol() {
   }
 
   function addPendingRequest(request: Omit<PendingExternalRequest, "createdAt" | "status">) {
-    setRuntime((prev) => {
+    mutateRuntimeState((prev) => {
       const pending: PendingExternalRequest = {
         ...request,
         createdAt: Date.now(),
@@ -82,7 +97,6 @@ export function useKinTaskProtocol() {
         pendingRequests: nextPending,
         userFacingRequests: toUserFacingRequests(nextPending),
       };
-      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
       return nextState;
     });
   }
@@ -108,8 +122,7 @@ export function useKinTaskProtocol() {
       ...next.nextState,
     };
 
-    setRuntime(nextState);
-    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextState));
+    commitRuntimeState(nextState);
 
     return {
       taskId,
@@ -119,23 +132,17 @@ export function useKinTaskProtocol() {
   }
 
   function answerPendingRequest(requestId: string, answerText: string) {
-    setRuntime((prev) => {
-      const nextState = answerPendingTaskRequestState(prev, {
+    mutateRuntimeState((prev) =>
+      answerPendingTaskRequestState(prev, {
         requestId,
         answerText,
         answeredAt: Date.now(),
-      });
-      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
-      return nextState;
-    });
+      })
+    );
   }
 
   function setFinalizeReviewed(params: { accepted: boolean; summary?: string }) {
-    setRuntime((prev) => {
-      const nextState = applyFinalizeReviewedState(prev, params);
-      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
-      return nextState;
-    });
+    mutateRuntimeState((prev) => applyFinalizeReviewedState(prev, params));
   }
 
   function updateRequirementProgressCounts(params: {
@@ -143,11 +150,7 @@ export function useKinTaskProtocol() {
     completedCount: number;
     targetCount?: number;
   }) {
-    setRuntime((prev) => {
-      const nextState = updateRequirementProgressCountsState(prev, params);
-      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
-      return nextState;
-    });
+    mutateRuntimeState((prev) => updateRequirementProgressCountsState(prev, params));
   }
 
   function ingestProtocolEvents(params: {
@@ -157,16 +160,14 @@ export function useKinTaskProtocol() {
   }) {
     if (params.events.length === 0) return;
 
-    setRuntime((prev) => {
-      const nextState = ingestTaskProtocolEventsState(prev, {
+    mutateRuntimeState((prev) =>
+      ingestTaskProtocolEventsState(prev, {
         direction: params.direction,
         events: params.events,
         createActionId,
         now: () => Date.now(),
-      });
-      setRuntimeSnapshots((current) => upsertTaskRuntimeSnapshot(current, nextState));
-      return nextState;
-    });
+      })
+    );
   }
 
   function prepareTaskSyncMessage(note?: string) {
@@ -185,16 +186,19 @@ export function useKinTaskProtocol() {
 
   function resetRuntime() {
     const nextState = createEmptyTaskRuntime();
-    setRuntime(nextState);
-    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextState));
+    commitRuntimeState(nextState);
   }
 
   function archiveTask(taskId: string) {
     setRuntimeSnapshots((prev) => {
       const nextSnapshots = removeTaskRuntimeSnapshot(prev, taskId);
       setRuntime((currentRuntime) => {
-        if (currentRuntime.currentTaskId !== taskId) return currentRuntime;
-        return nextSnapshots[0] || createEmptyTaskRuntime();
+        return resolveRuntimeAfterArchive({
+          currentRuntime,
+          nextSnapshots,
+          archivedTaskId: taskId,
+          createEmptyTaskRuntime,
+        });
       });
       return nextSnapshots;
     });
@@ -218,15 +222,13 @@ export function useKinTaskProtocol() {
     if (progressSelection.activeIndex <= 0) return;
     const nextRuntime = runtimeSnapshots[progressSelection.activeIndex - 1];
     if (!nextRuntime) return;
-    setRuntime(nextRuntime);
-    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextRuntime));
+    commitRuntimeState(nextRuntime);
   }
 
   function selectNextProgressView() {
     const nextRuntime = runtimeSnapshots[progressSelection.activeIndex + 1];
     if (!nextRuntime) return;
-    setRuntime(nextRuntime);
-    setRuntimeSnapshots((prev) => upsertTaskRuntimeSnapshot(prev, nextRuntime));
+    commitRuntimeState(nextRuntime);
   }
 
   return {

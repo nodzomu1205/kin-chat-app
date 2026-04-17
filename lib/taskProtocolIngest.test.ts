@@ -7,6 +7,7 @@ function createRuntime(overrides: Partial<TaskRuntimeState> = {}): TaskRuntimeSt
     currentTaskId: "123456",
     currentTaskTitle: "Test Task",
     currentTaskIntent: null,
+    originalInstruction: "",
     compiledTaskPrompt: "",
     taskStatus: "running",
     latestSummary: "",

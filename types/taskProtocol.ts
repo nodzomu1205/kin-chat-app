@@ -139,6 +139,9 @@ export type TaskRuntimeState = {
   currentTaskId: string | null;
   currentTaskTitle: string;
   currentTaskIntent: TaskIntent | null;
+  // Full user instruction text that the LLM reviewed to produce the current task intent.
+  // Recompile and approval flows must prefer this over reduced fields such as `goal`.
+  originalInstruction: string;
   compiledTaskPrompt: string;
   taskStatus: TaskExecutionStatus;
   latestSummary: string;

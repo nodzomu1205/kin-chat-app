@@ -3,21 +3,19 @@ import type { StoredDocument } from "@/types/chat";
 export type StoredDocumentUiActionArgs = {
   getStoredDocument: (documentId: string) => StoredDocument | null;
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
-  isMobile: boolean;
-  setActiveTab: React.Dispatch<React.SetStateAction<"kin" | "gpt">>;
+  focusGptPanel: () => boolean;
 };
 
 export function useStoredDocumentUiActions({
   getStoredDocument,
   setGptInput,
-  isMobile,
-  setActiveTab,
+  focusGptPanel,
 }: StoredDocumentUiActionArgs) {
   const loadStoredDocumentToGptInput = (documentId: string) => {
     const document = getStoredDocument(documentId);
     if (!document) return;
     setGptInput(document.text);
-    if (isMobile) setActiveTab("gpt");
+    focusGptPanel();
   };
 
   const downloadStoredDocument = (documentId: string) => {

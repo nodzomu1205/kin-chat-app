@@ -13,6 +13,7 @@ import {
   buttonTranslate,
 } from "./gptPanelStyles";
 import { GPT_TOOLBAR_TEXT } from "./gptUiText";
+import { GPT_TOOLBAR_TEXT_OVERRIDES } from "./gptUiTextOverrides";
 
 type GptBottomTab = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
 
@@ -37,7 +38,10 @@ type Props = {
 const TAB_HEIGHT_DESKTOP = 21;
 const TAB_HEIGHT_MOBILE = 19;
 
-const tabButtonStyle = (active: boolean, isMobile: boolean): React.CSSProperties => ({
+const tabButtonStyle = (
+  active: boolean,
+  isMobile: boolean
+): React.CSSProperties => ({
   height: isMobile ? TAB_HEIGHT_MOBILE : TAB_HEIGHT_DESKTOP,
   borderRadius: "9px 9px 0 0",
   border: "1px solid #cbd5e1",
@@ -106,19 +110,40 @@ function ActionRow({
     return (
       <>
         {maybeSwitch}
-        <button type="button" style={resetLike(buttonTranslate)} onClick={() => onAction("translate_explain")}>
+        <button
+          type="button"
+          style={resetLike(buttonTranslate)}
+          onClick={() => onAction("translate_explain")}
+        >
           {GPT_TOOLBAR_TEXT.translate}
         </button>
-        <button type="button" style={resetLike(buttonReply)} onClick={() => onAction("reply_only")}>
+        <button
+          type="button"
+          style={resetLike(buttonReply)}
+          onClick={() => onAction("reply_only")}
+        >
           {GPT_TOOLBAR_TEXT.replyOnly}
         </button>
-        <button type="button" style={resetLike(buttonPolish)} onClick={() => onAction("polish")}>
+        <button
+          type="button"
+          style={resetLike(buttonPolish)}
+          onClick={() => onAction("polish")}
+        >
           {GPT_TOOLBAR_TEXT.polish}
         </button>
-        <button type="button" style={resetLike(buttonTransfer)} onClick={onTransfer}>
+        <button
+          type="button"
+          style={resetLike(buttonTransfer)}
+          onClick={onTransfer}
+        >
           {GPT_TOOLBAR_TEXT.sendToKin}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+        <button
+          type="button"
+          style={resetLike(buttonReset)}
+          onClick={onReset}
+          title={GPT_TOOLBAR_TEXT.resetTitle}
+        >
           {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
@@ -129,13 +154,26 @@ function ActionRow({
     return (
       <>
         {maybeSwitch}
-        <button type="button" style={tint(buttonTask, "#93c5fd", "#eff6ff", "#1d4ed8")} onClick={onRunTask}>
+        <button
+          type="button"
+          style={tint(buttonTask, "#93c5fd", "#eff6ff", "#1d4ed8")}
+          onClick={onRunTask}
+        >
           {GPT_TOOLBAR_TEXT.runTask}
         </button>
-        <button type="button" style={tint(buttonTask, "#93c5fd", "#eff6ff", "#1d4ed8")} onClick={onRunTaskUpdate}>
+        <button
+          type="button"
+          style={tint(buttonTask, "#93c5fd", "#eff6ff", "#1d4ed8")}
+          onClick={onRunTaskUpdate}
+        >
           {GPT_TOOLBAR_TEXT.updateTask}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+        <button
+          type="button"
+          style={resetLike(buttonReset)}
+          onClick={onReset}
+          title={GPT_TOOLBAR_TEXT.resetTitle}
+        >
           {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
@@ -146,16 +184,33 @@ function ActionRow({
     return (
       <>
         {maybeSwitch}
-        <button type="button" style={tint(buttonDeepen, "#86efac", "#f0fdf4", "#15803d")} onClick={onRunDeepen}>
+        <button
+          type="button"
+          style={tint(buttonDeepen, "#86efac", "#f0fdf4", "#15803d")}
+          onClick={onRunDeepen}
+        >
           {GPT_TOOLBAR_TEXT.deepen}
         </button>
-        <button type="button" style={tint(buttonTask, "#86efac", "#f0fdf4", "#15803d")} onClick={onImportLastResponse}>
+        <button
+          type="button"
+          style={tint(buttonTask, "#86efac", "#f0fdf4", "#15803d")}
+          onClick={onImportLastResponse}
+        >
           {GPT_TOOLBAR_TEXT.importResponse}
         </button>
-        <button type="button" style={tint(buttonTask, "#86efac", "#f0fdf4", "#15803d")} onClick={onAttachSearchResult}>
-          {GPT_TOOLBAR_TEXT.attachSearchResult}
+        <button
+          type="button"
+          style={tint(buttonTask, "#86efac", "#f0fdf4", "#15803d")}
+          onClick={onAttachSearchResult}
+        >
+          {GPT_TOOLBAR_TEXT_OVERRIDES.attachSearchResult}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+        <button
+          type="button"
+          style={resetLike(buttonReset)}
+          onClick={onReset}
+          title={GPT_TOOLBAR_TEXT.resetTitle}
+        >
           {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
@@ -180,10 +235,19 @@ function ActionRow({
         >
           {GPT_TOOLBAR_TEXT.sendCurrentTask}
         </button>
-        <button type="button" style={tint(buttonTask, "#d8b4fe", "#faf5ff", "#7e22ce")} onClick={onReceiveKinResponse}>
+        <button
+          type="button"
+          style={tint(buttonTask, "#d8b4fe", "#faf5ff", "#7e22ce")}
+          onClick={onReceiveKinResponse}
+        >
           {GPT_TOOLBAR_TEXT.receiveKinResponse}
         </button>
-        <button type="button" style={resetLike(buttonReset)} onClick={onReset} title={GPT_TOOLBAR_TEXT.resetTitle}>
+        <button
+          type="button"
+          style={resetLike(buttonReset)}
+          onClick={onReset}
+          title={GPT_TOOLBAR_TEXT.resetTitle}
+        >
           {GPT_TOOLBAR_TEXT.reset}
         </button>
       </>
@@ -191,7 +255,9 @@ function ActionRow({
   }
 
   return (
-    <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "0 4px" }}>
+    <div
+      style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "0 4px" }}
+    >
       {GPT_TOOLBAR_TEXT.fileImportHint}
     </div>
   );
@@ -219,7 +285,11 @@ export default function GptToolbar(props: Props) {
           paddingBottom: isMobile ? 4 : 5,
         }}
       >
-        <button type="button" onClick={() => onChangeTab("chat")} style={tabButtonStyle(activeTab === "chat", isMobile)}>
+        <button
+          type="button"
+          onClick={() => onChangeTab("chat")}
+          style={tabButtonStyle(activeTab === "chat", isMobile)}
+        >
           {GPT_TOOLBAR_TEXT.chatTab}
         </button>
         <button
@@ -236,10 +306,18 @@ export default function GptToolbar(props: Props) {
         >
           {GPT_TOOLBAR_TEXT.taskSecondaryTab}
         </button>
-        <button type="button" onClick={() => onChangeTab("kin")} style={tabButtonStyle(activeTab === "kin", isMobile)}>
+        <button
+          type="button"
+          onClick={() => onChangeTab("kin")}
+          style={tabButtonStyle(activeTab === "kin", isMobile)}
+        >
           {GPT_TOOLBAR_TEXT.kinTab}
         </button>
-        <button type="button" onClick={() => onChangeTab("file")} style={tabButtonStyle(activeTab === "file", isMobile)}>
+        <button
+          type="button"
+          onClick={() => onChangeTab("file")}
+          style={tabButtonStyle(activeTab === "file", isMobile)}
+        >
           {GPT_TOOLBAR_TEXT.fileTab}
         </button>
       </div>

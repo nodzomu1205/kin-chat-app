@@ -8,12 +8,27 @@ import {
   runAutoDeepenTask,
   runAutoPrepTask,
 } from "@/lib/app/gptTaskClient";
-import { createTaskSource } from "@/lib/app/taskDraftHelpers";
 import {
+  buildDeepenedTaskDraftUpdate,
+  buildLibraryTaskSource,
+  buildPreparedTaskDraftUpdate,
+} from "@/lib/app/taskDraftFlowProjection";
+import {
+  buildGptTaskPrepSource,
+  buildGptTaskUpdateSource,
+  buildLatestGptTaskSource,
+  resolveTaskTitleFromResult,
+  resolveUpdateTaskTitle,
+} from "@/lib/app/taskDraftFlowResolvers";
+import {
+  appendTaskFlowAssistantResult,
+  appendTaskFlowRecentMessage,
   appendTaskInfoMessage,
-  applyTaskMemoryBridge,
+  applyTaskFlowSummaryUsage,
+  getTaskFlowRecentMessages,
+  startTaskFlowRequest,
 } from "@/lib/app/taskDraftFlowShared";
-import type { Message, ReferenceLibraryItem } from "@/types/chat";
+import type { KinMemoryState, Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchContext, TaskDraft } from "@/types/task";
 import { normalizeUsage } from "@/lib/tokenStats";
 
@@ -26,80 +41,7 @@ type ParsedInputLike = {
 
 type SetTaskDraft = Dispatch<SetStateAction<TaskDraft>>;
 
-function resolveUpdateTaskTitle(params: {
-  explicitTitle?: string;
-  currentTitle?: string;
-  currentTaskName?: string;
-  freeText?: string;
-  searchQuery?: string;
-  fallback?: string;
-  getResolvedTaskTitle: (params: {
-    explicitTitle?: string;
-    freeText?: string;
-    searchQuery?: string;
-    fallback?: string;
-  }) => string;
-}) {
-  if (params.explicitTitle?.trim()) {
-    return params.getResolvedTaskTitle({
-      explicitTitle: params.explicitTitle,
-      freeText: params.freeText,
-      searchQuery: params.searchQuery,
-      fallback: params.fallback,
-    });
-  }
-
-  const current = params.currentTitle?.trim() || params.currentTaskName?.trim();
-  if (current) return current;
-
-  return params.getResolvedTaskTitle({
-    freeText: params.freeText,
-    searchQuery: params.searchQuery,
-    fallback: params.fallback,
-  });
-}
-
-export function resolveTaskTitleFromResult(params: {
-  explicitTitle?: string;
-  currentTitle?: string;
-  currentTaskName?: string;
-  resultText: string;
-  searchQuery?: string;
-  fallback?: string;
-  getResolvedTaskTitle: (params: {
-    explicitTitle?: string;
-    freeText?: string;
-    searchQuery?: string;
-    fallback?: string;
-  }) => string;
-}) {
-  if (params.explicitTitle?.trim()) {
-    return params.getResolvedTaskTitle({
-      explicitTitle: params.explicitTitle,
-      freeText: params.resultText,
-      searchQuery: params.searchQuery,
-      fallback: params.fallback,
-    });
-  }
-
-  const inferred = params.getResolvedTaskTitle({
-    freeText: params.resultText,
-    searchQuery: params.searchQuery,
-    fallback: params.fallback,
-  });
-  if (inferred?.trim()) {
-    return inferred;
-  }
-
-  return (
-    params.currentTitle?.trim() ||
-    params.currentTaskName?.trim() ||
-    params.fallback ||
-    "Task"
-  );
-}
-
-type CommonTaskDraftFlowArgs = {
+export type CommonTaskDraftFlowArgs = {
   gptLoading: boolean;
   currentTaskDraft: TaskDraft;
   getTaskBaseText: () => string;
@@ -114,10 +56,10 @@ type CommonTaskDraftFlowArgs = {
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
-  setGptState: Dispatch<SetStateAction<any>>;
-  persistCurrentGptState?: (state: any) => void;
+  setGptState: Dispatch<SetStateAction<KinMemoryState>>;
+  persistCurrentGptState?: (state: KinMemoryState) => void;
   setCurrentTaskDraft: SetTaskDraft;
-  gptStateRef: MutableRefObject<{ recentMessages?: Message[] }>;
+  gptStateRef: MutableRefObject<KinMemoryState>;
   chatRecentLimit: number;
   applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
@@ -132,7 +74,7 @@ type CommonTaskDraftFlowArgs = {
 };
 
 export async function runPrepTaskFromInputFlow(
-  args: CommonTaskDraftFlowArgs & { gptInput: string }
+  args: PrepTaskFromInputFlowArgs
 ) {
   if (!args.gptInput.trim() || args.gptLoading) return;
 
@@ -158,12 +100,19 @@ export async function runPrepTaskFromInputFlow(
     text: `[Task prep]\n${text}`,
   };
 
-  const baseRecent = args.gptStateRef.current.recentMessages || [];
-  const newRecent = [...baseRecent, userMsg].slice(-args.chatRecentLimit);
+  const baseRecent = getTaskFlowRecentMessages(args.gptStateRef);
+  const newRecent = appendTaskFlowRecentMessage(
+    baseRecent,
+    args.chatRecentLimit,
+    userMsg
+  );
 
-  args.setGptMessages((prev) => [...prev, userMsg]);
-  args.setGptInput("");
-  args.setGptLoading(true);
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    userMessage: userMsg,
+  });
 
   try {
     const data = await runAutoPrepTask(prepInput, "gpt-input");
@@ -177,10 +126,15 @@ export async function runPrepTaskFromInputFlow(
         sourceType: "gpt_input",
       },
     };
-    const updatedRecent = [...newRecent, assistantMsg].slice(-args.chatRecentLimit);
+    const updatedRecent = appendTaskFlowRecentMessage(
+      newRecent,
+      args.chatRecentLimit,
+      assistantMsg
+    );
 
-    args.setGptMessages((prev) => [...prev, assistantMsg]);
-    applyTaskMemoryBridge({
+    appendTaskFlowAssistantResult({
+      setGptMessages: args.setGptMessages,
+      assistantMessage: assistantMsg,
       setGptState: args.setGptState,
       persistCurrentGptState: args.persistCurrentGptState,
       gptStateRef: args.gptStateRef,
@@ -188,32 +142,27 @@ export async function runPrepTaskFromInputFlow(
       lastUserIntent: `タスク整理: ${resolvedTitle}`,
     });
 
-    const source = createTaskSource("gpt_chat", "GPT task prep", text);
-    args.setCurrentTaskDraft((prev) => ({
-      ...prev,
-      taskName: resolvedTitle,
-      title: resolvedTitle,
-      userInstruction: parsedInput.userInstruction || prev.userInstruction,
-      body: taskText,
-      searchContext: args.currentTaskDraft.searchContext ?? prev.searchContext,
-      objective: (parsedInput.freeText || text).slice(0, 120),
-      prepText: taskText,
-      deepenText: "",
-      mergedText: taskText,
-      kinTaskText: "",
-      status: "prepared",
-      sources: [...prev.sources, source],
-      updatedAt: new Date().toISOString(),
-    }));
+    const source = buildGptTaskPrepSource(text);
+    args.setCurrentTaskDraft((prev) =>
+      buildPreparedTaskDraftUpdate(prev, {
+        title: resolvedTitle,
+        userInstruction: parsedInput.userInstruction,
+        body: taskText,
+        searchContext: args.currentTaskDraft.searchContext ?? prev.searchContext,
+        objective: (parsedInput.freeText || text).slice(0, 120),
+        prepText: taskText,
+        sources: [source],
+      })
+    );
 
     args.applyTaskUsage(data?.usage);
-    const memoryResult = await args.handleGptMemory(updatedRecent, {
+    await applyTaskFlowSummaryUsage({
+      recentMessages: updatedRecent,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
       currentTaskTitleOverride: resolvedTitle,
       lastUserIntent: `タスク整理: ${resolvedTitle}`,
     });
-    if (memoryResult.summaryUsage) {
-      args.applySummaryUsage(memoryResult.summaryUsage);
-    }
   } catch (error) {
     console.error(error);
     appendTaskInfoMessage(args.setGptMessages, "Task preparation failed.");
@@ -223,7 +172,7 @@ export async function runPrepTaskFromInputFlow(
 }
 
 export async function runUpdateTaskFromInputFlow(
-  args: CommonTaskDraftFlowArgs & { gptInput: string }
+  args: UpdateTaskFromInputFlowArgs
 ) {
   if (!args.gptInput.trim() || args.gptLoading) return;
 
@@ -266,12 +215,19 @@ export async function runUpdateTaskFromInputFlow(
     },
   };
 
-  const baseRecent = args.gptStateRef.current.recentMessages || [];
-  const newRecent = [...baseRecent, userMsg].slice(-args.chatRecentLimit);
+  const baseRecent = getTaskFlowRecentMessages(args.gptStateRef);
+  const newRecent = appendTaskFlowRecentMessage(
+    baseRecent,
+    args.chatRecentLimit,
+    userMsg
+  );
 
-  args.setGptMessages((prev) => [...prev, userMsg]);
-  args.setGptInput("");
-  args.setGptLoading(true);
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    userMessage: userMsg,
+  });
 
   try {
     const data = await runAutoPrepTask(mergedInput, "task-update");
@@ -294,10 +250,15 @@ export async function runUpdateTaskFromInputFlow(
         sourceType: "manual",
       },
     };
-    const updatedRecent = [...newRecent, assistantMsg].slice(-args.chatRecentLimit);
+    const updatedRecent = appendTaskFlowRecentMessage(
+      newRecent,
+      args.chatRecentLimit,
+      assistantMsg
+    );
 
-    args.setGptMessages((prev) => [...prev, assistantMsg]);
-    applyTaskMemoryBridge({
+    appendTaskFlowAssistantResult({
+      setGptMessages: args.setGptMessages,
+      assistantMessage: assistantMsg,
       setGptState: args.setGptState,
       persistCurrentGptState: args.persistCurrentGptState,
       gptStateRef: args.gptStateRef,
@@ -305,35 +266,26 @@ export async function runUpdateTaskFromInputFlow(
       lastUserIntent: `タスク更新: ${finalizedTitle}`,
     });
 
-    const source = createTaskSource(
-      "manual_note",
-      "GPT task update",
-      parsedInput.freeText || additionalText
+    const source = buildGptTaskUpdateSource(parsedInput.freeText || additionalText);
+
+    args.setCurrentTaskDraft((prev) =>
+      buildPreparedTaskDraftUpdate(prev, {
+        title: finalizedTitle,
+        userInstruction: parsedInput.userInstruction,
+        body: taskText,
+        preservePrepText: true,
+        sources: [source],
+      })
     );
 
-    args.setCurrentTaskDraft((prev) => ({
-      ...prev,
-      title: finalizedTitle,
-      taskName: finalizedTitle,
-      userInstruction: parsedInput.userInstruction || prev.userInstruction,
-      body: taskText,
-      prepText: prev.prepText || prev.mergedText,
-      deepenText: "",
-      mergedText: taskText,
-      kinTaskText: "",
-      status: "prepared",
-      sources: [...prev.sources, source],
-      updatedAt: new Date().toISOString(),
-    }));
-
     args.applyTaskUsage(data?.usage);
-    const memoryResult = await args.handleGptMemory(updatedRecent, {
+    await applyTaskFlowSummaryUsage({
+      recentMessages: updatedRecent,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
       currentTaskTitleOverride: finalizedTitle,
       lastUserIntent: `タスク更新: ${finalizedTitle}`,
     });
-    if (memoryResult.summaryUsage) {
-      args.applySummaryUsage(memoryResult.summaryUsage);
-    }
   } catch (error) {
     console.error(error);
     appendTaskInfoMessage(args.setGptMessages, "Task update failed.");
@@ -343,10 +295,7 @@ export async function runUpdateTaskFromInputFlow(
 }
 
 export async function runUpdateTaskFromLastGptMessageFlow(
-  args: CommonTaskDraftFlowArgs & {
-    gptInput: string;
-    gptMessages: Message[];
-  }
+  args: UpdateTaskFromLastGptMessageFlowArgs
 ) {
   if (args.gptLoading) return;
 
@@ -390,8 +339,11 @@ export async function runUpdateTaskFromLastGptMessageFlow(
         searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
       });
 
-  args.setGptInput("");
-  args.setGptLoading(true);
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+  });
 
   try {
     const data = await runAutoPrepTask(taskInput, "task-update-last-gpt");
@@ -414,11 +366,16 @@ export async function runUpdateTaskFromLastGptMessageFlow(
         sourceType: "gpt_input",
       },
     };
-    const baseRecent = args.gptStateRef.current.recentMessages || [];
-    const updatedRecent = [...baseRecent, assistantMsg].slice(-args.chatRecentLimit);
+    const baseRecent = getTaskFlowRecentMessages(args.gptStateRef);
+    const updatedRecent = appendTaskFlowRecentMessage(
+      baseRecent,
+      args.chatRecentLimit,
+      assistantMsg
+    );
 
-    args.setGptMessages((prev) => [...prev, assistantMsg]);
-    applyTaskMemoryBridge({
+    appendTaskFlowAssistantResult({
+      setGptMessages: args.setGptMessages,
+      assistantMessage: assistantMsg,
       setGptState: args.setGptState,
       persistCurrentGptState: args.persistCurrentGptState,
       gptStateRef: args.gptStateRef,
@@ -426,38 +383,29 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       lastUserIntent: `最新GPTレスからタスク更新: ${finalizedTitle}`,
     });
 
-    const source = createTaskSource(
-      "manual_note",
-      "Latest GPT message",
-      directionInstruction
-        ? `Direction:\n${directionInstruction}\n\nLatest GPT response:\n${lastGptMessage.text.trim()}`
-        : lastGptMessage.text.trim()
+    const source = buildLatestGptTaskSource({
+      directionInstruction,
+      latestGptText: lastGptMessage.text.trim(),
+    });
+
+    args.setCurrentTaskDraft((prev) =>
+      buildPreparedTaskDraftUpdate(prev, {
+        title: finalizedTitle,
+        userInstruction: parsedInput.userInstruction,
+        body: taskText,
+        objective: (directionInstruction || lastGptMessage.text.trim()).slice(0, 120),
+        sources: [source],
+      })
     );
 
-    args.setCurrentTaskDraft((prev) => ({
-      ...prev,
-      title: finalizedTitle,
-      taskName: finalizedTitle,
-      userInstruction: parsedInput.userInstruction || prev.userInstruction,
-      body: taskText,
-      objective:
-        (directionInstruction || lastGptMessage.text.trim()).slice(0, 120),
-      deepenText: "",
-      mergedText: taskText,
-      kinTaskText: "",
-      status: "prepared",
-      sources: [...prev.sources, source],
-      updatedAt: new Date().toISOString(),
-    }));
-
     args.applyTaskUsage(data?.usage);
-    const memoryResult = await args.handleGptMemory(updatedRecent, {
+    await applyTaskFlowSummaryUsage({
+      recentMessages: updatedRecent,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
       currentTaskTitleOverride: finalizedTitle,
       lastUserIntent: `最新GPTレスからタスク更新: ${finalizedTitle}`,
     });
-    if (memoryResult.summaryUsage) {
-      args.applySummaryUsage(memoryResult.summaryUsage);
-    }
   } catch (error) {
     console.error(error);
     appendTaskInfoMessage(args.setGptMessages, "Updating the task from the latest GPT message failed.");
@@ -467,11 +415,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
 }
 
 export async function runAttachSearchResultToTaskFlow(
-  args: CommonTaskDraftFlowArgs & {
-    gptInput: string;
-    lastSearchContext: SearchContext | null;
-    getTaskLibraryItem: () => ReferenceLibraryItem | null;
-  }
+  args: AttachSearchResultToTaskFlowArgs
 ) {
   if (args.gptLoading) return;
 
@@ -516,8 +460,11 @@ export async function runAttachSearchResultToTaskFlow(
           : "",
     });
 
-    args.setGptInput("");
-    args.setGptLoading(true);
+    startTaskFlowRequest({
+      setGptMessages: args.setGptMessages,
+      setGptInput: args.setGptInput,
+      setGptLoading: args.setGptLoading,
+    });
 
     try {
       const data = await runAutoPrepTask(prepInput, "attach-library-item");
@@ -540,11 +487,16 @@ export async function runAttachSearchResultToTaskFlow(
           sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
         },
       };
-      const baseRecent = args.gptStateRef.current.recentMessages || [];
-      const updatedRecent = [...baseRecent, assistantMsg].slice(-args.chatRecentLimit);
+      const baseRecent = getTaskFlowRecentMessages(args.gptStateRef);
+      const updatedRecent = appendTaskFlowRecentMessage(
+        baseRecent,
+        args.chatRecentLimit,
+        assistantMsg
+      );
 
-      args.setGptMessages((prev) => [...prev, assistantMsg]);
-      applyTaskMemoryBridge({
+      appendTaskFlowAssistantResult({
+        setGptMessages: args.setGptMessages,
+        assistantMessage: assistantMsg,
         setGptState: args.setGptState,
         persistCurrentGptState: args.persistCurrentGptState,
         gptStateRef: args.gptStateRef,
@@ -558,45 +510,37 @@ export async function runAttachSearchResultToTaskFlow(
         },
       });
 
-      const source = createTaskSource(
-        taskLibraryItem?.itemType === "search"
-          ? "web_search"
-          : taskLibraryItem?.itemType === "ingested_file"
-            ? "file_ingest"
-            : "kin_message",
-        taskLibraryItem?.itemType === "search"
-          ? `Search result: ${taskLibraryItem.title || taskSearchContext?.query || "Untitled"}`
-          : `Library item: ${taskLibraryItem?.title || "Untitled"}`,
-        materialText
+      const source = buildLibraryTaskSource({
+        taskLibraryItem,
+        taskSearchContext,
+        materialText,
+      });
+
+      args.setCurrentTaskDraft((prev) =>
+        buildPreparedTaskDraftUpdate(prev, {
+          title: finalizedTitle,
+          userInstruction: parsedInput.userInstruction,
+          body: taskText,
+          searchContext:
+            taskLibraryItem?.itemType === "search"
+              ? taskSearchContext ?? prev.searchContext
+              : prev.searchContext,
+          objective:
+            prev.objective ||
+            parsedInput.freeText ||
+            taskLibraryItem?.title ||
+            taskSearchContext?.query ||
+            "Imported from library item",
+          prepText: taskText,
+          sources: [source],
+        })
       );
 
-      args.setCurrentTaskDraft((prev) => ({
-        ...prev,
-        title: finalizedTitle,
-        taskName: finalizedTitle,
-        userInstruction: parsedInput.userInstruction || prev.userInstruction,
-        body: taskText,
-        searchContext:
-          taskLibraryItem?.itemType === "search"
-            ? taskSearchContext ?? prev.searchContext
-            : prev.searchContext,
-        objective:
-          prev.objective ||
-          parsedInput.freeText ||
-          taskLibraryItem?.title ||
-          taskSearchContext?.query ||
-          "Imported from library item",
-        prepText: taskText,
-        deepenText: "",
-        mergedText: taskText,
-        kinTaskText: "",
-        status: "prepared",
-        sources: [...prev.sources, source],
-        updatedAt: new Date().toISOString(),
-      }));
-
       args.applyTaskUsage(data?.usage);
-      const memoryResult = await args.handleGptMemory(updatedRecent, {
+      await applyTaskFlowSummaryUsage({
+        recentMessages: updatedRecent,
+        applySummaryUsage: args.applySummaryUsage,
+        handleGptMemory: args.handleGptMemory,
         currentTaskTitleOverride: finalizedTitle,
         lastUserIntent: `ライブラリアイテム「${taskLibraryItem?.title || finalizedTitle}」を新規タスクに取込`,
         activeDocument: {
@@ -607,9 +551,6 @@ export async function runAttachSearchResultToTaskFlow(
           importedAt: new Date().toISOString(),
         },
       });
-      if (memoryResult.summaryUsage) {
-        args.applySummaryUsage(memoryResult.summaryUsage);
-      }
     } catch (error) {
       console.error(error);
       appendTaskInfoMessage(
@@ -630,8 +571,11 @@ export async function runAttachSearchResultToTaskFlow(
     material: materialText,
   });
 
-  args.setGptInput("");
-  args.setGptLoading(true);
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+  });
 
   try {
     const data = await runAutoPrepTask(taskInput, "attach-search-result");
@@ -654,11 +598,16 @@ export async function runAttachSearchResultToTaskFlow(
         sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
       },
     };
-    const baseRecent = args.gptStateRef.current.recentMessages || [];
-    const updatedRecent = [...baseRecent, assistantMsg].slice(-args.chatRecentLimit);
+    const baseRecent = getTaskFlowRecentMessages(args.gptStateRef);
+    const updatedRecent = appendTaskFlowRecentMessage(
+      baseRecent,
+      args.chatRecentLimit,
+      assistantMsg
+    );
 
-    args.setGptMessages((prev) => [...prev, assistantMsg]);
-    applyTaskMemoryBridge({
+    appendTaskFlowAssistantResult({
+      setGptMessages: args.setGptMessages,
+      assistantMessage: assistantMsg,
       setGptState: args.setGptState,
       persistCurrentGptState: args.persistCurrentGptState,
       gptStateRef: args.gptStateRef,
@@ -672,38 +621,30 @@ export async function runAttachSearchResultToTaskFlow(
       },
     });
 
-    const source = createTaskSource(
-      taskLibraryItem?.itemType === "search"
-        ? "web_search"
-        : taskLibraryItem?.itemType === "ingested_file"
-          ? "file_ingest"
-          : "kin_message",
-      taskLibraryItem?.itemType === "search"
-        ? `Search result: ${taskLibraryItem.title || args.lastSearchContext?.query || "Untitled"}`
-        : `Library item: ${taskLibraryItem?.title || "Untitled"}`,
-      materialText
+    const source = buildLibraryTaskSource({
+      taskLibraryItem,
+      taskSearchContext: taskSearchContext ?? args.lastSearchContext,
+      materialText,
+    });
+
+    args.setCurrentTaskDraft((prev) =>
+      buildPreparedTaskDraftUpdate(prev, {
+        title: finalizedTitle,
+        userInstruction: parsedInput.userInstruction,
+        body: taskText,
+        searchContext:
+          taskLibraryItem?.itemType === "search"
+            ? taskSearchContext ?? prev.searchContext
+            : prev.searchContext,
+        sources: [source],
+      })
     );
 
-    args.setCurrentTaskDraft((prev) => ({
-      ...prev,
-      title: finalizedTitle,
-      taskName: finalizedTitle,
-      userInstruction: parsedInput.userInstruction || prev.userInstruction,
-      body: taskText,
-      searchContext:
-        taskLibraryItem?.itemType === "search"
-          ? taskSearchContext ?? prev.searchContext
-          : prev.searchContext,
-      deepenText: "",
-      mergedText: taskText,
-      kinTaskText: "",
-      status: "prepared",
-      sources: [...prev.sources, source],
-      updatedAt: new Date().toISOString(),
-    }));
-
     args.applyTaskUsage(data?.usage);
-    const memoryResult = await args.handleGptMemory(updatedRecent, {
+    await applyTaskFlowSummaryUsage({
+      recentMessages: updatedRecent,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
       currentTaskTitleOverride: finalizedTitle,
       lastUserIntent: `ライブラリアイテム「${taskLibraryItem?.title || finalizedTitle}」をタスクに統合`,
       activeDocument: {
@@ -714,9 +655,6 @@ export async function runAttachSearchResultToTaskFlow(
         importedAt: new Date().toISOString(),
       },
     });
-    if (memoryResult.summaryUsage) {
-      args.applySummaryUsage(memoryResult.summaryUsage);
-    }
   } catch (error) {
     console.error(error);
     appendTaskInfoMessage(args.setGptMessages, "Attaching the library item to the task failed.");
@@ -726,7 +664,7 @@ export async function runAttachSearchResultToTaskFlow(
 }
 
 export async function runDeepenTaskFromLastFlow(
-  args: CommonTaskDraftFlowArgs & { gptInput: string }
+  args: DeepenTaskFromLastFlowArgs
 ) {
   if (args.gptLoading) return;
 
@@ -761,12 +699,19 @@ export async function runDeepenTaskFromLastFlow(
     },
   };
 
-  const baseRecent = args.gptStateRef.current.recentMessages || [];
-  const newRecent = [...baseRecent, userMsg].slice(-args.chatRecentLimit);
+  const baseRecent = getTaskFlowRecentMessages(args.gptStateRef);
+  const newRecent = appendTaskFlowRecentMessage(
+    baseRecent,
+    args.chatRecentLimit,
+    userMsg
+  );
 
-  args.setGptMessages((prev) => [...prev, userMsg]);
-  args.setGptInput("");
-  args.setGptLoading(true);
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    userMessage: userMsg,
+  });
 
   try {
     const data = await runAutoDeepenTask(taskInput, "current-task");
@@ -779,10 +724,15 @@ export async function runDeepenTaskFromLastFlow(
         kind: "task_deepen",
       },
     };
-    const updatedRecent = [...newRecent, assistantMsg].slice(-args.chatRecentLimit);
+    const updatedRecent = appendTaskFlowRecentMessage(
+      newRecent,
+      args.chatRecentLimit,
+      assistantMsg
+    );
 
-    args.setGptMessages((prev) => [...prev, assistantMsg]);
-    applyTaskMemoryBridge({
+    appendTaskFlowAssistantResult({
+      setGptMessages: args.setGptMessages,
+      assistantMessage: assistantMsg,
       setGptState: args.setGptState,
       persistCurrentGptState: args.persistCurrentGptState,
       gptStateRef: args.gptStateRef,
@@ -790,27 +740,22 @@ export async function runDeepenTaskFromLastFlow(
       lastUserIntent: `タスク深掘り: ${resolvedTitle}`,
     });
 
-    args.setCurrentTaskDraft((prev) => ({
-      ...prev,
-      title: resolvedTitle,
-      taskName: resolvedTitle,
-      userInstruction: parsedInput.userInstruction || prev.userInstruction,
-      body: taskText,
-      deepenText: taskText,
-      mergedText: taskText,
-      kinTaskText: "",
-      status: "deepened",
-      updatedAt: new Date().toISOString(),
-    }));
+    args.setCurrentTaskDraft((prev) =>
+      buildDeepenedTaskDraftUpdate(prev, {
+        title: resolvedTitle,
+        userInstruction: parsedInput.userInstruction,
+        body: taskText,
+      })
+    );
 
     args.applyTaskUsage(data?.usage);
-    const memoryResult = await args.handleGptMemory(updatedRecent, {
+    await applyTaskFlowSummaryUsage({
+      recentMessages: updatedRecent,
+      applySummaryUsage: args.applySummaryUsage,
+      handleGptMemory: args.handleGptMemory,
       currentTaskTitleOverride: resolvedTitle,
       lastUserIntent: `タスク深掘り: ${resolvedTitle}`,
     });
-    if (memoryResult.summaryUsage) {
-      args.applySummaryUsage(memoryResult.summaryUsage);
-    }
   } catch (error) {
     console.error(error);
     appendTaskInfoMessage(args.setGptMessages, "Deepening the task failed.");
@@ -818,3 +763,26 @@ export async function runDeepenTaskFromLastFlow(
     args.setGptLoading(false);
   }
 }
+
+export type PrepTaskFromInputFlowArgs = CommonTaskDraftFlowArgs & {
+  gptInput: string;
+};
+
+export type UpdateTaskFromInputFlowArgs = CommonTaskDraftFlowArgs & {
+  gptInput: string;
+};
+
+export type UpdateTaskFromLastGptMessageFlowArgs = CommonTaskDraftFlowArgs & {
+  gptInput: string;
+  gptMessages: Message[];
+};
+
+export type AttachSearchResultToTaskFlowArgs = CommonTaskDraftFlowArgs & {
+  gptInput: string;
+  lastSearchContext: SearchContext | null;
+  getTaskLibraryItem: () => ReferenceLibraryItem | null;
+};
+
+export type DeepenTaskFromLastFlowArgs = CommonTaskDraftFlowArgs & {
+  gptInput: string;
+};

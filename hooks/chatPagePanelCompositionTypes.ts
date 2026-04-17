@@ -28,7 +28,7 @@ export type ChatPagePanelBaseArgs = {
 };
 
 export type ChatPageKinPanelCompositionArgs = ChatPagePanelBaseArgs & {
-  activeTabSetter: () => void;
+  onSwitchToGptPanel: () => void;
   kinState: {
     kinIdInput: string;
     setKinIdInput: (value: string) => void;
@@ -47,7 +47,7 @@ export type ChatPageKinPanelCompositionArgs = ChatPagePanelBaseArgs & {
 };
 
 export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
-  activeTabSetter: () => void;
+  onSwitchToKinPanel: () => void;
   pendingInjection: {
     blocks: string[];
     index: number;
@@ -95,6 +95,12 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     onSelectTaskLibraryItem: (itemId: string) => void;
     onChangeLibraryItemMode: BuildGptPanelArgs["references"]["onChangeLibraryItemMode"];
     onSaveStoredDocument: BuildGptPanelArgs["references"]["onSaveStoredDocument"];
+    onShowLibraryItemInChat:
+      BuildGptPanelArgs["references"]["onShowLibraryItemInChat"];
+    onSendLibraryItemToKin:
+      BuildGptPanelArgs["references"]["onSendLibraryItemToKin"];
+    onUploadLibraryItemToGoogleDrive:
+      BuildGptPanelArgs["references"]["onUploadLibraryItemToGoogleDrive"];
   };
   settings: Omit<
     BuildGptPanelArgs["settings"],
@@ -134,7 +140,7 @@ export type ChatPageWorkspaceViewArgs = {
   app: ChatPagePanelBaseArgs["app"] &
     Pick<
       ChatPageControllerCompositionArgs["app"],
-      "setActiveTab" | "setKinConnectionState"
+      "setActivePanelTab" | "focusKinPanel" | "focusGptPanel" | "setKinConnectionState"
     >;
   ui: ChatPageControllerCompositionArgs["uiState"] & {
     kinBottomRef: ChatPageKinPanelCompositionArgs["kinState"]["kinBottomRef"];
@@ -220,6 +226,24 @@ export type ChatPageWorkspaceViewArgs = {
     libraryStorageMB: ChatPageGptPanelCompositionArgs["settings"]["libraryStorageMB"];
     libraryReferenceEstimatedTokens:
       ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceEstimatedTokens"];
+    googleDriveFolderLink:
+      ChatPageGptPanelCompositionArgs["settings"]["googleDriveFolderLink"];
+    googleDriveFolderId:
+      ChatPageGptPanelCompositionArgs["settings"]["googleDriveFolderId"];
+    googleDriveIntegrationMode:
+      ChatPageGptPanelCompositionArgs["settings"]["googleDriveIntegrationMode"];
+    onChangeGoogleDriveFolderLink:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeGoogleDriveFolderLink"];
+    onOpenGoogleDriveFolder:
+      ChatPageGptPanelCompositionArgs["settings"]["onOpenGoogleDriveFolder"];
+    onImportFromGoogleDrive:
+      ChatPageGptPanelCompositionArgs["settings"]["onImportFromGoogleDrive"];
+    onShowLibraryItemInChat:
+      ChatPageGptPanelCompositionArgs["references"]["onShowLibraryItemInChat"];
+    onSendLibraryItemToKin:
+      ChatPageGptPanelCompositionArgs["references"]["onSendLibraryItemToKin"];
+    onUploadLibraryItemToGoogleDrive:
+      ChatPageGptPanelCompositionArgs["references"]["onUploadLibraryItemToGoogleDrive"];
   };
   gpt: {
     gptState: ChatPageGptPanelCompositionArgs["gptState"]["gptState"];

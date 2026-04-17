@@ -1,15 +1,14 @@
-import { generateId } from "@/lib/uuid";
 import {
   appendRecentAssistantMessage,
   applyProtocolAssistantSideEffects,
+  createGptAssistantMessage,
   handleImplicitSearchArtifacts,
 } from "@/lib/app/sendToGptFlowState";
 import type {
   ChatApiSearchLike,
-  PendingRequestLike,
+  PreparedRequestFinalizeContext,
 } from "@/lib/app/sendToGptFlowTypes";
 import type { Message, SourceItem } from "@/types/chat";
-import type { SearchEngine, SearchMode } from "@/types/task";
 
 export async function finalizeSendToGptFlow(args: {
   data: ChatApiSearchLike;
@@ -20,22 +19,11 @@ export async function finalizeSendToGptFlow(args: {
     previousCommittedTopic?: string;
   };
   chatRecentLimit: number;
-  searchRequestEvent?: {
-    query?: string;
-  };
-  effectiveSearchMode: SearchMode;
-  effectiveSearchEngines: SearchEngine[];
-  effectiveSearchLocation: string;
-  searchSeriesId?: string;
-  cleanQuery?: string;
-  effectiveParsedSearchQuery: string;
-  finalRequestText: string;
+  preparedRequest: PreparedRequestFinalizeContext;
   ingestProtocolMessage: (
     text: string,
     direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
   ) => void;
-  requestToAnswer?: PendingRequestLike | null;
-  requestAnswerBody?: string;
   taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   applySearchUsage: (usage: ChatApiSearchLike["usage"]) => void;
@@ -47,22 +35,17 @@ export async function finalizeSendToGptFlow(args: {
   ) => Promise<{ summaryUsage?: ChatApiSearchLike["usage"] }>;
   applySummaryUsage: (usage: ChatApiSearchLike["usage"]) => void;
 }) {
-  const assistantMsg: Message = {
-    id: generateId(),
-    role: "gpt",
-    text: args.assistantText,
-    sources: args.normalizedSources,
-    meta: {
-      kind: "normal",
-      sourceType: args.data.searchUsed ? "search" : "gpt_input",
-    },
-  };
+  const assistantMsg: Message = createGptAssistantMessage({
+    assistantText: args.assistantText,
+    normalizedSources: args.normalizedSources,
+    sourceType: args.data.searchUsed ? "search" : "gpt_input",
+  });
 
   applyProtocolAssistantSideEffects({
     assistantText: args.assistantText,
     ingestProtocolMessage: args.ingestProtocolMessage,
-    requestToAnswer: args.requestToAnswer,
-    requestAnswerBody: args.requestAnswerBody,
+    requestToAnswer: args.preparedRequest.requestToAnswer,
+    requestAnswerBody: args.preparedRequest.requestAnswerBody,
     taskProtocolAnswerPendingRequest: args.taskProtocolAnswerPendingRequest,
   });
 
@@ -76,25 +59,53 @@ export async function finalizeSendToGptFlow(args: {
 
   handleImplicitSearchArtifacts({
     data: args.data,
-    searchRequestEvent: args.searchRequestEvent,
-    effectiveSearchMode: args.effectiveSearchMode,
-    effectiveSearchEngines: args.effectiveSearchEngines,
-    effectiveSearchLocation: args.effectiveSearchLocation,
-    searchSeriesId: args.searchSeriesId,
-    cleanQuery: args.cleanQuery,
-    effectiveParsedSearchQuery: args.effectiveParsedSearchQuery,
-    finalRequestText: args.finalRequestText,
+    searchRequestEvent: args.preparedRequest.searchRequestEvent,
+    effectiveSearchMode: args.preparedRequest.effectiveSearchMode,
+    effectiveSearchEngines: args.preparedRequest.effectiveSearchEngines,
+    effectiveSearchLocation: args.preparedRequest.effectiveSearchLocation,
+    searchSeriesId: args.preparedRequest.searchSeriesId,
+    cleanQuery: args.preparedRequest.cleanQuery,
+    effectiveParsedSearchQuery: args.preparedRequest.effectiveParsedSearchQuery,
+    finalRequestText: args.preparedRequest.finalRequestText,
     applySearchUsage: args.applySearchUsage,
     applyChatUsage: args.applyChatUsage,
     recordSearchContext: args.recordSearchContext,
   });
 
-  if (args.searchRequestEvent) {
-    args.applySearchUsage(args.data.usage);
-  }
+  applyExplicitSearchUsageAfterFinalize({
+    data: args.data,
+    searchRequestEvent: args.preparedRequest.searchRequestEvent,
+    applySearchUsage: args.applySearchUsage,
+  });
 
-  const memoryResult = await args.handleGptMemory(updatedRecent, {
+  await applyFinalizeMemoryFollowUp({
+    updatedRecent,
     previousCommittedTopic: args.memoryContext.previousCommittedTopic,
+    handleGptMemory: args.handleGptMemory,
+    applySummaryUsage: args.applySummaryUsage,
+  });
+}
+
+export function applyExplicitSearchUsageAfterFinalize(args: {
+  data: ChatApiSearchLike;
+  searchRequestEvent?: PreparedRequestFinalizeContext["searchRequestEvent"];
+  applySearchUsage: (usage: ChatApiSearchLike["usage"]) => void;
+}) {
+  if (!args.searchRequestEvent) return;
+  args.applySearchUsage(args.data.usage);
+}
+
+export async function applyFinalizeMemoryFollowUp(args: {
+  updatedRecent: Message[];
+  previousCommittedTopic?: string;
+  handleGptMemory: (
+    recent: Message[],
+    options?: { previousCommittedTopic?: string }
+  ) => Promise<{ summaryUsage?: ChatApiSearchLike["usage"] }>;
+  applySummaryUsage: (usage: ChatApiSearchLike["usage"]) => void;
+}) {
+  const memoryResult = await args.handleGptMemory(args.updatedRecent, {
+    previousCommittedTopic: args.previousCommittedTopic,
   });
   args.applySummaryUsage(memoryResult.summaryUsage);
 }

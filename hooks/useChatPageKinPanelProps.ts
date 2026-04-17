@@ -38,7 +38,7 @@ export function useChatPageKinPanelProps(
     pendingInjectionTotalParts: pendingInjectionProgress.totalParts,
     kinBottomRef: args.kinState.kinBottomRef,
     isMobile: args.app.isMobile,
-    onSwitchPanel: args.activeTabSetter,
+    onSwitchPanel: args.onSwitchToGptPanel,
     loading: args.kinState.loading,
   };
 }

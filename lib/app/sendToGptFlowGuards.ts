@@ -9,7 +9,13 @@ import type { Dispatch, SetStateAction } from "react";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type {
+  InlineUrlGateContext,
+  MultipartImportGateContext,
   ParsedInputLike,
+  PreparedRequestGateContext,
+  ProtocolLimitViolationGateContext,
+  TaskDirectiveOnlyGateContext,
+  YoutubeTranscriptGateContext,
 } from "@/lib/app/sendToGptFlowTypes";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
 
@@ -37,6 +43,29 @@ export function handleMultipartImportGate(args: {
   return true;
 }
 
+export function buildMultipartImportGateContext(args: {
+  rawText: string;
+  processMultipartTaskDoneText: (
+    text: string,
+    options?: { setGptTab?: boolean }
+  ) => { handled: boolean; accepted: boolean } | null;
+}): MultipartImportGateContext {
+  return {
+    multipartHandled: !!args.processMultipartTaskDoneText(args.rawText, {
+      setGptTab: true,
+    }),
+  };
+}
+
+export function buildInlineUrlGateContext(args: {
+  rawText: string;
+  extractInlineUrlTarget: (text: string) => string | null;
+}): InlineUrlGateContext {
+  return {
+    inlineUrlTarget: args.extractInlineUrlTarget(args.rawText),
+  };
+}
+
 export async function runPrePreparationGates(args: {
   rawText: string;
   processMultipartTaskDoneText: (
@@ -48,15 +77,28 @@ export async function runPrePreparationGates(args: {
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
 }) {
-  const multipartHandled = handleMultipartImportGate({
+  const multipartImportGateContext = buildMultipartImportGateContext({
     rawText: args.rawText,
     processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-    setGptMessages: args.setGptMessages,
-    setGptInput: args.setGptInput,
+  });
+  if (
+    multipartImportGateContext.multipartHandled &&
+    handleMultipartImportGate({
+      rawText: args.rawText,
+      processMultipartTaskDoneText: args.processMultipartTaskDoneText,
+      setGptMessages: args.setGptMessages,
+      setGptInput: args.setGptInput,
+    })
+  ) {
+    return true;
+  }
+  const inlineUrlGateContext = buildInlineUrlGateContext({
+    rawText: args.rawText,
+    extractInlineUrlTarget: args.extractInlineUrlTarget,
   });
   const gateDecision = resolvePrePreparationGateDecision({
-    multipartHandled,
-    inlineUrlTarget: args.extractInlineUrlTarget(args.rawText),
+    multipartHandled: multipartImportGateContext.multipartHandled,
+    inlineUrlTarget: inlineUrlGateContext.inlineUrlTarget,
   });
 
   if (gateDecision.type === "multipart_import") {
@@ -69,7 +111,7 @@ export async function runPrePreparationGates(args: {
 
   await handleInlineUrlGate({
     rawText: args.rawText,
-    inlineUrlTarget: gateDecision.inlineUrlTarget,
+    inlineUrlTarget: inlineUrlGateContext.inlineUrlTarget as string,
     setGptMessages: args.setGptMessages,
     setGptInput: args.setGptInput,
     setGptLoading: args.setGptLoading,
@@ -117,6 +159,21 @@ export function handleTaskDirectiveOnlyGate(args: {
   return true;
 }
 
+export function buildTaskDirectiveOnlyGateContext(args: {
+  preparedRequest: PreparedRequestGateContext;
+  shouldRespondToTaskDirectiveOnlyInput: (params: {
+    parsedInput: ParsedInputLike;
+    effectiveParsedSearchQuery: string;
+  }) => boolean;
+}): TaskDirectiveOnlyGateContext {
+  return {
+    isTaskDirectiveOnly: args.shouldRespondToTaskDirectiveOnlyInput({
+      parsedInput: args.preparedRequest.parsedInput,
+      effectiveParsedSearchQuery: args.preparedRequest.effectiveParsedSearchQuery,
+    }),
+  };
+}
+
 export function handleProtocolLimitViolationGate(args: {
   limitViolation: string | null;
   userMsg: Message;
@@ -141,6 +198,15 @@ export function handleProtocolLimitViolationGate(args: {
   ]);
   args.setGptInput("");
   return true;
+}
+
+export function buildProtocolLimitViolationGateContext(args: {
+  preparedRequest: PreparedRequestGateContext;
+}): ProtocolLimitViolationGateContext {
+  return {
+    limitViolation: args.preparedRequest.limitViolation,
+    userMsg: args.preparedRequest.userMsg,
+  };
 }
 
 export async function handleYoutubeTranscriptGate(args: {
@@ -205,14 +271,18 @@ export async function handleYoutubeTranscriptGate(args: {
   return true;
 }
 
-export async function runPreparedRequestGates(args: {
-  preparedRequest: {
-    parsedInput: ParsedInputLike;
-    effectiveParsedSearchQuery: string;
-    limitViolation: string | null;
-    userMsg: Message;
-    youtubeTranscriptRequestEvent?: TaskProtocolEvent & { url?: string };
+export function buildYoutubeTranscriptGateContext(args: {
+  preparedRequest: PreparedRequestGateContext;
+}): YoutubeTranscriptGateContext {
+  return {
+    youtubeTranscriptRequestEvent:
+      args.preparedRequest.youtubeTranscriptRequestEvent,
+    userMsg: args.preparedRequest.userMsg,
   };
+}
+
+export async function runPreparedRequestGates(args: {
+  preparedRequest: PreparedRequestGateContext;
   shouldRespondToTaskDirectiveOnlyInput: (params: {
     parsedInput: ParsedInputLike;
     effectiveParsedSearchQuery: string;
@@ -253,20 +323,29 @@ export async function runPreparedRequestGates(args: {
   ) => Promise<{ summaryUsage?: unknown }>;
   applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
+  const taskDirectiveOnlyGateContext = buildTaskDirectiveOnlyGateContext({
+    preparedRequest: args.preparedRequest,
+    shouldRespondToTaskDirectiveOnlyInput:
+      args.shouldRespondToTaskDirectiveOnlyInput,
+  });
+  const protocolLimitViolationGateContext =
+    buildProtocolLimitViolationGateContext({
+      preparedRequest: args.preparedRequest,
+    });
+  const youtubeTranscriptGateContext = buildYoutubeTranscriptGateContext({
+    preparedRequest: args.preparedRequest,
+  });
   const gateDecision = resolvePreparedRequestGateDecision({
-    isTaskDirectiveOnly: args.shouldRespondToTaskDirectiveOnlyInput({
-      parsedInput: args.preparedRequest.parsedInput,
-      effectiveParsedSearchQuery:
-        args.preparedRequest.effectiveParsedSearchQuery,
-    }),
-    limitViolation: args.preparedRequest.limitViolation,
-    youtubeTranscriptUrl: args.preparedRequest.youtubeTranscriptRequestEvent?.url,
+    isTaskDirectiveOnly: taskDirectiveOnlyGateContext.isTaskDirectiveOnly,
+    limitViolation: protocolLimitViolationGateContext.limitViolation,
+    youtubeTranscriptUrl:
+      youtubeTranscriptGateContext.youtubeTranscriptRequestEvent?.url,
   });
 
   if (
     gateDecision.type === "task_directive_only" &&
     handleTaskDirectiveOnlyGate({
-      isTaskDirectiveOnly: true,
+      isTaskDirectiveOnly: taskDirectiveOnlyGateContext.isTaskDirectiveOnly,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       taskDirectiveOnlyResponseText: args.taskDirectiveOnlyResponseText,
@@ -278,8 +357,7 @@ export async function runPreparedRequestGates(args: {
   if (
     gateDecision.type === "protocol_limit_violation" &&
     handleProtocolLimitViolationGate({
-      limitViolation: gateDecision.violationText,
-      userMsg: args.preparedRequest.userMsg,
+      ...protocolLimitViolationGateContext,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
     })
@@ -292,9 +370,7 @@ export async function runPreparedRequestGates(args: {
   }
 
   return handleYoutubeTranscriptGate({
-    youtubeTranscriptRequestEvent:
-      args.preparedRequest.youtubeTranscriptRequestEvent,
-    userMsg: args.preparedRequest.userMsg,
+    ...youtubeTranscriptGateContext,
     currentTaskId: args.currentTaskId,
     onHandleYoutubeTranscriptRequest: args.onHandleYoutubeTranscriptRequest,
     setGptMessages: args.setGptMessages,

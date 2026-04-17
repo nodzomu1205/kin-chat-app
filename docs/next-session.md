@@ -2,6 +2,26 @@
 
 Updated: 2026-04-16
 
+## Stop Rule: Do Not Regress The LLM-First Approval Flow
+
+This is mandatory.
+
+For both topic generation and `SYS_TASK` / `SYS_INFO` generation:
+
+1. Entry-point candidate discovery must be LLM-first.
+2. User approval / rejection must drive what gets reflected into the current output.
+3. Approved phrases may bypass the LLM only for the exact strong-confidence matching fragment.
+4. The rest of the sentence must still go to the LLM.
+
+Never do these again:
+
+- add entry rules because one real example failed
+- add phrase-specific fallback examples that act like hidden hardcoded classification
+- replace the original instruction with `goal`, title, summary, or another shortened form before LLM review
+- treat one approved fragment as permission to bypass the LLM for the whole sentence
+
+If this rule conflicts with a local patch idea, the patch idea is wrong.
+
 ## Current State
 
 The repository is in a good stopping state.

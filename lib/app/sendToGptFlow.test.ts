@@ -7,9 +7,16 @@ import {
   shouldRespondToTaskDirectiveOnlyInput,
 } from "@/lib/app/sendToGptText";
 import {
+  buildPreparedRequestExecutionContext,
+  buildPreparedRequestFinalizeContext,
+  buildPreparedRequestGateContext,
+  buildPreparedRequestContexts,
+  buildPreparedFinalRequestText,
+  resolvePreparedRequestLimitViolation,
 } from "@/lib/app/sendToGptFlowRequestPreparation";
 import { buildFinalRequestText } from "@/lib/app/sendToGptFlowRequestText";
 import { buildChatApiRequestPayload } from "@/lib/app/sendToGptFlowRequestPayload";
+import { buildGptAssistantRequestPayload } from "@/lib/app/sendToGptFlowRequest";
 import { buildAssistantResponseArtifacts } from "@/lib/app/sendToGptFlowResponse";
 import type { Message } from "@/types/chat";
 
@@ -51,6 +58,7 @@ describe("runSendToGptFlow", () => {
         currentTaskId: null,
         currentTaskTitle: "",
         currentTaskIntent: null,
+        originalInstruction: "",
         compiledTaskPrompt: "",
         taskStatus: "idle",
         latestSummary: "",
@@ -159,6 +167,7 @@ describe("runSendToGptFlow", () => {
         currentTaskId: null,
         currentTaskTitle: "",
         currentTaskIntent: null,
+        originalInstruction: "",
         compiledTaskPrompt: "",
         taskStatus: "idle",
         latestSummary: "",
@@ -305,6 +314,255 @@ describe("sendToGptFlowHelpers", () => {
     ).toContain("TASK CONTEXT\n\nYou are responding to a Kindroid SYS_ASK_GPT request.");
   });
 
+  it("builds prepared final request text from derived request context", () => {
+    expect(
+      buildPreparedFinalRequestText({
+        rawText: "plain input",
+        currentTaskId: "TASK-1",
+        taskContext: "TASK CONTEXT",
+        derivedContext: {
+          parsedInput: {
+            freeText: "free text",
+          },
+          effectiveParsedSearchQuery: "",
+          askGptEvent: {
+            taskId: "TASK-1",
+            actionId: "ACT-1",
+            body: "Need answer",
+          },
+          requestToAnswer: null,
+          requestAnswerBody: "",
+          searchRequestEvent: undefined,
+          effectiveSearchEngines: ["google_search"],
+          effectiveSearchLocation: "Japan",
+          libraryIndexRequestEvent: undefined,
+          libraryItemRequestEvent: undefined,
+        } as never,
+        referenceLibraryItems: [],
+        libraryIndexResponseCount: 10,
+      })
+    ).toContain("TASK CONTEXT\n\nYou are responding to a Kindroid SYS_ASK_GPT request.");
+  });
+
+  it("resolves prepared request limit violations from the derived events", () => {
+    expect(
+      resolvePreparedRequestLimitViolation({
+        derivedContext: {
+          askGptEvent: {
+            taskId: "TASK-1",
+            actionId: "ACT-1",
+          },
+        } as never,
+        currentTaskId: "TASK-1",
+        getProtocolLimitViolation: ({ type, taskId, actionId }) =>
+          `${type}:${taskId}:${actionId}`,
+      })
+    ).toBe("ask_gpt:TASK-1:ACT-1");
+  });
+
+  it("builds the gate context from a prepared request", () => {
+    expect(
+      buildPreparedRequestGateContext({
+        preparedRequest: {
+          parsedInput: { freeText: "hello" },
+          effectiveParsedSearchQuery: "query",
+          limitViolation: "violation",
+          userMsg: { id: "u1", role: "user", text: "hello" },
+          youtubeTranscriptRequestEvent: {
+            type: "youtube_transcript_request",
+            body: "Fetch transcript",
+            url: "https://youtube.com/watch?v=1",
+          },
+        },
+      })
+    ).toEqual({
+      parsedInput: { freeText: "hello" },
+      effectiveParsedSearchQuery: "query",
+      limitViolation: "violation",
+      userMsg: { id: "u1", role: "user", text: "hello" },
+      youtubeTranscriptRequestEvent: {
+        type: "youtube_transcript_request",
+        body: "Fetch transcript",
+        url: "https://youtube.com/watch?v=1",
+      },
+    });
+  });
+
+  it("builds the execution context from a prepared request", () => {
+    expect(
+      buildPreparedRequestExecutionContext({
+        preparedRequest: {
+          finalRequestText: "final text",
+          effectiveDocumentReferenceContext: "doc ctx",
+          libraryReferenceContext: "library ctx",
+          continuationDetails: { cleanQuery: "farmers 360" },
+          searchRequestEvent: { query: "farmers 360" },
+          effectiveParsedSearchQuery: "farmers 360",
+          searchSeriesId: "SERIES-1",
+          continuationToken: "TOKEN-1",
+          askAiModeLink: "LINK-1",
+          effectiveSearchMode: "ai",
+          effectiveSearchEngines: ["google_ai_mode"],
+          effectiveSearchLocation: "Japan",
+          askGptEvent: { taskId: "TASK-1", actionId: "A001" },
+          requestToAnswer: {
+            id: "REQ-1",
+            taskId: "TASK-1",
+            actionId: "Q001",
+            body: "question",
+          },
+          requestAnswerBody: "answer",
+        },
+      })
+    ).toEqual({
+      finalRequestText: "final text",
+      storedDocumentContext: "doc ctx",
+      storedLibraryContext: "library ctx",
+      cleanQuery: "farmers 360",
+      searchRequestEvent: { query: "farmers 360" },
+      effectiveParsedSearchQuery: "farmers 360",
+      searchSeriesId: "SERIES-1",
+      continuationToken: "TOKEN-1",
+      askAiModeLink: "LINK-1",
+      effectiveSearchMode: "ai",
+      effectiveSearchEngines: ["google_ai_mode"],
+      effectiveSearchLocation: "Japan",
+      askGptEvent: { taskId: "TASK-1", actionId: "A001" },
+      requestToAnswer: {
+        id: "REQ-1",
+        taskId: "TASK-1",
+        actionId: "Q001",
+        body: "question",
+      },
+      requestAnswerBody: "answer",
+    });
+  });
+
+  it("builds the finalize context from the execution context", () => {
+    expect(
+      buildPreparedRequestFinalizeContext({
+        preparedRequest: {
+          finalRequestText: "final text",
+          storedDocumentContext: "doc ctx",
+          storedLibraryContext: "library ctx",
+          cleanQuery: "farmers 360",
+          searchRequestEvent: { query: "farmers 360" },
+          effectiveParsedSearchQuery: "farmers 360",
+          searchSeriesId: "SERIES-1",
+          continuationToken: "TOKEN-1",
+          askAiModeLink: "LINK-1",
+          effectiveSearchMode: "ai",
+          effectiveSearchEngines: ["google_ai_mode"],
+          effectiveSearchLocation: "Japan",
+          askGptEvent: { taskId: "TASK-1", actionId: "A001" },
+          requestToAnswer: {
+            id: "REQ-1",
+            taskId: "TASK-1",
+            actionId: "Q001",
+            body: "question",
+          },
+          requestAnswerBody: "answer",
+        },
+      })
+    ).toEqual({
+      searchRequestEvent: { query: "farmers 360" },
+      effectiveSearchMode: "ai",
+      effectiveSearchEngines: ["google_ai_mode"],
+      effectiveSearchLocation: "Japan",
+      searchSeriesId: "SERIES-1",
+      cleanQuery: "farmers 360",
+      effectiveParsedSearchQuery: "farmers 360",
+      finalRequestText: "final text",
+      requestToAnswer: {
+        id: "REQ-1",
+        taskId: "TASK-1",
+        actionId: "Q001",
+        body: "question",
+      },
+      requestAnswerBody: "answer",
+    });
+  });
+
+  it("builds the full prepared-request context bundle", () => {
+    expect(
+      buildPreparedRequestContexts({
+        preparedRequest: {
+          parsedInput: { freeText: "hello" },
+          effectiveParsedSearchQuery: "farmers 360",
+          limitViolation: null,
+          userMsg: { id: "u1", role: "user", text: "hello" },
+          youtubeTranscriptRequestEvent: undefined,
+          finalRequestText: "final text",
+          effectiveDocumentReferenceContext: "doc ctx",
+          libraryReferenceContext: "library ctx",
+          continuationDetails: { cleanQuery: "farmers 360" },
+          searchRequestEvent: { query: "farmers 360" },
+          searchSeriesId: "SERIES-1",
+          continuationToken: "TOKEN-1",
+          askAiModeLink: "LINK-1",
+          effectiveSearchMode: "ai",
+          effectiveSearchEngines: ["google_ai_mode"],
+          effectiveSearchLocation: "Japan",
+          askGptEvent: { taskId: "TASK-1", actionId: "A001" },
+          requestToAnswer: {
+            id: "REQ-1",
+            taskId: "TASK-1",
+            actionId: "Q001",
+            body: "question",
+          },
+          requestAnswerBody: "answer",
+        },
+      })
+    ).toEqual({
+      gate: {
+        parsedInput: { freeText: "hello" },
+        effectiveParsedSearchQuery: "farmers 360",
+        limitViolation: null,
+        userMsg: { id: "u1", role: "user", text: "hello" },
+        youtubeTranscriptRequestEvent: undefined,
+      },
+      execution: {
+        finalRequestText: "final text",
+        storedDocumentContext: "doc ctx",
+        storedLibraryContext: "library ctx",
+        cleanQuery: "farmers 360",
+        searchRequestEvent: { query: "farmers 360" },
+        effectiveParsedSearchQuery: "farmers 360",
+        searchSeriesId: "SERIES-1",
+        continuationToken: "TOKEN-1",
+        askAiModeLink: "LINK-1",
+        effectiveSearchMode: "ai",
+        effectiveSearchEngines: ["google_ai_mode"],
+        effectiveSearchLocation: "Japan",
+        askGptEvent: { taskId: "TASK-1", actionId: "A001" },
+        requestToAnswer: {
+          id: "REQ-1",
+          taskId: "TASK-1",
+          actionId: "Q001",
+          body: "question",
+        },
+        requestAnswerBody: "answer",
+      },
+      finalize: {
+        searchRequestEvent: { query: "farmers 360" },
+        effectiveSearchMode: "ai",
+        effectiveSearchEngines: ["google_ai_mode"],
+        effectiveSearchLocation: "Japan",
+        searchSeriesId: "SERIES-1",
+        cleanQuery: "farmers 360",
+        effectiveParsedSearchQuery: "farmers 360",
+        finalRequestText: "final text",
+        requestToAnswer: {
+          id: "REQ-1",
+          taskId: "TASK-1",
+          actionId: "Q001",
+          body: "question",
+        },
+        requestAnswerBody: "answer",
+      },
+    });
+  });
+
   it("builds normalized request text from the resolved search query", () => {
     expect(
       buildNormalizedRequestText({
@@ -341,6 +599,46 @@ describe("sendToGptFlowHelpers", () => {
       storedLibraryContext: "",
       searchMode: "normal",
       searchEngines: ["google_search"],
+      searchLocation: "Japan",
+      instructionMode: "normal",
+      reasoningMode: "strict",
+    });
+  });
+
+  it("builds the GPT assistant request payload from execution context inputs", () => {
+    expect(
+      buildGptAssistantRequestPayload({
+        requestMemory: { facts: [] } as never,
+        recentMessages: [],
+        finalRequestText: "hello",
+        storedDocumentContext: "doc ctx",
+        storedLibraryContext: "lib ctx",
+        cleanQuery: "farmers 360",
+        searchRequestEvent: { query: "fallback query" },
+        effectiveParsedSearchQuery: "parsed query",
+        searchSeriesId: "SERIES-1",
+        continuationToken: "TOKEN-1",
+        askAiModeLink: "LINK-1",
+        effectiveSearchMode: "ai",
+        effectiveSearchEngines: ["google_ai_mode"],
+        effectiveSearchLocation: "Japan",
+        instructionMode: "normal",
+        responseMode: "strict",
+      })
+    ).toEqual({
+      mode: "chat",
+      memory: { facts: [] },
+      recentMessages: [],
+      input: "hello",
+      storedSearchContext: "",
+      storedDocumentContext: "doc ctx",
+      storedLibraryContext: "lib ctx",
+      forcedSearchQuery: "farmers 360",
+      searchSeriesId: "SERIES-1",
+      searchContinuationToken: "TOKEN-1",
+      searchAskAiModeLink: "LINK-1",
+      searchMode: "ai",
+      searchEngines: ["google_ai_mode"],
       searchLocation: "Japan",
       instructionMode: "normal",
       reasoningMode: "strict",

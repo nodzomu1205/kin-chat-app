@@ -12,7 +12,8 @@ import {
   textAreaStyle,
   ToggleButtons,
 } from "./GptSettingsShared";
-import { GPT_PROTOCOL_SETTINGS_TEXT } from "./gptSettingsText";
+import { GPT_PROTOCOL_AUTOMATION_LABELS } from "./gptProtocolAutomationText";
+import { GPT_PROTOCOL_SETTINGS_TEXT } from "./gptProtocolSettingsText";
 
 function ProtocolAutomationSection(props: {
   autoSendKinSysInput: boolean;
@@ -30,27 +31,27 @@ function ProtocolAutomationSection(props: {
     {
       checked: props.autoSendKinSysInput,
       onChange: props.onChangeAutoSendKinSysInput,
-      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[0],
+      label: GPT_PROTOCOL_AUTOMATION_LABELS[0],
     },
     {
       checked: props.autoCopyKinSysResponseToGpt,
       onChange: props.onChangeAutoCopyKinSysResponseToGpt,
-      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[1],
+      label: GPT_PROTOCOL_AUTOMATION_LABELS[1],
     },
     {
       checked: props.autoSendGptSysInput,
       onChange: props.onChangeAutoSendGptSysInput,
-      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[2],
+      label: GPT_PROTOCOL_AUTOMATION_LABELS[2],
     },
     {
       checked: props.autoCopyGptSysResponseToKin,
       onChange: props.onChangeAutoCopyGptSysResponseToKin,
-      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[3],
+      label: GPT_PROTOCOL_AUTOMATION_LABELS[3],
     },
     {
       checked: props.autoCopyFileIngestSysInfoToKin,
       onChange: props.onChangeAutoCopyFileIngestSysInfoToKin,
-      text: GPT_PROTOCOL_SETTINGS_TEXT.automation[4],
+      label: GPT_PROTOCOL_AUTOMATION_LABELS[4],
     },
   ];
 
@@ -60,13 +61,12 @@ function ProtocolAutomationSection(props: {
         {GPT_PROTOCOL_SETTINGS_TEXT.automationTitle}
       </div>
       <div style={{ display: "grid", gap: 10 }}>
-        {automationItems.map(({ checked, onChange, text }) => (
+        {automationItems.map(({ checked, onChange, label }) => (
           <ToggleButtons
-            key={text.label}
-            label={text.label}
+            key={label}
+            label={label}
             checked={checked}
             onChange={onChange}
-            help={text.help}
           />
         ))}
       </div>

@@ -10,6 +10,7 @@ export function createEmptyTaskRuntime(): TaskRuntimeState {
     currentTaskId: null,
     currentTaskTitle: "",
     currentTaskIntent: null,
+    originalInstruction: "",
     compiledTaskPrompt: "",
     taskStatus: "idle",
     latestSummary: "",

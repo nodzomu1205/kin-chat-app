@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractTaskIdFromOutboundText,
+  hasKinReceipt,
   hasKinReceivedAck,
   resolveKinFollowupInput,
   resolvePendingKinInjectionAction,
@@ -17,6 +18,12 @@ describe("sendToKinFlowState", () => {
       hasKinReceivedAck(
         "<<SYS_KIN_RESPONSE>>\nReceived. Send the next part.\n<<END_SYS_KIN_RESPONSE>>"
       )
+    ).toBe(true);
+  });
+
+  it("detects plain receipt blocks without requiring next-part guidance", () => {
+    expect(
+      hasKinReceipt("<<KIN_RESPONSE>>\nReceived.\n<<END_KIN_RESPONSE>>")
     ).toBe(true);
   });
 
@@ -44,6 +51,21 @@ describe("sendToKinFlowState", () => {
         currentPendingBlock: "PART 2/2",
         replyText:
           "<<KIN_RESPONSE>>\nReceived. Send the next.\n<<END_KIN_RESPONSE>>",
+        pendingKinInjectionIndex: 1,
+        pendingKinInjectionBlocks: ["PART 1/2", "PART 2/2"],
+      })
+    ).toEqual({
+      type: "complete",
+      nextIndex: 2,
+    });
+  });
+
+  it("completes the final pending part on a plain receipt", () => {
+    expect(
+      resolvePendingKinInjectionAction({
+        text: "PART 2/2",
+        currentPendingBlock: "PART 2/2",
+        replyText: "<<KIN_RESPONSE>>\nReceived.\n<<END_KIN_RESPONSE>>",
         pendingKinInjectionIndex: 1,
         pendingKinInjectionBlocks: ["PART 1/2", "PART 2/2"],
       })

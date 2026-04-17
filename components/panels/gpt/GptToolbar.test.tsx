@@ -23,7 +23,29 @@ describe("GptToolbar", () => {
       />
     );
 
-    expect(html).toContain("↻");
-    expect(html).not.toContain(">×<");
+    expect(html).toContain("遶奇ｽｻ");
+    expect(html).not.toContain(">・・・");
+  });
+
+  it("shows the updated data import label on the secondary task tab", () => {
+    const html = renderToStaticMarkup(
+      <GptToolbar
+        activeTab="task_secondary"
+        onChangeTab={() => {}}
+        onAction={() => {}}
+        onRunTask={() => {}}
+        onRunDeepen={() => {}}
+        onRunTaskUpdate={() => {}}
+        onImportLastResponse={() => {}}
+        onAttachSearchResult={() => {}}
+        onSendLatestResponseToKin={() => {}}
+        onSendCurrentTaskToKin={() => {}}
+        onReceiveKinResponse={() => {}}
+        onTransfer={() => {}}
+        onReset={() => {}}
+      />
+    );
+
+    expect(html).toContain("データ取込");
   });
 });

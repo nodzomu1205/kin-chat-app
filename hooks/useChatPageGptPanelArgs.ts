@@ -12,7 +12,7 @@ export function useChatPageGptPanelArgs(
       currentKinLabel: args.app.currentKinLabel,
       kinStatus: args.app.kinStatus,
       isMobile: args.app.isMobile,
-      onSwitchPanel: args.activeTabSetter,
+      onSwitchPanel: args.onSwitchToKinPanel,
     },
     chat: {
       gptState: args.gptState.gptState,
@@ -110,6 +110,10 @@ export function useChatPageGptPanelArgs(
       onSendYouTubeTranscriptToKin:
         args.controller.gpt.sendYouTubeTranscriptToKin,
       onSaveStoredDocument: args.references.onSaveStoredDocument,
+      onShowLibraryItemInChat: args.references.onShowLibraryItemInChat,
+      onSendLibraryItemToKin: args.references.onSendLibraryItemToKin,
+      onUploadLibraryItemToGoogleDrive:
+        args.references.onUploadLibraryItemToGoogleDrive,
     },
     settings: {
       ...args.settings,
@@ -118,6 +122,10 @@ export function useChatPageGptPanelArgs(
       approvedMemoryRules: args.memoryState.approvedMemoryRules,
       onSaveMemorySettings: args.controller.memory.handleSaveMemorySettings,
       onResetMemorySettings: args.controller.memory.handleResetMemorySettings,
+      onChangeGoogleDriveFolderLink:
+        args.settings.onChangeGoogleDriveFolderLink,
+      onOpenGoogleDriveFolder: args.settings.onOpenGoogleDriveFolder,
+      onImportFromGoogleDrive: args.settings.onImportFromGoogleDrive,
       onApproveMemoryRuleCandidate: args.memoryState.onApproveMemoryRuleCandidate,
       onRejectMemoryRuleCandidate: args.memoryState.onRejectMemoryRuleCandidate,
       onUpdateMemoryRuleCandidate: args.memoryState.onUpdateMemoryRuleCandidate,

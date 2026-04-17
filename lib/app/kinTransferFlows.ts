@@ -4,10 +4,7 @@ import {
   buildKinSysTaskBlock,
   summarizeTaskContentForKinInfo,
 } from "@/lib/app/kinStructuredProtocol";
-import {
-  buildPendingKinInjectionBlocks,
-  DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
-} from "@/lib/app/kinMultipart";
+import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
 import { buildKinDirectiveLines } from "@/lib/app/transformIntent";
 import type { TransformIntent } from "@/lib/app/transformIntent";
 import { normalizeUsage } from "@/lib/tokenStats";
@@ -54,6 +51,7 @@ type SendLatestGptContentToKinArgs = {
     title: string;
     goal: string;
     compiledTaskPrompt: string;
+    originalInstruction?: string;
   }) => void;
   responseMode: "strict" | "creative";
   applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
@@ -145,16 +143,15 @@ export async function sendLatestGptContentToKinFlow({
       title: started.title,
       goal: resolved.intent.goal,
       compiledTaskPrompt: started.compiledTaskPrompt,
+      originalInstruction: directiveText || content,
     });
 
-    const blocks = buildPendingKinInjectionBlocks(started.compiledTaskPrompt, {
-      noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+    const injection = applyCompiledTaskPromptToKinInput({
+      compiledTaskPrompt: started.compiledTaskPrompt,
+      setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex,
+      setKinInput,
     });
-    const firstBlock = blocks[0] ?? started.compiledTaskPrompt;
-
-    setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
-    setPendingKinInjectionIndex(0);
-    setKinInput(firstBlock);
     setGptInput("");
     setGptMessages((prev) => [
       ...prev,
@@ -162,8 +159,8 @@ export async function sendLatestGptContentToKinFlow({
         id: generateId(),
         role: "gpt",
         text:
-          blocks.length > 1
-            ? `Latest GPT content was converted into a formal Kin task and split into ${blocks.length} Kin parts. TASK_ID: #${started.taskId}`
+          injection.partCount > 1
+            ? `Latest GPT content was converted into a formal Kin task and split into ${injection.partCount} Kin parts. TASK_ID: #${started.taskId}`
             : `Latest GPT content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`,
         meta: {
           kind: "task_info",
@@ -255,6 +252,7 @@ type SendCurrentTaskContentToKinArgs = {
     title: string;
     goal: string;
     compiledTaskPrompt: string;
+    originalInstruction?: string;
   }) => void;
   responseMode: "strict" | "creative";
   applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
@@ -273,6 +271,24 @@ type SendCurrentTaskContentToKinArgs = {
   getTaskSlotLabel: () => string;
   setActiveTabToKin?: () => void;
 };
+
+function appendCurrentTaskInfoMessage(
+  setGptMessages: SendCurrentTaskContentToKinArgs["setGptMessages"],
+  text: string
+) {
+  setGptMessages((prev) => [
+    ...prev,
+    {
+      id: generateId(),
+      role: "gpt",
+      text,
+      meta: {
+        kind: "task_info",
+        sourceType: "manual",
+      },
+    },
+  ]);
+}
 
 export async function sendCurrentTaskContentToKinFlow({
   gptInput,
@@ -309,24 +325,62 @@ export async function sendCurrentTaskContentToKinFlow({
   }
 
   const sourceText = getTaskBaseText();
-  if (!sourceText) {
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: "No current task content was found to send to Kin.",
-      },
-    ]);
-    return;
-  }
-
   const { intent, usage } = await resolveTransformIntent({
     input: rawDirective,
     defaultMode: "sys_task",
     responseMode,
   });
   applyTaskUsage(usage);
+
+  if (!sourceText && intent.mode === "sys_task" && rawDirective) {
+    const resolved = await resolveTaskIntent({
+      input: rawDirective,
+      approvedPhrases: approvedIntentPhrases,
+      responseMode,
+    });
+    applyTaskUsage(resolved.usage);
+    if (resolved.pendingCandidates.length > 0) {
+      mergePendingIntentCandidates(resolved.pendingCandidates);
+    }
+
+    const started = startTask({
+      originalInstruction: rawDirective,
+      intent: resolved.intent,
+      title: resolved.suggestedTitle || undefined,
+    });
+
+    syncTaskDraftFromProtocol({
+      taskId: started.taskId,
+      title: started.title,
+      goal: resolved.intent.goal,
+      compiledTaskPrompt: started.compiledTaskPrompt,
+      originalInstruction: rawDirective,
+    });
+
+    const injection = applyCompiledTaskPromptToKinInput({
+      compiledTaskPrompt: started.compiledTaskPrompt,
+      setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex,
+      setKinInput,
+    });
+    setGptInput("");
+    appendCurrentTaskInfoMessage(
+      setGptMessages,
+      injection.partCount > 1
+        ? `Current instruction was converted into a formal Kin task and split into ${injection.partCount} Kin parts. TASK_ID: #${started.taskId}`
+        : `Current instruction was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`
+    );
+    setActiveTabToKin?.();
+    return;
+  }
+
+  if (!sourceText) {
+    appendCurrentTaskInfoMessage(
+      setGptMessages,
+      "No current task content was found to send to Kin."
+    );
+    return;
+  }
 
   let content =
     intent.mode === "sys_info"
@@ -360,32 +414,22 @@ export async function sendCurrentTaskContentToKinFlow({
       title: started.title,
       goal: resolved.intent.goal,
       compiledTaskPrompt: started.compiledTaskPrompt,
+      originalInstruction: taskInstruction,
     });
 
-    const blocks = buildPendingKinInjectionBlocks(started.compiledTaskPrompt, {
-      noticeLines: DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
+    const injection = applyCompiledTaskPromptToKinInput({
+      compiledTaskPrompt: started.compiledTaskPrompt,
+      setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex,
+      setKinInput,
     });
-    const firstBlock = blocks[0] ?? started.compiledTaskPrompt;
-
-    setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
-    setPendingKinInjectionIndex(0);
-    setKinInput(firstBlock);
     setGptInput("");
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text:
-          blocks.length > 1
-            ? `Current task content was converted into a formal Kin task and split into ${blocks.length} Kin parts. TASK_ID: #${started.taskId}`
-            : `Current task content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`,
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
+    appendCurrentTaskInfoMessage(
+      setGptMessages,
+      injection.partCount > 1
+        ? `Current task content was converted into a formal Kin task and split into ${injection.partCount} Kin parts. TASK_ID: #${started.taskId}`
+        : `Current task content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`
+    );
     setActiveTabToKin?.();
     return;
   }
@@ -433,17 +477,9 @@ export async function sendCurrentTaskContentToKinFlow({
 
   setKinInput(block);
   setGptInput("");
-  setGptMessages((prev) => [
-    ...prev,
-    {
-      id: generateId(),
-      role: "gpt",
-      text: `Current task content was set to Kin input as ${intent.mode === "sys_task" ? "<<SYS_TASK>>" : "<<SYS_INFO>>"}. TASK_SLOT: ${getTaskSlotLabel()}`,
-      meta: {
-        kind: "task_info",
-        sourceType: "manual",
-      },
-    },
-  ]);
+  appendCurrentTaskInfoMessage(
+    setGptMessages,
+    `Current task content was set to Kin input as <<SYS_INFO>>. TASK_SLOT: ${getTaskSlotLabel()}`
+  );
   setActiveTabToKin?.();
 }

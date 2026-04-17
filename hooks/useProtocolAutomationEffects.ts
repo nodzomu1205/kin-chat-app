@@ -22,8 +22,8 @@ export type ProtocolAutomationEffectArgs = {
   sendToGpt: () => void | Promise<void>;
   setGptInput: (value: string) => void;
   setKinInput: (value: string) => void;
-  isMobile: boolean;
-  setActiveTab: (tab: "kin" | "gpt") => void;
+  focusKinPanel: () => boolean;
+  focusGptPanel: () => boolean;
 };
 
 export function useProtocolAutomationEffects(args: ProtocolAutomationEffectArgs) {
@@ -57,7 +57,7 @@ export function useProtocolAutomationEffects(args: ProtocolAutomationEffectArgs)
     if (lastAutoCopiedKinMessageIdRef.current === latestKin.id) return;
     lastAutoCopiedKinMessageIdRef.current = latestKin.id;
     args.setGptInput(extractPreferredKinTransferText(latestKin.text));
-    if (args.isMobile) args.setActiveTab("gpt");
+    args.focusGptPanel();
   }, [args]);
 
   useEffect(() => {
@@ -67,6 +67,6 @@ export function useProtocolAutomationEffects(args: ProtocolAutomationEffectArgs)
     if (lastAutoCopiedGptMessageIdRef.current === latestGpt.id) return;
     lastAutoCopiedGptMessageIdRef.current = latestGpt.id;
     args.setKinInput(extractPreferredKinTransferText(latestGpt.text));
-    if (args.isMobile) args.setActiveTab("kin");
+    args.focusKinPanel();
   }, [args]);
 }

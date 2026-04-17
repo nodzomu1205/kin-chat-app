@@ -45,6 +45,20 @@ describe("taskCompilerSections", () => {
     );
   });
 
+  it("keeps up_to ask-gpt workflow optional instead of required", () => {
+    const intent = createIntent({
+      askGptCount: 3,
+      askGptCountRule: "up_to",
+    });
+
+    expect(buildRequiredWorkflow(intent)).not.toContain(
+      "- Ask GPT no more than 3 time(s) before finalizing."
+    );
+    expect(buildOptionalWorkflow(intent)).toContain(
+      "- You may ask GPT up to 3 time(s)."
+    );
+  });
+
   it("adds presentation-specific completion and delivery guidance", () => {
     const intent: TaskIntent = {
       ...createIntent(),

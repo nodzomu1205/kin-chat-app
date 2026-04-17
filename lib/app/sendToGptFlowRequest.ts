@@ -4,6 +4,7 @@ import type {
   ChatApiRequestPayload,
   ChatApiSearchLike,
   PendingRequestLike,
+  PreparedRequestExecutionContext,
   ProtocolTaskEventLike,
   SearchContextRecorder,
   SearchResponseEventLike,
@@ -16,15 +17,15 @@ import type { SearchEngine, SearchMode } from "@/types/task";
 export async function requestGptAssistantArtifacts(args: {
   requestMemory: Memory;
   recentMessages: Message[];
-  finalRequestText: string;
-  storedDocumentContext: string;
-  storedLibraryContext: string;
-  cleanQuery?: string;
+  finalRequestText: PreparedRequestExecutionContext["finalRequestText"];
+  storedDocumentContext: PreparedRequestExecutionContext["storedDocumentContext"];
+  storedLibraryContext: PreparedRequestExecutionContext["storedLibraryContext"];
+  cleanQuery?: PreparedRequestExecutionContext["cleanQuery"];
   searchRequestEvent?: SearchResponseEventLike;
-  effectiveParsedSearchQuery: string;
-  searchSeriesId?: string;
-  continuationToken?: string;
-  askAiModeLink?: string;
+  effectiveParsedSearchQuery: PreparedRequestExecutionContext["effectiveParsedSearchQuery"];
+  searchSeriesId?: PreparedRequestExecutionContext["searchSeriesId"];
+  continuationToken?: PreparedRequestExecutionContext["continuationToken"];
+  askAiModeLink?: PreparedRequestExecutionContext["askAiModeLink"];
   effectiveSearchMode: SearchMode;
   effectiveSearchEngines: SearchEngine[];
   effectiveSearchLocation: string;
@@ -42,7 +43,7 @@ export async function requestGptAssistantArtifacts(args: {
   normalizedSources: SourceItem[];
 }> {
   const data = await fetchChatApiSearchData(
-    buildRequestPayload({
+    buildGptAssistantRequestPayload({
       requestMemory: args.requestMemory,
       recentMessages: args.recentMessages,
       finalRequestText: args.finalRequestText,
@@ -85,7 +86,7 @@ export async function requestGptAssistantArtifacts(args: {
   };
 }
 
-function buildRequestPayload(args: {
+export function buildGptAssistantRequestPayload(args: {
   requestMemory: Memory;
   recentMessages: Message[];
   finalRequestText: string;

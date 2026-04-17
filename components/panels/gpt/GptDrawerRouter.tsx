@@ -160,6 +160,14 @@ export default function GptDrawerRouter({
         onDeleteStoredDocument={references.onDeleteStoredDocument}
         onDeleteSearchHistoryItem={references.onDeleteSearchHistoryItem}
         onSaveStoredDocument={references.onSaveStoredDocument}
+        onShowLibraryItemInChat={references.onShowLibraryItemInChat}
+        onSendLibraryItemToKin={references.onSendLibraryItemToKin}
+        onUploadLibraryItemToGoogleDrive={
+          references.onUploadLibraryItemToGoogleDrive
+        }
+        onOpenGoogleDriveFolder={settings.onOpenGoogleDriveFolder}
+        onImportFromGoogleDrive={settings.onImportFromGoogleDrive}
+        isMobile={header.isMobile}
       />
     );
   }
@@ -250,7 +258,7 @@ export default function GptDrawerRouter({
          onChangeAutoSendKinSysInput={settings.onChangeAutoSendKinSysInput}
          onChangeAutoCopyKinSysResponseToGpt={settings.onChangeAutoCopyKinSysResponseToGpt}
          onChangeAutoSendGptSysInput={settings.onChangeAutoSendGptSysInput}
-         onChangeAutoCopyGptSysResponseToKin={settings.onChangeAutoCopyGptSysResponseToKin}
+        onChangeAutoCopyGptSysResponseToKin={settings.onChangeAutoCopyGptSysResponseToKin}
          onChangeAutoCopyFileIngestSysInfoToKin={
            settings.onChangeAutoCopyFileIngestSysInfoToKin
          }

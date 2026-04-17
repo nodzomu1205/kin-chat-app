@@ -300,13 +300,16 @@ export function buildRequiredWorkflow(intent: TaskIntent): string[] {
   const lines: string[] = [];
 
   if ((intent.workflow?.askGptCount ?? 0) > 0) {
-    lines.push(
-      `- ${formatCountInstruction(
-        "Ask GPT",
-        intent.workflow!.askGptCount!,
-        intent.workflow?.askGptCountRule ?? "exact"
-      ).replace(/\.$/, " before finalizing.")}`
-    );
+    const askGptRule = intent.workflow?.askGptCountRule ?? "exact";
+    if (askGptRule !== "up_to") {
+      lines.push(
+        `- ${formatCountInstruction(
+          "Ask GPT",
+          intent.workflow!.askGptCount!,
+          askGptRule
+        ).replace(/\.$/, " before finalizing.")}`
+      );
+    }
   }
 
   if ((intent.workflow?.searchRequestCount ?? 0) > 0) {
@@ -365,6 +368,16 @@ export function buildOptionalWorkflow(intent: TaskIntent): string[] {
         intent.workflow?.askUserCountRule ?? "exact"
       )
     );
+  }
+
+  if ((intent.workflow?.askGptCount ?? 0) > 0) {
+    const count = intent.workflow!.askGptCount!;
+    const rule = intent.workflow?.askGptCountRule ?? "exact";
+    if (rule === "up_to") {
+      lines.push(`- You may ask GPT up to ${count} time(s).`);
+    } else if (rule === "around") {
+      lines.push(`- You may ask GPT around ${count} time(s).`);
+    }
   }
 
   if (intent.workflow?.allowMaterialRequest) {

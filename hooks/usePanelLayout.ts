@@ -1,0 +1,39 @@
+import { useEffect, useState } from "react";
+import { useResponsive } from "@/hooks/useResponsive";
+import {
+  focusPanelIfSingleLayout,
+  type ChatPanelTab,
+  normalizeSinglePanelActiveTab,
+} from "@/lib/app/panelLayout";
+
+export function usePanelLayout(breakpoint = 1180) {
+  const isSinglePanelLayout = useResponsive(breakpoint);
+  const [activePanelTab, setActivePanelTab] = useState<ChatPanelTab>("kin");
+
+  useEffect(() => {
+    setActivePanelTab((prev) =>
+      normalizeSinglePanelActiveTab({
+        isSinglePanelLayout,
+        activeTab: prev,
+      })
+    );
+  }, [isSinglePanelLayout]);
+
+  return {
+    isSinglePanelLayout,
+    activePanelTab,
+    setActivePanelTab,
+    focusKinPanel: () =>
+      focusPanelIfSingleLayout({
+        isSinglePanelLayout,
+        setActiveTab: setActivePanelTab,
+        tab: "kin",
+      }),
+    focusGptPanel: () =>
+      focusPanelIfSingleLayout({
+        isSinglePanelLayout,
+        setActiveTab: setActivePanelTab,
+        tab: "gpt",
+      }),
+  };
+}

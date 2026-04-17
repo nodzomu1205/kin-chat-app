@@ -3,6 +3,10 @@ import { parseTaskInput } from "@/lib/taskInputParser";
 import { formatTaskSlot } from "@/lib/app/kinStructuredProtocol";
 import { resolveDraftTitle } from "@/lib/app/contextNaming";
 import { resetTaskDraft } from "@/lib/app/taskDraftHelpers";
+import {
+  buildTaskDraftProjectionFromProtocol,
+  type TaskDraftProtocolProjectionParams,
+} from "@/lib/taskDraftProjection";
 import type { Message } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 
@@ -145,23 +149,10 @@ export function useTaskDraftHelpers(args: {
   }, [currentTaskDraft]);
 
   const syncTaskDraftFromProtocol = useCallback(
-    (params: {
-      taskId: string;
-      title: string;
-      goal: string;
-      compiledTaskPrompt: string;
-    }) => {
-      setCurrentTaskDraft((prev) => ({
-        ...prev,
-        title: params.title,
-        taskName: params.title,
-        userInstruction: params.goal,
-        body: params.compiledTaskPrompt,
-        mergedText: params.compiledTaskPrompt,
-        kinTaskText: params.compiledTaskPrompt,
-        status: "formatted",
-        updatedAt: new Date().toISOString(),
-      }));
+    (params: { taskId: string } & TaskDraftProtocolProjectionParams) => {
+      setCurrentTaskDraft((prev) =>
+        buildTaskDraftProjectionFromProtocol(prev, params)
+      );
     },
     [setCurrentTaskDraft]
   );

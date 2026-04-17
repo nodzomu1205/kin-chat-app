@@ -30,6 +30,7 @@ import {
   GPT_SETTINGS_DRAWER_TEXT,
   GPT_SETTINGS_WORKSPACE_TEXT,
 } from "@/components/panels/gpt/gptSettingsText";
+import { GPT_GOOGLE_DRIVE_TEXT } from "@/components/panels/gpt/gptGoogleDriveText";
 import {
   formatIntentLabel,
   formatIntentPhraseKindLabel,
@@ -44,6 +45,7 @@ import {
   LabeledSelect,
   LabeledTextArea,
   NumberField,
+  ReadonlyStatField,
   SectionHeaderRow,
   SettingsItemCard,
   TextField,
@@ -728,6 +730,56 @@ function WorkspaceSectionTitle(props: { title: string; subtitle: string }) {
   );
 }
 
+function GoogleDriveLibrarySection(props: {
+  folderLink: string;
+  folderId: string;
+  integrationMode: "manual_link" | "picker";
+  onChangeFolderLink: (value: string) => void;
+}) {
+  return (
+    <div style={sectionCard}>
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "grid", gap: 4 }}>
+          <div style={{ ...labelStyle, marginBottom: 0 }}>
+            {GPT_GOOGLE_DRIVE_TEXT.settings.title}
+          </div>
+          <div style={helpTextStyle}>
+            {GPT_GOOGLE_DRIVE_TEXT.settings.importHelp}
+          </div>
+        </div>
+
+        <TextField
+          label={GPT_GOOGLE_DRIVE_TEXT.settings.folderLinkLabel}
+          value={props.folderLink}
+          onChange={props.onChangeFolderLink}
+          help={GPT_GOOGLE_DRIVE_TEXT.settings.folderLinkHelp}
+        />
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 10,
+          }}
+        >
+          <ReadonlyStatField
+            label={GPT_GOOGLE_DRIVE_TEXT.settings.folderIdLabel}
+            value={props.folderId || "-"}
+          />
+          <ReadonlyStatField
+            label={GPT_GOOGLE_DRIVE_TEXT.settings.integrationModeLabel}
+            value={
+              props.integrationMode === "manual_link"
+                ? GPT_GOOGLE_DRIVE_TEXT.settings.integrationModeManual
+                : GPT_GOOGLE_DRIVE_TEXT.settings.integrationModePicker
+            }
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GptSettingsWorkspace({
   activeView,
   onChangeView,
@@ -1092,6 +1144,13 @@ export default function GptSettingsWorkspace({
 
         {activeView === "library" ? (
           <>
+            <GoogleDriveLibrarySection
+              folderLink={settings.googleDriveFolderLink}
+              folderId={settings.googleDriveFolderId}
+              integrationMode={settings.googleDriveIntegrationMode}
+              onChangeFolderLink={settings.onChangeGoogleDriveFolderLink}
+            />
+
             <LibrarySettingsSection
               isMobile={isMobile}
               autoLibraryReferenceEnabled={settings.autoLibraryReferenceEnabled}

@@ -29,15 +29,10 @@ export function extractProtocolInteractionContext(params: {
   const userQuestionEvent = protocolEvents.find(
     (event) => event.type === "user_question"
   );
-
-  const reqAnswerMatch = params.rawText.match(
-    /^REQ\s+([A-Z]\d+)\s+.+?:\s*([\s\S]*)$/i
-  );
-  const requestAnswerId = reqAnswerMatch?.[1]?.trim() || "";
-  const requestAnswerBody = reqAnswerMatch?.[2]?.trim() || "";
-  const requestToAnswer = requestAnswerId
-    ? params.findPendingRequest(requestAnswerId)
-    : null;
+  const { requestToAnswer, requestAnswerBody } = resolveRequestAnswerContext({
+    rawText: params.rawText,
+    findPendingRequest: params.findPendingRequest,
+  });
 
   return {
     protocolEvents,
@@ -85,27 +80,16 @@ export function resolveDerivedSearchContext(params: {
   const effectiveSearchMode = protocolSearchOverrides.searchMode;
   const effectiveSearchEngines = protocolSearchOverrides.searchEngines;
   const effectiveSearchLocation = protocolSearchOverrides.searchLocation;
-  const aiContinuationEnabled =
-    effectiveSearchEngines.includes("google_ai_mode") ||
-    (effectiveSearchEngines.length === 0 &&
-      (effectiveSearchMode === "ai" ||
-        effectiveSearchMode === "integrated" ||
-        effectiveSearchMode === "ai_first"));
-  const searchSeriesId = aiContinuationEnabled
-    ? continuationDetails.seriesId
-    : undefined;
-  const continuationToken = searchSeriesId
-    ? params.getContinuationTokenForSeries(searchSeriesId)
-    : "";
-  const askAiModeLink =
-    aiContinuationEnabled && !continuationToken
-      ? params.getAskAiModeLinkForQuery(
-          continuationDetails.cleanQuery ||
-            params.searchRequestEvent?.query ||
-            effectiveParsedSearchQuery ||
-            ""
-        )
-      : "";
+  const { searchSeriesId, continuationToken, askAiModeLink } =
+    resolveAiContinuationArtifacts({
+      effectiveSearchMode,
+      effectiveSearchEngines,
+      continuationDetails,
+      searchRequestQuery: params.searchRequestEvent?.query,
+      effectiveParsedSearchQuery,
+      getContinuationTokenForSeries: params.getContinuationTokenForSeries,
+      getAskAiModeLinkForQuery: params.getAskAiModeLinkForQuery,
+    });
 
   return {
     inlineSearchQuery,
@@ -114,6 +98,63 @@ export function resolveDerivedSearchContext(params: {
     effectiveSearchMode,
     effectiveSearchEngines,
     effectiveSearchLocation,
+    searchSeriesId,
+    continuationToken,
+    askAiModeLink,
+  };
+}
+
+export function resolveRequestAnswerContext(params: {
+  rawText: string;
+  findPendingRequest: (requestId: string) => PendingRequestLike | null;
+}) {
+  const reqAnswerMatch = params.rawText.match(
+    /^REQ\s+([A-Z]\d+)\s+.+?:\s*([\s\S]*)$/i
+  );
+  const requestAnswerId = reqAnswerMatch?.[1]?.trim() || "";
+  const requestAnswerBody = reqAnswerMatch?.[2]?.trim() || "";
+  const requestToAnswer = requestAnswerId
+    ? params.findPendingRequest(requestAnswerId)
+    : null;
+
+  return {
+    requestToAnswer,
+    requestAnswerBody,
+  };
+}
+
+export function resolveAiContinuationArtifacts(params: {
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  continuationDetails: ReturnType<typeof parseSearchContinuation>;
+  searchRequestQuery?: string;
+  effectiveParsedSearchQuery?: string;
+  getContinuationTokenForSeries: (seriesId: string) => string;
+  getAskAiModeLinkForQuery: (query: string) => string;
+}) {
+  const aiContinuationEnabled =
+    params.effectiveSearchEngines.includes("google_ai_mode") ||
+    (params.effectiveSearchEngines.length === 0 &&
+      (params.effectiveSearchMode === "ai" ||
+        params.effectiveSearchMode === "integrated" ||
+        params.effectiveSearchMode === "ai_first"));
+  const searchSeriesId = aiContinuationEnabled
+    ? params.continuationDetails.seriesId
+    : undefined;
+  const continuationToken = searchSeriesId
+    ? params.getContinuationTokenForSeries(searchSeriesId)
+    : "";
+  const askAiModeLink =
+    aiContinuationEnabled && !continuationToken
+      ? params.getAskAiModeLinkForQuery(
+          params.continuationDetails.cleanQuery ||
+            params.searchRequestQuery ||
+            params.effectiveParsedSearchQuery ||
+            ""
+        )
+      : "";
+
+  return {
     searchSeriesId,
     continuationToken,
     askAiModeLink,

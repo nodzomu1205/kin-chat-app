@@ -4,6 +4,7 @@ import {
   getTaskProgressSelection,
   hasTaskRuntimeSnapshot,
   removeTaskRuntimeSnapshot,
+  resolveRuntimeAfterArchive,
   upsertTaskRuntimeSnapshot,
 } from "@/lib/taskRuntimeCollection";
 import type { TaskRuntimeState } from "@/types/taskProtocol";
@@ -16,6 +17,7 @@ function createRuntime(
     currentTaskId: taskId,
     currentTaskTitle: `Task ${taskId}`,
     currentTaskIntent: null,
+    originalInstruction: "",
     compiledTaskPrompt: "",
     taskStatus: "running",
     latestSummary: "",
@@ -56,5 +58,41 @@ describe("taskRuntimeCollection", () => {
     expect(view.taskStatus).toBe("suspended");
     expect(selection.activeIndex).toBe(1);
     expect(selection.totalCount).toBe(2);
+  });
+
+  it("keeps the current runtime when archiving a different task", () => {
+    const currentRuntime = createRuntime("002");
+    const nextSnapshots = [createRuntime("001")];
+
+    expect(
+      resolveRuntimeAfterArchive({
+        currentRuntime,
+        nextSnapshots,
+        archivedTaskId: "001",
+        createEmptyTaskRuntime: () => createRuntime("empty"),
+      })
+    ).toBe(currentRuntime);
+  });
+
+  it("falls back to the next snapshot or an empty runtime when archiving the active task", () => {
+    const currentRuntime = createRuntime("002");
+
+    expect(
+      resolveRuntimeAfterArchive({
+        currentRuntime,
+        nextSnapshots: [createRuntime("001")],
+        archivedTaskId: "002",
+        createEmptyTaskRuntime: () => createRuntime("empty"),
+      }).currentTaskId
+    ).toBe("001");
+
+    expect(
+      resolveRuntimeAfterArchive({
+        currentRuntime,
+        nextSnapshots: [],
+        archivedTaskId: "002",
+        createEmptyTaskRuntime: () => createRuntime("empty"),
+      }).currentTaskId
+    ).toBe("empty");
   });
 });

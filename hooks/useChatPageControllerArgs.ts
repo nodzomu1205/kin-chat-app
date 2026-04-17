@@ -10,38 +10,40 @@ import type {
   ChatPageTaskArgs,
   ChatPageUiStateArgs,
 } from "@/hooks/chatPageActionTypes";
-import type { ChatPageControllerCompositionArgs } from "@/hooks/chatPageControllerCompositionTypes";
+import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelCompositionTypes";
 
 export function useChatPageControllerArgs(
-  args: ChatPageControllerCompositionArgs
+  args: ChatPageWorkspaceViewArgs
 ): UseChatPageControllerArgs {
   const identity: ChatPageIdentityArgs = {
     currentKin: args.app.currentKin,
     kinList: args.app.kinList,
     isMobile: args.app.isMobile,
-    setActiveTab: args.app.setActiveTab,
+    setActivePanelTab: args.app.setActivePanelTab,
+    focusKinPanel: args.app.focusKinPanel,
+    focusGptPanel: args.app.focusGptPanel,
     setKinConnectionState: args.app.setKinConnectionState,
   };
 
   const uiState: ChatPageUiStateArgs = {
-    gptInput: args.uiState.gptInput,
-    kinInput: args.uiState.kinInput,
-    gptLoading: args.uiState.gptLoading,
-    kinLoading: args.uiState.kinLoading,
-    ingestLoading: args.uiState.ingestLoading,
-    gptMessages: args.uiState.gptMessages,
-    kinMessages: args.uiState.kinMessages,
-    pendingKinInjectionBlocks: args.uiState.pendingKinInjectionBlocks,
-    pendingKinInjectionIndex: args.uiState.pendingKinInjectionIndex,
-    setKinInput: args.uiState.setKinInput,
-    setGptInput: args.uiState.setGptInput,
-    setKinMessages: args.uiState.setKinMessages,
-    setGptMessages: args.uiState.setGptMessages,
-    setKinLoading: args.uiState.setKinLoading,
-    setGptLoading: args.uiState.setGptLoading,
-    setIngestLoading: args.uiState.setIngestLoading,
-    setPendingKinInjectionBlocks: args.uiState.setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex: args.uiState.setPendingKinInjectionIndex,
+    gptInput: args.ui.gptInput,
+    kinInput: args.ui.kinInput,
+    gptLoading: args.ui.gptLoading,
+    kinLoading: args.ui.kinLoading,
+    ingestLoading: args.ui.ingestLoading,
+    gptMessages: args.ui.gptMessages,
+    kinMessages: args.ui.kinMessages,
+    pendingKinInjectionBlocks: args.ui.pendingKinInjectionBlocks,
+    pendingKinInjectionIndex: args.ui.pendingKinInjectionIndex,
+    setKinInput: args.ui.setKinInput,
+    setGptInput: args.ui.setGptInput,
+    setKinMessages: args.ui.setKinMessages,
+    setGptMessages: args.ui.setGptMessages,
+    setKinLoading: args.ui.setKinLoading,
+    setGptLoading: args.ui.setGptLoading,
+    setIngestLoading: args.ui.setIngestLoading,
+    setPendingKinInjectionBlocks: args.ui.setPendingKinInjectionBlocks,
+    setPendingKinInjectionIndex: args.ui.setPendingKinInjectionIndex,
   };
 
   const task: ChatPageTaskArgs = {
@@ -91,21 +93,22 @@ export function useChatPageControllerArgs(
   };
 
   const services: ChatPageServicesArgs = {
-    responseMode: args.services.responseMode,
-    autoCopyFileIngestSysInfoToKin: args.services.autoCopyFileIngestSysInfoToKin,
-    gptMemoryRuntime: args.services.gptMemoryRuntime,
-    setUploadKind: args.services.setUploadKind,
-    applySearchUsage: args.services.applySearchUsage,
-    applyChatUsage: args.services.applyChatUsage,
-    applySummaryUsage: args.services.applySummaryUsage,
-    applyTaskUsage: args.services.applyTaskUsage,
-    applyIngestUsage: args.services.applyIngestUsage,
-    buildLibraryReferenceContext: args.services.buildLibraryReferenceContext,
-    referenceLibraryItems: args.services.referenceLibraryItems,
-    libraryIndexResponseCount: args.services.libraryIndexResponseCount,
-    recordIngestedDocument: args.services.recordIngestedDocument,
-    gptMemorySettingsControls: args.services.gptMemorySettingsControls,
-    ingestProtocolMessage: args.services.ingestProtocolMessage,
+    responseMode: args.gpt.responseMode,
+    autoCopyFileIngestSysInfoToKin:
+      args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+    gptMemoryRuntime: args.gpt.gptMemoryRuntime,
+    setUploadKind: args.gpt.onChangeUploadKind,
+    applySearchUsage: args.usage.applySearchUsage,
+    applyChatUsage: args.usage.applyChatUsage,
+    applySummaryUsage: args.usage.applySummaryUsage,
+    applyTaskUsage: args.usage.applyTaskUsage,
+    applyIngestUsage: args.usage.applyIngestUsage,
+    buildLibraryReferenceContext: args.references.buildLibraryReferenceContext,
+    referenceLibraryItems: args.references.referenceLibraryItems,
+    libraryIndexResponseCount: args.references.libraryIndexResponseCount,
+    recordIngestedDocument: args.usage.recordIngestedDocument,
+    gptMemorySettingsControls: args.gpt.gptMemorySettingsControls,
+    ingestProtocolMessage: args.task.taskProtocolView.ingestProtocolMessage,
   };
   const actions: ChatPageActionArgGroups = {
     identity,
@@ -118,7 +121,31 @@ export function useChatPageControllerArgs(
 
   return {
     actions,
-    protocolAutomation: args.automation,
-    panelReset: args.reset,
+    protocolAutomation: {
+      autoBridgeSettings: args.bridge.autoBridgeSettings,
+      kinInput: args.ui.kinInput,
+      gptInput: args.ui.gptInput,
+      kinLoading: args.ui.kinLoading,
+      gptLoading: args.ui.gptLoading,
+      kinMessages: args.ui.kinMessages,
+      gptMessages: args.ui.gptMessages,
+      setGptInput: args.ui.setGptInput,
+      setKinInput: args.ui.setKinInput,
+      focusKinPanel: args.app.focusKinPanel,
+      focusGptPanel: args.app.focusGptPanel,
+    },
+    panelReset: {
+      setKinMessages: args.ui.setKinMessages,
+      setGptMessages: args.ui.setGptMessages,
+      resetTokenStats: args.reset.resetTokenStats,
+      resetCurrentTaskDraft: args.task.resetCurrentTaskDraft,
+      focusKinPanel: args.app.focusKinPanel,
+      connectKin: args.reset.connectKin,
+      switchKin: args.reset.switchKin,
+      disconnectKin: args.reset.disconnectKin,
+      removeKinState: args.reset.removeKinState,
+      removeKin: args.reset.removeKin,
+      resetGptForCurrentKin: args.gpt.resetGptForCurrentKin,
+    },
   };
 }

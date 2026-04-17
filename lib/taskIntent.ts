@@ -117,6 +117,115 @@ export function normalizePendingIntentCandidate(
   };
 }
 
+export function normalizeApprovedIntentPhraseFromCandidate(
+  candidate: PendingIntentCandidate
+): ApprovedIntentPhrase {
+  const sanitizedCandidate = normalizePendingIntentCandidate(candidate);
+  const normalizedCandidate = {
+    ...sanitizedCandidate,
+    ...parseIntentCandidateDraftText(
+      sanitizedCandidate.draftText || sanitizedCandidate.phrase,
+      sanitizedCandidate
+    ),
+  };
+
+  return {
+    id: normalizedCandidate.id,
+    phrase: normalizedCandidate.phrase,
+    kind: normalizedCandidate.kind,
+    count: normalizedCandidate.count,
+    rule: normalizedCandidate.rule,
+    charLimit: normalizedCandidate.charLimit,
+    draftText: normalizedCandidate.draftText,
+    approvedCount: normalizedCandidate.approvedCount,
+    rejectedCount: normalizedCandidate.rejectedCount,
+    createdAt: normalizedCandidate.createdAt,
+  };
+}
+
+function isSameApprovedIntentPhrase(
+  left: Pick<
+    ApprovedIntentPhrase,
+    "kind" | "phrase" | "count" | "rule" | "charLimit"
+  >,
+  right: Pick<
+    ApprovedIntentPhrase,
+    "kind" | "phrase" | "count" | "rule" | "charLimit"
+  >
+) {
+  return (
+    left.kind === right.kind &&
+    left.phrase === right.phrase &&
+    left.count === right.count &&
+    left.rule === right.rule &&
+    left.charLimit === right.charLimit
+  );
+}
+
+export function buildNextApprovedIntentPhrasesOnApprove(args: {
+  pendingIntentCandidates: PendingIntentCandidate[];
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  candidateId: string;
+}) {
+  const candidate = args.pendingIntentCandidates.find((item) => item.id === args.candidateId);
+  if (!candidate) return args.approvedIntentPhrases;
+  const normalizedCandidate = normalizeApprovedIntentPhraseFromCandidate(candidate);
+
+  const existing = args.approvedIntentPhrases.find((item) =>
+    isSameApprovedIntentPhrase(item, normalizedCandidate)
+  );
+
+  if (existing) {
+    return args.approvedIntentPhrases.map((item) =>
+      item.id === existing.id
+        ? {
+            ...item,
+            approvedCount: (item.approvedCount ?? 0) + 1,
+            draftText: normalizedCandidate.draftText,
+          }
+        : item
+    );
+  }
+
+  return [
+    {
+      id: `approved-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      phrase: normalizedCandidate.phrase,
+      kind: normalizedCandidate.kind,
+      count: normalizedCandidate.count,
+      rule: normalizedCandidate.rule,
+      charLimit: normalizedCandidate.charLimit,
+      draftText: normalizedCandidate.draftText,
+      approvedCount: 1,
+      rejectedCount: 0,
+      createdAt: new Date().toISOString(),
+    },
+    ...args.approvedIntentPhrases,
+  ].slice(0, 100);
+}
+
+export function buildNextApprovedIntentPhrasesOnUpdate(args: {
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  phraseId: string;
+  patch: Partial<ApprovedIntentPhrase>;
+}) {
+  return args.approvedIntentPhrases.map((item) =>
+    item.id === args.phraseId
+      ? normalizeApprovedIntentPhrase({
+          ...item,
+          ...args.patch,
+        })
+      : item
+  );
+}
+
+export function buildNextApprovedIntentPhrasesOnDelete(args: {
+  approvedIntentPhrases: ApprovedIntentPhrase[];
+  phraseId: string;
+}) {
+  return args.approvedIntentPhrases.filter((item) => item.id !== args.phraseId);
+}
+
 export function formatIntentCandidateDraftText(candidate: {
   kind: IntentPhraseKind;
   count?: number;
@@ -401,7 +510,7 @@ function hasResidualIntentReviewSignal(text: string) {
   );
 }
 
-export function buildApprovedIntentPhraseMatchScore(
+function buildApprovedIntentPhraseMatchScore(
   text: string,
   phrase: ApprovedIntentPhrase
 ) {
@@ -415,27 +524,6 @@ export function buildApprovedIntentPhraseMatchScore(
   score += Math.min(phrase.approvedCount ?? 1, 3);
   score -= Math.min(phrase.rejectedCount ?? 0, 3) * 2;
   return score;
-}
-
-export function findBestApprovedIntentPhraseMatchWithScore(
-  text: string,
-  approvedPhrases: ApprovedIntentPhrase[]
-) {
-  let best:
-    | {
-        phrase: ApprovedIntentPhrase | null;
-        score: number;
-      }
-    | undefined;
-
-  for (const phrase of approvedPhrases) {
-    const score = buildApprovedIntentPhraseMatchScore(text, phrase);
-    if (!best || score > best.score) {
-      best = { phrase, score };
-    }
-  }
-
-  return best || { phrase: null, score: 0 };
 }
 
 function shouldRunTaskIntentFallback(args: {

@@ -11,10 +11,10 @@ type BuildChatPageWorkspaceGptPanelArgsOptions = {
   onSaveTaskSnapshot: () => void;
 };
 
-export function buildChatPageWorkspaceKinPanelArgs(
+function buildChatPagePanelBaseArgs(
   args: ChatPageWorkspaceViewArgs,
   controller: ChatPageControllerGroups
-): ChatPageKinPanelCompositionArgs {
+) {
   return {
     app: {
       currentKin: args.app.currentKin,
@@ -25,7 +25,50 @@ export function buildChatPageWorkspaceKinPanelArgs(
     },
     taskProtocolView: args.task.taskProtocolView,
     controller,
-    activeTabSetter: () => args.app.setActiveTab("gpt"),
+  };
+}
+
+function buildChatPageWorkspaceGptReferences(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageGptPanelCompositionArgs["references"] {
+  return {
+    lastSearchContext: args.search.lastSearchContext,
+    searchHistory: args.search.searchHistory,
+    selectedTaskSearchResultId: args.search.selectedTaskSearchResultId,
+    multipartAssemblies: args.references.multipartAssemblies,
+    storedDocuments: args.references.storedDocuments,
+    referenceLibraryItems: args.references.referenceLibraryItems,
+    selectedTaskLibraryItemId: args.references.selectedTaskLibraryItemId,
+    onSelectTaskSearchResult: args.search.onSelectTaskSearchResult,
+    onMoveSearchHistoryItem: args.search.onMoveSearchHistoryItem,
+    onDeleteSearchHistoryItem: args.search.onDeleteSearchHistoryItem,
+    onLoadMultipartAssemblyToGptInput:
+      args.references.onLoadMultipartAssemblyToGptInput,
+    onDownloadMultipartAssembly: args.references.onDownloadMultipartAssembly,
+    onDeleteMultipartAssembly: args.references.onDeleteMultipartAssembly,
+    onLoadStoredDocumentToGptInput:
+      args.references.onLoadStoredDocumentToGptInput,
+    onDownloadStoredDocument: args.references.onDownloadStoredDocument,
+    onDeleteStoredDocument: args.references.onDeleteStoredDocument,
+    onMoveStoredDocument: args.references.onMoveStoredDocument,
+    onMoveLibraryItem: args.references.onMoveLibraryItem,
+    onSelectTaskLibraryItem: args.references.onSelectTaskLibraryItem,
+    onChangeLibraryItemMode: args.references.onChangeLibraryItemMode,
+    onSaveStoredDocument: args.references.onSaveStoredDocument,
+    onShowLibraryItemInChat: args.references.onShowLibraryItemInChat,
+    onSendLibraryItemToKin: args.references.onSendLibraryItemToKin,
+    onUploadLibraryItemToGoogleDrive:
+      args.references.onUploadLibraryItemToGoogleDrive,
+  };
+}
+
+export function buildChatPageWorkspaceKinPanelArgs(
+  args: ChatPageWorkspaceViewArgs,
+  controller: ChatPageControllerGroups
+): ChatPageKinPanelCompositionArgs {
+  return {
+    ...buildChatPagePanelBaseArgs(args, controller),
+    onSwitchToGptPanel: args.app.focusGptPanel,
     kinState: {
       kinIdInput: args.kin.kinIdInput,
       setKinIdInput: args.kin.setKinIdInput,
@@ -49,16 +92,8 @@ export function buildChatPageWorkspaceGptPanelArgs(
   options: BuildChatPageWorkspaceGptPanelArgsOptions
 ): ChatPageGptPanelCompositionArgs {
   return {
-    app: {
-      currentKin: args.app.currentKin,
-      currentKinLabel: args.app.currentKinLabel,
-      kinStatus: args.app.kinStatus,
-      kinList: args.app.kinList,
-      isMobile: args.app.isMobile,
-    },
-    taskProtocolView: args.task.taskProtocolView,
-    controller: options.controller,
-    activeTabSetter: () => args.app.setActiveTab("kin"),
+    ...buildChatPagePanelBaseArgs(args, options.controller),
+    onSwitchToKinPanel: args.app.focusKinPanel,
     pendingInjection: {
       blocks: args.ui.pendingKinInjectionBlocks,
       index: args.ui.pendingKinInjectionIndex,
@@ -84,31 +119,7 @@ export function buildChatPageWorkspaceGptPanelArgs(
       onSelectPreviousTaskDraft: args.task.onSelectPreviousTaskDraft,
       onSelectNextTaskDraft: args.task.onSelectNextTaskDraft,
     },
-    references: {
-      lastSearchContext: args.search.lastSearchContext,
-      searchHistory: args.search.searchHistory,
-      selectedTaskSearchResultId: args.search.selectedTaskSearchResultId,
-      multipartAssemblies: args.references.multipartAssemblies,
-      storedDocuments: args.references.storedDocuments,
-      referenceLibraryItems: args.references.referenceLibraryItems,
-      selectedTaskLibraryItemId: args.references.selectedTaskLibraryItemId,
-      onSelectTaskSearchResult: args.search.onSelectTaskSearchResult,
-      onMoveSearchHistoryItem: args.search.onMoveSearchHistoryItem,
-      onDeleteSearchHistoryItem: args.search.onDeleteSearchHistoryItem,
-      onLoadMultipartAssemblyToGptInput:
-        args.references.onLoadMultipartAssemblyToGptInput,
-      onDownloadMultipartAssembly: args.references.onDownloadMultipartAssembly,
-      onDeleteMultipartAssembly: args.references.onDeleteMultipartAssembly,
-      onLoadStoredDocumentToGptInput:
-        args.references.onLoadStoredDocumentToGptInput,
-      onDownloadStoredDocument: args.references.onDownloadStoredDocument,
-      onDeleteStoredDocument: args.references.onDeleteStoredDocument,
-      onMoveStoredDocument: args.references.onMoveStoredDocument,
-      onMoveLibraryItem: args.references.onMoveLibraryItem,
-      onSelectTaskLibraryItem: args.references.onSelectTaskLibraryItem,
-      onChangeLibraryItemMode: args.references.onChangeLibraryItemMode,
-      onSaveStoredDocument: args.references.onSaveStoredDocument,
-    },
+    references: buildChatPageWorkspaceGptReferences(args),
     settings: {
       memorySettings: args.memory.memorySettings,
       defaultMemorySettings: args.gpt.defaultMemorySettings,
@@ -142,6 +153,9 @@ export function buildChatPageWorkspaceGptPanelArgs(
         args.bridge.autoBridgeSettings.autoCopyGptSysResponseToKin,
       autoCopyFileIngestSysInfoToKin:
         args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+      googleDriveFolderLink: args.references.googleDriveFolderLink,
+      googleDriveFolderId: args.references.googleDriveFolderId,
+      googleDriveIntegrationMode: args.references.googleDriveIntegrationMode,
       onChangeResponseMode: args.gpt.onChangeResponseMode,
       onChangeUploadKind: args.gpt.onChangeUploadKind,
       onChangeIngestMode: args.gpt.onChangeIngestMode,
@@ -170,6 +184,10 @@ export function buildChatPageWorkspaceGptPanelArgs(
         args.bridge.onChangeAutoCopyGptSysResponseToKin,
       onChangeAutoCopyFileIngestSysInfoToKin:
         args.bridge.onChangeAutoCopyFileIngestSysInfoToKin,
+      onChangeGoogleDriveFolderLink:
+        args.references.onChangeGoogleDriveFolderLink,
+      onOpenGoogleDriveFolder: args.references.onOpenGoogleDriveFolder,
+      onImportFromGoogleDrive: args.references.onImportFromGoogleDrive,
       onChangeMemoryInterpreterSettings:
         args.memory.onChangeMemoryInterpreterSettings,
     },
@@ -197,4 +215,13 @@ export function buildChatPageTaskSnapshotDocument(
   args: Pick<ChatPageWorkspaceViewArgs, "task">
 ) {
   return buildStoredDocumentFromTaskDraft(args.task.currentTaskDraft);
+}
+
+export function saveChatPageTaskSnapshot(
+  args: Pick<ChatPageWorkspaceViewArgs, "task" | "usage">
+) {
+  const nextDocument = buildChatPageTaskSnapshotDocument(args);
+  if (!nextDocument) return false;
+  args.usage.recordIngestedDocument(nextDocument);
+  return true;
 }

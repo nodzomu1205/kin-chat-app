@@ -3,11 +3,14 @@ import type {
   ChatApiSearchLike,
   GptStateSnapshotLike,
   PendingRequestLike,
+  SendToGptMemoryPreparation,
   SearchContextRecorder,
   SearchResponseEventLike,
 } from "@/lib/app/sendToGptFlowTypes";
 import type { Message } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
+import type { SourceItem } from "@/types/chat";
+import { generateId } from "@/lib/uuid";
 
 export function resolveMemoryUpdateContext(params: {
   gptState: GptStateSnapshotLike;
@@ -36,6 +39,23 @@ export function resolveRequestMemory(params: {
   return (params.gptState.memory as Memory | undefined) || createEmptyMemory();
 }
 
+export function prepareSendToGptMemoryContext(params: {
+  gptState: GptStateSnapshotLike;
+  userMessage: Message;
+  chatRecentLimit: number;
+}): SendToGptMemoryPreparation {
+  return {
+    memoryContext: resolveMemoryUpdateContext({
+      gptState: params.gptState,
+      userMessage: params.userMessage,
+      chatRecentLimit: params.chatRecentLimit,
+    }),
+    requestMemory: resolveRequestMemory({
+      gptState: params.gptState,
+    }),
+  };
+}
+
 export function appendRecentAssistantMessage(params: {
   recentMessages: Message[];
   assistantMessage: Message;
@@ -44,6 +64,47 @@ export function appendRecentAssistantMessage(params: {
   return [...params.recentMessages, params.assistantMessage].slice(
     -params.chatRecentLimit
   );
+}
+
+export function createGptAssistantMessage(params: {
+  assistantText: string;
+  normalizedSources?: SourceItem[];
+  sourceType: "search" | "gpt_input" | "manual";
+  kind?: "normal" | "task_info";
+}): Message {
+  return {
+    id: generateId(),
+    role: "gpt",
+    text: params.assistantText,
+    sources: params.normalizedSources,
+    meta: {
+      kind: params.kind ?? "normal",
+      sourceType: params.sourceType,
+    },
+  };
+}
+
+export function applySendToGptRequestStart(params: {
+  userMessage: Message;
+  setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  setGptInput: React.Dispatch<React.SetStateAction<string>>;
+  setGptLoading: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
+  params.setGptMessages((prev) => [...prev, params.userMessage]);
+  params.setGptInput("");
+  params.setGptLoading(true);
+}
+
+export function appendSendToGptFailureMessage(params: {
+  setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  messageText?: string;
+}) {
+  const assistantMessage = createGptAssistantMessage({
+    assistantText: params.messageText ?? "GPT request failed.",
+    sourceType: "manual",
+  });
+
+  params.setGptMessages((prev) => [...prev, assistantMessage]);
 }
 
 export function handleImplicitSearchArtifacts(params: {

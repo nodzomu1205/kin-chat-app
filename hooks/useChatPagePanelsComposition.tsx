@@ -2,50 +2,47 @@
 
 import KinPanel from "@/components/panels/kin/KinPanel";
 import GptPanel from "@/components/panels/gpt/GptPanel";
+import { useChatPageController } from "@/hooks/useChatPageController";
 import {
-  useChatPageController,
-  type ChatPageControllerGroups,
-} from "@/hooks/useChatPageController";
-import { buildChatPageWorkspaceControllerArgs } from "@/hooks/chatPageControllerCompositionBuilders";
-import {
-  buildChatPageTaskSnapshotDocument,
   buildChatPageWorkspaceGptPanelArgs,
   buildChatPageWorkspaceKinPanelArgs,
+  saveChatPageTaskSnapshot,
 } from "@/hooks/chatPagePanelCompositionBuilders";
+import { buildChatPageWorkspaceViewArgsWithRefs } from "@/hooks/chatPageWorkspaceCompositionBuilders";
 import { useChatPageControllerArgs } from "@/hooks/useChatPageControllerArgs";
 import { useChatPageGptPanelArgs } from "@/hooks/useChatPageGptPanelArgs";
 import { useChatPageKinPanelProps } from "@/hooks/useChatPageKinPanelProps";
 import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelCompositionTypes";
+import type { ChatPageWorkspaceCompositionInput } from "@/hooks/chatPageWorkspaceCompositionTypes";
 import { buildGptPanelProps } from "@/lib/app/panelPropsBuilders";
 
 export function useChatPagePanelsComposition(
-  args: ChatPageWorkspaceViewArgs
+  args: {
+    input: ChatPageWorkspaceCompositionInput;
+    kinBottomRef: ChatPageWorkspaceViewArgs["ui"]["kinBottomRef"];
+    gptBottomRef: ChatPageWorkspaceViewArgs["ui"]["gptBottomRef"];
+  }
 ): {
-  controller: ChatPageControllerGroups;
   kinPanel: React.ReactElement;
   gptPanel: React.ReactElement;
 } {
+  const workspaceViewArgs = buildChatPageWorkspaceViewArgsWithRefs(args);
   const controller = useChatPageController(
-    useChatPageControllerArgs(buildChatPageWorkspaceControllerArgs(args))
+    useChatPageControllerArgs(workspaceViewArgs)
   );
-  const handleSaveTaskSnapshot = () => {
-    const nextDocument = buildChatPageTaskSnapshotDocument(args);
-    if (!nextDocument) return;
-    args.usage.recordIngestedDocument(nextDocument);
-  };
+  const handleSaveTaskSnapshot = () => void saveChatPageTaskSnapshot(workspaceViewArgs);
 
   const kinPanelProps = useChatPageKinPanelProps(
-    buildChatPageWorkspaceKinPanelArgs(args, controller)
+    buildChatPageWorkspaceKinPanelArgs(workspaceViewArgs, controller)
   );
   const gptPanelArgs = useChatPageGptPanelArgs(
-    buildChatPageWorkspaceGptPanelArgs(args, {
+    buildChatPageWorkspaceGptPanelArgs(workspaceViewArgs, {
       controller,
       onSaveTaskSnapshot: handleSaveTaskSnapshot,
     })
   );
 
   return {
-    controller,
     kinPanel: <KinPanel {...kinPanelProps} />,
     gptPanel: <GptPanel {...buildGptPanelProps(gptPanelArgs)} />,
   };

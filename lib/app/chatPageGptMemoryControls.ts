@@ -1,12 +1,12 @@
 import type React from "react";
-import type { Message } from "@/types/chat";
+import type { KinMemoryState, Message } from "@/types/chat";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { normalizeUsage } from "@/lib/tokenStats";
 
 export type GptMemoryRuntime = {
-  gptStateRef: React.MutableRefObject<any>;
-  setGptState: React.Dispatch<React.SetStateAction<any>>;
-  persistCurrentGptState: (state: any) => void;
+  gptStateRef: React.MutableRefObject<KinMemoryState>;
+  setGptState: React.Dispatch<React.SetStateAction<KinMemoryState>>;
+  persistCurrentGptState: (state: KinMemoryState) => void;
   handleGptMemory: (
     recent: Message[],
     options?: MemoryUpdateOptions

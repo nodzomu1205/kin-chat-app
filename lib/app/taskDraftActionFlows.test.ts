@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTaskTitleFromResult } from "@/lib/app/taskDraftActionFlows";
+import { resolveTaskTitleFromResult } from "@/lib/app/taskDraftFlowResolvers";
 
 describe("resolveTaskTitleFromResult", () => {
   it("re-evaluates the title from the updated task result when no explicit title is given", () => {

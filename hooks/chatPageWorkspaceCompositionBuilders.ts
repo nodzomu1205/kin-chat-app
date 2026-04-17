@@ -1,63 +1,60 @@
 import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelCompositionTypes";
 import type { ChatPageWorkspaceCompositionInput } from "@/hooks/chatPageWorkspaceCompositionTypes";
 
-export type ChatPageWorkspaceViewArgsWithoutRefs = Omit<
-  ChatPageWorkspaceViewArgs,
-  "ui"
-> & {
-  ui: Omit<ChatPageWorkspaceViewArgs["ui"], "kinBottomRef" | "gptBottomRef">;
-};
-
-export function buildChatPageWorkspaceViewArgs(
-  input: ChatPageWorkspaceCompositionInput
-): ChatPageWorkspaceViewArgsWithoutRefs {
+export function buildChatPageWorkspaceViewArgsWithRefs(args: {
+  input: ChatPageWorkspaceCompositionInput;
+  kinBottomRef: ChatPageWorkspaceViewArgs["ui"]["kinBottomRef"];
+  gptBottomRef: ChatPageWorkspaceViewArgs["ui"]["gptBottomRef"];
+}): ChatPageWorkspaceViewArgs {
   return {
     app: {
-      ...input.state.app,
-      ...input.actions.app,
+      ...args.input.state.app,
+      ...args.input.actions.app,
     },
     ui: {
-      ...input.state.ui,
-      ...input.actions.ui,
+      ...args.input.state.ui,
+      ...args.input.actions.ui,
+      kinBottomRef: args.kinBottomRef,
+      gptBottomRef: args.gptBottomRef,
     },
     task: {
-      ...input.state.task,
-      ...input.actions.task,
-      ...input.services.task,
+      ...args.input.state.task,
+      ...args.input.actions.task,
+      ...args.input.services.task,
     },
     protocol: {
-      ...input.state.protocol,
-      ...input.actions.protocol,
-      ...input.services.protocol,
+      ...args.input.state.protocol,
+      ...args.input.actions.protocol,
+      ...args.input.services.protocol,
     },
     search: {
-      ...input.state.search,
-      ...input.actions.search,
-      ...input.services.search,
+      ...args.input.state.search,
+      ...args.input.actions.search,
+      ...args.input.services.search,
     },
     references: {
-      ...input.state.references,
-      ...input.actions.references,
-      ...input.services.references,
+      ...args.input.state.references,
+      ...args.input.actions.references,
+      ...args.input.services.references,
     },
     gpt: {
-      ...input.state.gpt,
-      ...input.actions.gpt,
-      ...input.services.gpt,
+      ...args.input.state.gpt,
+      ...args.input.actions.gpt,
+      ...args.input.services.gpt,
     },
     bridge: {
-      ...input.state.bridge,
-      ...input.actions.bridge,
+      ...args.input.state.bridge,
+      ...args.input.actions.bridge,
     },
     memory: {
-      ...input.state.memory,
-      ...input.actions.memory,
+      ...args.input.state.memory,
+      ...args.input.actions.memory,
     },
-    usage: input.services.usage,
+    usage: args.input.services.usage,
     kin: {
-      ...input.state.kin,
-      ...input.actions.kin,
+      ...args.input.state.kin,
+      ...args.input.actions.kin,
     },
-    reset: input.actions.reset,
+    reset: args.input.actions.reset,
   };
 }

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import GptPanel from "@/components/panels/gpt/GptPanel";
-import { useResponsive } from "@/hooks/useResponsive";
+import { usePanelLayout } from "@/hooks/usePanelLayout";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
@@ -21,7 +21,7 @@ export default function TestTaskPage() {
   const [protocolPrompt, setProtocolPrompt] = useState("");
   const [protocolRulebook, setProtocolRulebook] = useState("");
 
-  const isMobile = useResponsive(MOBILE_BREAKPOINT);
+  const { isSinglePanelLayout } = usePanelLayout(MOBILE_BREAKPOINT);
   const gptBottomRef = useRef<HTMLDivElement>(null);
 
   useAutoScroll(gptBottomRef, [gptMessages]);
@@ -68,7 +68,7 @@ export default function TestTaskPage() {
       currentKin: null,
       currentKinLabel: null,
       kinStatus: "idle",
-      isMobile,
+      isMobile: isSinglePanelLayout,
       onSwitchPanel: noop,
     },
     chat: {
@@ -155,6 +155,9 @@ export default function TestTaskPage() {
       onImportYouTubeTranscript: noopAsync,
       onSendYouTubeTranscriptToKin: noopAsync,
       onSaveStoredDocument: noop,
+      onShowLibraryItemInChat: noop,
+      onSendLibraryItemToKin: noopAsync,
+      onUploadLibraryItemToGoogleDrive: noopAsync,
     },
     settings: {
       memorySettings,
@@ -185,6 +188,9 @@ export default function TestTaskPage() {
       autoSendGptSysInput: false,
       autoCopyGptSysResponseToKin: false,
       autoCopyFileIngestSysInfoToKin: true,
+      googleDriveFolderLink: "",
+      googleDriveFolderId: "",
+      googleDriveIntegrationMode: "manual_link",
       memoryInterpreterSettings: DEFAULT_MEMORY_INTERPRETER_SETTINGS,
       pendingMemoryRuleCandidates: [],
       approvedMemoryRules: [],
@@ -211,6 +217,9 @@ export default function TestTaskPage() {
       onChangeAutoSendGptSysInput: noop,
       onChangeAutoCopyGptSysResponseToKin: noop,
       onChangeAutoCopyFileIngestSysInfoToKin: noop,
+      onChangeGoogleDriveFolderLink: noop,
+      onOpenGoogleDriveFolder: noop,
+      onImportFromGoogleDrive: noopAsync,
       onChangeMemoryInterpreterSettings: noop,
       onApproveMemoryRuleCandidate: noop,
       onRejectMemoryRuleCandidate: noop,
@@ -234,7 +243,7 @@ export default function TestTaskPage() {
           flex: 1,
           minHeight: 0,
           display: "flex",
-          padding: isMobile ? 0 : 12,
+          padding: isSinglePanelLayout ? 0 : 12,
         }}
       >
         <div style={{ flex: 1, minWidth: 0, minHeight: 0 }}>

@@ -2,7 +2,11 @@ import { compileKinTaskPrompt } from "@/lib/taskCompiler";
 import { generateTaskTitle } from "@/lib/taskTitle";
 import { mergeRequirementProgressForIntent } from "@/lib/taskProtocolState";
 import { suggestTaskTitle } from "@/lib/app/contextNaming";
-import type { TaskIntent, TaskRuntimeState } from "@/types/taskProtocol";
+import type {
+  TaskIntent,
+  TaskRequirementProgress,
+  TaskRuntimeState,
+} from "@/types/taskProtocol";
 
 type StartTaskStateParams = {
   prev: TaskRuntimeState;
@@ -19,6 +23,25 @@ type ReplaceCurrentTaskIntentParams = {
   intent: TaskIntent;
   title?: string;
   originalInstruction?: string;
+};
+
+export function resolveTaskRecompileSourceInstruction(params: {
+  originalInstruction?: string | null;
+  draftUserInstruction?: string | null;
+  intentGoal?: string | null;
+}) {
+  return (
+    params.originalInstruction?.trim() ||
+    params.draftUserInstruction?.trim() ||
+    params.intentGoal?.trim() ||
+    ""
+  );
+}
+
+export type TaskRuntimePromptArtifacts = {
+  title: string;
+  compiledTaskPrompt: string;
+  requirementProgress: TaskRequirementProgress[];
 };
 
 function resolveTaskTitle(params: {
@@ -46,10 +69,18 @@ function resolveTaskTitle(params: {
   );
 }
 
-export function buildStartedTaskState(params: StartTaskStateParams) {
+function buildTaskRuntimePromptArtifacts(params: {
+  taskId: string;
+  intent: TaskIntent;
+  originalInstruction?: string;
+  title?: string;
+  fallbackTitle?: string;
+  previousRequirementProgress?: TaskRequirementProgress[];
+}) : TaskRuntimePromptArtifacts {
   const title = resolveTaskTitle({
     intent: params.intent,
     title: params.title,
+    fallbackTitle: params.fallbackTitle,
     originalInstruction: params.originalInstruction,
   });
   const compiledTaskPrompt = compileKinTaskPrompt({
@@ -58,20 +89,39 @@ export function buildStartedTaskState(params: StartTaskStateParams) {
     originalInstruction: params.originalInstruction,
     intent: params.intent,
   });
-  const requirementProgress = mergeRequirementProgressForIntent([], params.intent);
+  const requirementProgress = mergeRequirementProgressForIntent(
+    params.previousRequirementProgress || [],
+    params.intent
+  );
 
   return {
     title,
     compiledTaskPrompt,
+    requirementProgress,
+  };
+}
+
+export function buildStartedTaskState(params: StartTaskStateParams) {
+  const artifacts = buildTaskRuntimePromptArtifacts({
+    taskId: params.taskId,
+    intent: params.intent,
+    originalInstruction: params.originalInstruction,
+    title: params.title,
+  });
+
+  return {
+    title: artifacts.title,
+    compiledTaskPrompt: artifacts.compiledTaskPrompt,
     nextState: {
       ...params.prev,
       currentTaskId: params.taskId,
-      currentTaskTitle: title,
+      currentTaskTitle: artifacts.title,
       currentTaskIntent: params.intent,
-      compiledTaskPrompt,
+      originalInstruction: params.originalInstruction,
+      compiledTaskPrompt: artifacts.compiledTaskPrompt,
       taskStatus: "running" as const,
       latestSummary: params.intent.goal,
-      requirementProgress,
+      requirementProgress: artifacts.requirementProgress,
       pendingRequests: [],
       userFacingRequests: [],
       protocolLog: [
@@ -89,33 +139,27 @@ export function buildStartedTaskState(params: StartTaskStateParams) {
 }
 
 export function buildReplacedTaskIntentState(params: ReplaceCurrentTaskIntentParams) {
-  const title = resolveTaskTitle({
+  const artifacts = buildTaskRuntimePromptArtifacts({
+    taskId: params.taskId,
     intent: params.intent,
     title: params.title,
     fallbackTitle: params.prev.currentTaskTitle,
     originalInstruction: params.originalInstruction,
+    previousRequirementProgress: params.prev.requirementProgress,
   });
-  const compiledTaskPrompt = compileKinTaskPrompt({
-    taskId: params.taskId,
-    title,
-    originalInstruction: params.originalInstruction,
-    intent: params.intent,
-  });
-  const requirementProgress = mergeRequirementProgressForIntent(
-    params.prev.requirementProgress,
-    params.intent
-  );
 
   return {
-    title,
-    compiledTaskPrompt,
+    title: artifacts.title,
+    compiledTaskPrompt: artifacts.compiledTaskPrompt,
     nextState: {
       ...params.prev,
-      currentTaskTitle: title,
+      currentTaskTitle: artifacts.title,
       currentTaskIntent: params.intent,
-      compiledTaskPrompt,
+      originalInstruction:
+        params.originalInstruction ?? params.prev.originalInstruction,
+      compiledTaskPrompt: artifacts.compiledTaskPrompt,
       latestSummary: params.intent.goal,
-      requirementProgress,
+      requirementProgress: artifacts.requirementProgress,
     },
   };
 }

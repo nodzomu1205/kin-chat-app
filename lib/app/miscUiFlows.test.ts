@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  buildNextApprovedIntentPhrasesOnApprove,
-  syncApprovedIntentPhrasesToCurrentTaskFlow,
-} from "@/lib/app/miscUiFlows";
+import { buildNextApprovedIntentPhrasesOnApprove } from "@/lib/taskIntent";
+import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/currentTaskIntentRefresh";
 
 describe("miscUiFlows", () => {
   it("increments approval counts when the same candidate is approved again", () => {
@@ -76,7 +74,11 @@ describe("miscUiFlows", () => {
     });
 
     expect(replaceCurrentTaskIntent).toHaveBeenCalled();
-    expect(syncTaskDraftFromProtocol).toHaveBeenCalled();
+    expect(syncTaskDraftFromProtocol).toHaveBeenCalledWith(
+      expect.objectContaining({
+        originalInstruction: expect.stringContaining("検索3回"),
+      })
+    );
     expect(setPendingKinInjectionIndex).toHaveBeenCalledWith(0);
     expect(setKinInput).toHaveBeenCalledWith(
       "<<SYS_TASK>>\nTITLE: 縄文時代YouTube動画分析\n<<END_SYS_TASK>>"

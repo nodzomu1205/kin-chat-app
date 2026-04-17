@@ -219,6 +219,9 @@ export type GptPanelReferenceProps = {
     documentId: string,
     patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
   ) => void;
+  onShowLibraryItemInChat: (itemId: string) => void;
+  onSendLibraryItemToKin: (itemId: string) => void | Promise<void>;
+  onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
 };
 
 export type GptPanelSettingsProps = {
@@ -251,6 +254,9 @@ export type GptPanelSettingsProps = {
   autoSendGptSysInput: boolean;
   autoCopyGptSysResponseToKin: boolean;
   autoCopyFileIngestSysInfoToKin: boolean;
+  googleDriveFolderLink: string;
+  googleDriveFolderId: string;
+  googleDriveIntegrationMode: "manual_link" | "picker";
   memoryInterpreterSettings: MemoryInterpreterSettings;
   pendingMemoryRuleCandidates: PendingMemoryRuleCandidate[];
   approvedMemoryRules: ApprovedMemoryRule[];
@@ -277,6 +283,9 @@ export type GptPanelSettingsProps = {
   onChangeAutoSendGptSysInput: (value: boolean) => void;
   onChangeAutoCopyGptSysResponseToKin: (value: boolean) => void;
   onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) => void;
+  onChangeGoogleDriveFolderLink: (value: string) => void;
+  onOpenGoogleDriveFolder: () => void;
+  onImportFromGoogleDrive: () => void | Promise<void>;
   onChangeMemoryInterpreterSettings: (
     patch: Partial<MemoryInterpreterSettings>
   ) => void;

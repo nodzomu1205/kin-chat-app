@@ -7,8 +7,7 @@ export type PanelResetActionArgs = {
   resetTokenStats: () => void;
   clearPendingKinInjection: () => void;
   resetCurrentTaskDraft: () => void;
-  isMobile: boolean;
-  setActiveTab: React.Dispatch<React.SetStateAction<"kin" | "gpt">>;
+  focusKinPanel: () => boolean;
   connectKin: () => void;
   switchKin: (id: string) => void;
   disconnectKin: () => void;
@@ -24,10 +23,7 @@ export function usePanelResetActions(args: PanelResetActionArgs) {
     args.resetTokenStats();
     args.clearPendingKinInjection();
     args.resetCurrentTaskDraft();
-
-    if (args.isMobile) {
-      args.setActiveTab("kin");
-    }
+    args.focusKinPanel();
   }, [args]);
 
   const handleConnectKin = useCallback(() => {

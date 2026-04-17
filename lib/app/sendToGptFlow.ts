@@ -1,5 +1,9 @@
 import { generateId } from "@/lib/uuid";
-import { prepareSendToGptRequest } from "@/lib/app/sendToGptFlowRequestPreparation";
+import {
+  buildPreparedRequestGateContext,
+  buildPreparedRequestContexts,
+  prepareSendToGptRequest,
+} from "@/lib/app/sendToGptFlowRequestPreparation";
 import {
   runPrePreparationGates,
   runPreparedRequestGates,
@@ -20,8 +24,9 @@ import { requestGptAssistantArtifacts } from "@/lib/app/sendToGptFlowRequest";
 import { finalizeSendToGptFlow } from "@/lib/app/sendToGptFlowFinalize";
 import { resolveSendToGptFlowStart } from "@/lib/app/sendToGptFlowDecisionState";
 import {
-  resolveMemoryUpdateContext,
-  resolveRequestMemory,
+  appendSendToGptFailureMessage,
+  applySendToGptRequestStart,
+  prepareSendToGptMemoryContext,
 } from "@/lib/app/sendToGptFlowState";
 
 export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
@@ -112,10 +117,13 @@ export async function runSendToGptFlow({
       text,
     }),
   });
+  const preparedRequestContexts = buildPreparedRequestContexts({
+    preparedRequest,
+  });
 
   if (
     await runPreparedRequestGates({
-      preparedRequest,
+      preparedRequest: preparedRequestContexts.gate,
       shouldRespondToTaskDirectiveOnlyInput,
       taskDirectiveOnlyResponseText: getTaskDirectiveOnlyResponseText(),
       currentTaskId,
@@ -138,44 +146,28 @@ export async function runSendToGptFlow({
     return;
   }
 
-  const memoryContext = resolveMemoryUpdateContext({
+  const { memoryContext, requestMemory } = prepareSendToGptMemoryContext({
     gptState: gptStateRef.current,
     userMessage: preparedRequest.userMsg,
     chatRecentLimit,
   });
-  const requestMemory = resolveRequestMemory({
-    gptState: gptStateRef.current,
+  applySendToGptRequestStart({
+    userMessage: preparedRequest.userMsg,
+    setGptMessages,
+    setGptInput,
+    setGptLoading,
   });
-  setGptMessages((prev) => [...prev, preparedRequest.userMsg]);
-  setGptInput("");
-  setGptLoading(true);
 
   try {
     const { data, assistantText, normalizedSources } =
       await requestGptAssistantArtifacts({
         requestMemory,
         recentMessages: memoryContext.recentWithUser,
-        finalRequestText: preparedRequest.finalRequestText,
-        storedDocumentContext:
-          preparedRequest.effectiveDocumentReferenceContext,
-        storedLibraryContext: preparedRequest.libraryReferenceContext,
-        cleanQuery: preparedRequest.continuationDetails.cleanQuery,
-        searchRequestEvent: preparedRequest.searchRequestEvent,
-        effectiveParsedSearchQuery:
-          preparedRequest.effectiveParsedSearchQuery,
-        searchSeriesId: preparedRequest.searchSeriesId,
-        continuationToken: preparedRequest.continuationToken,
-        askAiModeLink: preparedRequest.askAiModeLink,
-        effectiveSearchMode: preparedRequest.effectiveSearchMode,
-        effectiveSearchEngines: preparedRequest.effectiveSearchEngines,
-        effectiveSearchLocation: preparedRequest.effectiveSearchLocation,
+        ...preparedRequestContexts.execution,
         instructionMode,
         responseMode,
         parseWrappedSearchResponse,
-        askGptEvent: preparedRequest.askGptEvent,
         currentTaskId,
-        requestToAnswer: preparedRequest.requestToAnswer,
-        requestAnswerBody: preparedRequest.requestAnswerBody,
         recordSearchContext,
       });
 
@@ -185,17 +177,8 @@ export async function runSendToGptFlow({
       normalizedSources,
       memoryContext,
       chatRecentLimit,
-      searchRequestEvent: preparedRequest.searchRequestEvent,
-      effectiveSearchMode: preparedRequest.effectiveSearchMode,
-      effectiveSearchEngines: preparedRequest.effectiveSearchEngines,
-      effectiveSearchLocation: preparedRequest.effectiveSearchLocation,
-      searchSeriesId: preparedRequest.searchSeriesId,
-      cleanQuery: preparedRequest.continuationDetails.cleanQuery,
-      effectiveParsedSearchQuery: preparedRequest.effectiveParsedSearchQuery,
-      finalRequestText: preparedRequest.finalRequestText,
+      preparedRequest: preparedRequestContexts.finalize,
       ingestProtocolMessage,
-      requestToAnswer: preparedRequest.requestToAnswer,
-      requestAnswerBody: preparedRequest.requestAnswerBody,
       taskProtocolAnswerPendingRequest,
       setGptMessages,
       applySearchUsage,
@@ -206,14 +189,9 @@ export async function runSendToGptFlow({
     });
   } catch (error) {
     console.error(error);
-    setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: "GPT request failed.",
-      },
-    ]);
+    appendSendToGptFailureMessage({
+      setGptMessages,
+    });
   } finally {
     setGptLoading(false);
   }

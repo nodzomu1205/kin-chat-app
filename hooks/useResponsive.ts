@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+// This module decides only whether the workspace should use the single-panel
+// layout. It must not choose which panel is focused.
 function hasMobileUserAgent() {
   if (typeof navigator === "undefined") return false;
 
@@ -35,26 +37,41 @@ function getEffectiveWidth() {
   return Math.min(...candidates);
 }
 
-function detectMobile(breakpoint: number) {
-  if (typeof window === "undefined") return false;
-
-  const effectiveWidth = getEffectiveWidth();
-  const mobileUA = hasMobileUserAgent();
-  const touchLike = hasTouchCapability();
-
-  if (mobileUA) return true;
-  if (effectiveWidth <= breakpoint) return true;
-  if (touchLike && effectiveWidth <= breakpoint * 1.35) return true;
+export function detectSinglePanelLayoutHeuristic(params: {
+  breakpoint: number;
+  effectiveWidth: number;
+  mobileUserAgent: boolean;
+  touchLike: boolean;
+}) {
+  if (params.mobileUserAgent) return true;
+  if (params.effectiveWidth <= params.breakpoint) return true;
+  if (
+    params.touchLike &&
+    params.effectiveWidth <= Math.min(860, params.breakpoint)
+  ) {
+    return true;
+  }
 
   return false;
 }
 
+function detectSinglePanelLayout(breakpoint: number) {
+  if (typeof window === "undefined") return false;
+
+  return detectSinglePanelLayoutHeuristic({
+    breakpoint,
+    effectiveWidth: getEffectiveWidth(),
+    mobileUserAgent: hasMobileUserAgent(),
+    touchLike: hasTouchCapability(),
+  });
+}
+
 export function useResponsive(breakpoint = 1180) {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isSinglePanelLayout, setIsSinglePanelLayout] = useState(false);
 
   useEffect(() => {
     const update = () => {
-      setIsMobile(detectMobile(breakpoint));
+      setIsSinglePanelLayout(detectSinglePanelLayout(breakpoint));
     };
 
     update();
@@ -72,5 +89,5 @@ export function useResponsive(breakpoint = 1180) {
     };
   }, [breakpoint]);
 
-  return isMobile;
+  return isSinglePanelLayout;
 }

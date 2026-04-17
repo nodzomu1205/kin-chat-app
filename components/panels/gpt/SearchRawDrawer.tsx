@@ -24,8 +24,17 @@ type Props = Pick<
   | "onDeleteStoredDocument"
   | "onDeleteSearchHistoryItem"
   | "onSaveStoredDocument"
+  | "onShowLibraryItemInChat"
+  | "onSendLibraryItemToKin"
+  | "onUploadLibraryItemToGoogleDrive"
 > &
-  Pick<GptPanelSettingsProps, "libraryReferenceCount" | "sourceDisplayCount">;
+  Pick<
+    GptPanelSettingsProps,
+    | "libraryReferenceCount"
+    | "sourceDisplayCount"
+    | "onOpenGoogleDriveFolder"
+    | "onImportFromGoogleDrive"
+  >;
 
 export default function SearchRawDrawer(props: Props) {
   return <ReceivedDocsDrawer {...props} initialTab="search" />;

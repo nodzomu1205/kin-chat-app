@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import ChatPanelsLayout from "@/components/ChatPanelsLayout";
 import { useKinManager } from "@/hooks/useKinManager";
 import { useGptMemory } from "@/hooks/useGptMemory";
-import { useResponsive } from "@/hooks/useResponsive";
+import { usePanelLayout } from "@/hooks/usePanelLayout";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useAutoBridgeSettings } from "@/hooks/useAutoBridgeSettings";
@@ -15,6 +15,8 @@ import {
 import { useMultipartAssemblies } from "@/hooks/useMultipartAssemblies";
 import { useStoredDocuments } from "@/hooks/useStoredDocuments";
 import { useReferenceLibrary } from "@/hooks/useReferenceLibrary";
+import { useGoogleDriveLibrary } from "@/hooks/useGoogleDriveLibrary";
+import { useGoogleDrivePicker } from "@/hooks/useGoogleDrivePicker";
 import { useMultipartUiActions } from "@/hooks/useMultipartUiActions";
 import { useProtocolIntentSettings } from "@/hooks/useProtocolIntentSettings";
 import { useMemoryInterpreterSettings } from "@/hooks/useMemoryInterpreterSettings";
@@ -27,7 +29,7 @@ import { useTaskProtocolProjection } from "@/hooks/useTaskProtocolProjection";
 import { useArchiveCompletedTaskResults } from "@/hooks/useArchiveCompletedTaskResults";
 import { usePendingMemoryRuleQueue } from "@/hooks/usePendingMemoryRuleQueue";
 import { useChatPagePanelsComposition } from "@/hooks/useChatPagePanelsComposition";
-import { buildChatPageWorkspaceViewArgs } from "@/hooks/chatPageWorkspaceCompositionBuilders";
+import { useReferenceLibraryUiActions } from "@/hooks/useReferenceLibraryUiActions";
 import type { Message } from "@/types/chat";
 import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
 import { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
@@ -40,8 +42,6 @@ import {
   buildChatPageGptMemoryRuntime,
   buildChatPageGptMemorySettingsControls,
 } from "@/lib/app/chatPageGptMemoryControls";
-
-type MobileTab = "kin" | "gpt";
 
 const MOBILE_BREAKPOINT = 1180;
 
@@ -58,9 +58,13 @@ export default function ChatApp() {
   >([]);
   const [pendingKinInjectionIndex, setPendingKinInjectionIndex] = useState(0);
   const [, setCurrentSessionId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<MobileTab>("kin");
-
-  const isMobile = useResponsive(MOBILE_BREAKPOINT);
+  const {
+    isSinglePanelLayout,
+    activePanelTab,
+    setActivePanelTab,
+    focusKinPanel,
+    focusGptPanel,
+  } = usePanelLayout(MOBILE_BREAKPOINT);
   const kinBottomRef = useRef<HTMLDivElement>(null);
   const gptBottomRef = useRef<HTMLDivElement>(null);
   const {
@@ -224,6 +228,7 @@ export default function ChatApp() {
     setLibraryItemModeOverride,
     moveLibraryItem,
     getTaskLibraryItem,
+    getLibraryItemById,
     buildLibraryReferenceContext,
     estimateLibraryReferenceTokens,
   } = useReferenceLibrary({
@@ -285,13 +290,28 @@ export default function ChatApp() {
   useChatPageLifecycle({
     currentKin,
     ensureKinState,
-    isMobile,
-    setActiveTab,
     setCurrentSessionId,
   });
 
   const libraryReferenceEstimatedTokens = estimateLibraryReferenceTokens();
 
+  const {
+    googleDriveFolderLink,
+    setGoogleDriveFolderLink,
+    googleDriveFolderId,
+    openGoogleDriveFolder,
+  } = useGoogleDriveLibrary();
+  const {
+    pickerReady: googleDrivePickerReady,
+    openImportPicker,
+    uploadLibraryItemToDrive,
+  } = useGoogleDrivePicker({
+    folderLink: googleDriveFolderLink,
+    setFolderLink: setGoogleDriveFolderLink,
+    recordIngestedDocument,
+    setGptMessages,
+    focusGptPanel,
+  });
   const {
     deleteSearchHistoryItem,
     resetCurrentTaskDraft,
@@ -328,8 +348,7 @@ export default function ChatApp() {
     setKinInput,
     setGptMessages,
     setFinalizeReviewed: taskProtocolView.setFinalizeReviewed,
-    isMobile,
-    setActiveTab,
+    focusGptPanel,
     loadMultipartAssemblyText,
     getMultipartAssembly,
     setGptInput,
@@ -339,9 +358,23 @@ export default function ChatApp() {
     useStoredDocumentUiActions({
       getStoredDocument,
       setGptInput,
-      isMobile,
-      setActiveTab,
+      focusGptPanel,
     });
+  const {
+    showLibraryItemInChat,
+    sendLibraryItemToKin,
+    uploadLibraryItemToGoogleDrive,
+    importFromGoogleDrive,
+  } = useReferenceLibraryUiActions({
+    getLibraryItemById,
+    setGptMessages,
+    setKinInput,
+    focusGptPanel,
+    focusKinPanel,
+    openGoogleDriveFolder,
+    importFromGoogleDrivePicker: openImportPicker,
+    uploadLibraryItemToDrivePicker: uploadLibraryItemToDrive,
+  });
 
   useArchiveCompletedTaskResults({
     documents: allDocuments,
@@ -360,7 +393,7 @@ export default function ChatApp() {
       currentKinLabel: currentKinDisplayLabel,
       kinStatus,
       kinList,
-      isMobile,
+      isMobile: isSinglePanelLayout,
     },
     ui: {
       gptInput,
@@ -405,6 +438,9 @@ export default function ChatApp() {
       libraryReferenceCount,
       libraryStorageMB,
       libraryReferenceEstimatedTokens,
+      googleDriveFolderLink,
+      googleDriveFolderId,
+      googleDriveIntegrationMode: googleDrivePickerReady ? "picker" : "manual_link",
     },
     gpt: {
       gptState,
@@ -444,7 +480,9 @@ export default function ChatApp() {
 
   const workspaceActions = {
     app: {
-      setActiveTab,
+      setActivePanelTab,
+      focusKinPanel,
+      focusGptPanel,
       setKinConnectionState,
     },
     ui: {
@@ -498,10 +536,16 @@ export default function ChatApp() {
       onSelectTaskLibraryItem: setSelectedTaskLibraryItemId,
       onChangeLibraryItemMode: setLibraryItemModeOverride,
       onSaveStoredDocument: updateStoredDocument,
+      onShowLibraryItemInChat: showLibraryItemInChat,
+      onSendLibraryItemToKin: sendLibraryItemToKin,
+      onUploadLibraryItemToGoogleDrive: uploadLibraryItemToGoogleDrive,
       onChangeAutoLibraryReferenceEnabled: setAutoLibraryReferenceEnabled,
       onChangeLibraryReferenceMode: setLibraryReferenceMode,
       onChangeLibraryIndexResponseCount: setLibraryIndexResponseCount,
       onChangeLibraryReferenceCount: setLibraryReferenceCount,
+      onChangeGoogleDriveFolderLink: setGoogleDriveFolderLink,
+      onOpenGoogleDriveFolder: openGoogleDriveFolder,
+      onImportFromGoogleDrive: importFromGoogleDrive,
     },
     gpt: {
       resetGptForCurrentKin,
@@ -589,19 +633,14 @@ export default function ChatApp() {
     },
   } as const;
 
-  const workspaceViewArgs = buildChatPageWorkspaceViewArgs({
+  const { kinPanel, gptPanel } = useChatPagePanelsComposition({
+    input: {
       state: workspaceState,
       actions: workspaceActions,
       services: workspaceServices,
-  });
-
-  const { kinPanel, gptPanel } = useChatPagePanelsComposition({
-    ...workspaceViewArgs,
-    ui: {
-      ...workspaceViewArgs.ui,
-      kinBottomRef,
-      gptBottomRef,
     },
+    kinBottomRef,
+    gptBottomRef,
   });
 
   return (
@@ -621,14 +660,14 @@ export default function ChatApp() {
           flex: 1,
           minHeight: 0,
           display: "flex",
-          gap: isMobile ? 0 : 12,
-          padding: isMobile ? 0 : 12,
+          gap: isSinglePanelLayout ? 0 : 12,
+          padding: isSinglePanelLayout ? 0 : 12,
           overflow: "visible",
         }}
       >
         <ChatPanelsLayout
-          isMobile={isMobile}
-          activeTab={activeTab}
+          isSinglePanelLayout={isSinglePanelLayout}
+          activePanelTab={activePanelTab}
           kinPanel={kinPanel}
           gptPanel={gptPanel}
         />

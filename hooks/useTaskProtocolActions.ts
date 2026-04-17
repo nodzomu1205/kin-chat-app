@@ -1,8 +1,5 @@
 import {
   approveIntentCandidateFlow,
-  buildNextApprovedIntentPhrasesOnApprove,
-  buildNextApprovedIntentPhrasesOnDelete,
-  buildNextApprovedIntentPhrasesOnUpdate,
   prepareTaskRequestAckFlow,
   prepareTaskSuspendFlow,
   prepareTaskSyncFlow,
@@ -11,20 +8,51 @@ import {
   saveProtocolDefaultsFlow,
   sendProtocolRulebookToKinFlow,
   setProtocolRulebookToKinDraftFlow,
-  syncApprovedIntentPhrasesToCurrentTaskFlow,
 } from "@/lib/app/miscUiFlows";
 import { getIntentCandidateSignature } from "@/lib/app/chatPageHelpers";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
-import { parseIntentCandidateDraftText } from "@/lib/taskIntent";
+import {
+  buildNextApprovedIntentPhrasesOnApprove,
+  buildNextApprovedIntentPhrasesOnDelete,
+  buildNextApprovedIntentPhrasesOnUpdate,
+  parseIntentCandidateDraftText,
+} from "@/lib/taskIntent";
+import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/currentTaskIntentRefresh";
+import { resolveTaskRecompileSourceInstruction } from "@/lib/taskProtocolTaskState";
 import type { UseTaskProtocolActionsArgs } from "@/hooks/chatPageActionTypes";
 
 export function useTaskProtocolActions(
   args: UseTaskProtocolActionsArgs,
   deps: { sendKinMessage: (text: string) => Promise<void> }
 ) {
+  const getTaskRefreshSourceInstruction = () =>
+    resolveTaskRecompileSourceInstruction({
+      originalInstruction: args.taskProtocol.runtime.originalInstruction,
+      draftUserInstruction: args.currentTaskDraft.userInstruction,
+      intentGoal: args.taskProtocol.runtime.currentTaskIntent?.goal,
+    });
+
+  const syncApprovedIntentPhrasesToCurrentTask = (
+    approvedIntentPhrases: ApprovedIntentPhrase[]
+  ) =>
+    syncApprovedIntentPhrasesToCurrentTaskFlow({
+      approvedIntentPhrases,
+      sourceInstruction: getTaskRefreshSourceInstruction(),
+      currentTaskId: args.taskProtocol.runtime.currentTaskId,
+      currentTaskTitle: args.taskProtocol.runtime.currentTaskTitle,
+      currentTaskDraftTitle: args.currentTaskDraft.title,
+      responseMode: args.responseMode === "creative" ? "creative" : "strict",
+      applyTaskUsage: args.applyTaskUsage,
+      replaceCurrentTaskIntent: args.taskProtocol.replaceCurrentTaskIntent,
+      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
+      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      setKinInput: args.setKinInput,
+    });
+
   const prepareTaskRequestAck = (requestId: string) => {
     prepareTaskRequestAckFlow({
       requestId,
@@ -32,7 +60,7 @@ export function useTaskProtocolActions(
       setKinInput: args.setKinInput,
       appendGptMessage: (message) =>
         args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     });
   };
 
@@ -43,7 +71,7 @@ export function useTaskProtocolActions(
       setKinInput: args.setKinInput,
       appendGptMessage: (message) =>
         args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     });
   };
 
@@ -54,7 +82,7 @@ export function useTaskProtocolActions(
       setKinInput: args.setKinInput,
       appendGptMessage: (message) =>
         args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     });
   };
 
@@ -97,23 +125,7 @@ export function useTaskProtocolActions(
       setPendingIntentCandidates: args.setPendingIntentCandidates,
     });
 
-    await syncApprovedIntentPhrasesToCurrentTaskFlow({
-      approvedIntentPhrases: nextApprovedIntentPhrases,
-      sourceInstruction:
-        args.currentTaskDraft.userInstruction?.trim() ||
-        args.taskProtocol.runtime.currentTaskIntent?.goal?.trim() ||
-        "",
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-      currentTaskTitle: args.taskProtocol.runtime.currentTaskTitle,
-      currentTaskDraftTitle: args.currentTaskDraft.title,
-      responseMode: args.responseMode === "creative" ? "creative" : "strict",
-      applyTaskUsage: args.applyTaskUsage,
-      replaceCurrentTaskIntent: args.taskProtocol.replaceCurrentTaskIntent,
-      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setKinInput: args.setKinInput,
-    });
+    await syncApprovedIntentPhrasesToCurrentTask(nextApprovedIntentPhrases);
   };
 
   const updateIntentCandidate = (
@@ -160,23 +172,7 @@ export function useTaskProtocolActions(
         : item
     );
     args.setApprovedIntentPhrases(nextApprovedIntentPhrases);
-    void syncApprovedIntentPhrasesToCurrentTaskFlow({
-      approvedIntentPhrases: nextApprovedIntentPhrases,
-      sourceInstruction:
-        args.currentTaskDraft.userInstruction?.trim() ||
-        args.taskProtocol.runtime.currentTaskIntent?.goal?.trim() ||
-        "",
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-      currentTaskTitle: args.taskProtocol.runtime.currentTaskTitle,
-      currentTaskDraftTitle: args.currentTaskDraft.title,
-      responseMode: args.responseMode === "creative" ? "creative" : "strict",
-      applyTaskUsage: args.applyTaskUsage,
-      replaceCurrentTaskIntent: args.taskProtocol.replaceCurrentTaskIntent,
-      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setKinInput: args.setKinInput,
-    });
+    void syncApprovedIntentPhrasesToCurrentTask(nextApprovedIntentPhrases);
   };
 
   const deleteApprovedIntentPhrase = (phraseId: string) => {
@@ -185,23 +181,7 @@ export function useTaskProtocolActions(
       phraseId,
     });
     args.setApprovedIntentPhrases(nextApprovedIntentPhrases);
-    void syncApprovedIntentPhrasesToCurrentTaskFlow({
-      approvedIntentPhrases: nextApprovedIntentPhrases,
-      sourceInstruction:
-        args.currentTaskDraft.userInstruction?.trim() ||
-        args.taskProtocol.runtime.currentTaskIntent?.goal?.trim() ||
-        "",
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-      currentTaskTitle: args.taskProtocol.runtime.currentTaskTitle,
-      currentTaskDraftTitle: args.currentTaskDraft.title,
-      responseMode: args.responseMode === "creative" ? "creative" : "strict",
-      applyTaskUsage: args.applyTaskUsage,
-      replaceCurrentTaskIntent: args.taskProtocol.replaceCurrentTaskIntent,
-      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setKinInput: args.setKinInput,
-    });
+    void syncApprovedIntentPhrasesToCurrentTask(nextApprovedIntentPhrases);
   };
 
   const setProtocolRulebookToKinDraft = () => {
@@ -210,7 +190,7 @@ export function useTaskProtocolActions(
       setKinInput: args.setKinInput,
       appendGptMessage: (message) =>
         args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     });
   };
 
@@ -220,7 +200,7 @@ export function useTaskProtocolActions(
       sendKinMessage: deps.sendKinMessage,
       appendGptMessage: (message) =>
         args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     });
   };
 

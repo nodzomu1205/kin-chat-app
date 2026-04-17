@@ -16,8 +16,7 @@ export type MultipartUiActionArgs = {
   setKinInput: React.Dispatch<React.SetStateAction<string>>;
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   setFinalizeReviewed: (params: { accepted: boolean; summary?: string }) => void;
-  isMobile: boolean;
-  setActiveTab: React.Dispatch<React.SetStateAction<"kin" | "gpt">>;
+  focusGptPanel: () => boolean;
   loadMultipartAssemblyText: (assemblyId: string) => string;
   getMultipartAssembly: (assemblyId: string) => MultipartAssembly | null;
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
@@ -62,7 +61,7 @@ export function useMultipartUiActions(args: MultipartUiActionArgs) {
           summary: result.validationSummary,
         });
       }
-      if (options?.setGptTab && args.isMobile) args.setActiveTab("gpt");
+      if (options?.setGptTab) args.focusGptPanel();
       return { handled: true, accepted: result.accepted };
     },
     [args]
@@ -73,7 +72,7 @@ export function useMultipartUiActions(args: MultipartUiActionArgs) {
       const text = args.loadMultipartAssemblyText(assemblyId);
       if (!text) return;
       args.setGptInput(text);
-      if (args.isMobile) args.setActiveTab("gpt");
+      args.focusGptPanel();
     },
     [args]
   );

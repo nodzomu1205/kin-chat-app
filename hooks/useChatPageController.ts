@@ -18,6 +18,30 @@ export type ChatPageControllerGroups = ChatPageActionGroups & {
   panel: ReturnType<typeof useChatPagePanelDomainActions>;
 };
 
+function buildChatPageControllerGroups(args: {
+  kinActions: ReturnType<typeof useChatPageMessagingDomainActions>["kin"];
+  gptActions: ReturnType<typeof useChatPageMessagingDomainActions>["gpt"];
+  taskActions: ReturnType<typeof useChatPageTaskDomainActions>["task"];
+  protocolActions: ReturnType<typeof useChatPageTaskDomainActions>["protocol"];
+  injectFileToKinDraft: ReturnType<
+    typeof useChatPageTaskDomainActions
+  >["injectFileToKinDraft"];
+  memoryActions: ReturnType<typeof useChatPageMemoryActions>;
+  panelActions: ReturnType<typeof useChatPagePanelDomainActions>;
+}): ChatPageControllerGroups {
+  return {
+    kin: args.kinActions,
+    gpt: {
+      ...args.gptActions,
+      injectFileToKinDraft: args.injectFileToKinDraft,
+    },
+    task: args.taskActions,
+    protocol: args.protocolActions,
+    memory: args.memoryActions,
+    panel: args.panelActions,
+  };
+}
+
 export function useChatPageController(args: UseChatPageControllerArgs) {
   const { kin: kinActions, gpt: gptActions } =
     useChatPageMessagingDomainActions(args.actions);
@@ -41,19 +65,13 @@ export function useChatPageController(args: UseChatPageControllerArgs) {
     clearPendingKinInjection: kinActions.clearPendingKinInjection,
   });
 
-  const chatPageActions = {
-    kin: kinActions,
-    gpt: {
-      ...gptActions,
-      injectFileToKinDraft,
-    },
-    task: taskActions,
-    protocol: protocolActions,
-    memory: memoryActions,
-  } satisfies ChatPageActionGroups;
-
-  return {
-    ...chatPageActions,
-    panel: panelActions,
-  } satisfies ChatPageControllerGroups;
+  return buildChatPageControllerGroups({
+    kinActions,
+    gptActions,
+    taskActions,
+    protocolActions,
+    injectFileToKinDraft,
+    memoryActions,
+    panelActions,
+  });
 }

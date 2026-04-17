@@ -55,3 +55,16 @@ export function getTaskProgressSelection(
     totalCount: snapshots.length,
   };
 }
+
+export function resolveRuntimeAfterArchive(params: {
+  currentRuntime: TaskRuntimeState;
+  nextSnapshots: TaskRuntimeState[];
+  archivedTaskId: string;
+  createEmptyTaskRuntime: () => TaskRuntimeState;
+}) {
+  if (params.currentRuntime.currentTaskId !== params.archivedTaskId) {
+    return params.currentRuntime;
+  }
+
+  return params.nextSnapshots[0] || params.createEmptyTaskRuntime();
+}

@@ -128,7 +128,7 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
       setKinInput: args.setKinInput,
       setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     },
     requestArgs: {
       gptInput: args.gptInput,

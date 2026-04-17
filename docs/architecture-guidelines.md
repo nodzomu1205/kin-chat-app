@@ -1,5 +1,30 @@
 # Architecture Guidelines
 
+## Non-Negotiable LLM-First Rule
+
+This rule applies to both topic generation and `SYS` format generation.
+
+Do not drift away from this rule.
+We have already regressed multiple times by doing so.
+
+1. At the entry point, send broad candidate discovery to the LLM.
+   Do not add narrow entry rules that pre-classify, rewrite, summarize, or reduce the user text before the LLM sees it.
+2. Let the user approve or reject LLM-produced candidates.
+   Reflect those decisions immediately in the current output and current draft.
+3. Save approved phrases.
+   On later inputs, only the exact strong-confidence matching fragment may bypass the LLM.
+   The rest of the input must still go through the LLM.
+
+Forbidden regression pattern:
+
+- adding entry-side special cases because one phrase failed once
+- adding phrase-specific fallback prompt answers that behave like hidden rules
+- shrinking `originalInstruction` into `goal`, title, summary, or other reduced text before LLM review
+- routing the whole sentence through shortcut logic because one fragment matched an approved phrase
+
+If behavior is wrong, fix the boundary that dropped or distorted the original text.
+Do not patch the entry with more rules.
+
 ## Purpose
 
 This memo records the current structural direction of the Kin x GPT app and the rules we want to keep as the app grows.

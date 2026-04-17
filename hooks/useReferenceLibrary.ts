@@ -349,6 +349,9 @@ export function useReferenceLibrary(params: {
       resolvedSelectedTaskLibraryItemId
     );
 
+  const getLibraryItemById = (itemId: string) =>
+    libraryItemsWithOverrides.find((item) => item.id === itemId) || null;
+
   const setLibraryItemModeOverride = (
     itemId: string,
     mode: LibraryItemModeOverride
@@ -409,6 +412,7 @@ export function useReferenceLibrary(params: {
     setLibraryItemModeOverride,
     moveLibraryItem,
     getTaskLibraryItem,
+    getLibraryItemById,
     buildLibraryReferenceContext,
     estimateLibraryReferenceTokens,
   };

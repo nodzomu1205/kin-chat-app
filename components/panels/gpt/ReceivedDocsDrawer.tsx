@@ -12,6 +12,7 @@ import {
   sectionCardStyle,
 } from "@/components/panels/gpt/gptDrawerShared";
 import { GPT_RECEIVED_DOCS_TEXT } from "@/components/panels/gpt/gptUiText";
+import { GPT_GOOGLE_DRIVE_TEXT } from "@/components/panels/gpt/gptGoogleDriveText";
 
 type LibraryTab = "all" | "kin" | "ingest" | "search";
 
@@ -32,12 +33,19 @@ type Props = Pick<
   | "onDeleteStoredDocument"
   | "onDeleteSearchHistoryItem"
   | "onSaveStoredDocument"
+  | "onShowLibraryItemInChat"
+  | "onSendLibraryItemToKin"
+  | "onUploadLibraryItemToGoogleDrive"
 > &
   Pick<
     GptPanelSettingsProps,
-    "libraryReferenceCount" | "sourceDisplayCount"
+    | "libraryReferenceCount"
+    | "sourceDisplayCount"
+    | "onOpenGoogleDriveFolder"
+    | "onImportFromGoogleDrive"
   > & {
   initialTab?: LibraryTab;
+  isMobile?: boolean;
 };
 
 function tabButton(active: boolean): React.CSSProperties {
@@ -90,7 +98,13 @@ export default function ReceivedDocsDrawer({
   onDeleteStoredDocument,
   onDeleteSearchHistoryItem,
   onSaveStoredDocument,
+  onShowLibraryItemInChat,
+  onSendLibraryItemToKin,
+  onUploadLibraryItemToGoogleDrive,
+  onOpenGoogleDriveFolder,
+  onImportFromGoogleDrive,
   initialTab = "all",
+  isMobile = false,
 }: Props) {
   const [activeTab, setActiveTab] = useState<LibraryTab>(initialTab);
   const [expandedId, setExpandedId] = useState("");
@@ -137,18 +151,43 @@ export default function ReceivedDocsDrawer({
     }
   }, [expandedId, visibleItems]);
 
-  if (referenceLibraryItems.length === 0) {
-    return (
-      <div style={sectionCardStyle}>
-        <div style={{ fontSize: 13, color: "#64748b" }}>
-          {GPT_RECEIVED_DOCS_TEXT.emptyAll}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <section style={sectionCardStyle}>
+    <section style={{ ...sectionCardStyle, minWidth: 0, maxWidth: "100%", overflowX: "hidden" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          marginBottom: 10,
+          alignItems: "center",
+        }}
+      >
+        <button
+          type="button"
+          onClick={onOpenGoogleDriveFolder}
+          style={{
+            ...pillButton,
+            background: "#ffffff",
+            color: "#2563eb",
+            border: "1px solid #bfdbfe",
+          }}
+        >
+          {GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
+        </button>
+        <button
+          type="button"
+          onClick={() => void onImportFromGoogleDrive()}
+          style={{
+            ...pillButton,
+            background: "#ffffff",
+            color: "#0f766e",
+            border: "1px solid #99f6e4",
+          }}
+        >
+          {GPT_GOOGLE_DRIVE_TEXT.settings.importFromDrive}
+        </button>
+      </div>
+
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button type="button" onClick={() => setActiveTab("all")} style={tabButton(activeTab === "all")}>
           {GPT_RECEIVED_DOCS_TEXT.tabs.all}
@@ -164,7 +203,11 @@ export default function ReceivedDocsDrawer({
         </button>
       </div>
 
-      {visibleItems.length === 0 ? (
+      {referenceLibraryItems.length === 0 ? (
+        <div style={{ marginTop: 12, fontSize: 13, color: "#64748b" }}>
+          {GPT_RECEIVED_DOCS_TEXT.emptyAll}
+        </div>
+      ) : visibleItems.length === 0 ? (
         <div style={{ marginTop: 12, fontSize: 13, color: "#64748b" }}>
           {GPT_RECEIVED_DOCS_TEXT.emptyFiltered}
         </div>
@@ -190,6 +233,8 @@ export default function ReceivedDocsDrawer({
                   borderRadius: 12,
                   background: isExpanded ? "#ecfeff" : "#fff",
                   padding: "10px 12px",
+                  minWidth: 0,
+                  overflow: "hidden",
                 }}
               >
                 <div
@@ -207,7 +252,9 @@ export default function ReceivedDocsDrawer({
                     alignItems: "flex-start",
                     justifyContent: "space-between",
                     gap: 8,
+                    flexWrap: isMobile ? "wrap" : "nowrap",
                     cursor: "pointer",
+                    minWidth: 0,
                   }}
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -238,10 +285,12 @@ export default function ReceivedDocsDrawer({
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "flex-end",
+                      justifyContent: isMobile ? "flex-start" : "flex-end",
                       gap: 6,
                       flexShrink: 0,
                       flexWrap: "wrap",
+                      width: isMobile ? "100%" : undefined,
+                      minWidth: 0,
                     }}
                     onClick={(event) => event.stopPropagation()}
                     onKeyDown={(event) => event.stopPropagation()}
@@ -314,7 +363,17 @@ export default function ReceivedDocsDrawer({
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    marginTop: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={() => onSelectTaskLibraryItem(item.id)}
@@ -391,6 +450,45 @@ export default function ReceivedDocsDrawer({
                       {GPT_RECEIVED_DOCS_TEXT.edit}
                     </button>
                   ) : null}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      flexWrap: "wrap",
+                      justifyContent: isMobile ? "flex-start" : "flex-end",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onShowLibraryItemInChat(item.id)}
+                      style={iconButton()}
+                      title={GPT_GOOGLE_DRIVE_TEXT.cardActions.showInChat}
+                      aria-label={GPT_GOOGLE_DRIVE_TEXT.cardActions.showInChat}
+                    >
+                      💬
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onSendLibraryItemToKin(item.id)}
+                      style={iconButton()}
+                      title={GPT_GOOGLE_DRIVE_TEXT.cardActions.sendToKin}
+                      aria-label={GPT_GOOGLE_DRIVE_TEXT.cardActions.sendToKin}
+                    >
+                      📨
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void onUploadLibraryItemToGoogleDrive(item.id)}
+                      style={iconButton()}
+                      title={GPT_GOOGLE_DRIVE_TEXT.cardActions.uploadToDrive}
+                      aria-label={GPT_GOOGLE_DRIVE_TEXT.cardActions.uploadToDrive}
+                    >
+                      ☁
+                    </button>
+                  </div>
                 </div>
 
                 {isExpanded ? (
@@ -483,9 +581,15 @@ export default function ReceivedDocsDrawer({
                                     borderRadius: 10,
                                     background: "#fff",
                                     padding: "8px 10px",
+                                    minWidth: 0,
                                   }}
                                 >
-                                  <div>
+                                  <div
+                                    style={{
+                                      overflowWrap: "anywhere",
+                                      wordBreak: "break-word",
+                                    }}
+                                  >
                                     {sourceIndex + 1}. {source.title}
                                     {source.link ? ` | ${source.link}` : ""}
                                   </div>
@@ -528,7 +632,7 @@ export default function ReceivedDocsDrawer({
                           value={item.excerptText}
                           style={{
                             width: "100%",
-                            minHeight: 220,
+                            minHeight: isMobile ? 180 : 220,
                             border: "1px solid #dbe4e8",
                             borderRadius: 12,
                             padding: 12,
@@ -578,7 +682,7 @@ export default function ReceivedDocsDrawer({
                           onChange={(e) => setDraftText(e.target.value)}
                           style={{
                             width: "100%",
-                            minHeight: 220,
+                            minHeight: isMobile ? 180 : 220,
                             border: "1px solid #dbe4e8",
                             borderRadius: 12,
                             padding: 12,
@@ -630,7 +734,7 @@ export default function ReceivedDocsDrawer({
                         value={item.excerptText}
                         style={{
                           width: "100%",
-                          minHeight: 220,
+                          minHeight: isMobile ? 180 : 220,
                           border: "1px solid #dbe4e8",
                           borderRadius: 12,
                           padding: 12,

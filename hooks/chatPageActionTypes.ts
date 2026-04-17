@@ -11,6 +11,7 @@ import type {
   SearchMode,
   TaskDraft,
 } from "@/types/task";
+import type { TaskDraftProtocolProjectionParams } from "@/lib/taskDraftProjection";
 import type {
   GptInstructionMode,
   GptPanelChatProps,
@@ -22,6 +23,10 @@ import type {
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
 import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
+import type {
+  ChatPanelFocusHandler,
+  ChatPanelTab,
+} from "@/lib/app/panelLayout";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import type { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
@@ -47,7 +52,9 @@ export type ChatPageIdentityArgs = {
   currentKin: string | null;
   kinList: Array<{ id: string; label: string }>;
   isMobile: boolean;
-  setActiveTab: React.Dispatch<React.SetStateAction<"kin" | "gpt">>;
+  setActivePanelTab: React.Dispatch<React.SetStateAction<ChatPanelTab>>;
+  focusKinPanel: ChatPanelFocusHandler;
+  focusGptPanel: ChatPanelFocusHandler;
   setKinConnectionState: React.Dispatch<
     React.SetStateAction<"idle" | "connected" | "error">
   >;
@@ -96,12 +103,9 @@ export type ChatPageTaskArgs = {
     }
   ) => string;
   getTaskSlotLabel: () => string;
-  syncTaskDraftFromProtocol: (params: {
-    taskId: string;
-    title: string;
-    goal: string;
-    compiledTaskPrompt: string;
-  }) => void;
+  syncTaskDraftFromProtocol: (
+    params: { taskId: string } & TaskDraftProtocolProjectionParams
+  ) => void;
   applyPrefixedTaskFieldsFromText: (text: string) => ParsedTaskInput;
   getCurrentTaskCharConstraint: () => TaskCharConstraint | null;
   resetCurrentTaskDraft: () => void;
@@ -211,12 +215,13 @@ export type UseGptMessageActionsArgs = Pick<
   | "currentTaskDraft"
   | "getAskAiModeLinkForQuery"
   | "getContinuationTokenForSeries"
-  | "gptInput"
-  | "gptLoading"
-  | "gptMemoryRuntime"
-  | "ingestProtocolMessage"
-  | "isMobile"
-  | "kinMessages"
+    | "gptInput"
+    | "gptLoading"
+    | "gptMemoryRuntime"
+    | "focusGptPanel"
+    | "focusKinPanel"
+    | "ingestProtocolMessage"
+    | "kinMessages"
   | "lastSearchContext"
   | "libraryIndexResponseCount"
   | "processMultipartTaskDoneText"
@@ -224,12 +229,11 @@ export type UseGptMessageActionsArgs = Pick<
   | "recordSearchContext"
   | "referenceLibraryItems"
   | "responseMode"
-  | "searchEngines"
-  | "searchLocation"
-  | "searchMode"
-  | "setActiveTab"
-  | "setGptInput"
-  | "setGptLoading"
+    | "searchEngines"
+    | "searchLocation"
+    | "searchMode"
+    | "setGptInput"
+    | "setGptLoading"
   | "setGptMessages"
   | "setKinInput"
   | "setPendingKinInjectionBlocks"
@@ -244,11 +248,12 @@ export type UseKinTransferActionsArgs = Pick<
   | "currentKin"
   | "currentTaskDraft"
   | "getTaskBaseText"
-  | "getTaskSlotLabel"
-  | "gptInput"
-  | "gptMessages"
-  | "ingestProtocolMessage"
-  | "isMobile"
+    | "getTaskSlotLabel"
+    | "gptInput"
+    | "gptMessages"
+    | "focusKinPanel"
+    | "ingestProtocolMessage"
+    | "isMobile"
   | "kinInput"
   | "kinLoading"
   | "pendingIntentCandidates"
@@ -257,7 +262,6 @@ export type UseKinTransferActionsArgs = Pick<
   | "processMultipartTaskDoneText"
   | "rejectedIntentCandidateSignatures"
   | "responseMode"
-  | "setActiveTab"
   | "setGptInput"
   | "setGptLoading"
   | "setGptMessages"
@@ -297,14 +301,13 @@ export type UseTaskProtocolActionsArgs = Pick<
   | "applyTaskUsage"
   | "approvedIntentPhrases"
   | "currentTaskDraft"
-  | "isMobile"
+  | "focusKinPanel"
   | "pendingIntentCandidates"
   | "promptDefaultKey"
   | "protocolPrompt"
   | "protocolRulebook"
   | "responseMode"
   | "rulebookDefaultKey"
-  | "setActiveTab"
   | "setApprovedIntentPhrases"
   | "setGptMessages"
   | "setKinInput"
@@ -328,12 +331,11 @@ export type UseFileIngestActionsArgs = Pick<
   | "getTaskBaseText"
   | "gptInput"
   | "gptMemoryRuntime"
+  | "focusKinPanel"
   | "ingestLoading"
-  | "isMobile"
   | "recordIngestedDocument"
   | "resolveTaskTitleFromDraft"
   | "responseMode"
-  | "setActiveTab"
   | "setCurrentTaskDraft"
   | "setGptInput"
   | "setGptMessages"

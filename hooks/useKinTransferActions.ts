@@ -63,7 +63,7 @@ export function useKinTransferActions(
       setKinInput: args.setKinInput,
       setGptInput: args.setGptInput,
       appendGptMessage: (message) => args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
       extractTaskGoalFromSysTaskBlock,
     });
   };
@@ -97,7 +97,7 @@ export function useKinTransferActions(
     if (!last) return;
 
     args.setKinInput(last.text);
-    if (args.isMobile) args.setActiveTab("kin");
+    args.focusKinPanel();
   };
 
   const sendLatestGptContentToKin = async () => {
@@ -125,7 +125,7 @@ export function useKinTransferActions(
       setKinInput: args.setKinInput,
       setGptInput: args.setGptInput,
       getTaskSlotLabel: args.getTaskSlotLabel,
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     });
   };
 
@@ -157,7 +157,7 @@ export function useKinTransferActions(
       setKinInput: args.setKinInput,
       setGptInput: args.setGptInput,
       getTaskSlotLabel: args.getTaskSlotLabel,
-      setActiveTabToKin: args.isMobile ? () => args.setActiveTab("kin") : undefined,
+      setActiveTabToKin: args.focusKinPanel,
     });
   };
 

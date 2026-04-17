@@ -3,16 +3,16 @@
 import type { ReactNode } from "react";
 
 type ChatPanelsLayoutProps = {
-  isMobile: boolean;
-  activeTab: "kin" | "gpt";
+  isSinglePanelLayout: boolean;
+  activePanelTab: "kin" | "gpt";
   kinPanel: ReactNode;
   gptPanel: ReactNode;
 };
 
 export default function ChatPanelsLayout(props: ChatPanelsLayoutProps) {
-  const { isMobile, activeTab, kinPanel, gptPanel } = props;
+  const { isSinglePanelLayout, activePanelTab, kinPanel, gptPanel } = props;
 
-  return isMobile ? (
+  return isSinglePanelLayout ? (
     <div
       style={{
         flex: 1,
@@ -27,7 +27,7 @@ export default function ChatPanelsLayout(props: ChatPanelsLayoutProps) {
         style={{
           position: "absolute",
           inset: 0,
-          display: activeTab === "kin" ? "flex" : "none",
+          display: activePanelTab === "kin" ? "flex" : "none",
           width: "100%",
         }}
       >
@@ -38,7 +38,7 @@ export default function ChatPanelsLayout(props: ChatPanelsLayoutProps) {
         style={{
           position: "absolute",
           inset: 0,
-          display: activeTab === "gpt" ? "flex" : "none",
+          display: activePanelTab === "gpt" ? "flex" : "none",
           width: "100%",
         }}
       >

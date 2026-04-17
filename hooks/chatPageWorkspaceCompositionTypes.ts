@@ -53,6 +53,9 @@ export type ChatPageWorkspaceCompositionState = {
     | "libraryReferenceCount"
     | "libraryStorageMB"
     | "libraryReferenceEstimatedTokens"
+    | "googleDriveFolderLink"
+    | "googleDriveFolderId"
+    | "googleDriveIntegrationMode"
   >;
   gpt: Pick<
     ChatPageWorkspaceViewArgs["gpt"],
@@ -82,7 +85,7 @@ export type ChatPageWorkspaceCompositionState = {
 export type ChatPageWorkspaceCompositionActions = {
   app: Pick<
     ChatPageWorkspaceViewArgs["app"],
-    "setActiveTab" | "setKinConnectionState"
+    "setActivePanelTab" | "focusKinPanel" | "focusGptPanel" | "setKinConnectionState"
   >;
   ui: Pick<
     ChatPageWorkspaceViewArgs["ui"],
@@ -140,10 +143,16 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onSelectTaskLibraryItem"
     | "onChangeLibraryItemMode"
     | "onSaveStoredDocument"
+    | "onShowLibraryItemInChat"
+    | "onSendLibraryItemToKin"
+    | "onUploadLibraryItemToGoogleDrive"
     | "onChangeAutoLibraryReferenceEnabled"
     | "onChangeLibraryReferenceMode"
     | "onChangeLibraryIndexResponseCount"
     | "onChangeLibraryReferenceCount"
+    | "onChangeGoogleDriveFolderLink"
+    | "onOpenGoogleDriveFolder"
+    | "onImportFromGoogleDrive"
   >;
   gpt: Pick<
     ChatPageWorkspaceViewArgs["gpt"],

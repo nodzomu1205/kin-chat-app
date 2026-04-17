@@ -6,6 +6,10 @@ import type {
   GptMemorySettingsControls,
 } from "@/lib/app/chatPageGptMemoryControls";
 import type {
+  ChatPanelFocusHandler,
+  ChatPanelTab,
+} from "@/lib/app/panelLayout";
+import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
@@ -20,7 +24,9 @@ export type ChatPageControllerCompositionArgs = {
     currentKin: string | null;
     kinList: Array<{ id: string; label: string }>;
     isMobile: boolean;
-    setActiveTab: React.Dispatch<React.SetStateAction<"kin" | "gpt">>;
+    setActivePanelTab: React.Dispatch<React.SetStateAction<ChatPanelTab>>;
+    focusKinPanel: ChatPanelFocusHandler;
+    focusGptPanel: ChatPanelFocusHandler;
     setKinConnectionState: React.Dispatch<
       React.SetStateAction<"idle" | "connected" | "error">
     >;

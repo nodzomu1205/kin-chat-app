@@ -115,7 +115,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         finalizedArtifacts.kinBlocks.length > 1 ? finalizedArtifacts.kinBlocks : []
       );
       args.setPendingKinInjectionIndex(0);
-      if (args.isMobile) args.setActiveTab("kin");
+      args.focusKinPanel();
 
       args.setGptMessages((prev) => [...prev, assistantMsg]);
       const updatedRecent = [
@@ -156,7 +156,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
       args.setPendingKinInjectionBlocks([]);
       args.setPendingKinInjectionIndex(0);
       args.setKinInput(retryBlock);
-      if (args.isMobile) args.setActiveTab("kin");
+      args.focusKinPanel();
     } finally {
       args.setGptLoading(false);
     }
@@ -401,7 +401,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
       args.setKinInput(blocks[0] || "");
       args.setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
       args.setPendingKinInjectionIndex(0);
-      if (args.isMobile) args.setActiveTab("kin");
+      args.focusKinPanel();
     } catch (error) {
       console.error(error);
       args.setGptMessages((prev) => [
@@ -424,7 +424,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     if (!last) return;
 
     args.setGptInput(extractPreferredKinTransferText(last.text));
-    if (args.isMobile) args.setActiveTab("gpt");
+    args.focusGptPanel();
   };
 
   const receiveLastKinResponseToGptInput = () => {
@@ -433,7 +433,9 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
       processMultipartTaskDoneText: args.processMultipartTaskDoneText,
       setGptInput: args.setGptInput,
       appendGptMessage: (message) => args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToGpt: args.isMobile ? () => args.setActiveTab("gpt") : undefined,
+      setActiveTabToGpt: () => {
+        args.focusGptPanel();
+      },
     });
   };
 
