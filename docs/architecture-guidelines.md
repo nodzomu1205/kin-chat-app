@@ -56,6 +56,31 @@ Before changing any multi-output pipeline, answer explicitly:
 
 If those answers are not clear, implementation should pause until they are.
 
+## Non-Negotiable Shared-Tool Rule
+
+When two features look similar, default to shared lower-level tools before
+building a second local system.
+
+This applies especially to:
+
+- ingest paths
+- summary generation
+- protocol envelopes
+- library item projections
+- Drive-import vs device-import flows
+
+Forbidden regression pattern:
+
+- one helper for device import and another near-copy for Drive import
+- separate summary fallbacks for two import paths
+- similar clean-up logic copied into chat, library, and protocol paths
+
+If a new path needs similar behavior, ask first:
+
+1. can this be a projection of the existing canonical model?
+2. can this reuse the same helper with only source-specific adapters?
+3. is the difference truly domain-specific, or just incidental?
+
 ## Purpose
 
 This memo records the current structural direction of the Kin x GPT app and the rules we want to keep as the app grows.

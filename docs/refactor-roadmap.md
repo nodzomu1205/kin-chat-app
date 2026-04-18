@@ -193,6 +193,14 @@ Recent progress:
 - Drive import summary fallback now uses the same canonical summary helper as
   file ingest instead of a separate local fallback path
 
+Next ingest-specific work:
+1. continue aligning `useIngestActions.ts` with the canonical ingest model
+2. reduce remaining device-import vs Drive-import post-processing divergence
+3. fix file-ingest token accounting so ingest/task usage is not miscounted as conversation-summary usage
+4. consolidate device-file ingest UI into the library drawer/settings surfaces
+5. implement Google Drive upload subfolder selection without creating a second ingest authority path
+6. decide ZIP import scope only after the canonical ingest authority is stable
+
 ### Priority 3: Re-audit page-side composition before it regrows
 
 Why third:

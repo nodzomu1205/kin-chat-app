@@ -1,239 +1,298 @@
 # Next Session Handover
 
-Updated: 2026-04-16
+Updated: 2026-04-18
 
-## Stop Rule: Do Not Regress The LLM-First Approval Flow
+## Stop Rule
 
-This is mandatory.
+Do not patch the first visible symptom.
 
-For both topic generation and `SYS_TASK` / `SYS_INFO` generation:
+This project has already lost significant time to the same failure mode:
 
-1. Entry-point candidate discovery must be LLM-first.
-2. User approval / rejection must drive what gets reflected into the current output.
-3. Approved phrases may bypass the LLM only for the exact strong-confidence matching fragment.
-4. The rest of the sentence must still go to the LLM.
+- a visible bug appears in one surface
+- the nearest renderer/helper gets patched
+- the underlying authority chain stays mixed
+- another surface still breaks
 
-Never do these again:
+For the next session, treat these as hard rules:
 
-- add entry rules because one real example failed
-- add phrase-specific fallback examples that act like hidden hardcoded classification
-- replace the original instruction with `goal`, title, summary, or another shortened form before LLM review
-- treat one approved fragment as permission to bypass the LLM for the whole sentence
+1. define the canonical model first
+2. identify which outputs derive from it
+3. only then change downstream surfaces
+4. prefer shared helpers over parallel local fixes
+5. if two similar systems exist, first ask whether they should share one lower-level tool
 
-If this rule conflicts with a local patch idea, the patch idea is wrong.
+If a fix idea does not improve authority clarity, it is probably the wrong fix.
 
-## Current State
+## Current Verification State
 
 The repository is in a good stopping state.
 
 - `npx tsc --noEmit` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `67 files / 288 tests`
+- current test count: `105 files / 453 tests`
 
-This wave substantially improved three areas:
+## What Was Stabilized In This Session
 
-- `app/page.tsx` is much thinner and now delegates through workspace-view builders
-- `sendToGptFlow` is now a clearer coordinator with request/context/guard/finalize slices
-- GPT settings and mobile live-surface UI text are now much cleaner, and the mobile panel switch no-op bug was fixed
+### 1. Google Drive integration shipped and is usable
 
-## What Changed In This Wave
+Implemented and verified:
 
-### 1. Page / controller composition is now much thinner
+- Google Picker-based Drive access now works
+- library drawer now has dedicated Google Drive actions
+- Drive picker opens from the configured folder
+- file import can show files and folders together
+- folder index and folder bulk import are separated
+- Drive-imported files flow into the same ingest pipeline as device-imported files
+- PDF / CSV / Google Spreadsheet import now runs through ingest
+- Google Drive settings were moved to the bottom of the library settings workspace
 
-Done:
+Main files:
 
-- `app/page.tsx` no longer directly assembles most controller/panel trees
-- `useChatPageWorkspaceView.tsx` and `chatPageWorkspaceViewBuilders.ts` now own the page-facing controller/panel source wiring
-- grouped controller args are now real boundaries rather than being immediately flattened again
-- `useChatPageController.ts` now acts more like a composition hub than a broad reshaping file
+- `hooks/useGoogleDrivePicker.ts`
+- `components/panels/gpt/ReceivedDocsDrawer.tsx`
+- `components/panels/gpt/GptSettingsWorkspace.tsx`
+- `lib/app/ingestClient.ts`
 
-Important:
+### 2. Ingest text handling moved toward a canonical model
 
-- the page itself is no longer the main immediate danger
-- the next UI-side structural hotspot is the broad source bundle entering `useChatPageWorkspaceView(...)` and its builders
+This was the most important structural lesson of the session.
 
-### 2. `sendToGptFlow` was thinned into clearer slices
+We confirmed that ingest bugs were repeatedly caused by mixing:
 
-Done:
+- stored/display text
+- summary source text
+- protocol/task envelope text
+- GPT chat display text
 
-- request arg assembly lives behind `sendToGptFlowArgBuilders.ts`
-- early gate handling lives behind `sendToGptFlowGuards.ts`
-- request preparation lives behind `sendToGptFlowRequestPreparation.ts`
-- request text and payload building live behind `sendToGptFlowRequestText.ts` and `sendToGptFlowRequestPayload.ts`
-- request execution lives behind `sendToGptFlowRequest.ts`
-- finalize side effects live behind `sendToGptFlowFinalize.ts`
-- low-value `sendToGptFlowBundles.ts` staging was removed
+Progress made:
 
-Important:
+- `lib/app/ingestDocumentModel.ts` now owns the basic ingest text authority split
+- `fileIngestFlow` now uses `canonicalDocumentText` and `taskPrepEnvelope` naming internally
+- device-import and Drive-import now share more of the same summary and canonical-text logic
+- GPT chat / library / Kin outputs are much closer to deriving from one source instead of parallel text variants
 
-- `sendToGptFlow.ts` is now readable, but `sendToGptFlowRequestPreparation.ts` and `sendToGptFlowState.ts` are still the next likely regrowth points
-- future thinning should keep reducing broad prepared-request shaping rather than adding new bundle/staging helpers
+Main files:
 
-### 3. GPT settings surface was largely stabilized
+- `lib/app/ingestDocumentModel.ts`
+- `lib/app/fileIngestFlow.ts`
+- `lib/app/gptTaskClient.ts`
+- `hooks/useGoogleDrivePicker.ts`
+- `docs/ingest-pipeline.md`
 
-Done:
+### 3. The core development rule had to be re-affirmed again
 
-- rules and protocol blocks are now split out of `GptSettingsSections.tsx`
-- shared settings primitives now cover:
-  - select
-  - number input
-  - text input
-  - textarea
-  - readonly stat
-  - badge
-  - item card
-  - section header row
-  - action row
-- `GptSettingsWorkspace.tsx` now uses those shared primitives broadly
-- `GptSettingsProtocolSection.tsx` was restored to clean Japanese
+This session re-confirmed a recurring failure pattern:
 
-Important:
+- "I can see the bug, so I know where to patch it"
 
-- the settings surface is no longer the first structural hotspot it used to be
-- remaining work here is more polish/information-architecture than emergency cleanup
+That approach repeatedly caused:
 
-### 4. Mobile live-surface cleanup landed
+- wrong-file edits
+- false-positive fixes
+- downstream disagreements between library, chat, and protocol
+- duplicated helpers and unclear authority
 
-Done:
+The rule is now explicit again in docs:
 
-- `DrawerTabs.tsx` labels were restored to clean Japanese
-- `GptToolbar.tsx` was rewritten cleanly
-- `KinToolbar.tsx` was rewritten cleanly
-- `KinPanel.tsx` live status text was restored
-- the mobile panel switch no-op bug was fixed in `chatPageWorkspaceViewBuilders.ts`
-- `GptSettingsWorkspace.tsx` now also has an internal `chat / task / library` view switch, which reduces dependence on the top header icons alone
+- `docs/architecture-guidelines.md`
+- `docs/ingest-pipeline.md`
+- `docs/refactor-roadmap.md`
 
-Important:
+## Outstanding Google Drive Work
 
-- the exact bug was a self-looping mobile switch handler: the Kin panel switch was setting `activeTab` to `"kin"` instead of `"gpt"`
-- other mobile tab setters were reviewed and no same-shape self-loop was found in the active runtime path
+The Google Drive feature is usable, but not finished.
 
-## Current Review Summary
+### Remaining functional improvements
 
-No new high-confidence functional regression was found in the current repository state after the latest fixes.
+1. upload destination subfolder selection
+   - current upload still targets the configured root folder
+   - next step: allow selecting a child folder before upload
 
-The main remaining risks are structural:
+2. folder index presentation polish
+   - current index is functional
+   - next step: improve readability of hierarchy, counts, and per-file metadata
 
-1. broad source wiring around `useChatPageWorkspaceView(...)`
-2. broad helper surfaces in `sendToGptFlowRequestPreparation.ts` and `sendToGptFlowState.ts`
-3. ingest-side integration points that have not yet received the same cleanup depth
-4. remaining non-settings UI surfaces that may still contain old copy/cleanup debt
+3. ZIP import support
+   - not implemented
+   - decide whether unzip should happen client-side or server-side
 
-## Working Rules For The Next Session
+4. expand import format support carefully
+   - Drive import already handles text/PDF/CSV/Sheets better than before
+   - next step: decide whether Word/Excel/ZIP deserve first-class support or should remain outside scope for now
 
-These are operational constraints, not optional notes.
+### Known mismatches to fix next
 
-1. Prefer structural fixes over hole-patching.
-2. Do not treat “the main file is smaller” as the same thing as “authority is cleaner.”
-3. Before claiming an old path is gone, verify it repo-wide with `rg`.
-4. When a new adapter/builder hook is introduced, watch immediately for the same monolith regrowing one layer outward.
-5. Do not add new staging/bundle helpers unless they truly own a behavior boundary.
-6. Keep live mobile UI text and behavior under the same quality bar as the main desktop path.
+1. file-ingest token accounting is currently wrong
+   - historically, file ingest token usage was counted under the task/file-ingest side
+   - current behavior is counting it under conversation-side summary usage
+   - this should be corrected so ingest-related token use is attributed back to the task/file-ingest bucket
 
-In practical terms:
+2. device-file ingest UI should be consolidated into the library surfaces
+   - current device-file ingest entry still lives in the GPT panel bottom `file` tab
+   - target direction:
+     - move ingest entry actions to the top library drawer area, alongside the Google Drive actions
+     - keep ingest-related settings inside the library settings workspace
+   - this should reduce split mental models between Drive import and device import
 
-- do not reintroduce “thin wrapper” layers that only restate object shapes
-- do not let `sendToGptFlowRequestPreparation.ts` become the new monolith
-- do not let workspace-view builders turn into a second `app/page.tsx`
-- do not assume mobile actions are safe just because desktop behavior works
+### Google Drive maintenance rule
 
-## Mandatory Verification Discipline
+Do not create a separate "Drive ingest system".
 
-Before saying a structural fix is complete:
+Drive should keep sharing:
 
-1. identify all files that can write or reshape the relevant state
-2. verify remaining routes repo-wide with `rg`
-3. confirm which paths are active runtime vs compatibility only
-4. run:
-   - `npx tsc --noEmit`
-   - `npm test`
-   - `npm run build`
-5. explicitly state what was verified and what was not
+- ingest request boundary
+- canonical text model
+- summary generation rules
+- stored-document projection
 
-This is especially important for:
+Only Drive-specific concerns should stay local, such as:
 
-- mobile `activeTab` panel switching
-- settings workspace view switching
-- `sendToGptFlow` request-preparation shaping
-- memory update context shaping
-- task/protocol controller wiring
+- picker auth
+- folder traversal
+- upload destination selection
 
-## Maintenance Work To Do Before The Next Feature Wave
+## Outstanding Maintainability Work
 
-### 1. Re-review workspace-view orchestration
+### Priority A: finish ingest canonicalization
+
+Why:
+
+- this is the area that caused the most wasted effort this session
+- canonical authority is improved, but not fully complete yet
 
 Focus:
 
-- `hooks/useChatPageWorkspaceView.tsx`
-- `hooks/chatPageWorkspaceViewBuilders.ts`
-- `hooks/useChatPagePanelsView.tsx`
-- `app/page.tsx`
+- remove remaining legacy naming and mixed roles in ingest flows
+- finish aligning `useIngestActions.ts` with the newer canonical ingest model
+- keep reducing cases where summary/library/chat/Kin can diverge
+- fix ingest token accounting so summary usage and ingest/task usage are not mixed
+- use the ingest cleanup as the foundation for the device-file ingest UI move into the library surfaces
 
-Goal:
+Primary files:
 
-- keep the page-side source bundle from regrowing into another hidden coordinator
-
-### 2. Continue thinning GPT flow helpers
-
-Focus:
-
-- `lib/app/sendToGptFlowRequestPreparation.ts`
-- `lib/app/sendToGptFlowState.ts`
-- `lib/app/sendToGptFlow.ts`
-- `lib/app/sendToGptFlowContext.ts`
-
-Goal:
-
-- keep the coordinator short without moving complexity into low-value bundle/staging layers
-
-### 3. Review ingest integration next
-
-Focus:
-
-- `app/api/ingest/route.ts`
+- `lib/app/fileIngestFlow.ts`
 - `hooks/useIngestActions.ts`
-- related ingest UI wiring
+- `lib/app/ingestDocumentModel.ts`
+- `docs/ingest-pipeline.md`
 
-Goal:
+### Priority B: reduce legacy/current ingest split
 
-- bring ingest-side integration quality closer to the current GPT-flow/page quality bar
+Why:
 
-### 4. Do a final live-surface copy sweep outside settings
+- lower-level request boundaries are more shared now
+- post-request behavior is still not as unified as it should be
 
 Focus:
 
-- `components/panels/gpt/GptMetaDrawer.tsx`
-- `components/panels/kin/*`
-- `components/panels/gpt/*Toolbar*`
-- any remaining mobile-facing labels touched by future work
+- move duplicated ingest post-processing into shared helpers
+- avoid a permanent split between device ingest and Drive ingest behavior
 
-Goal:
+Primary files:
 
-- ensure the visible UI is consistently UTF-8-clean and understandable
+- `hooks/useIngestActions.ts`
+- `lib/app/fileIngestFlow.ts`
+- `lib/app/legacyIngestHelpers.ts`
+- `lib/app/legacyIngestFlowHelpers.ts`
 
-## Recommended Next Review Files
+### Priority C: continue broad maintainability program
 
-Review these first before changing behavior:
+Still under watch:
 
-1. `hooks/chatPageWorkspaceViewBuilders.ts`
-2. `hooks/useChatPageWorkspaceView.tsx`
-3. `lib/app/sendToGptFlowRequestPreparation.ts`
-4. `lib/app/sendToGptFlowState.ts`
-5. `lib/app/sendToGptFlow.ts`
-6. `app/api/ingest/route.ts`
-7. `hooks/useIngestActions.ts`
-8. `components/panels/gpt/GptMetaDrawer.tsx`
+- `app/page.tsx` and page-side composition boundaries
+- `lib/app/sendToGptFlow.ts` and coordinator regrowth risk
+- remaining controller/panel builder reshaping
+- user-facing text drift outside owner files
 
-## Suggested Next-Session Order
+Reference:
 
-1. run a quick live regression pass for:
-   - mobile panel switching
-   - settings workspace switching
-   - mobile GPT/Kin toolbar actions
-2. review workspace-view source wiring and remove any low-value reshaping
-3. continue `sendToGptFlow*` thinning where behavior ownership is still too broad
-4. only then move into ingest-side cleanup or the next feature wave
+- `docs/refactor-roadmap.md`
+
+## Reconfirmed Development Principles
+
+These should be treated as operational constraints, not suggestions.
+
+### 1. Structure first, symptom second
+
+Before editing any bug:
+
+1. what is the canonical authority?
+2. where is it produced?
+3. which outputs derive from it?
+4. which outputs are just envelopes or projections?
+
+If those are unclear, implementation should pause.
+
+### 2. Shared tools over near-duplicate systems
+
+When two paths do similar work, prefer:
+
+- one shared lower-level helper
+- one canonical model
+- one authority contract
+
+Do not allow parallel versions of:
+
+- summary rules
+- cleanup rules
+- protocol wrappers
+- stored-document text shaping
+
+unless the divergence is explicit and justified.
+
+### 3. Do not trust the nearest file
+
+The file where the bug is visible is often not the file that owns the bug.
+
+Before editing:
+
+- trace upstream authority
+- search repo-wide
+- identify active runtime path vs compatibility path
+
+### 4. Docs must reflect the real guardrails
+
+If the same mistake happens more than once, it should become a prominently documented rule.
+
+That rule should then be reflected in:
+
+- architecture docs
+- pipeline docs
+- roadmap / maintenance docs
+- handoff docs
+
+### 5. Common mistake pattern to avoid
+
+Never do this sequence again:
+
+1. "I see the bug"
+2. "I found the spot"
+3. patch one surface
+4. discover a second surface still broken
+5. patch that too
+
+This is exactly the pattern that wasted time in this session.
+
+## Recommended Next-Session Order
+
+1. continue ingest canonicalization before adding more ingest-adjacent features
+2. fix file-ingest token accounting so usage lands in the correct ingest/task bucket
+3. unify more of `useIngestActions.ts` with `fileIngestFlow.ts`
+4. move device-file ingest UI into the library drawer/settings surfaces
+5. only after that, resume Google Drive enhancements such as upload subfolder selection
+6. keep `sendToGpt` / page composition cleanup on the roadmap, but do not let it distract from ingest authority while that is still actively being stabilized
+
+## Files To Review First Next Time
+
+1. `lib/app/ingestDocumentModel.ts`
+2. `lib/app/fileIngestFlow.ts`
+3. `hooks/useIngestActions.ts`
+4. `hooks/useGoogleDrivePicker.ts`
+5. `components/panels/gpt/ReceivedDocsDrawer.tsx`
+6. `components/panels/gpt/GptSettingsWorkspace.tsx`
+7. `docs/ingest-pipeline.md`
+8. `docs/refactor-roadmap.md`
+9. `docs/architecture-guidelines.md`
 
 ## Verification Commands
 

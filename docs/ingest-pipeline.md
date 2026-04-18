@@ -122,3 +122,33 @@ Next cleanup targets:
 - move any newly duplicated task-update projections into shared helpers
 - keep `app/api/ingest/route.ts` orchestration-only
 - add regression tests whenever ingest output or post-action behavior changes
+
+## Google Drive Notes
+
+Google Drive import is now part of the ingest family, not a separate pipeline.
+
+That means:
+
+- Drive picker/auth is Drive-specific
+- folder traversal is Drive-specific
+- upload destination selection is Drive-specific
+- canonical text, summary rules, and stored-document projection should remain shared with file ingest
+
+Outstanding Drive work:
+
+1. upload subfolder selection
+2. folder index presentation polish
+3. clearer decision on ZIP support and where unzip should live
+4. continue reducing behavioral gaps between Drive import and device import
+
+UI direction to keep:
+
+- device-file ingest and Drive import should converge into the library surfaces
+- import entry actions belong in the library drawer area
+- import-related settings belong in the library settings workspace
+- the GPT bottom `file` tab should not remain a permanent parallel ingest entry point if the same workflow is being consolidated elsewhere
+
+Known accounting issue:
+
+- file-ingest token usage currently needs review because some ingest work is being counted under conversation-summary usage
+- next cleanup should restore ingest/task-side accounting as the primary owner for ingest-token consumption
