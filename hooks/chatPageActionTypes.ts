@@ -168,6 +168,7 @@ export type ChatPageSearchArgs = {
 export type ChatPageServicesArgs = {
   responseMode: ResponseMode;
   autoCopyFileIngestSysInfoToKin: boolean;
+  autoGenerateFileImportSummary: boolean;
   gptMemoryRuntime: GptMemoryRuntime;
   setUploadKind: React.Dispatch<React.SetStateAction<UploadKind>>;
   applySearchUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
@@ -324,8 +325,10 @@ export type UseTaskProtocolActionsArgs = Pick<
 export type UseFileIngestActionsArgs = Pick<
   UseChatPageActionsArgs,
   | "applyIngestUsage"
+  | "applySummaryUsage"
   | "applyTaskUsage"
   | "autoCopyFileIngestSysInfoToKin"
+  | "autoGenerateFileImportSummary"
   | "currentTaskDraft"
   | "getResolvedTaskTitle"
   | "getTaskBaseText"

@@ -39,6 +39,20 @@ import {
   buildAttachCurrentTaskMergedInput as buildSharedAttachCurrentTaskMergedInput,
   buildPostIngestTaskDraftUpdate as buildSharedPostIngestTaskDraftUpdate,
 } from "@/lib/app/ingestTaskDraftUpdates";
+import {
+  normalizeLibrarySummaryUsage,
+  requestGeneratedLibrarySummary,
+} from "@/lib/app/librarySummaryClient";
+import {
+  cleanImportedDocumentText,
+  cleanImportSummarySource,
+} from "@/lib/app/importSummaryText";
+import {
+  buildCanonicalDocumentSummary,
+  buildCanonicalSummarySource,
+  buildTaskPrepEnvelope,
+  resolveCanonicalDocumentText,
+} from "@/lib/app/ingestDocumentModel";
 
 type IngestResult = SharedIngestResult;
 
@@ -48,8 +62,8 @@ type IngestExtractionArtifacts = {
   selectedCharCount: number;
   rawIngestText: string;
   rawCharCount: number;
-  prepInputBase: string;
-  sharedInfoBase: string;
+  canonicalDocumentText: string;
+  taskPrepEnvelopeBase: string;
 };
 
 type PostIngestDraftTexts = {
@@ -58,8 +72,8 @@ type PostIngestDraftTexts = {
 };
 
 type FileIngestTransformResult = {
-  prepInput: string;
-  sharedInfoText: string;
+  transformedTaskPrepEnvelope: string;
+  transformedProtocolBodyText: string;
   transformFailed: boolean;
 };
 
@@ -79,6 +93,7 @@ type IngestFlowArgs = {
   gptInput: string;
   currentTaskDraft: TaskDraft;
   autoCopyFileIngestSysInfoToKin: boolean;
+  autoGenerateFileImportSummary: boolean;
   gptStateRef: MutableRefObject<KinMemoryState>;
   chatRecentLimit: number;
   setIngestLoading: Dispatch<SetStateAction<boolean>>;
@@ -92,6 +107,7 @@ type IngestFlowArgs = {
   persistCurrentGptState?: (state: KinMemoryState) => void;
   setCurrentTaskDraft: Dispatch<SetStateAction<TaskDraft>>;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   recordIngestedDocument: (document: {
     title: string;
@@ -161,7 +177,7 @@ function appendInfo(
 }
 
 function buildStoredDocumentSummary(text: string, fallbackTitle: string) {
-  const trimmed = text.trim();
+  const trimmed = cleanImportSummarySource(text).trim();
   if (!trimmed) return fallbackTitle;
   const normalized = trimmed.replace(/\s+/g, " ").trim();
   const withoutTitle = normalized.startsWith(fallbackTitle)
@@ -174,6 +190,14 @@ function buildStoredDocumentSummary(text: string, fallbackTitle: string) {
     .filter(Boolean);
   const summary = (sentenceParts.slice(0, 2).join(" ") || basis).trim();
   return summary.length > 220 ? `${summary.slice(0, 220).trimEnd()}...` : summary;
+}
+
+function buildSummaryPrefixedContent(text: string, summary?: string) {
+  const normalizedText = text.trim();
+  const normalizedSummary = summary?.trim() || "";
+  if (!normalizedSummary) return normalizedText;
+  if (!normalizedText) return `Summary:\n${normalizedSummary}`;
+  return [`Summary: ${normalizedSummary}`, "", normalizedText].join("\n");
 }
 
 export function resolveIngestExtractionArtifacts(params: {
@@ -194,31 +218,32 @@ export function resolveIngestExtractionArtifacts(params: {
       ? params.data.result.rawText.trim()
       : "";
   const rawCharCount = rawIngestText.length;
-  const prepInputBase =
+  const cleanedSelectedText = cleanImportedDocumentText(selectedText);
+  const cleanedRawIngestText = cleanImportedDocumentText(rawIngestText);
+  const canonicalDocumentText = resolveCanonicalDocumentText({
+    selectedText: cleanedSelectedText,
+    rawText: cleanedRawIngestText,
+  });
+  const rawTaskPrepEnvelopeBase =
     selectedLines.length > 0
-      ? [
-          `File: ${params.fileName}`,
-          `Title: ${params.fileTitle}`,
-          `Content:\n${selectedLines.join("\n")}`,
-        ].join("\n\n")
+      ? buildTaskPrepEnvelope({
+          fileName: params.fileName,
+          title: params.fileTitle,
+          content: canonicalDocumentText,
+        })
       : buildPrepInputFromIngestResult(params.data, params.fileName);
-  const sharedInfoBase =
-    selectedText ||
-    rawIngestText ||
-    prepInputBase
-      .replace(new RegExp(`^File:\\s*${params.fileName}\\s*`, "u"), "")
-      .replace(new RegExp(`^Title:\\s*${params.fileTitle}\\s*`, "u"), "")
-      .replace(/^Content:\s*/u, "")
-      .trim();
+  const taskPrepEnvelopeBase =
+    cleanImportSummarySource(rawTaskPrepEnvelopeBase).trim() ||
+    rawTaskPrepEnvelopeBase.trim();
 
   return {
     selectedLines,
-    selectedText,
+    selectedText: cleanedSelectedText,
     selectedCharCount,
-    rawIngestText,
+    rawIngestText: cleanedRawIngestText,
     rawCharCount,
-    prepInputBase,
-    sharedInfoBase,
+    canonicalDocumentText,
+    taskPrepEnvelopeBase,
   };
 }
 
@@ -227,6 +252,7 @@ export function buildFileIngestBridgeState(params: {
   fileName: string;
   fileTitle: string;
   resolvedKind: UploadKind;
+  summary?: string;
   selectedCharCount: number;
   rawCharCount: number;
   chatContextExcerpt: string;
@@ -242,6 +268,7 @@ export function buildFileIngestBridgeState(params: {
       `Title: ${params.fileTitle}`,
       `Target: ${params.resolvedKind === "text" ? "Text" : "Image / PDF"}`,
       `Extracted characters: ${params.selectedCharCount.toLocaleString()}`,
+      params.summary?.trim() ? `Summary:\n${params.summary.trim()}` : "",
       params.chatContextExcerpt ? `Content:\n${params.chatContextExcerpt}` : "",
     ]
       .filter(Boolean)
@@ -272,6 +299,7 @@ export function buildFileIngestBridgeState(params: {
           title: params.fileTitle,
           fileName: params.fileName,
           kind: params.resolvedKind,
+          summary: params.summary?.trim() || "",
           charCount: params.selectedCharCount,
           rawCharCount: params.rawCharCount,
           excerpt: params.chatContextExcerpt,
@@ -343,6 +371,8 @@ export function buildPostIngestTaskDraftUpdate(params: {
 
 export function buildFileIngestSummaryText(params: {
   fileTitle: string;
+  storedDocumentSummary?: string;
+  canonicalDocumentText?: string;
   resolvedKind: UploadKind;
   readPolicy: FileReadPolicy;
   ingestMode: IngestMode;
@@ -369,6 +399,9 @@ export function buildFileIngestSummaryText(params: {
   const summaryParts = [
     "File converted into Kin-ready text.",
     `Title: ${params.fileTitle}`,
+    ...(params.storedDocumentSummary?.trim()
+      ? [`Summary: ${params.storedDocumentSummary.trim()}`]
+      : []),
     `Target: ${params.resolvedKind === "text" ? "Text" : "Image / PDF"}`,
     `Read policy: ${params.readPolicy}`,
     `${params.resolvedKind === "text" ? "Text ingest" : "Image detail"}: ${
@@ -387,9 +420,8 @@ export function buildFileIngestSummaryText(params: {
       ? `Set block 1/${params.blocksLength} to Kin input. After sending, the next part will be queued automatically.`
       : "Auto transfer to Kin input is OFF. The file was ingested and stored, but no SYS_INFO draft was set to Kin input.",
   ];
-
-  if (params.action === "inject_only") {
-    summaryParts.push("", "--------------------", params.prepInput);
+  if (params.action === "inject_only" && params.canonicalDocumentText?.trim()) {
+    summaryParts.push("", "--------------------", params.canonicalDocumentText.trim());
   }
   if (params.action !== "inject_only" && params.prepTaskText) {
     summaryParts.push("", "--------------------", params.prepTaskText);
@@ -443,8 +475,8 @@ export function buildAttachCurrentTaskDraftUpdate(params: {
 
 export async function resolveFileIngestTransformResult(params: {
   intent: TransformIntent;
-  sharedInfoBase: string;
-  prepInputBase: string;
+  canonicalDocumentText: string;
+  taskPrepEnvelopeBase: string;
   responseMode: ResponseMode;
   shouldTransformContent: (intent: TransformIntent) => boolean;
   transformTextWithIntent: (args: {
@@ -454,13 +486,13 @@ export async function resolveFileIngestTransformResult(params: {
   }) => Promise<{ text: string; usage?: Parameters<typeof normalizeUsage>[0] }>;
   applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }): Promise<FileIngestTransformResult> {
-  let prepInput = params.prepInputBase;
-  let sharedInfoText = params.sharedInfoBase;
+  let transformedTaskPrepEnvelope = params.taskPrepEnvelopeBase;
+  let transformedProtocolBodyText = params.canonicalDocumentText;
 
   if (!params.shouldTransformContent(params.intent)) {
     return {
-      prepInput,
-      sharedInfoText,
+      transformedTaskPrepEnvelope,
+      transformedProtocolBodyText,
       transformFailed: false,
     };
   }
@@ -469,30 +501,32 @@ export async function resolveFileIngestTransformResult(params: {
     const transformed = await params.transformTextWithIntent({
       text:
         params.intent.mode === "sys_info"
-          ? params.sharedInfoBase
-          : params.prepInputBase,
+          ? params.canonicalDocumentText
+          : params.taskPrepEnvelopeBase,
       intent: params.intent,
       responseMode:
         params.responseMode === "creative" ? "creative" : "strict",
     });
 
     if (params.intent.mode === "sys_info") {
-      sharedInfoText = transformed.text.trim() || params.sharedInfoBase;
+      transformedProtocolBodyText =
+        transformed.text.trim() || params.canonicalDocumentText;
     } else {
-      prepInput = transformed.text.trim() || params.prepInputBase;
+      transformedTaskPrepEnvelope =
+        transformed.text.trim() || params.taskPrepEnvelopeBase;
     }
     params.applyTaskUsage(transformed.usage);
 
     return {
-      prepInput,
-      sharedInfoText,
+      transformedTaskPrepEnvelope,
+      transformedProtocolBodyText,
       transformFailed: false,
     };
   } catch (error) {
     console.error("file transform failed", error);
     return {
-      prepInput,
-      sharedInfoText,
+      transformedTaskPrepEnvelope,
+      transformedProtocolBodyText,
       transformFailed: true,
     };
   }
@@ -556,6 +590,7 @@ export async function runFileIngestFlow({
   gptInput,
   currentTaskDraft,
   autoCopyFileIngestSysInfoToKin,
+  autoGenerateFileImportSummary,
   gptStateRef,
   chatRecentLimit,
   setIngestLoading,
@@ -569,6 +604,7 @@ export async function runFileIngestFlow({
   persistCurrentGptState,
   setCurrentTaskDraft,
   applyIngestUsage,
+  applySummaryUsage,
   applyTaskUsage,
   recordIngestedDocument,
   resolveTransformIntent,
@@ -612,15 +648,15 @@ export async function runFileIngestFlow({
       selectedCharCount,
       rawIngestText,
       rawCharCount,
-      prepInputBase,
-      sharedInfoBase,
+      canonicalDocumentText,
+      taskPrepEnvelopeBase,
     } = resolveIngestExtractionArtifacts({
       data,
       fileName: file.name,
       fileTitle,
     });
-    let prepInput = prepInputBase;
-    let sharedInfoText = sharedInfoBase;
+    let taskPrepEnvelope = taskPrepEnvelopeBase;
+    let protocolBodyText = canonicalDocumentText;
 
     const directiveText = gptInput.trim();
     const { intent, usage } = await resolveTransformIntent({
@@ -632,15 +668,15 @@ export async function runFileIngestFlow({
 
     const transformResult = await resolveFileIngestTransformResult({
       intent,
-      sharedInfoBase,
-      prepInputBase,
+      canonicalDocumentText,
+      taskPrepEnvelopeBase,
       responseMode,
       shouldTransformContent,
       transformTextWithIntent,
       applyTaskUsage,
     });
-    prepInput = transformResult.prepInput;
-    sharedInfoText = transformResult.sharedInfoText;
+    taskPrepEnvelope = transformResult.transformedTaskPrepEnvelope;
+    protocolBodyText = transformResult.transformedProtocolBodyText;
 
     if (transformResult.transformFailed) {
       appendInfo(
@@ -649,9 +685,33 @@ export async function runFileIngestFlow({
       );
     }
 
+    const summarySourceText = buildCanonicalSummarySource(canonicalDocumentText);
+    let documentSummary = buildCanonicalDocumentSummary(
+      canonicalDocumentText,
+      fileTitle
+    );
+    if (autoGenerateFileImportSummary && summarySourceText.trim()) {
+      try {
+        const summaryResult = await requestGeneratedLibrarySummary({
+          title: fileTitle,
+          text: summarySourceText,
+        });
+        if (summaryResult.summary?.trim()) {
+          documentSummary = cleanImportSummarySource(
+            summaryResult.summary
+          ).trim();
+        }
+        applySummaryUsage(normalizeLibrarySummaryUsage(summaryResult.usage));
+      } catch (error) {
+        console.warn("File import summary generation failed", error);
+      }
+    }
+
     const directiveLines = buildKinDirectiveLines(intent);
     const kinPayloadText =
-      intent.mode === "sys_info" ? sharedInfoText : prepInput;
+      intent.mode === "sys_info"
+        ? buildSummaryPrefixedContent(protocolBodyText, documentSummary)
+        : buildSummaryPrefixedContent(taskPrepEnvelope, documentSummary);
     const blocks = buildIngestKinInjectionBlocks({
       intentMode: intent.mode,
       currentTaskSlot: currentTaskDraft.slot,
@@ -679,7 +739,7 @@ export async function runFileIngestFlow({
 
     const { prepTaskText, deepenTaskText } = await resolvePostIngestTaskTexts({
       action: options.action,
-      prepInput,
+      prepInput: taskPrepEnvelope,
       fileName: file.name,
       applyTaskUsage,
     });
@@ -688,6 +748,8 @@ export async function runFileIngestFlow({
       setGptMessages,
       buildFileIngestSummaryText({
         fileTitle,
+        storedDocumentSummary: documentSummary,
+        canonicalDocumentText,
         resolvedKind,
         readPolicy: options.readPolicy,
         ingestMode: options.mode,
@@ -698,25 +760,29 @@ export async function runFileIngestFlow({
         rawCharCount,
         blocksLength: blocks.length,
         autoCopyFileIngestSysInfoToKin,
-        prepInput,
+        prepInput: taskPrepEnvelope,
         prepTaskText,
         deepenTaskText,
       })
     );
 
     const documentCreatedAt = new Date().toISOString();
+    const storedDocumentText = canonicalDocumentText.trim();
     recordIngestedDocument({
       title: fileTitle,
       filename: file.name,
-      text: prepInput,
-      summary: buildStoredDocumentSummary(prepInput, fileTitle),
+      text: storedDocumentText,
+      summary: documentSummary,
       taskId: currentTaskDraft.id || undefined,
-      charCount: prepInput.length,
+      charCount: storedDocumentText.length,
       createdAt: documentCreatedAt,
       updatedAt: documentCreatedAt,
     });
 
-    const chatContextBody = selectedText || prepInput.trim();
+    const chatContextBody = buildSummaryPrefixedContent(
+      storedDocumentText,
+      documentSummary
+    );
     const chatContextExcerpt =
       chatContextBody.length > 1600
         ? `${chatContextBody.slice(0, 1600).trimEnd()}...`
@@ -728,6 +794,7 @@ export async function runFileIngestFlow({
       fileName: file.name,
       fileTitle,
       resolvedKind,
+      summary: documentSummary,
       selectedCharCount,
       rawCharCount,
       chatContextExcerpt,
@@ -759,7 +826,7 @@ export async function runFileIngestFlow({
         const mergedInput = buildAttachCurrentTaskMergedInput({
           currentTaskText,
           fileName: file.name,
-          prepInput,
+          prepInput: taskPrepEnvelope,
           currentTaskDraft,
           fileTitle,
           getResolvedTaskTitle,
@@ -785,7 +852,7 @@ export async function runFileIngestFlow({
               previousDraft: prev,
               fileName: file.name,
               fileTitle,
-              prepInput,
+              prepInput: taskPrepEnvelope,
               mergedTaskText,
               resolveTaskTitleFromDraft,
             })
@@ -804,7 +871,7 @@ export async function runFileIngestFlow({
           action: options.action,
           fileName: file.name,
           fileTitle,
-          prepInput,
+          prepInput: taskPrepEnvelope,
           prepTaskText,
           deepenTaskText,
           getResolvedTaskTitle,
@@ -819,7 +886,7 @@ export async function runFileIngestFlow({
           action: options.action,
           fileName: file.name,
           fileTitle,
-          prepInput,
+          prepInput: taskPrepEnvelope,
           prepTaskText,
           deepenTaskText,
           getResolvedTaskTitle,

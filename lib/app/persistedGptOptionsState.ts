@@ -17,6 +17,8 @@ export const POST_INGEST_ACTION_KEY = "gpt_post_ingest_action";
 export const FILE_READ_POLICY_KEY = "gpt_file_read_policy";
 export const COMPACT_CHAR_LIMIT_KEY = "gpt_compact_char_limit";
 export const SIMPLE_IMAGE_CHAR_LIMIT_KEY = "gpt_simple_image_char_limit";
+export const DRIVE_IMPORT_AUTO_SUMMARY_KEY =
+  "gpt_drive_import_auto_summary";
 
 export type PersistedGptOptionsState = {
   responseMode: ResponseMode;
@@ -27,6 +29,7 @@ export type PersistedGptOptionsState = {
   simpleImageCharLimit: number;
   postIngestAction: PostIngestAction;
   fileReadPolicy: FileReadPolicy;
+  driveImportAutoSummary: boolean;
 };
 
 export function getDefaultPersistedGptOptionsState(): PersistedGptOptionsState {
@@ -39,6 +42,7 @@ export function getDefaultPersistedGptOptionsState(): PersistedGptOptionsState {
     simpleImageCharLimit: 500,
     postIngestAction: "inject_only",
     fileReadPolicy: "text_and_layout",
+    driveImportAutoSummary: true,
   };
 }
 
@@ -113,6 +117,15 @@ export function loadPersistedGptOptionsState(
     savedFileReadPolicy === "text_and_layout"
   ) {
     initialState.fileReadPolicy = savedFileReadPolicy;
+  }
+
+  const savedDriveImportAutoSummary = storage.getItem(
+    DRIVE_IMPORT_AUTO_SUMMARY_KEY
+  );
+  if (savedDriveImportAutoSummary === "true") {
+    initialState.driveImportAutoSummary = true;
+  } else if (savedDriveImportAutoSummary === "false") {
+    initialState.driveImportAutoSummary = false;
   }
 
   const savedCompactCharLimit = Number(storage.getItem(COMPACT_CHAR_LIMIT_KEY));

@@ -6,6 +6,26 @@ import {
   sanitizeGoogleDriveFolderLink,
 } from "@/lib/app/googleDriveLink";
 import { buildLibraryItemDriveExport } from "@/lib/app/referenceLibraryItemActions";
+import {
+  requestFileIngest,
+  resolveIngestErrorMessage,
+  resolveIngestFileTitle,
+  type SharedIngestOptions,
+} from "@/lib/app/ingestClient";
+import {
+  normalizeLibrarySummaryUsage,
+  requestGeneratedLibrarySummary,
+} from "@/lib/app/librarySummaryClient";
+import {
+  cleanImportedDocumentText,
+  cleanImportSummarySource,
+} from "@/lib/app/importSummaryText";
+import {
+  buildCanonicalDocumentSummary,
+  buildCanonicalSummarySource,
+  resolveCanonicalDocumentText,
+} from "@/lib/app/ingestDocumentModel";
+import { normalizeUsage } from "@/lib/tokenStats";
 
 const GOOGLE_API_KEY = "AIzaSyCQc_DKFE3WxU6SgVSE47X2SQv7nxZvm08";
 const GOOGLE_OAUTH_CLIENT_ID =
@@ -23,10 +43,22 @@ type GooglePickerDocument = {
   type?: string;
 };
 
+type DriveFolderNode = {
+  id: string;
+  name: string;
+  mimeType: string;
+  path: string;
+};
+
 type GooglePickerCallbackData = {
   action?: string;
   docs?: GooglePickerDocument[];
 };
+
+type GoogleDrivePickerMode =
+  | "file_import"
+  | "folder_index"
+  | "folder_import";
 
 declare global {
   interface Window {
@@ -38,10 +70,15 @@ declare global {
 type UseGoogleDrivePickerArgs = {
   folderLink: string;
   setFolderLink: (value: string) => void;
+  ingestOptions: SharedIngestOptions;
+  autoSummarizeImports: boolean;
+  currentTaskId?: string;
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   focusGptPanel: () => boolean;
 };
 
@@ -104,14 +141,17 @@ async function fetchDriveJson<T>(url: string, accessToken: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function fetchDriveTextFile(args: {
+async function fetchDriveFileBlob(args: {
   fileId: string;
   mimeType: string;
   accessToken: string;
-}): Promise<string> {
-  const exportMimeType = args.mimeType.startsWith("application/vnd.google-apps")
-    ? "text/plain"
-    : "";
+}): Promise<Blob> {
+  const exportMimeType =
+    args.mimeType === "application/vnd.google-apps.document"
+      ? "text/plain"
+      : args.mimeType === "application/vnd.google-apps.spreadsheet"
+        ? "text/csv"
+        : "";
   const url = exportMimeType
     ? `https://www.googleapis.com/drive/v3/files/${args.fileId}/export?mimeType=${encodeURIComponent(
         exportMimeType
@@ -126,7 +166,7 @@ async function fetchDriveTextFile(args: {
   if (!response.ok) {
     throw new Error(`Drive file fetch failed: ${response.status}`);
   }
-  return response.text();
+  return response.blob();
 }
 
 async function uploadDriveTextFile(args: {
@@ -176,18 +216,154 @@ async function uploadDriveTextFile(args: {
 function canImportDriveMimeType(mimeType?: string) {
   if (!mimeType) return false;
   if (mimeType.startsWith("text/")) return true;
+  if (mimeType === "application/pdf") return true;
   if (mimeType === "application/json") return true;
   if (mimeType === "application/xml") return true;
   if (mimeType === "application/vnd.google-apps.document") return true;
+  if (mimeType === "application/vnd.google-apps.spreadsheet") return true;
   return false;
+}
+
+function summarizeImportedText(text: string, fallbackTitle: string) {
+  const cleanedText = cleanImportSummarySource(text);
+  const normalized = cleanedText.replace(/\s+/g, " ").trim();
+  if (!normalized) return fallbackTitle;
+  const paragraphLeads = cleanedText
+    .split(/\n{2,}/)
+    .map((block) => block.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .map((block) => {
+      const sentenceMatch = block.match(/^(.+?[。．.!?！？])(?=\s|$)/u);
+      return sentenceMatch?.[1]?.trim() || block;
+    });
+
+  const candidate = paragraphLeads
+    .slice(0, 4)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (candidate) {
+    return candidate;
+  }
+
+  return normalized;
+}
+
+function isSummaryCandidateTooClose(args: {
+  candidate: string;
+  fullText: string;
+}) {
+  const normalizedCandidate = args.candidate.replace(/\s+/g, " ").trim();
+  const normalizedFullText = args.fullText.replace(/\s+/g, " ").trim();
+  if (!normalizedCandidate || !normalizedFullText) return false;
+  if (normalizedCandidate === normalizedFullText) return true;
+  if (normalizedCandidate.length >= Math.floor(normalizedFullText.length * 0.8)) {
+    return true;
+  }
+  return false;
+}
+
+function buildDriveImportSummary(args: {
+  result?: {
+    structuredSummary?: unknown[];
+    kinCompact?: unknown[];
+  };
+  fallbackText: string;
+  fallbackTitle: string;
+}) {
+  const summaryLines = Array.isArray(args.result?.structuredSummary)
+    ? args.result.structuredSummary.filter(
+        (line): line is string => typeof line === "string" && line.trim().length > 0
+      )
+    : [];
+  const compactLines = Array.isArray(args.result?.kinCompact)
+    ? args.result.kinCompact.filter(
+        (line): line is string => typeof line === "string" && line.trim().length > 0
+      )
+    : [];
+  const preferredCandidate = compactLines.join(" ").trim() || summaryLines.join(" ").trim();
+  if (
+    preferredCandidate &&
+    !isSummaryCandidateTooClose({
+      candidate: preferredCandidate,
+      fullText: args.fallbackText,
+    })
+  ) {
+    return preferredCandidate;
+  }
+  return buildCanonicalDocumentSummary(args.fallbackText, args.fallbackTitle);
+}
+
+function buildDriveImportStoredText(result: {
+  selectedLines?: unknown[];
+  rawText?: string;
+}) {
+  const selectedLines = Array.isArray(result.selectedLines)
+    ? result.selectedLines.filter(
+        (line): line is string => typeof line === "string" && line.trim().length > 0
+      )
+    : [];
+  const selectedText = selectedLines.join("\n").trim();
+  const rawText = typeof result.rawText === "string" ? result.rawText.trim() : "";
+  return resolveCanonicalDocumentText({
+    selectedText,
+    rawText,
+  });
+}
+
+async function listDriveFolderChildren(args: {
+  accessToken: string;
+  folderId: string;
+  currentPath: string;
+}): Promise<DriveFolderNode[]> {
+  const files: DriveFolderNode[] = [];
+  let pageToken = "";
+
+  do {
+    const response = await fetchDriveJson<{
+      files?: Array<{ id: string; name: string; mimeType: string }>;
+      nextPageToken?: string;
+    }>(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+        `'${args.folderId}' in parents and trashed = false`
+      )}&fields=nextPageToken,files(id,name,mimeType)&pageSize=200${
+        pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""
+      }`,
+      args.accessToken
+    );
+
+    for (const file of response.files || []) {
+      const path = `${args.currentPath}/${file.name}`;
+      files.push({
+        id: file.id,
+        name: file.name,
+        mimeType: file.mimeType,
+        path,
+      });
+      if (file.mimeType === "application/vnd.google-apps.folder") {
+        files.push(
+          ...(await listDriveFolderChildren({
+            accessToken: args.accessToken,
+            folderId: file.id,
+            currentPath: path,
+          }))
+        );
+      }
+    }
+
+    pageToken = response.nextPageToken || "";
+  } while (pageToken);
+
+  return files;
 }
 
 function buildDriveFolderIndexMessage(args: {
   folderName: string;
-  files: Array<{ id: string; name: string; mimeType: string }>;
+  entries: Array<{ path: string; mimeType: string }>;
 }) {
-  const lines = args.files.map(
-    (file, index) => `${index + 1}. ${file.name} (${file.mimeType})`
+  const lines = args.entries.map(
+    (entry, index) => `${index + 1}. ${entry.path} (${entry.mimeType})`
   );
   return [
     `Google Drive folder index: ${args.folderName}`,
@@ -198,8 +374,13 @@ function buildDriveFolderIndexMessage(args: {
 export function useGoogleDrivePicker({
   folderLink,
   setFolderLink,
+  ingestOptions,
+  autoSummarizeImports,
+  currentTaskId,
   recordIngestedDocument,
   setGptMessages,
+  applyIngestUsage,
+  applySummaryUsage,
   focusGptPanel,
 }: UseGoogleDrivePickerArgs) {
   const [pickerReady, setPickerReady] = useState(false);
@@ -251,46 +432,105 @@ export function useGoogleDrivePicker({
   }, []);
 
   const importDriveFile = useCallback(
-    async (file: { id: string; name: string; mimeType: string }) => {
+    async (file: { id: string; name: string; mimeType: string; path?: string }) => {
       const accessToken = await ensureAccessToken();
-      const text = await fetchDriveTextFile({
+      const blob = await fetchDriveFileBlob({
         fileId: file.id,
         mimeType: file.mimeType,
         accessToken,
       });
+      const downloadedFile = new File([blob], file.name, {
+        type:
+          file.mimeType === "application/vnd.google-apps.spreadsheet"
+            ? "text/csv"
+            : blob.type || file.mimeType || "application/octet-stream",
+      });
+      const { response, data } = await requestFileIngest({
+        file: downloadedFile,
+        options: ingestOptions,
+      });
+      applyIngestUsage(data?.usage);
+      if (!response.ok) {
+        appendUiMessage(
+          setGptMessages,
+          `Google Drive import failed: ${resolveIngestErrorMessage({
+            data,
+            fallback: `Failed to import ${file.name}.`,
+          })}`
+        );
+        focusGptPanel();
+        return;
+      }
+
+      const storedText = buildDriveImportStoredText(data?.result || {});
+      const title = file.path || resolveIngestFileTitle({
+        data,
+        fallback: file.name,
+      });
+      const rawTextForSummary = buildCanonicalSummarySource(storedText);
+      let summary = buildDriveImportSummary({
+        result: data?.result,
+        fallbackText: rawTextForSummary,
+        fallbackTitle: title,
+      });
+
+      if (autoSummarizeImports && rawTextForSummary) {
+        try {
+          const summaryResult = await requestGeneratedLibrarySummary({
+            title,
+            text: rawTextForSummary,
+          });
+          if (summaryResult.summary?.trim()) {
+            summary = cleanImportSummarySource(summaryResult.summary).trim();
+          }
+          applySummaryUsage(normalizeLibrarySummaryUsage(summaryResult.usage));
+        } catch (error) {
+          console.warn("Drive import summary generation failed", error);
+        }
+      }
+
       recordIngestedDocument({
-        title: file.name,
-        filename: file.name,
-        text,
-        summary: text.replace(/\s+/g, " ").trim().slice(0, 220),
-        charCount: text.length,
+        title,
+        filename: title,
+        text: storedText,
+        summary,
+        taskId: currentTaskId,
+        charCount: storedText.length,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
     },
-    [ensureAccessToken, recordIngestedDocument]
+    [
+      applyIngestUsage,
+      applySummaryUsage,
+      currentTaskId,
+      ensureAccessToken,
+      focusGptPanel,
+      ingestOptions,
+      recordIngestedDocument,
+      setGptMessages,
+      autoSummarizeImports,
+    ]
   );
 
   const importDriveFolder = useCallback(
-    async (folder: { id: string; name: string }) => {
+    async (folder: { id: string; name: string }, mode: "index" | "import") => {
       const accessToken = await ensureAccessToken();
-      const response = await fetchDriveJson<{
-        files?: Array<{ id: string; name: string; mimeType: string }>;
-      }>(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
-          `'${folder.id}' in parents and trashed = false`
-        )}&fields=files(id,name,mimeType)&pageSize=200`,
-        accessToken
-      );
-      const files = (response.files || []).filter((file) => canImportDriveMimeType(file.mimeType));
+      const entries = await listDriveFolderChildren({
+        accessToken,
+        folderId: folder.id,
+        currentPath: folder.name,
+      });
       appendUiMessage(
         setGptMessages,
         buildDriveFolderIndexMessage({
           folderName: folder.name,
-          files: response.files || [],
+          entries,
         })
       );
       focusGptPanel();
+      if (mode === "index") return;
+      const files = entries.filter((file) => canImportDriveMimeType(file.mimeType));
       for (const file of files) {
         await importDriveFile(file);
       }
@@ -298,19 +538,26 @@ export function useGoogleDrivePicker({
     [ensureAccessToken, focusGptPanel, importDriveFile, setGptMessages]
   );
 
-  const openImportPicker = useCallback(async () => {
+  const openPickerForMode = useCallback(async (mode: GoogleDrivePickerMode) => {
     if (typeof window === "undefined" || !window.google?.picker) return;
     const accessToken = await ensureAccessToken();
-    const picker = new window.google.picker.PickerBuilder()
+    const docsView = new window.google.picker.DocsView(window.google.picker.ViewId.DOCS)
+      .setIncludeFolders(true)
+      .setSelectFolderEnabled(true);
+    const foldersView = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
+      .setIncludeFolders(true)
+      .setMimeTypes("application/vnd.google-apps.folder")
+      .setSelectFolderEnabled(true);
+
+    if (folderId) {
+      docsView.setParent(folderId);
+      foldersView.setParent(folderId);
+    }
+
+    const pickerBuilder = new window.google.picker.PickerBuilder()
       .setAppId(GOOGLE_PICKER_APP_ID)
       .setDeveloperKey(GOOGLE_API_KEY)
       .setOAuthToken(accessToken)
-      .addView(new window.google.picker.DocsView(window.google.picker.ViewId.DOCS))
-      .addView(
-        new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
-          .setIncludeFolders(true)
-          .setSelectFolderEnabled(true)
-      )
       .setCallback(async (data: GooglePickerCallbackData) => {
         if (data.action !== window.google.picker.Action.PICKED) return;
         const picked = data.docs || [];
@@ -319,7 +566,7 @@ export function useGoogleDrivePicker({
             await importDriveFolder({
               id: doc.id,
               name: doc.name || "Google Drive Folder",
-            });
+            }, mode === "folder_index" ? "index" : "import");
             continue;
           }
           if (!canImportDriveMimeType(doc.mimeType)) continue;
@@ -329,10 +576,17 @@ export function useGoogleDrivePicker({
             mimeType: doc.mimeType || "text/plain",
           });
         }
-      })
-      .build();
+      });
+
+    if (mode === "file_import") {
+      pickerBuilder.addView(docsView);
+    } else {
+      pickerBuilder.addView(foldersView);
+    }
+
+    const picker = pickerBuilder.build();
     picker.setVisible(true);
-  }, [ensureAccessToken, importDriveFile, importDriveFolder]);
+  }, [ensureAccessToken, folderId, importDriveFile, importDriveFolder]);
 
   const uploadLibraryItemToDrive = useCallback(
     async (item: ReferenceLibraryItem) => {
@@ -371,7 +625,9 @@ export function useGoogleDrivePicker({
   return {
     pickerReady,
     googleDriveFolderId: folderId,
-    openImportPicker,
+    openFileImportPicker: () => openPickerForMode("file_import"),
+    openFolderIndexPicker: () => openPickerForMode("folder_index"),
+    openFolderImportPicker: () => openPickerForMode("folder_import"),
     uploadLibraryItemToDrive,
   };
 }

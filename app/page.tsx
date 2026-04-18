@@ -96,6 +96,8 @@ export default function ChatApp() {
     setPostIngestAction,
     fileReadPolicy,
     setFileReadPolicy,
+    driveImportAutoSummary,
+    setDriveImportAutoSummary,
   } = usePersistedGptOptions();
   const { autoBridgeSettings, updateAutoBridgeSettings } = useAutoBridgeSettings();
   const {
@@ -303,13 +305,27 @@ export default function ChatApp() {
   } = useGoogleDriveLibrary();
   const {
     pickerReady: googleDrivePickerReady,
-    openImportPicker,
+    openFileImportPicker,
+    openFolderIndexPicker,
+    openFolderImportPicker,
     uploadLibraryItemToDrive,
   } = useGoogleDrivePicker({
     folderLink: googleDriveFolderLink,
     setFolderLink: setGoogleDriveFolderLink,
+    ingestOptions: {
+      kind: uploadKind,
+      mode: ingestMode,
+      detail: imageDetail,
+      readPolicy: fileReadPolicy,
+      compactCharLimit,
+      simpleImageCharLimit,
+    },
+    autoSummarizeImports: driveImportAutoSummary,
+    currentTaskId: currentTaskDraft.id || undefined,
     recordIngestedDocument,
     setGptMessages,
+    applyIngestUsage,
+    applySummaryUsage,
     focusGptPanel,
   });
   const {
@@ -364,7 +380,9 @@ export default function ChatApp() {
     showLibraryItemInChat,
     sendLibraryItemToKin,
     uploadLibraryItemToGoogleDrive,
-    importFromGoogleDrive,
+    importGoogleDriveFile,
+    indexGoogleDriveFolder,
+    importGoogleDriveFolder,
   } = useReferenceLibraryUiActions({
     getLibraryItemById,
     setGptMessages,
@@ -372,7 +390,9 @@ export default function ChatApp() {
     focusGptPanel,
     focusKinPanel,
     openGoogleDriveFolder,
-    importFromGoogleDrivePicker: openImportPicker,
+    importGoogleDriveFilePicker: openFileImportPicker,
+    indexGoogleDriveFolderPicker: openFolderIndexPicker,
+    importGoogleDriveFolderPicker: openFolderImportPicker,
     uploadLibraryItemToDrivePicker: uploadLibraryItemToDrive,
   });
 
@@ -452,6 +472,7 @@ export default function ChatApp() {
       simpleImageCharLimit,
       postIngestAction,
       fileReadPolicy,
+      driveImportAutoSummary,
       defaultMemorySettings,
     },
     bridge: {
@@ -545,7 +566,9 @@ export default function ChatApp() {
       onChangeLibraryReferenceCount: setLibraryReferenceCount,
       onChangeGoogleDriveFolderLink: setGoogleDriveFolderLink,
       onOpenGoogleDriveFolder: openGoogleDriveFolder,
-      onImportFromGoogleDrive: importFromGoogleDrive,
+      onImportGoogleDriveFile: importGoogleDriveFile,
+      onIndexGoogleDriveFolder: indexGoogleDriveFolder,
+      onImportGoogleDriveFolder: importGoogleDriveFolder,
     },
     gpt: {
       resetGptForCurrentKin,
@@ -557,6 +580,7 @@ export default function ChatApp() {
       onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
       onChangePostIngestAction: setPostIngestAction,
       onChangeFileReadPolicy: setFileReadPolicy,
+      onChangeDriveImportAutoSummary: setDriveImportAutoSummary,
     },
     bridge: {
       onChangeAutoSendKinSysInput: (value: boolean) =>
@@ -631,6 +655,7 @@ export default function ChatApp() {
       applyIngestUsage,
       recordIngestedDocument,
     },
+    autoGenerateFileImportSummary: driveImportAutoSummary,
   } as const;
 
   const { kinPanel, gptPanel } = useChatPagePanelsComposition({

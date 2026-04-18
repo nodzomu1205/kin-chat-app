@@ -96,6 +96,7 @@ export function useChatPageControllerArgs(
     responseMode: args.gpt.responseMode,
     autoCopyFileIngestSysInfoToKin:
       args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+    autoGenerateFileImportSummary: args.gpt.driveImportAutoSummary,
     gptMemoryRuntime: args.gpt.gptMemoryRuntime,
     setUploadKind: args.gpt.onChangeUploadKind,
     applySearchUsage: args.usage.applySearchUsage,

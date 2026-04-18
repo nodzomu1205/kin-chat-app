@@ -42,7 +42,9 @@ type Props = Pick<
     | "libraryReferenceCount"
     | "sourceDisplayCount"
     | "onOpenGoogleDriveFolder"
-    | "onImportFromGoogleDrive"
+    | "onImportGoogleDriveFile"
+    | "onIndexGoogleDriveFolder"
+    | "onImportGoogleDriveFolder"
   > & {
   initialTab?: LibraryTab;
   isMobile?: boolean;
@@ -102,11 +104,14 @@ export default function ReceivedDocsDrawer({
   onSendLibraryItemToKin,
   onUploadLibraryItemToGoogleDrive,
   onOpenGoogleDriveFolder,
-  onImportFromGoogleDrive,
+  onImportGoogleDriveFile,
+  onIndexGoogleDriveFolder,
+  onImportGoogleDriveFolder,
   initialTab = "all",
   isMobile = false,
 }: Props) {
   const [activeTab, setActiveTab] = useState<LibraryTab>(initialTab);
+  const [driveImportMenuOpen, setDriveImportMenuOpen] = useState(false);
   const [expandedId, setExpandedId] = useState("");
   const [editingId, setEditingId] = useState("");
   const [draftTitle, setDraftTitle] = useState("");
@@ -151,56 +156,174 @@ export default function ReceivedDocsDrawer({
     }
   }, [expandedId, visibleItems]);
 
+  const driveActionButtonStyle: React.CSSProperties = {
+    ...pillButton,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    background: "#ffffff",
+    color: "#0f172a",
+    border: "1px solid #cbd5e1",
+    minWidth: 0,
+    width: "auto",
+    height: 40,
+    justifyContent: "center",
+    padding: "0 12px",
+  };
+
+  const driveClusterStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    color: "#2563eb",
+    fontSize: 14,
+    fontWeight: 700,
+    lineHeight: 1,
+  };
+
+  const driveLabelStyle: React.CSSProperties = {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#2563eb",
+    lineHeight: 1,
+  };
+
   return (
     <section style={{ ...sectionCardStyle, minWidth: 0, maxWidth: "100%", overflowX: "hidden" }}>
       <div
         style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-          marginBottom: 10,
-          alignItems: "center",
+          display: "grid",
+          gap: 10,
         }}
       >
-        <button
-          type="button"
-          onClick={onOpenGoogleDriveFolder}
+        <div
           style={{
-            ...pillButton,
-            background: "#ffffff",
-            color: "#2563eb",
-            border: "1px solid #bfdbfe",
+            display: "grid",
+            gap: 10,
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "#f8fafc",
+            border: "1px solid #dbe4e8",
           }}
         >
-          {GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
-        </button>
-        <button
-          type="button"
-          onClick={() => void onImportFromGoogleDrive()}
-          style={{
-            ...pillButton,
-            background: "#ffffff",
-            color: "#0f766e",
-            border: "1px solid #99f6e4",
-          }}
-        >
-          {GPT_GOOGLE_DRIVE_TEXT.settings.importFromDrive}
-        </button>
-      </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={onOpenGoogleDriveFolder}
+              style={driveActionButtonStyle}
+              title={GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
+              aria-label={GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
+            >
+              <span style={driveLabelStyle}>Google Drive</span>
+              <span style={driveClusterStyle}>
+                <span>△</span>
+                <span>📁</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDriveImportMenuOpen((prev) => !prev)}
+              style={driveActionButtonStyle}
+              title={GPT_GOOGLE_DRIVE_TEXT.settings.importEntry}
+              aria-label={GPT_GOOGLE_DRIVE_TEXT.settings.importEntry}
+              aria-expanded={driveImportMenuOpen}
+            >
+              <span style={driveLabelStyle}>Google Drive</span>
+              <span style={driveClusterStyle}>
+                <span>△</span>
+                <span>⤵</span>
+              </span>
+            </button>
+          </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button type="button" onClick={() => setActiveTab("all")} style={tabButton(activeTab === "all")}>
-          {GPT_RECEIVED_DOCS_TEXT.tabs.all}
-        </button>
-        <button type="button" onClick={() => setActiveTab("kin")} style={tabButton(activeTab === "kin")}>
-          {GPT_RECEIVED_DOCS_TEXT.tabs.kin}
-        </button>
-        <button type="button" onClick={() => setActiveTab("ingest")} style={tabButton(activeTab === "ingest")}>
-          {GPT_RECEIVED_DOCS_TEXT.tabs.ingest}
-        </button>
-        <button type="button" onClick={() => setActiveTab("search")} style={tabButton(activeTab === "search")}>
-          {GPT_RECEIVED_DOCS_TEXT.tabs.search}
-        </button>
+          {driveImportMenuOpen ? (
+            <div
+              style={{
+                display: "grid",
+                gap: 8,
+                padding: "10px 12px",
+                borderRadius: 12,
+                background: "#ffffff",
+                border: "1px solid #dbe4e8",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setDriveImportMenuOpen(false);
+                  void onImportGoogleDriveFile();
+                }}
+                style={{
+                  ...pillButton,
+                  justifyContent: "flex-start",
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                {GPT_GOOGLE_DRIVE_TEXT.settings.importFile}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDriveImportMenuOpen(false);
+                  void onImportGoogleDriveFolder();
+                }}
+                style={{
+                  ...pillButton,
+                  justifyContent: "flex-start",
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                {GPT_GOOGLE_DRIVE_TEXT.settings.importFolder}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDriveImportMenuOpen(false);
+                  void onIndexGoogleDriveFolder();
+                }}
+                style={{
+                  ...pillButton,
+                  justifyContent: "flex-start",
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                {GPT_GOOGLE_DRIVE_TEXT.settings.indexFolder}
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "#ffffff",
+            border: "1px solid #dbe4e8",
+          }}
+        >
+          <button type="button" onClick={() => setActiveTab("all")} style={tabButton(activeTab === "all")}>
+            {GPT_RECEIVED_DOCS_TEXT.tabs.all}
+          </button>
+          <button type="button" onClick={() => setActiveTab("kin")} style={tabButton(activeTab === "kin")}>
+            {GPT_RECEIVED_DOCS_TEXT.tabs.kin}
+          </button>
+          <button type="button" onClick={() => setActiveTab("ingest")} style={tabButton(activeTab === "ingest")}>
+            {GPT_RECEIVED_DOCS_TEXT.tabs.ingest}
+          </button>
+          <button type="button" onClick={() => setActiveTab("search")} style={tabButton(activeTab === "search")}>
+            {GPT_RECEIVED_DOCS_TEXT.tabs.search}
+          </button>
+        </div>
       </div>
 
       {referenceLibraryItems.length === 0 ? (

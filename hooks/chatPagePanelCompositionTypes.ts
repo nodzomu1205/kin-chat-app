@@ -236,8 +236,12 @@ export type ChatPageWorkspaceViewArgs = {
       ChatPageGptPanelCompositionArgs["settings"]["onChangeGoogleDriveFolderLink"];
     onOpenGoogleDriveFolder:
       ChatPageGptPanelCompositionArgs["settings"]["onOpenGoogleDriveFolder"];
-    onImportFromGoogleDrive:
-      ChatPageGptPanelCompositionArgs["settings"]["onImportFromGoogleDrive"];
+    onImportGoogleDriveFile:
+      ChatPageGptPanelCompositionArgs["settings"]["onImportGoogleDriveFile"];
+    onIndexGoogleDriveFolder:
+      ChatPageGptPanelCompositionArgs["settings"]["onIndexGoogleDriveFolder"];
+    onImportGoogleDriveFolder:
+      ChatPageGptPanelCompositionArgs["settings"]["onImportGoogleDriveFolder"];
     onShowLibraryItemInChat:
       ChatPageGptPanelCompositionArgs["references"]["onShowLibraryItemInChat"];
     onSendLibraryItemToKin:
@@ -275,8 +279,12 @@ export type ChatPageWorkspaceViewArgs = {
     onChangePostIngestAction:
       ChatPageGptPanelCompositionArgs["settings"]["onChangePostIngestAction"];
     fileReadPolicy: ChatPageGptPanelCompositionArgs["settings"]["fileReadPolicy"];
+    driveImportAutoSummary:
+      ChatPageGptPanelCompositionArgs["settings"]["driveImportAutoSummary"];
     onChangeFileReadPolicy:
       ChatPageGptPanelCompositionArgs["settings"]["onChangeFileReadPolicy"];
+    onChangeDriveImportAutoSummary:
+      ChatPageGptPanelCompositionArgs["settings"]["onChangeDriveImportAutoSummary"];
     defaultMemorySettings:
       ChatPageGptPanelCompositionArgs["settings"]["defaultMemorySettings"];
     gptMemorySettingsControls:

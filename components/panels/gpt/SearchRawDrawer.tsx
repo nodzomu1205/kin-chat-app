@@ -33,7 +33,9 @@ type Props = Pick<
     | "libraryReferenceCount"
     | "sourceDisplayCount"
     | "onOpenGoogleDriveFolder"
-    | "onImportFromGoogleDrive"
+    | "onImportGoogleDriveFile"
+    | "onIndexGoogleDriveFolder"
+    | "onImportGoogleDriveFolder"
   >;
 
 export default function SearchRawDrawer(props: Props) {

@@ -166,7 +166,9 @@ export default function GptDrawerRouter({
           references.onUploadLibraryItemToGoogleDrive
         }
         onOpenGoogleDriveFolder={settings.onOpenGoogleDriveFolder}
-        onImportFromGoogleDrive={settings.onImportFromGoogleDrive}
+        onImportGoogleDriveFile={settings.onImportGoogleDriveFile}
+        onIndexGoogleDriveFolder={settings.onIndexGoogleDriveFolder}
+        onImportGoogleDriveFolder={settings.onImportGoogleDriveFolder}
         isMobile={header.isMobile}
       />
     );

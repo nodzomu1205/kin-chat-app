@@ -34,6 +34,7 @@ function buildRunFileIngestFlowArgs(
     gptInput: args.gptInput,
     currentTaskDraft: args.currentTaskDraft,
     autoCopyFileIngestSysInfoToKin: args.autoCopyFileIngestSysInfoToKin,
+    autoGenerateFileImportSummary: args.autoGenerateFileImportSummary,
     gptStateRef: args.gptMemoryRuntime.gptStateRef,
     chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
     setIngestLoading: args.setIngestLoading,
@@ -47,6 +48,7 @@ function buildRunFileIngestFlowArgs(
     persistCurrentGptState: args.gptMemoryRuntime.persistCurrentGptState,
     setCurrentTaskDraft: args.setCurrentTaskDraft,
     applyIngestUsage: args.applyIngestUsage,
+    applySummaryUsage: args.applySummaryUsage,
     applyTaskUsage: args.applyTaskUsage,
     recordIngestedDocument: args.recordIngestedDocument,
     resolveTransformIntent: ({ input, defaultMode, responseMode }: {

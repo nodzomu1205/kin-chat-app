@@ -28,12 +28,15 @@ describe("ReceivedDocsDrawer", () => {
         onSendLibraryItemToKin={() => Promise.resolve()}
         onUploadLibraryItemToGoogleDrive={() => Promise.resolve()}
         onOpenGoogleDriveFolder={() => {}}
-        onImportFromGoogleDrive={() => Promise.resolve()}
+        onImportGoogleDriveFile={() => Promise.resolve()}
+        onIndexGoogleDriveFolder={() => Promise.resolve()}
+        onImportGoogleDriveFolder={() => Promise.resolve()}
       />
     );
 
-    expect(html).toContain("Google Driveフォルダーを開く");
-    expect(html).toContain("Google Driveからのファイルインポート");
+    expect(html).toContain('aria-label="Google Drive フォルダーを開く"');
+    expect(html).toContain('aria-label="Google Drive から取り込む"');
+    expect(html).toContain(">Google Drive<");
   });
 
   it("uses mobile-safe wrapping styles for expanded content", () => {
@@ -79,7 +82,9 @@ describe("ReceivedDocsDrawer", () => {
         onSendLibraryItemToKin={() => Promise.resolve()}
         onUploadLibraryItemToGoogleDrive={() => Promise.resolve()}
         onOpenGoogleDriveFolder={() => {}}
-        onImportFromGoogleDrive={() => Promise.resolve()}
+        onImportGoogleDriveFile={() => Promise.resolve()}
+        onIndexGoogleDriveFolder={() => Promise.resolve()}
+        onImportGoogleDriveFolder={() => Promise.resolve()}
         isMobile
       />
     );

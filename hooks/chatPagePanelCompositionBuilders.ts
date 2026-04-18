@@ -130,6 +130,7 @@ export function buildChatPageWorkspaceGptPanelArgs(
       imageDetail: args.gpt.imageDetail,
       postIngestAction: args.gpt.postIngestAction,
       fileReadPolicy: args.gpt.fileReadPolicy,
+      driveImportAutoSummary: args.gpt.driveImportAutoSummary,
       compactCharLimit: args.gpt.compactCharLimit,
       simpleImageCharLimit: args.gpt.simpleImageCharLimit,
       ingestLoading: args.ui.ingestLoading,
@@ -164,6 +165,8 @@ export function buildChatPageWorkspaceGptPanelArgs(
       onChangeSimpleImageCharLimit: args.gpt.onChangeSimpleImageCharLimit,
       onChangePostIngestAction: args.gpt.onChangePostIngestAction,
       onChangeFileReadPolicy: args.gpt.onChangeFileReadPolicy,
+      onChangeDriveImportAutoSummary:
+        args.gpt.onChangeDriveImportAutoSummary,
       onChangeSearchMode: args.search.onChangeSearchMode,
       onChangeSearchEngines: args.search.onChangeSearchEngines,
       onChangeSearchLocation: args.search.onChangeSearchLocation,
@@ -187,7 +190,9 @@ export function buildChatPageWorkspaceGptPanelArgs(
       onChangeGoogleDriveFolderLink:
         args.references.onChangeGoogleDriveFolderLink,
       onOpenGoogleDriveFolder: args.references.onOpenGoogleDriveFolder,
-      onImportFromGoogleDrive: args.references.onImportFromGoogleDrive,
+      onImportGoogleDriveFile: args.references.onImportGoogleDriveFile,
+      onIndexGoogleDriveFolder: args.references.onIndexGoogleDriveFolder,
+      onImportGoogleDriveFolder: args.references.onImportGoogleDriveFolder,
       onChangeMemoryInterpreterSettings:
         args.memory.onChangeMemoryInterpreterSettings,
     },

@@ -6,6 +6,32 @@ Updated: 2026-04-17
 This document explains the current ingest pipeline and its authority boundaries.
 The goal is to keep file ingest behavior stable while we gradually align the older legacy hook and the newer shared flow.
 
+## Non-Negotiable Ingest Rule
+
+Do not fix ingest regressions by layering more cleanup at the edges.
+
+For ingest, define these in order:
+
+1. `canonicalDocumentText`
+   - the one normalized stored/display authority
+2. `documentSummary`
+   - derived from canonical text only
+3. `taskPrepEnvelope`
+   - protocol/task-only wrapper text such as `File/Title/Content`
+4. display projections
+   - library card
+   - GPT chat display
+   - Kin SYS blocks
+
+Forbidden regression pattern:
+
+- using `taskPrepEnvelope` as stored library text
+- using stored/display text as protocol-envelope text
+- adding separate cleanup in summary, chat, library, and protocol because one surface looked wrong
+
+If an ingest bug appears in more than one surface, stop and trace the
+authority chain before editing.
+
 ## Current Paths
 
 There are currently two user-facing ingest paths:
@@ -58,6 +84,7 @@ Prompt text, result normalization, and budget/selection rules should live in hel
 This is the newer app-flow boundary. It owns:
 - ingest result extraction
 - transform application
+- canonical document text resolution
 - Kin SYS block preparation
 - stored-document bridge updates
 - GPT memory `activeDocument` bridge updates
@@ -77,9 +104,16 @@ When changing ingest behavior:
 
 1. Keep `/api/ingest` request assembly in `ingestClient.ts`.
 2. Keep route-only logic out of client hooks.
-3. Keep task draft mutation shapes behind helpers where possible.
-4. If both ingest paths need the same request/title/error behavior, share it instead of duplicating it.
-5. If the change is purely user-facing copy, prefer helper/text-owner modules rather than flow coordinators.
+3. Define the canonical ingest text before touching summary, library, chat, or Kin.
+4. Keep task draft mutation shapes behind helpers where possible.
+5. If both ingest paths need the same request/title/error behavior, share it instead of duplicating it.
+6. If the change is purely user-facing copy, prefer helper/text-owner modules rather than flow coordinators.
+
+Before any ingest fix, answer explicitly:
+
+1. what is the canonical stored text?
+2. what is the protocol envelope?
+3. which outputs derive from each?
 
 ## Near-Term Direction
 

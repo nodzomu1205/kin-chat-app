@@ -43,6 +43,8 @@ export default function TestTaskPage() {
     setPostIngestAction,
     fileReadPolicy,
     setFileReadPolicy,
+    driveImportAutoSummary,
+    setDriveImportAutoSummary,
   } = usePersistedGptOptions();
 
   const { tokenStats } = useTokenTracking();
@@ -169,6 +171,7 @@ export default function TestTaskPage() {
       imageDetail,
       postIngestAction,
       fileReadPolicy,
+      driveImportAutoSummary,
       compactCharLimit,
       simpleImageCharLimit,
       ingestLoading: false,
@@ -204,6 +207,7 @@ export default function TestTaskPage() {
       onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
       onChangePostIngestAction: setPostIngestAction,
       onChangeFileReadPolicy: setFileReadPolicy,
+      onChangeDriveImportAutoSummary: setDriveImportAutoSummary,
       onChangeSearchMode: noop,
       onChangeSearchEngines: noop,
       onChangeSearchLocation: noop,
@@ -219,7 +223,9 @@ export default function TestTaskPage() {
       onChangeAutoCopyFileIngestSysInfoToKin: noop,
       onChangeGoogleDriveFolderLink: noop,
       onOpenGoogleDriveFolder: noop,
-      onImportFromGoogleDrive: noopAsync,
+      onImportGoogleDriveFile: noopAsync,
+      onIndexGoogleDriveFolder: noopAsync,
+      onImportGoogleDriveFolder: noopAsync,
       onChangeMemoryInterpreterSettings: noop,
       onApproveMemoryRuleCandidate: noop,
       onRejectMemoryRuleCandidate: noop,

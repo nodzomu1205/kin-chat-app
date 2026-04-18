@@ -8,14 +8,17 @@ export const GPT_GOOGLE_DRIVE_TEXT = {
     title: "Google Drive 連携",
     folderLinkLabel: "共有フォルダーリンク",
     folderLinkHelp:
-      "共有可能な Google Drive フォルダーリンクを保存します。現在は manual-link mode で、フォルダーを開く導線を優先します。",
+      "共有可能な Google Drive フォルダーのリンクを保存します。Picker 接続時は、このフォルダーを起点にファイルやフォルダーを選べます。",
     folderIdLabel: "フォルダー ID",
     integrationModeLabel: "接続モード",
     integrationModeManual: "manual-link",
     integrationModePicker: "picker",
     openFolder: "Google Drive フォルダーを開く",
-    importFromDrive: "Google Drive からのファイルインポート",
+    importEntry: "Google Drive から取り込む",
+    importFile: "ファイルを選択して取り込む",
+    indexFolder: "フォルダーを選択して目次を取得",
+    importFolder: "フォルダーを選択して一括取り込む",
     importHelp:
-      "本日の実装では共有フォルダー導線を先に通しています。OAuth / Picker 追加後にフォルダー選択と直接インポートを拡張できます。",
+      "ライブラリタブでは、Google Drive の入口からファイル取込、フォルダー目次取得、フォルダー一括取込を選べます。",
   },
 } as const;

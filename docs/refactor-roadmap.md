@@ -16,7 +16,7 @@ Current verification baseline:
 - `npx tsc --noEmit` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `101 files / 441 tests`
+- test status: `105 files / 453 tests`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -62,6 +62,8 @@ high-signal review points before and after changes.
 - `app/page.tsx` and page-side composition boundaries
 - `lib/app/sendToGptFlow.ts` and adjacent request/finalize coordinators
 - legacy/current ingest split after the shared request + draft layers
+- ingest text authority when one imported content fans out into summary,
+  library, GPT chat, and Kin protocol surfaces
 - remaining builder reshaping across controller/panel composition
 - future user-facing copy drift outside the text-owner files
 
@@ -75,6 +77,8 @@ following are true:
 3. page/controller/panel composition stops regrowing no-op pass-through layers
 4. text / settings labels continue to change through owner files only
 5. new regressions are caught by tests before they reach manual device review
+6. ingest text handling follows one canonical-document model instead of
+   symptom-level cleanup at multiple downstream surfaces
 
 ## Immediate Action Plan
 
@@ -148,6 +152,46 @@ Mini phases:
 Done when:
 - the same task edit does not need to touch UI draft sync and transport assembly in multiple places
 - approval flows no longer reconstruct transport details inline
+
+### Priority 2.5: Canonicalize ingest text authority
+
+Why now:
+- repeated ingest regressions have shown that one imported content still fans
+  out into too many similar text variants
+- this creates "fix one symptom, miss another surface" behavior
+
+Primary authority:
+- `lib/app/fileIngestFlow.ts`
+- `lib/app/gptTaskClient.ts`
+- `hooks/useStoredDocuments.ts`
+- `hooks/useReferenceLibrary.ts`
+- `docs/ingest-pipeline.md`
+
+Target responsibility split:
+- `canonicalDocumentText`
+  - stored and displayed document text only
+- `documentSummary`
+  - summary derived from canonical text only
+- `taskPrepEnvelope`
+  - task / SYS / Kin wrapper text only
+- display projections
+  - derive from canonical text and summary only
+
+Forbidden shortcut:
+- fixing library/chat/Kin separately without first naming the canonical text
+
+Done when:
+- one imported document has one canonical text authority
+- library, GPT chat, and Kin outputs no longer disagree because they are built
+  from different upstream variants
+
+Recent progress:
+- `lib/app/ingestDocumentModel.ts` now owns the canonical-document vs task-envelope split
+- `fileIngestFlow` has started renaming `prepInput/sharedInfo` internals toward
+  `taskPrepEnvelope` and `canonicalDocumentText` so authority is visible in code,
+  not just in docs
+- Drive import summary fallback now uses the same canonical summary helper as
+  file ingest instead of a separate local fallback path
 
 ### Priority 3: Re-audit page-side composition before it regrows
 

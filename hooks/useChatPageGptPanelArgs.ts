@@ -125,7 +125,9 @@ export function useChatPageGptPanelArgs(
       onChangeGoogleDriveFolderLink:
         args.settings.onChangeGoogleDriveFolderLink,
       onOpenGoogleDriveFolder: args.settings.onOpenGoogleDriveFolder,
-      onImportFromGoogleDrive: args.settings.onImportFromGoogleDrive,
+      onImportGoogleDriveFile: args.settings.onImportGoogleDriveFile,
+      onIndexGoogleDriveFolder: args.settings.onIndexGoogleDriveFolder,
+      onImportGoogleDriveFolder: args.settings.onImportGoogleDriveFolder,
       onApproveMemoryRuleCandidate: args.memoryState.onApproveMemoryRuleCandidate,
       onRejectMemoryRuleCandidate: args.memoryState.onRejectMemoryRuleCandidate,
       onUpdateMemoryRuleCandidate: args.memoryState.onUpdateMemoryRuleCandidate,

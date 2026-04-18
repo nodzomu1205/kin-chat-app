@@ -25,6 +25,37 @@ Forbidden regression pattern:
 If behavior is wrong, fix the boundary that dropped or distorted the original text.
 Do not patch the entry with more rules.
 
+## Non-Negotiable Canonical Model Rule
+
+This rule applies to ingest, protocol text assembly, library rendering, and any
+pipeline where one imported content fans out into several outputs.
+
+We have already regressed multiple times by ignoring this rule.
+
+1. Decide the canonical representation first.
+   There must be one obvious source of truth for normalized content.
+2. Derive every downstream shape from that canonical representation.
+   Examples: summary, library text, GPT chat display, Kin block, task envelope.
+3. If two outputs disagree, stop and identify the wrong authority.
+   Do not patch both outputs independently.
+4. Never jump to the first visible symptom just because it looks easy to edit.
+
+Forbidden regression pattern:
+
+- fixing library, chat, and protocol separately because the bug is visible there
+- keeping multiple near-identical text variants alive without naming which one is canonical
+- mixing storage text, display text, and protocol-envelope text in the same field family
+- saying "we found it" before tracing the authority chain
+
+Before changing any multi-output pipeline, answer explicitly:
+
+1. what is the canonical text?
+2. where is it produced?
+3. which outputs derive from it?
+4. which outputs are envelopes only and must never become storage/display text?
+
+If those answers are not clear, implementation should pause until they are.
+
 ## Purpose
 
 This memo records the current structural direction of the Kin x GPT app and the rules we want to keep as the app grows.

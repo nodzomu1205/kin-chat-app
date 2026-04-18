@@ -88,4 +88,25 @@ describe("buildAllStoredDocuments", () => {
     expect(result.documentOrder).toEqual(["doc-3", "doc-1", "doc-2"]);
     expect(result.allDocuments.map((item) => item.id)).toEqual(["doc-3", "doc-1", "doc-2"]);
   });
+
+  it("normalizes timestamp-heavy ingested documents loaded from storage", () => {
+    const result = buildAllStoredDocuments({
+      kinDocuments: [],
+      ingestedDocuments: [
+        createDocument("ingest-1", {
+          sourceType: "ingested_file",
+          filename: "transcript.txt",
+          text: "[0:00] はじめに\n[0:08] 本題へ\n[0:16] まとめ",
+          summary: "[0:00] はじめに [0:08] 本題へ",
+        }),
+      ],
+      documentOverrides: {},
+      documentOrder: [],
+    });
+
+    expect(result.allDocuments[0]).toMatchObject({
+      text: "はじめに 本題へ まとめ",
+      summary: "はじめに 本題へ",
+    });
+  });
 });

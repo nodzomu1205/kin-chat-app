@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildAttachCurrentTaskDraftUpdate,
   buildAttachCurrentTaskMergedInput,
+  buildFileIngestBridgeState,
   buildFileIngestSummaryText,
   buildIngestKinInjectionBlocks,
   buildPostIngestTaskDraftUpdate,
-  buildFileIngestBridgeState,
   resolveFileIngestTransformResult,
   resolveIngestExtractionArtifacts,
   resolvePostIngestTaskTexts,
@@ -26,9 +26,38 @@ describe("fileIngestFlow helpers", () => {
 
     expect(result.selectedText).toBe("line 1\nline 2");
     expect(result.selectedCharCount).toBe("line 1\nline 2".length);
-    expect(result.prepInputBase).toContain("File: notes.txt");
-    expect(result.prepInputBase).toContain("Title: Notes");
-    expect(result.sharedInfoBase).toBe("line 1\nline 2");
+    expect(result.taskPrepEnvelopeBase).toContain("File: notes.txt");
+    expect(result.taskPrepEnvelopeBase).toContain("Title: Notes");
+    expect(result.canonicalDocumentText).toBe("line 1\nline 2");
+  });
+
+  it("normalizes transcript-like prep input when falling back to ingest result text", () => {
+    const result = resolveIngestExtractionArtifacts({
+      data: {
+        result: {
+          selectedLines: [],
+          rawText: [
+            "[0:00] point one",
+            "[0:08] point two",
+            "[0:16] point three",
+          ].join("\n"),
+          summaryText: "point one",
+          detailText: [
+            "[0:00] point one",
+            "[0:08] point two",
+            "[0:16] point three",
+          ].join("\n"),
+        },
+      } as never,
+      fileName: "notes.txt",
+      fileTitle: "Notes",
+    });
+
+    expect(result.taskPrepEnvelopeBase).not.toContain("[0:00]");
+    expect(result.taskPrepEnvelopeBase).toContain("Content:");
+    expect(result.taskPrepEnvelopeBase).toContain("point one");
+    expect(result.taskPrepEnvelopeBase).toContain("point two");
+    expect(result.canonicalDocumentText).toBe("point one point two point three");
   });
 
   it("builds the ingest bridge state with a fresh active document", () => {
@@ -64,6 +93,7 @@ describe("fileIngestFlow helpers", () => {
       fileName: "notes.txt",
       fileTitle: "Notes",
       resolvedKind: "text",
+      summary: "short summary",
       selectedCharCount: 120,
       rawCharCount: 140,
       chatContextExcerpt: "excerpt body",
@@ -75,6 +105,7 @@ describe("fileIngestFlow helpers", () => {
       title: "Notes",
       fileName: "notes.txt",
       kind: "text",
+      summary: "short summary",
       charCount: 120,
       rawCharCount: 140,
       excerpt: "excerpt body",
@@ -86,6 +117,7 @@ describe("fileIngestFlow helpers", () => {
       role: "user",
     });
     expect(result.fileContextMessage.text).toContain("[Ingested file context]");
+    expect(result.fileContextMessage.text).toContain("Summary:\nshort summary");
     expect(result.fileContextMessage.text).toContain("Content:\nexcerpt body");
   });
 
@@ -177,6 +209,8 @@ describe("fileIngestFlow helpers", () => {
   it("builds the ingest summary text without changing the existing messaging", () => {
     const summary = buildFileIngestSummaryText({
       fileTitle: "Notes",
+      storedDocumentSummary: "short summary",
+      canonicalDocumentText: "full body",
       resolvedKind: "text",
       readPolicy: "text_first",
       ingestMode: "compact",
@@ -193,9 +227,36 @@ describe("fileIngestFlow helpers", () => {
     });
 
     expect(summary).toContain("File converted into Kin-ready text.");
+    expect(summary).toContain("Summary: short summary");
     expect(summary).toContain("Set block 1/2 to Kin input.");
-    expect(summary).toContain("prepared task text");
     expect(summary).toContain("Deepened task result");
+    expect(summary).toContain("prepared task text");
+  });
+
+  it("does not append the full ingest content again with duplicate file metadata", () => {
+    const summary = buildFileIngestSummaryText({
+      fileTitle: "Notes",
+      storedDocumentSummary: "short summary",
+      canonicalDocumentText: "full body",
+      resolvedKind: "text",
+      readPolicy: "text_first",
+      ingestMode: "max",
+      imageDetail: "detailed",
+      action: "inject_only",
+      kinPayloadTextLength: 1234,
+      selectedCharCount: 900,
+      rawCharCount: 1200,
+      blocksLength: 1,
+      autoCopyFileIngestSysInfoToKin: true,
+      prepInput: "File: notes.txt\nTitle: Notes\nContent:\nfull body",
+      prepTaskText: "",
+      deepenTaskText: "",
+    });
+
+    expect(summary).toContain("full body");
+    expect(summary).toContain("--------------------");
+    expect(summary).not.toContain("File: notes.txt");
+    expect(summary.match(/Title: Notes/g)?.length).toBe(1);
   });
 
   it("builds the attach-current-task merged input", () => {
@@ -253,8 +314,8 @@ describe("fileIngestFlow helpers", () => {
   it("keeps original ingest text when transform is not needed", async () => {
     const result = await resolveFileIngestTransformResult({
       intent: { mode: "sys_info", directives: [], directiveText: "" } as never,
-      sharedInfoBase: "shared body",
-      prepInputBase: "prep body",
+      canonicalDocumentText: "shared body",
+      taskPrepEnvelopeBase: "prep body",
       responseMode: "strict",
       shouldTransformContent: () => false,
       transformTextWithIntent: async () => ({
@@ -264,8 +325,8 @@ describe("fileIngestFlow helpers", () => {
     });
 
     expect(result).toEqual({
-      prepInput: "prep body",
-      sharedInfoText: "shared body",
+      transformedTaskPrepEnvelope: "prep body",
+      transformedProtocolBodyText: "shared body",
       transformFailed: false,
     });
   });

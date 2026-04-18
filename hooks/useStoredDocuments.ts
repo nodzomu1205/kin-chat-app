@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import type { MultipartAssembly, StoredDocument } from "@/types/chat";
+import {
+  cleanImportedDocumentText,
+  cleanImportSummarySource,
+} from "@/lib/app/importSummaryText";
 
 const INGESTED_DOCUMENTS_KEY = "ingested_documents";
 const DOCUMENT_ORDER_KEY = "stored_document_order";
 const DOCUMENT_OVERRIDES_KEY = "stored_document_overrides";
 
 function buildDocumentSummary(text: string, fallbackTitle: string) {
-  const trimmed = text.trim();
+  const trimmed = cleanImportSummarySource(text).trim();
   if (!trimmed) return fallbackTitle;
   const normalized = trimmed.replace(/\s+/g, " ").trim();
   const withoutTitle = normalized.startsWith(fallbackTitle)
@@ -40,19 +44,35 @@ function toKinStoredDocument(item: MultipartAssembly): StoredDocument {
   };
 }
 
+function normalizeStoredDocument(item: StoredDocument): StoredDocument {
+  const cleanedText = cleanImportedDocumentText(item.text);
+  const cleanedSummary = item.summary
+    ? cleanImportSummarySource(item.summary).trim()
+    : "";
+
+  return {
+    ...item,
+    text: cleanedText,
+    summary: cleanedSummary || buildDocumentSummary(cleanedText, item.title),
+    charCount: cleanedText.length,
+  };
+}
+
 function parseStoredDocuments(value: string | null): StoredDocument[] {
   if (!value) return [];
 
   try {
     const parsed = JSON.parse(value) as StoredDocument[];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (item) =>
-        !!item?.id &&
-        !!item?.filename &&
-        !!item?.text &&
-        item?.sourceType === "ingested_file"
-    );
+    return parsed
+      .filter(
+        (item) =>
+          !!item?.id &&
+          !!item?.filename &&
+          !!item?.text &&
+          item?.sourceType === "ingested_file"
+      )
+      .map(normalizeStoredDocument);
   } catch {
     return [];
   }
@@ -89,8 +109,12 @@ function applyDocumentOverride(
   if (!override) return item;
 
   const text = typeof override.text === "string" ? override.text : item.text;
+  const cleanedText = cleanImportedDocumentText(text);
   const title = typeof override.title === "string" ? override.title : item.title;
-  const summary = typeof override.summary === "string" ? override.summary : item.summary;
+  const summary =
+    typeof override.summary === "string"
+      ? cleanImportSummarySource(override.summary).trim()
+      : item.summary;
   const updatedAt =
     typeof override.updatedAt === "string" ? override.updatedAt : item.updatedAt;
 
@@ -98,10 +122,10 @@ function applyDocumentOverride(
     ...item,
     ...override,
     title,
-    text,
-    summary,
+    text: cleanedText,
+    summary: summary || buildDocumentSummary(cleanedText, title),
     updatedAt,
-    charCount: text.length,
+    charCount: cleanedText.length,
   };
 }
 
@@ -119,6 +143,7 @@ export function buildAllStoredDocuments(args: {
   documentOrder: string[];
 }) {
   const defaultDocuments = [...args.kinDocuments, ...args.ingestedDocuments]
+    .map(normalizeStoredDocument)
     .map((item) => applyDocumentOverride(item, args.documentOverrides[item.id]))
     .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
@@ -207,16 +232,21 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
     allDocuments.find((item) => item.id === documentId) || null;
 
   const recordIngestedDocument = (document: Omit<StoredDocument, "id" | "sourceType">) => {
+    const cleanedText = cleanImportedDocumentText(document.text);
+    const cleanedSummary = document.summary
+      ? cleanImportSummarySource(document.summary).trim()
+      : "";
     const nextDocument: StoredDocument = {
       ...document,
       summary:
-        (document.summary && document.summary.trim()) ||
-        buildDocumentSummary(document.text, document.filename),
+        cleanedSummary || buildDocumentSummary(cleanedText, document.filename),
+      text: cleanedText,
       id: `ingest:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       sourceType: "ingested_file",
+      charCount: cleanedText.length,
     };
 
-    setIngestedDocuments((prev) => [nextDocument, ...prev]);
+    setIngestedDocuments((prev) => [normalizeStoredDocument(nextDocument), ...prev]);
     setDocumentOrder((prev) => [nextDocument.id, ...prev.filter((id) => id !== nextDocument.id)]);
     return nextDocument;
   };
@@ -240,14 +270,23 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
     if (!existing) return null;
 
     if (existing.sourceType === "ingested_file") {
+      const nextText = cleanImportedDocumentText(patch.text ?? existing.text);
+      const nextTitle = patch.title ?? existing.title;
+      const nextSummary =
+        typeof patch.summary === "string"
+          ? cleanImportSummarySource(patch.summary).trim()
+          : existing.summary || buildDocumentSummary(nextText, nextTitle);
       setIngestedDocuments((prev) =>
         prev.map((item) =>
           item.id === documentId
             ? {
                 ...item,
                 ...patch,
+                text: nextText,
+                title: nextTitle,
+                summary: nextSummary,
                 updatedAt,
-                charCount: (patch.text ?? item.text).length,
+                charCount: nextText.length,
               }
             : item
         )

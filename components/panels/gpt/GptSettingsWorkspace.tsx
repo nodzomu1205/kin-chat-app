@@ -31,6 +31,7 @@ import {
   GPT_SETTINGS_WORKSPACE_TEXT,
 } from "@/components/panels/gpt/gptSettingsText";
 import { GPT_GOOGLE_DRIVE_TEXT } from "@/components/panels/gpt/gptGoogleDriveText";
+import { GPT_INGEST_SETTINGS_TEXT } from "@/components/panels/gpt/gptIngestSettingsText";
 import {
   formatIntentLabel,
   formatIntentPhraseKindLabel,
@@ -49,6 +50,7 @@ import {
   SectionHeaderRow,
   SettingsItemCard,
   TextField,
+  ToggleButtons,
 } from "@/components/panels/gpt/GptSettingsShared";
 import {
   inferPrimarySearchModeFromEngines,
@@ -108,6 +110,8 @@ function IngestSettingsSection(props: {
   onChangeSimpleImageCharLimit: (v: number) => void;
   fileReadPolicy: FileReadPolicy;
   onChangeFileReadPolicy: (v: FileReadPolicy) => void;
+  driveImportAutoSummary: boolean;
+  onChangeDriveImportAutoSummary: (value: boolean) => void;
 }) {
   return (
     <div style={sectionCard}>
@@ -171,6 +175,11 @@ function IngestSettingsSection(props: {
             </div>
           </div>
         </div>
+        <ToggleButtons
+          label={GPT_INGEST_SETTINGS_TEXT.autoSummaryLabel}
+          checked={props.driveImportAutoSummary}
+          onChange={props.onChangeDriveImportAutoSummary}
+        />
       </div>
     </div>
   );
@@ -1144,13 +1153,6 @@ export default function GptSettingsWorkspace({
 
         {activeView === "library" ? (
           <>
-            <GoogleDriveLibrarySection
-              folderLink={settings.googleDriveFolderLink}
-              folderId={settings.googleDriveFolderId}
-              integrationMode={settings.googleDriveIntegrationMode}
-              onChangeFolderLink={settings.onChangeGoogleDriveFolderLink}
-            />
-
             <LibrarySettingsSection
               isMobile={isMobile}
               autoLibraryReferenceEnabled={settings.autoLibraryReferenceEnabled}
@@ -1196,6 +1198,17 @@ export default function GptSettingsWorkspace({
               onChangeSimpleImageCharLimit={settings.onChangeSimpleImageCharLimit}
               fileReadPolicy={settings.fileReadPolicy}
               onChangeFileReadPolicy={settings.onChangeFileReadPolicy}
+              driveImportAutoSummary={settings.driveImportAutoSummary}
+              onChangeDriveImportAutoSummary={
+                settings.onChangeDriveImportAutoSummary
+              }
+            />
+
+            <GoogleDriveLibrarySection
+              folderLink={settings.googleDriveFolderLink}
+              folderId={settings.googleDriveFolderId}
+              integrationMode={settings.googleDriveIntegrationMode}
+              onChangeFolderLink={settings.onChangeGoogleDriveFolderLink}
             />
           </>
         ) : null}

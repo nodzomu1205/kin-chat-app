@@ -1,5 +1,10 @@
-import type React from "react";
-import { buildLibraryItemChatDisplayText, buildLibraryItemDriveExport, buildLibraryItemKinSysInfo } from "@/lib/app/referenceLibraryItemActions";
+import React, { useEffect } from "react";
+import {
+  buildLibraryItemChatDisplayText,
+  buildLibraryItemDriveExport,
+  buildLibraryItemKinSysInfo,
+  normalizeLibraryChatDisplayText,
+} from "@/lib/app/referenceLibraryItemActions";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 
 type UseReferenceLibraryUiActionsArgs = {
@@ -9,7 +14,9 @@ type UseReferenceLibraryUiActionsArgs = {
   focusGptPanel: () => boolean;
   focusKinPanel: () => boolean;
   openGoogleDriveFolder: () => boolean;
-  importFromGoogleDrivePicker: () => void | Promise<void>;
+  importGoogleDriveFilePicker: () => void | Promise<void>;
+  indexGoogleDriveFolderPicker: () => void | Promise<void>;
+  importGoogleDriveFolderPicker: () => void | Promise<void>;
   uploadLibraryItemToDrivePicker: (
     item: ReferenceLibraryItem
   ) => boolean | Promise<boolean>;
@@ -45,9 +52,36 @@ export function useReferenceLibraryUiActions({
   focusGptPanel,
   focusKinPanel,
   openGoogleDriveFolder,
-  importFromGoogleDrivePicker,
+  importGoogleDriveFilePicker,
+  indexGoogleDriveFolderPicker,
+  importGoogleDriveFolderPicker,
   uploadLibraryItemToDrivePicker,
 }: UseReferenceLibraryUiActionsArgs) {
+  useEffect(() => {
+    setGptMessages((prev) => {
+      let changed = false;
+      const next = prev.map((message) => {
+        if (
+          message.role !== "user" ||
+          message.meta?.kind !== "task_info" ||
+          message.meta?.sourceType !== "manual"
+        ) {
+          return message;
+        }
+        const normalizedText = normalizeLibraryChatDisplayText(message.text);
+        if (normalizedText === message.text) {
+          return message;
+        }
+        changed = true;
+        return {
+          ...message,
+          text: normalizedText,
+        };
+      });
+      return changed ? next : prev;
+    });
+  }, [setGptMessages]);
+
   const showLibraryItemInChat = (itemId: string) => {
     const item = getLibraryItemById(itemId);
     if (!item) return;
@@ -84,14 +118,18 @@ export function useReferenceLibraryUiActions({
     openGoogleDriveFolder();
   };
 
-  const importFromGoogleDrive = () => {
-    return importFromGoogleDrivePicker();
-  };
+  const importGoogleDriveFile = () => importGoogleDriveFilePicker();
+
+  const indexGoogleDriveFolder = () => indexGoogleDriveFolderPicker();
+
+  const importGoogleDriveFolder = () => importGoogleDriveFolderPicker();
 
   return {
     showLibraryItemInChat,
     sendLibraryItemToKin,
     uploadLibraryItemToGoogleDrive,
-    importFromGoogleDrive,
+    importGoogleDriveFile,
+    indexGoogleDriveFolder,
+    importGoogleDriveFolder,
   };
 }

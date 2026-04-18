@@ -11,6 +11,7 @@ import type {
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
   COMPACT_CHAR_LIMIT_KEY,
+  DRIVE_IMPORT_AUTO_SUMMARY_KEY,
   FILE_READ_POLICY_KEY,
   IMAGE_DETAIL_KEY,
   INGEST_MODE_KEY,
@@ -49,6 +50,9 @@ export function usePersistedGptOptions() {
     useState<PostIngestAction>(initialState.postIngestAction);
   const [fileReadPolicy, setFileReadPolicy] =
     useState<FileReadPolicy>(initialState.fileReadPolicy);
+  const [driveImportAutoSummary, setDriveImportAutoSummary] = useState(
+    initialState.driveImportAutoSummary
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -93,6 +97,14 @@ export function usePersistedGptOptions() {
     window.localStorage.setItem(FILE_READ_POLICY_KEY, fileReadPolicy);
   }, [fileReadPolicy]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      DRIVE_IMPORT_AUTO_SUMMARY_KEY,
+      String(driveImportAutoSummary)
+    );
+  }, [driveImportAutoSummary]);
+
   return {
     responseMode,
     setResponseMode,
@@ -110,5 +122,7 @@ export function usePersistedGptOptions() {
     setPostIngestAction,
     fileReadPolicy,
     setFileReadPolicy,
+    driveImportAutoSummary,
+    setDriveImportAutoSummary,
   };
 }

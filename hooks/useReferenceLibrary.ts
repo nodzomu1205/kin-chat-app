@@ -13,6 +13,10 @@ import {
   reconcileReferenceLibraryOrder,
   resolveSelectedLibraryItemId,
 } from "@/lib/app/referenceLibraryState";
+import {
+  cleanImportedDocumentText,
+  cleanImportSummarySource,
+} from "@/lib/app/importSummaryText";
 
 const LIBRARY_ORDER_KEY = "reference_library_order";
 const LIBRARY_AUTO_REFERENCE_ENABLED_KEY = "library_auto_reference_enabled";
@@ -108,7 +112,7 @@ function loadInitialReferenceLibraryState() {
 }
 
 function buildFallbackSummary(text: string, fallbackTitle: string) {
-  const trimmed = text.trim();
+  const trimmed = cleanImportSummarySource(text).trim();
   if (!trimmed) return fallbackTitle;
   const normalized = trimmed.replace(/\s+/g, " ").trim();
   const withoutTitle = normalized.startsWith(fallbackTitle)
@@ -124,6 +128,10 @@ function buildFallbackSummary(text: string, fallbackTitle: string) {
 }
 
 function toDocumentLibraryItem(item: StoredDocument): ReferenceLibraryItem {
+  const cleanedText = cleanImportedDocumentText(item.text);
+  const cleanedSummary = item.summary
+    ? cleanImportSummarySource(item.summary).trim()
+    : "";
   const detailPrefix =
     item.artifactType === "task_result"
       ? "成果物"
@@ -154,8 +162,8 @@ function toDocumentLibraryItem(item: StoredDocument): ReferenceLibraryItem {
     artifactType: item.artifactType,
     title: item.title,
     subtitle: subtitleParts.join(" / "),
-    summary: item.summary?.trim() || buildFallbackSummary(item.text, item.title),
-    excerptText: item.text,
+    summary: cleanedSummary || buildFallbackSummary(cleanedText, item.title),
+    excerptText: cleanedText,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
     filename: item.filename,
@@ -167,6 +175,10 @@ function toDocumentLibraryItem(item: StoredDocument): ReferenceLibraryItem {
 }
 
 function toSearchLibraryItem(item: SearchContext): ReferenceLibraryItem {
+  const cleanedRawText = cleanImportedDocumentText(item.rawText || "");
+  const cleanedSummary = item.summaryText
+    ? cleanImportSummarySource(item.summaryText).trim()
+    : "";
   const askAiModeItems = Array.isArray(item.metadata?.askAiModeItems)
     ? (item.metadata.askAiModeItems as ReferenceLibraryItem["askAiModeItems"])
     : undefined;
@@ -177,10 +189,8 @@ function toSearchLibraryItem(item: SearchContext): ReferenceLibraryItem {
     itemType: "search",
     title: item.query,
     subtitle: item.rawResultId,
-    summary:
-      item.summaryText?.trim() ||
-      buildFallbackSummary(item.rawText || "", item.query),
-    excerptText: item.rawText || "",
+    summary: cleanedSummary || buildFallbackSummary(cleanedRawText, item.query),
+    excerptText: cleanedRawText,
     createdAt: item.createdAt,
     updatedAt: item.createdAt,
     rawResultId: item.rawResultId,

@@ -235,6 +235,7 @@ export type GptPanelSettingsProps = {
   imageDetail: ImageDetail;
   postIngestAction: PostIngestAction;
   fileReadPolicy: FileReadPolicy;
+  driveImportAutoSummary: boolean;
   compactCharLimit: number;
   simpleImageCharLimit: number;
   ingestLoading: boolean;
@@ -270,6 +271,7 @@ export type GptPanelSettingsProps = {
   onChangeSimpleImageCharLimit: (value: number) => void;
   onChangePostIngestAction: (value: PostIngestAction) => void;
   onChangeFileReadPolicy: (value: FileReadPolicy) => void;
+  onChangeDriveImportAutoSummary: (value: boolean) => void;
   onChangeSearchMode: (value: SearchMode) => void;
   onChangeSearchEngines: (value: SearchEngine[]) => void;
   onChangeSearchLocation: (value: string) => void;
@@ -285,7 +287,9 @@ export type GptPanelSettingsProps = {
   onChangeAutoCopyFileIngestSysInfoToKin: (value: boolean) => void;
   onChangeGoogleDriveFolderLink: (value: string) => void;
   onOpenGoogleDriveFolder: () => void;
-  onImportFromGoogleDrive: () => void | Promise<void>;
+  onImportGoogleDriveFile: () => void | Promise<void>;
+  onIndexGoogleDriveFolder: () => void | Promise<void>;
+  onImportGoogleDriveFolder: () => void | Promise<void>;
   onChangeMemoryInterpreterSettings: (
     patch: Partial<MemoryInterpreterSettings>
   ) => void;

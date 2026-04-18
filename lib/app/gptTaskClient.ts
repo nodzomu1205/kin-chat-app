@@ -3,6 +3,10 @@ import type {
   ImageDetail,
   IngestMode,
 } from "@/components/panels/gpt/gptPanelTypes";
+import {
+  buildTaskPrepEnvelope,
+  resolveCanonicalDocumentText,
+} from "@/lib/app/ingestDocumentModel";
 
 export function getExtension(filename: string) {
   return filename.split(".").pop()?.toLowerCase() || "";
@@ -123,26 +127,24 @@ export function buildPrepInputFromIngestResult(data: any, fileName: string) {
       ? result.title.trim()
       : fileName;
 
-  const rawText = typeof result?.rawText === "string" ? result.rawText.trim() : "";
-  const summaryLines = Array.isArray(result?.kinCompact)
-    ? result.kinCompact.join("\n")
-    : "";
-  const detailedLines = Array.isArray(result?.kinDetailed)
+  const rawText =
+    typeof result?.rawText === "string" ? result.rawText : "";
+  const detailedText = Array.isArray(result?.kinDetailed)
     ? result.kinDetailed.join("\n")
     : "";
+  const compactText = Array.isArray(result?.kinCompact)
+    ? result.kinCompact.join("\n")
+    : "";
+  const content = resolveCanonicalDocumentText({
+    rawText,
+    fallbackText: detailedText || compactText,
+  });
 
-  return [
-    `ファイル名: ${fileName}`,
-    `タイトル: ${title}`,
-    summaryLines ? `要点:\n${summaryLines}` : "",
-    detailedLines
-      ? `詳細情報:\n${detailedLines}`
-      : rawText
-        ? `本文:\n${rawText}`
-        : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  return buildTaskPrepEnvelope({
+    fileName,
+    title,
+    content,
+  });
 }
 
 type TaskCallArgs = {

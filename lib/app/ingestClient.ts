@@ -23,6 +23,9 @@ export type SharedIngestResult = {
     title?: string;
     selectedLines?: unknown[];
     rawText?: string;
+    structuredSummary?: unknown[];
+    kinCompact?: unknown[];
+    kinDetailed?: unknown[];
   };
   usage?: Parameters<typeof normalizeUsage>[0];
   error?: string;

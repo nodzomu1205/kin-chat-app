@@ -143,9 +143,12 @@ export function buildFileIngestActionArgs(
 ): UseFileIngestActionsArgs {
   return {
     applyIngestUsage: groups.services.applyIngestUsage,
+    applySummaryUsage: groups.services.applySummaryUsage,
     applyTaskUsage: groups.services.applyTaskUsage,
     autoCopyFileIngestSysInfoToKin:
       groups.services.autoCopyFileIngestSysInfoToKin,
+    autoGenerateFileImportSummary:
+      groups.services.autoGenerateFileImportSummary,
     currentTaskDraft: groups.task.currentTaskDraft,
     getResolvedTaskTitle: groups.task.getResolvedTaskTitle,
     getTaskBaseText: groups.task.getTaskBaseText,

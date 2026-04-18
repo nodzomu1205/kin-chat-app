@@ -68,6 +68,7 @@ export type ChatPageWorkspaceCompositionState = {
     | "simpleImageCharLimit"
     | "postIngestAction"
     | "fileReadPolicy"
+    | "driveImportAutoSummary"
     | "defaultMemorySettings"
   >;
   bridge: Pick<ChatPageWorkspaceViewArgs["bridge"], "autoBridgeSettings">;
@@ -152,7 +153,9 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeLibraryReferenceCount"
     | "onChangeGoogleDriveFolderLink"
     | "onOpenGoogleDriveFolder"
-    | "onImportFromGoogleDrive"
+    | "onImportGoogleDriveFile"
+    | "onIndexGoogleDriveFolder"
+    | "onImportGoogleDriveFolder"
   >;
   gpt: Pick<
     ChatPageWorkspaceViewArgs["gpt"],
@@ -165,6 +168,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeSimpleImageCharLimit"
     | "onChangePostIngestAction"
     | "onChangeFileReadPolicy"
+    | "onChangeDriveImportAutoSummary"
   >;
   bridge: Pick<
     ChatPageWorkspaceViewArgs["bridge"],
