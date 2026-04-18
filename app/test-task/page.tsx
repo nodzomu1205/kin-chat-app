@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import GptPanel from "@/components/panels/gpt/GptPanel";
 import { usePanelLayout } from "@/hooks/usePanelLayout";
-import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
 import { useGptMemory } from "@/hooks/useGptMemory";
@@ -15,16 +14,14 @@ import type { Message } from "@/types/chat";
 const MOBILE_BREAKPOINT = 1180;
 
 export default function TestTaskPage() {
-  const [gptMessages, setGptMessages] = useState<Message[]>([]);
+  const [gptMessages] = useState<Message[]>([]);
   const [gptInput, setGptInput] = useState("");
   const [taskDraft, setTaskDraft] = useState(createEmptyTaskDraft());
   const [protocolPrompt, setProtocolPrompt] = useState("");
   const [protocolRulebook, setProtocolRulebook] = useState("");
 
   const { isSinglePanelLayout } = usePanelLayout(MOBILE_BREAKPOINT);
-  const gptBottomRef = useRef<HTMLDivElement>(null);
-
-  useAutoScroll(gptBottomRef, [gptMessages]);
+  const gptBottomRef = useMemo(() => ({ current: null }), []);
 
   const {
     responseMode,
@@ -111,8 +108,7 @@ export default function TestTaskPage() {
         })),
       pendingRequests: [],
       buildTaskRequestAnswerDraft: (
-        requestId: string,
-        _requestBody?: string | null
+        requestId: string
       ) => requestId,
     },
     protocol: {

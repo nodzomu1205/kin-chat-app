@@ -8,10 +8,10 @@ import type {
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
-  buildPrepInputFromIngestResult,
   formatTaskResultText,
   runAutoPrepTask,
 } from "@/lib/app/gptTaskClient";
+import { resolveIngestExtractionArtifacts } from "@/lib/app/fileIngestFlowBuilders";
 import {
   requestFileIngest,
   resolveIngestErrorMessage,
@@ -155,7 +155,12 @@ export function useIngestActions({
       const liveDirectiveInput =
         (directiveInput || "").trim() || readLegacyDirectiveInputFallback();
       const intent = parseTransformIntent(liveDirectiveInput, "sys_info");
-      let prepInput = buildPrepInputFromIngestResult(data, file.name);
+      const { taskPrepEnvelopeBase } = resolveIngestExtractionArtifacts({
+        data,
+        fileName: file.name,
+        fileTitle: title,
+      });
+      let prepInput = taskPrepEnvelopeBase;
       let effectiveContent = prepInput;
 
       if (shouldTransformContent(intent)) {

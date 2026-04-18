@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractProtocolInteractionContext,
   extractInlineSearchQuery,
+  resolveDerivedSearchContext,
   resolveAiContinuationArtifacts,
   resolveProtocolLimitViolation,
   resolveProtocolSearchOverrides,
   resolveRequestAnswerContext,
 } from "@/lib/app/sendToGptFlowContext";
+import {
+  buildDerivedSearchContext,
+  buildProtocolInteractionContext,
+} from "@/lib/app/sendToGptFlowContextBuilders";
 
 describe("sendToGptFlowContext", () => {
   it("resolves a request-answer context from REQ input", () => {
@@ -71,6 +77,49 @@ describe("sendToGptFlowContext", () => {
     });
   });
 
+  it("builds protocol interaction context from extracted task events", () => {
+    const result = buildProtocolInteractionContext({
+      rawText:
+        "<<SYS_SEARCH_REQUEST>>\nTASK_ID: TASK-1\nACTION_ID: S001\nQUERY: farmers 360\n<<END_SYS_SEARCH_REQUEST>>",
+      findPendingRequest: () => null,
+      resolveRequestAnswerContext: () => ({
+        requestToAnswer: null,
+        requestAnswerBody: "",
+      }),
+    });
+
+    expect(result.searchRequestEvent).toMatchObject({
+      taskId: "TASK-1",
+      actionId: "S001",
+      query: "farmers 360",
+    });
+  });
+
+  it("builds derived search context from inline query and fallback settings", () => {
+    const result = buildDerivedSearchContext({
+      parsedInput: {
+        freeText: "body",
+      },
+      searchRequestEvent: undefined,
+      searchMode: "normal",
+      searchEngines: ["google_search"],
+      searchLocation: "Japan",
+      inlineSearchQuery: "farmers 360",
+      resolveProtocolSearchOverrides,
+      resolveAiContinuationArtifacts,
+      getContinuationTokenForSeries: () => "",
+      getAskAiModeLinkForQuery: (query) => `LINK:${query}`,
+    });
+
+    expect(result).toMatchObject({
+      inlineSearchQuery: "farmers 360",
+      effectiveParsedSearchQuery: "farmers 360",
+      effectiveSearchMode: "normal",
+      effectiveSearchEngines: ["google_search"],
+      effectiveSearchLocation: "Japan",
+    });
+  });
+
   it("maps protocol search overrides from the requested engine", () => {
     expect(
       resolveProtocolSearchOverrides({
@@ -99,5 +148,38 @@ describe("sendToGptFlowContext", () => {
         getProtocolLimitViolation: ({ type, actionId }) => `${type}:${actionId}`,
       })
     ).toBe("ask_gpt:A001");
+  });
+
+  it("delegates protocol interaction and derived search context through public helpers", () => {
+    expect(
+      extractProtocolInteractionContext({
+        rawText:
+          "<<SYS_ASK_GPT>>\nTASK_ID: TASK-1\nACTION_ID: A001\nBODY: Need answer\n<<END_SYS_ASK_GPT>>",
+        findPendingRequest: () => null,
+      }).askGptEvent
+    ).toMatchObject({
+      taskId: "TASK-1",
+      actionId: "A001",
+    });
+
+    expect(
+      resolveDerivedSearchContext({
+        rawText: "plain input",
+        parsedInput: {
+          searchQuery: "farmers 360",
+          freeText: "body",
+        },
+        searchMode: "normal",
+        searchEngines: ["google_search"],
+        searchLocation: "Japan",
+        getContinuationTokenForSeries: () => "",
+        getAskAiModeLinkForQuery: (query) => `LINK:${query}`,
+      })
+    ).toMatchObject({
+      effectiveParsedSearchQuery: "farmers 360",
+      effectiveSearchMode: "normal",
+      effectiveSearchEngines: ["google_search"],
+      effectiveSearchLocation: "Japan",
+    });
   });
 });

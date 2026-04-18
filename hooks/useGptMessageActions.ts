@@ -18,7 +18,10 @@ import {
 } from "@/lib/app/sendToGptTranscriptHelpers";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
-import { buildCommonSendToGptFlowArgs } from "@/lib/app/sendToGptFlowArgBuilders";
+import {
+  buildCommonSendToGptFlowArgs,
+  mergeSendToGptFlowArgs,
+} from "@/lib/app/sendToGptFlowArgBuilders";
 import type { Message, SourceItem } from "@/types/chat";
 
 export function useGptMessageActions(args: UseGptMessageActionsArgs) {
@@ -252,16 +255,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     return "";
   }
   const buildCommonFlowArgs = () => {
-    const { protocolArgs, searchArgs, memoryArgs, uiArgs, requestArgs } =
-      buildCommonSendToGptFlowArgs(args);
-
-    return {
-      ...protocolArgs,
-      ...searchArgs,
-      ...memoryArgs,
-      ...uiArgs,
-      ...requestArgs,
-    };
+    return mergeSendToGptFlowArgs(buildCommonSendToGptFlowArgs(args));
   };
 
   const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {

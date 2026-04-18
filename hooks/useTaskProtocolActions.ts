@@ -10,6 +10,7 @@ import {
   setProtocolRulebookToKinDraftFlow,
 } from "@/lib/app/miscUiFlows";
 import { getIntentCandidateSignature } from "@/lib/app/chatPageHelpers";
+import { buildAppendGptMessage, buildTaskProtocolIntentSyncArgs } from "@/lib/app/taskRuntimeActionBuilders";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
@@ -21,45 +22,27 @@ import {
   parseIntentCandidateDraftText,
 } from "@/lib/taskIntent";
 import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/currentTaskIntentRefresh";
-import { resolveTaskRecompileSourceInstruction } from "@/lib/taskProtocolTaskState";
 import type { UseTaskProtocolActionsArgs } from "@/hooks/chatPageActionTypes";
 
 export function useTaskProtocolActions(
   args: UseTaskProtocolActionsArgs,
   deps: { sendKinMessage: (text: string) => Promise<void> }
 ) {
-  const getTaskRefreshSourceInstruction = () =>
-    resolveTaskRecompileSourceInstruction({
-      originalInstruction: args.taskProtocol.runtime.originalInstruction,
-      draftUserInstruction: args.currentTaskDraft.userInstruction,
-      intentGoal: args.taskProtocol.runtime.currentTaskIntent?.goal,
-    });
+  const appendGptMessage = buildAppendGptMessage(args.setGptMessages);
 
   const syncApprovedIntentPhrasesToCurrentTask = (
     approvedIntentPhrases: ApprovedIntentPhrase[]
   ) =>
-    syncApprovedIntentPhrasesToCurrentTaskFlow({
-      approvedIntentPhrases,
-      sourceInstruction: getTaskRefreshSourceInstruction(),
-      currentTaskId: args.taskProtocol.runtime.currentTaskId,
-      currentTaskTitle: args.taskProtocol.runtime.currentTaskTitle,
-      currentTaskDraftTitle: args.currentTaskDraft.title,
-      responseMode: args.responseMode === "creative" ? "creative" : "strict",
-      applyTaskUsage: args.applyTaskUsage,
-      replaceCurrentTaskIntent: args.taskProtocol.replaceCurrentTaskIntent,
-      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setKinInput: args.setKinInput,
-    });
+    syncApprovedIntentPhrasesToCurrentTaskFlow(
+      buildTaskProtocolIntentSyncArgs(args, approvedIntentPhrases)
+    );
 
   const prepareTaskRequestAck = (requestId: string) => {
     prepareTaskRequestAckFlow({
       requestId,
       prepareWaitingAckMessage: args.taskProtocol.prepareWaitingAckMessage,
       setKinInput: args.setKinInput,
-      appendGptMessage: (message) =>
-        args.setGptMessages((prev) => [...prev, message]),
+      appendGptMessage,
       setActiveTabToKin: args.focusKinPanel,
     });
   };
@@ -69,8 +52,7 @@ export function useTaskProtocolActions(
       note,
       prepareTaskSyncMessage: args.taskProtocol.prepareTaskSyncMessage,
       setKinInput: args.setKinInput,
-      appendGptMessage: (message) =>
-        args.setGptMessages((prev) => [...prev, message]),
+      appendGptMessage,
       setActiveTabToKin: args.focusKinPanel,
     });
   };
@@ -80,8 +62,7 @@ export function useTaskProtocolActions(
       note,
       prepareTaskSuspendMessage: args.taskProtocol.prepareTaskSuspendMessage,
       setKinInput: args.setKinInput,
-      appendGptMessage: (message) =>
-        args.setGptMessages((prev) => [...prev, message]),
+      appendGptMessage,
       setActiveTabToKin: args.focusKinPanel,
     });
   };
@@ -101,8 +82,7 @@ export function useTaskProtocolActions(
       protocolRulebook: args.protocolRulebook,
       promptDefaultKey: args.promptDefaultKey,
       rulebookDefaultKey: args.rulebookDefaultKey,
-      appendGptMessage: (message) =>
-        args.setGptMessages((prev) => [...prev, message]),
+      appendGptMessage,
     });
   };
 
@@ -188,8 +168,7 @@ export function useTaskProtocolActions(
     setProtocolRulebookToKinDraftFlow({
       protocolRulebook: args.protocolRulebook,
       setKinInput: args.setKinInput,
-      appendGptMessage: (message) =>
-        args.setGptMessages((prev) => [...prev, message]),
+      appendGptMessage,
       setActiveTabToKin: args.focusKinPanel,
     });
   };
@@ -198,8 +177,7 @@ export function useTaskProtocolActions(
     await sendProtocolRulebookToKinFlow({
       protocolRulebook: args.protocolRulebook,
       sendKinMessage: deps.sendKinMessage,
-      appendGptMessage: (message) =>
-        args.setGptMessages((prev) => [...prev, message]),
+      appendGptMessage,
       setActiveTabToKin: args.focusKinPanel,
     });
   };

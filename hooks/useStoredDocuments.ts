@@ -1,61 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import type { MultipartAssembly, StoredDocument } from "@/types/chat";
 import {
-  cleanImportedDocumentText,
-  cleanImportSummarySource,
-} from "@/lib/app/importSummaryText";
+  applyStoredDocumentOverride,
+  buildIngestedStoredDocument,
+  buildKinStoredDocument,
+  normalizeStoredDocument,
+} from "@/lib/app/ingestDocumentModel";
 
 const INGESTED_DOCUMENTS_KEY = "ingested_documents";
 const DOCUMENT_ORDER_KEY = "stored_document_order";
 const DOCUMENT_OVERRIDES_KEY = "stored_document_overrides";
 
-function buildDocumentSummary(text: string, fallbackTitle: string) {
-  const trimmed = cleanImportSummarySource(text).trim();
-  if (!trimmed) return fallbackTitle;
-  const normalized = trimmed.replace(/\s+/g, " ").trim();
-  const withoutTitle = normalized.startsWith(fallbackTitle)
-    ? normalized.slice(fallbackTitle.length).trimStart()
-    : normalized;
-  const basis = withoutTitle || normalized;
-  const sentenceParts = basis
-    .split(/(?<=[。．.!?！？])/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  const summary = (sentenceParts.slice(0, 2).join(" ") || basis).trim();
-  return summary.length > 220 ? `${summary.slice(0, 220).trimEnd()}...` : summary;
-}
-
 function toKinStoredDocument(item: MultipartAssembly): StoredDocument {
-  return {
-    id: `kin:${item.id}`,
-    sourceType: "kin_created",
-    artifactType: item.artifactType,
-    title: item.filename,
-    filename: item.filename,
-    text: item.assembledText,
-    summary: item.summary || buildDocumentSummary(item.assembledText, item.filename),
-    taskId: item.taskId,
-    taskTitle: item.taskTitle,
-    kinName: item.kinName,
-    completedAt: item.completedAt,
-    charCount: item.assembledText.length,
-    createdAt: item.updatedAt,
-    updatedAt: item.updatedAt,
-  };
-}
-
-function normalizeStoredDocument(item: StoredDocument): StoredDocument {
-  const cleanedText = cleanImportedDocumentText(item.text);
-  const cleanedSummary = item.summary
-    ? cleanImportSummarySource(item.summary).trim()
-    : "";
-
-  return {
-    ...item,
-    text: cleanedText,
-    summary: cleanedSummary || buildDocumentSummary(cleanedText, item.title),
-    charCount: cleanedText.length,
-  };
+  return buildKinStoredDocument(item);
 }
 
 function parseStoredDocuments(value: string | null): StoredDocument[] {
@@ -102,34 +59,10 @@ function parseDocumentOverrides(
   }
 }
 
-function applyDocumentOverride(
-  item: StoredDocument,
-  override?: Partial<StoredDocument>
-): StoredDocument {
-  if (!override) return item;
-
-  const text = typeof override.text === "string" ? override.text : item.text;
-  const cleanedText = cleanImportedDocumentText(text);
-  const title = typeof override.title === "string" ? override.title : item.title;
-  const summary =
-    typeof override.summary === "string"
-      ? cleanImportSummarySource(override.summary).trim()
-      : item.summary;
-  const updatedAt =
-    typeof override.updatedAt === "string" ? override.updatedAt : item.updatedAt;
-
-  return {
-    ...item,
-    ...override,
-    title,
-    text: cleanedText,
-    summary: summary || buildDocumentSummary(cleanedText, title),
-    updatedAt,
-    charCount: cleanedText.length,
-  };
-}
-
-export function sanitizeDocumentOrder(documentOrder: string[], documents: StoredDocument[]) {
+export function sanitizeDocumentOrder(
+  documentOrder: string[],
+  documents: StoredDocument[]
+) {
   const currentIds = new Set(documents.map((item) => item.id));
   const next = documentOrder.filter((id) => currentIds.has(id));
   const missing = documents.map((item) => item.id).filter((id) => !next.includes(id));
@@ -144,7 +77,7 @@ export function buildAllStoredDocuments(args: {
 }) {
   const defaultDocuments = [...args.kinDocuments, ...args.ingestedDocuments]
     .map(normalizeStoredDocument)
-    .map((item) => applyDocumentOverride(item, args.documentOverrides[item.id]))
+    .map((item) => applyStoredDocumentOverride(item, args.documentOverrides[item.id]))
     .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
 
   const effectiveOrder = sanitizeDocumentOrder(args.documentOrder, defaultDocuments);
@@ -208,7 +141,10 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const nextOrder = sanitizeDocumentOrder(documentOrder, [...kinDocuments, ...ingestedDocuments]);
+    const nextOrder = sanitizeDocumentOrder(documentOrder, [
+      ...kinDocuments,
+      ...ingestedDocuments,
+    ]);
     window.localStorage.setItem(DOCUMENT_ORDER_KEY, JSON.stringify(nextOrder));
   }, [documentOrder, ingestedDocuments, kinDocuments]);
 
@@ -232,21 +168,12 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
     allDocuments.find((item) => item.id === documentId) || null;
 
   const recordIngestedDocument = (document: Omit<StoredDocument, "id" | "sourceType">) => {
-    const cleanedText = cleanImportedDocumentText(document.text);
-    const cleanedSummary = document.summary
-      ? cleanImportSummarySource(document.summary).trim()
-      : "";
-    const nextDocument: StoredDocument = {
-      ...document,
-      summary:
-        cleanedSummary || buildDocumentSummary(cleanedText, document.filename),
-      text: cleanedText,
+    const nextDocument = buildIngestedStoredDocument({
       id: `ingest:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sourceType: "ingested_file",
-      charCount: cleanedText.length,
-    };
+      ...document,
+    });
 
-    setIngestedDocuments((prev) => [normalizeStoredDocument(nextDocument), ...prev]);
+    setIngestedDocuments((prev) => [nextDocument, ...prev]);
     setDocumentOrder((prev) => [nextDocument.id, ...prev.filter((id) => id !== nextDocument.id)]);
     return nextDocument;
   };
@@ -270,24 +197,13 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
     if (!existing) return null;
 
     if (existing.sourceType === "ingested_file") {
-      const nextText = cleanImportedDocumentText(patch.text ?? existing.text);
-      const nextTitle = patch.title ?? existing.title;
-      const nextSummary =
-        typeof patch.summary === "string"
-          ? cleanImportSummarySource(patch.summary).trim()
-          : existing.summary || buildDocumentSummary(nextText, nextTitle);
       setIngestedDocuments((prev) =>
         prev.map((item) =>
           item.id === documentId
-            ? {
-                ...item,
+            ? applyStoredDocumentOverride(item, {
                 ...patch,
-                text: nextText,
-                title: nextTitle,
-                summary: nextSummary,
                 updatedAt,
-                charCount: nextText.length,
-              }
+              })
             : item
         )
       );

@@ -1,9 +1,3 @@
-import { generateId } from "@/lib/uuid";
-import {
-  buildPreparedRequestGateContext,
-  buildPreparedRequestContexts,
-  prepareSendToGptRequest,
-} from "@/lib/app/sendToGptFlowRequestPreparation";
 import {
   runPrePreparationGates,
   runPreparedRequestGates,
@@ -13,11 +7,7 @@ import {
   shouldRespondToTaskDirectiveOnlyInput,
 } from "@/lib/app/sendToGptText";
 import type {
-  SendToGptFlowMemoryArgs,
-  SendToGptFlowProtocolArgs,
-  SendToGptFlowRequestArgs,
-  SendToGptFlowSearchArgs,
-  SendToGptFlowUiArgs,
+  RunSendToGptFlowArgs,
 } from "@/lib/app/sendToGptFlowTypes";
 import { extractInlineUrlTarget } from "@/lib/app/sendToGptShortcutFlows";
 import { requestGptAssistantArtifacts } from "@/lib/app/sendToGptFlowRequest";
@@ -26,173 +16,65 @@ import { resolveSendToGptFlowStart } from "@/lib/app/sendToGptFlowDecisionState"
 import {
   appendSendToGptFailureMessage,
   applySendToGptRequestStart,
-  prepareSendToGptMemoryContext,
 } from "@/lib/app/sendToGptFlowState";
+import {
+  buildSendToGptFlowPreparedPhase,
+  buildSendToGptFlowStepArgs,
+  buildSendToGptFinalizeArgs,
+} from "@/lib/app/sendToGptFlowStepBuilders";
 
-export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
-  SendToGptFlowSearchArgs &
-  SendToGptFlowProtocolArgs &
-  SendToGptFlowMemoryArgs &
-  SendToGptFlowUiArgs;
-
-export async function runSendToGptFlow({
-  gptInput,
-  gptLoading,
-  processMultipartTaskDoneText,
-  instructionMode = "normal",
-  onHandleYoutubeTranscriptRequest,
-  responseMode,
-  taskProtocolRuntime,
-  currentTaskId,
-  findPendingRequest,
-  applyPrefixedTaskFieldsFromText,
-  getProtocolLimitViolation,
-  shouldInjectTaskContextWithSettings,
-  referenceLibraryItems,
-  libraryIndexResponseCount,
-  buildLibraryReferenceContext,
-  taskProtocolAnswerPendingRequest,
-  ingestProtocolMessage,
-  searchMode,
-  searchEngines,
-  searchLocation,
-  parseWrappedSearchResponse,
-  recordSearchContext,
-  getContinuationTokenForSeries,
-  getAskAiModeLinkForQuery,
-  applySearchUsage,
-  applyChatUsage,
-  handleGptMemory,
-  applySummaryUsage,
-  chatRecentLimit,
-  gptStateRef,
-  setGptMessages,
-  setGptInput,
-  setGptLoading,
-  setKinInput,
-  setPendingKinInjectionBlocks,
-  setPendingKinInjectionIndex,
-  setActiveTabToKin,
-  recordIngestedDocument,
-}: RunSendToGptFlowArgs) {
+export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
   const startDecision = resolveSendToGptFlowStart({
-    gptInput,
-    gptLoading,
+    gptInput: args.gptInput,
+    gptLoading: args.gptLoading,
   });
   if (startDecision.type === "skip") return;
 
   const { rawText } = startDecision;
-  if (
-    await runPrePreparationGates({
-      rawText,
-      processMultipartTaskDoneText,
-      extractInlineUrlTarget,
-      setGptMessages,
-      setGptInput,
-      setGptLoading,
-    })
-  ) {
-    return;
-  }
-
-  const preparedRequest = prepareSendToGptRequest({
+  const flowArgs = buildSendToGptFlowStepArgs({
+    ...args,
+    extractInlineUrlTarget,
+    shouldRespondToTaskDirectiveOnlyInput,
+    taskDirectiveOnlyResponseText: getTaskDirectiveOnlyResponseText(),
+  });
+  const preparedFlowPhase = buildSendToGptFlowPreparedPhase({
+    flowArgs,
     rawText,
-    currentTaskId,
-    taskProtocolRuntime,
-    findPendingRequest,
-    applyPrefixedTaskFieldsFromText,
-    searchMode,
-    searchEngines,
-    searchLocation,
-    getContinuationTokenForSeries,
-    getAskAiModeLinkForQuery,
-    getProtocolLimitViolation,
-    shouldInjectTaskContextWithSettings,
-    referenceLibraryItems,
-    libraryIndexResponseCount,
-    buildLibraryReferenceContext,
-    createUserMessage: (text) => ({
-      id: generateId(),
-      role: "user",
-      text,
-    }),
-  });
-  const preparedRequestContexts = buildPreparedRequestContexts({
-    preparedRequest,
   });
 
-  if (
-    await runPreparedRequestGates({
-      preparedRequest: preparedRequestContexts.gate,
-      shouldRespondToTaskDirectiveOnlyInput,
-      taskDirectiveOnlyResponseText: getTaskDirectiveOnlyResponseText(),
-      currentTaskId,
-      onHandleYoutubeTranscriptRequest,
-      setGptMessages,
-      setGptInput,
-      setGptLoading,
-      setKinInput,
-      setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex,
-      setActiveTabToKin,
-      recordIngestedDocument,
-      ingestProtocolMessage,
-      gptStateRef,
-      chatRecentLimit,
-      handleGptMemory,
-      applySummaryUsage,
-    })
-  ) {
+  if (await runPrePreparationGates(preparedFlowPhase.prePreparationGateArgs)) {
     return;
   }
 
-  const { memoryContext, requestMemory } = prepareSendToGptMemoryContext({
-    gptState: gptStateRef.current,
-    userMessage: preparedRequest.userMsg,
-    chatRecentLimit,
-  });
-  applySendToGptRequestStart({
-    userMessage: preparedRequest.userMsg,
-    setGptMessages,
-    setGptInput,
-    setGptLoading,
-  });
+  if (await runPreparedRequestGates(preparedFlowPhase.preparedRequestGateArgs)) {
+    return;
+  }
+  const {
+    preparedRequestBundle: { preparedRequestContexts },
+    executionBundle,
+  } = preparedFlowPhase;
+  applySendToGptRequestStart(executionBundle.requestStartArgs);
 
   try {
     const { data, assistantText, normalizedSources } =
-      await requestGptAssistantArtifacts({
-        requestMemory,
-        recentMessages: memoryContext.recentWithUser,
-        ...preparedRequestContexts.execution,
-        instructionMode,
-        responseMode,
-        parseWrappedSearchResponse,
-        currentTaskId,
-        recordSearchContext,
-      });
+      await requestGptAssistantArtifacts(executionBundle.assistantRequestArgs);
 
-    await finalizeSendToGptFlow({
-      data,
-      assistantText,
-      normalizedSources,
-      memoryContext,
-      chatRecentLimit,
-      preparedRequest: preparedRequestContexts.finalize,
-      ingestProtocolMessage,
-      taskProtocolAnswerPendingRequest,
-      setGptMessages,
-      applySearchUsage,
-      applyChatUsage,
-      recordSearchContext,
-      handleGptMemory,
-      applySummaryUsage,
-    });
+    await finalizeSendToGptFlow(
+      buildSendToGptFinalizeArgs({
+        flowArgs,
+        preparedRequest: preparedRequestContexts.finalize,
+        memoryContext: executionBundle.memoryContext,
+        data,
+        assistantText,
+        normalizedSources,
+      })
+    );
   } catch (error) {
     console.error(error);
     appendSendToGptFailureMessage({
-      setGptMessages,
+      setGptMessages: args.setGptMessages,
     });
   } finally {
-    setGptLoading(false);
+    args.setGptLoading(false);
   }
 }

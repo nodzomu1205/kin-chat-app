@@ -1,21 +1,31 @@
-import { generateId } from "@/lib/uuid";
+import type { Message } from "@/types/chat";
 
 const KEY = "chat_sessions";
 
-export const getSessions = () => {
-  const data = localStorage.getItem(KEY);
-  return data ? JSON.parse(data) : [];
+export type ChatSession = {
+  id: string;
+  messages: Message[];
+  createdAt: string;
 };
 
-export const saveSessions = (sessions: any) => {
+export const getSessions = (): ChatSession[] => {
+  const data = localStorage.getItem(KEY);
+  return data ? (JSON.parse(data) as ChatSession[]) : [];
+};
+
+export const saveSessions = (sessions: ChatSession[]) => {
   localStorage.setItem(KEY, JSON.stringify(sessions));
 };
 
 export const createSession = () => {
   const sessions = getSessions();
+  const sessionId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `session-${Date.now()}`;
 
-  const newSession = {
-    id: generateId(),
+  const newSession: ChatSession = {
+    id: sessionId,
     messages: [],
     createdAt: new Date().toISOString(),
   };
@@ -26,10 +36,10 @@ export const createSession = () => {
   return newSession;
 };
 
-export const updateSession = (sessionId: string, messages: any[]) => {
+export const updateSession = (sessionId: string, messages: Message[]) => {
   const sessions = getSessions();
 
-  const updated = sessions.map((s: any) =>
+  const updated = sessions.map((s) =>
     s.id === sessionId ? { ...s, messages } : s
   );
 

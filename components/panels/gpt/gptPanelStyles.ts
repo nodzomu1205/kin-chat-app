@@ -298,24 +298,27 @@ export const longValueStyle: React.CSSProperties = {
   lineHeight: 1.5,
 };
 
-export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
-  flex: 1,
-  width: "100%",
-  minHeight: 0,
-  display: "flex",
-  flexDirection: "column",
-  border: "1px solid rgba(0,0,0,0.08)",
-  borderRadius: 0,
-  overflow: "visible",
-  position: "relative",
-  backgroundImage: "url('/backgrounds/gpt-bg.png')",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-  backgroundColor: "rgba(255,255,255,0.74)",
-  backgroundBlendMode: "lighten",
-  backdropFilter: "blur(2px)",
-});
+export const panelShellStyle = (isMobile: boolean): React.CSSProperties => {
+  void isMobile;
+  return {
+    flex: 1,
+    width: "100%",
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    border: "1px solid rgba(0,0,0,0.08)",
+    borderRadius: 0,
+    overflow: "visible",
+    position: "relative",
+    backgroundImage: "url('/backgrounds/gpt-bg.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundColor: "rgba(255,255,255,0.74)",
+    backgroundBlendMode: "lighten",
+    backdropFilter: "blur(2px)",
+  };
+};
 
 export const drawerWrapStyle = (isMobile: boolean): React.CSSProperties => ({
   padding: isMobile ? "22px 10px 10px 10px" : "10px",

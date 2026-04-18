@@ -3,7 +3,7 @@ import {
   buildIngestRequestFormData,
   resolveIngestErrorMessage,
   resolveIngestFileTitle,
-} from "@/lib/app/ingestClient";
+} from "@/lib/app/ingestClientBuilders";
 
 describe("ingestClient", () => {
   it("builds the shared ingest request form data", () => {

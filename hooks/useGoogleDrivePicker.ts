@@ -16,14 +16,13 @@ import {
   normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
 } from "@/lib/app/librarySummaryClient";
+import { resolveIngestExtractionArtifacts } from "@/lib/app/fileIngestFlowBuilders";
 import {
-  cleanImportedDocumentText,
   cleanImportSummarySource,
 } from "@/lib/app/importSummaryText";
 import {
   buildCanonicalDocumentSummary,
   buildCanonicalSummarySource,
-  resolveCanonicalDocumentText,
 } from "@/lib/app/ingestDocumentModel";
 import { normalizeUsage } from "@/lib/tokenStats";
 
@@ -55,15 +54,58 @@ type GooglePickerCallbackData = {
   docs?: GooglePickerDocument[];
 };
 
-type GoogleDrivePickerMode =
-  | "file_import"
-  | "folder_index"
-  | "folder_import";
+type GoogleDrivePickerMode = "file_import" | "folder_index" | "folder_import";
+
+type GoogleTokenClient = {
+  callback: (response: { access_token?: string; error?: string }) => void;
+  requestAccessToken: (options: { prompt: string }) => void;
+};
+
+type GooglePickerDocsView = {
+  setIncludeFolders: (value: boolean) => GooglePickerDocsView;
+  setSelectFolderEnabled: (value: boolean) => GooglePickerDocsView;
+  setMimeTypes: (value: string) => GooglePickerDocsView;
+  setParent: (value: string) => GooglePickerDocsView;
+};
+
+type GooglePickerBuilder = {
+  setAppId: (value: string) => GooglePickerBuilder;
+  setDeveloperKey: (value: string) => GooglePickerBuilder;
+  setOAuthToken: (value: string) => GooglePickerBuilder;
+  setCallback: (value: (data: GooglePickerCallbackData) => void | Promise<void>) => GooglePickerBuilder;
+  addView: (value: GooglePickerDocsView) => GooglePickerBuilder;
+  build: () => { setVisible: (value: boolean) => void };
+};
+
+type GooglePickerNamespace = {
+  Action: { PICKED: string };
+  DocsView: new (viewId: string) => GooglePickerDocsView;
+  PickerBuilder: new () => GooglePickerBuilder;
+  ViewId: {
+    DOCS: string;
+    FOLDERS: string;
+  };
+};
+
+type GoogleAccountsNamespace = {
+  oauth2: {
+    initTokenClient: (config: {
+      client_id: string;
+      scope: string;
+      callback: (response: { access_token?: string; error?: string }) => void;
+    }) => GoogleTokenClient;
+  };
+};
 
 declare global {
   interface Window {
-    gapi?: any;
-    google?: any;
+    gapi?: {
+      load: (name: string, callback: () => void) => void;
+    };
+    google?: {
+      accounts?: GoogleAccountsNamespace;
+      picker?: GooglePickerNamespace;
+    };
   }
 }
 
@@ -224,7 +266,7 @@ function canImportDriveMimeType(mimeType?: string) {
   return false;
 }
 
-function summarizeImportedText(text: string, fallbackTitle: string) {
+export function summarizeImportedText(text: string, fallbackTitle: string) {
   const cleanedText = cleanImportSummarySource(text);
   const normalized = cleanedText.replace(/\s+/g, " ").trim();
   if (!normalized) return fallbackTitle;
@@ -298,18 +340,14 @@ function buildDriveImportSummary(args: {
 function buildDriveImportStoredText(result: {
   selectedLines?: unknown[];
   rawText?: string;
+  summaryText?: string;
+  detailText?: string;
 }) {
-  const selectedLines = Array.isArray(result.selectedLines)
-    ? result.selectedLines.filter(
-        (line): line is string => typeof line === "string" && line.trim().length > 0
-      )
-    : [];
-  const selectedText = selectedLines.join("\n").trim();
-  const rawText = typeof result.rawText === "string" ? result.rawText.trim() : "";
-  return resolveCanonicalDocumentText({
-    selectedText,
-    rawText,
-  });
+  return resolveIngestExtractionArtifacts({
+    data: { result } as never,
+    fileName: "",
+    fileTitle: "",
+  }).canonicalDocumentText;
 }
 
 async function listDriveFolderChildren(args: {
@@ -384,7 +422,7 @@ export function useGoogleDrivePicker({
   focusGptPanel,
 }: UseGoogleDrivePickerArgs) {
   const [pickerReady, setPickerReady] = useState(false);
-  const tokenClientRef = useRef<any>(null);
+  const tokenClientRef = useRef<GoogleTokenClient | null>(null);
   const accessTokenRef = useRef<string>("");
   const folderId = useMemo(() => resolveGoogleDriveFolderId(folderLink), [folderLink]);
 
@@ -394,8 +432,10 @@ export function useGoogleDrivePicker({
     async function prepare() {
       if (typeof window === "undefined") return;
       await Promise.all([loadScript(GOOGLE_API_SCRIPT), loadScript(GOOGLE_GIS_SCRIPT)]);
+      if (!window.gapi) return;
+      const { gapi } = window;
       await new Promise<void>((resolve) => {
-        window.gapi.load("picker", resolve);
+        gapi.load("picker", resolve);
       });
       if (!window.google?.accounts?.oauth2) return;
       tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
@@ -414,12 +454,13 @@ export function useGoogleDrivePicker({
 
   const ensureAccessToken = useCallback(async () => {
     if (accessTokenRef.current) return accessTokenRef.current;
-    if (!tokenClientRef.current) {
+    const tokenClient = tokenClientRef.current;
+    if (!tokenClient) {
       throw new Error("Google Picker is not ready.");
     }
 
     return await new Promise<string>((resolve, reject) => {
-      tokenClientRef.current.callback = (response: { access_token?: string; error?: string }) => {
+      tokenClient.callback = (response: { access_token?: string; error?: string }) => {
         if (response.error || !response.access_token) {
           reject(new Error(response.error || "Missing Google access token."));
           return;
@@ -427,7 +468,7 @@ export function useGoogleDrivePicker({
         accessTokenRef.current = response.access_token;
         resolve(response.access_token);
       };
-      tokenClientRef.current.requestAccessToken({ prompt: "consent" });
+      tokenClient.requestAccessToken({ prompt: "consent" });
     });
   }, []);
 
@@ -539,12 +580,14 @@ export function useGoogleDrivePicker({
   );
 
   const openPickerForMode = useCallback(async (mode: GoogleDrivePickerMode) => {
-    if (typeof window === "undefined" || !window.google?.picker) return;
+    if (typeof window === "undefined") return;
+    const pickerApi = window.google?.picker;
+    if (!pickerApi) return;
     const accessToken = await ensureAccessToken();
-    const docsView = new window.google.picker.DocsView(window.google.picker.ViewId.DOCS)
+    const docsView = new pickerApi.DocsView(pickerApi.ViewId.DOCS)
       .setIncludeFolders(true)
       .setSelectFolderEnabled(true);
-    const foldersView = new window.google.picker.DocsView(window.google.picker.ViewId.FOLDERS)
+    const foldersView = new pickerApi.DocsView(pickerApi.ViewId.FOLDERS)
       .setIncludeFolders(true)
       .setMimeTypes("application/vnd.google-apps.folder")
       .setSelectFolderEnabled(true);
@@ -554,12 +597,12 @@ export function useGoogleDrivePicker({
       foldersView.setParent(folderId);
     }
 
-    const pickerBuilder = new window.google.picker.PickerBuilder()
+    const pickerBuilder = new pickerApi.PickerBuilder()
       .setAppId(GOOGLE_PICKER_APP_ID)
       .setDeveloperKey(GOOGLE_API_KEY)
       .setOAuthToken(accessToken)
       .setCallback(async (data: GooglePickerCallbackData) => {
-        if (data.action !== window.google.picker.Action.PICKED) return;
+        if (data.action !== pickerApi.Action.PICKED) return;
         const picked = data.docs || [];
         for (const doc of picked) {
           if (doc.mimeType === "application/vnd.google-apps.folder") {
@@ -594,9 +637,9 @@ export function useGoogleDrivePicker({
       const normalizedFolderLink = sanitizeGoogleDriveFolderLink(
         folderLink || DEFAULT_GOOGLE_DRIVE_FOLDER_LINK
       );
-      if (normalizedFolderLink !== folderLink) {
-        setFolderLink(normalizedFolderLink);
-      }
+        if (normalizedFolderLink && normalizedFolderLink !== folderLink) {
+          setFolderLink(normalizedFolderLink);
+        }
       const accessToken = await ensureAccessToken();
       const artifact = buildLibraryItemDriveExport(item);
       const uploaded = await uploadDriveTextFile({

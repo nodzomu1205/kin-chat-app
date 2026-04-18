@@ -1,6 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { generateId } from "@/lib/uuid";
-import type { KinMemoryState, Message } from "@/types/chat";
+import type { KinMemoryState, Message, MessageMeta } from "@/types/chat";
 import { normalizeUsage } from "@/lib/tokenStats";
 
 export type TaskMemoryBridgeArgs = {
@@ -45,14 +45,25 @@ export type TaskFlowSummaryArgs = {
   activeDocument?: Record<string, unknown> | null;
 };
 
+export type TaskFlowRecentContextArgs = {
+  gptStateRef: MutableRefObject<KinMemoryState>;
+  chatRecentLimit: number;
+  userMessage?: Message;
+};
+
+export type TaskFlowSuccessArgs = {
+  assistantMessage: Message;
+  requestRecentMessages: Message[];
+  chatRecentLimit: number;
+  currentTaskTitleOverride?: string;
+  activeDocument?: Record<string, unknown> | null;
+} & TaskFlowAssistantResultArgs &
+  Pick<TaskFlowSummaryArgs, "applySummaryUsage" | "handleGptMemory">;
+
 export function appendTaskInfoMessage(
   setGptMessages: Dispatch<SetStateAction<Message[]>>,
   text: string,
-  sourceType: Message["meta"] extends infer M
-    ? M extends { sourceType?: infer S }
-      ? S
-      : never
-    : never = "manual"
+  sourceType: MessageMeta["sourceType"] = "manual"
 ) {
   setGptMessages((prev) => [
     ...prev,
@@ -62,7 +73,7 @@ export function appendTaskInfoMessage(
       text,
       meta: {
         kind: "task_info",
-        sourceType: sourceType as any,
+        sourceType,
       },
     },
   ]);
@@ -119,6 +130,22 @@ export function appendTaskFlowRecentMessage(
   return [...recentMessages, message].slice(-chatRecentLimit);
 }
 
+export function buildTaskFlowRecentContext(args: TaskFlowRecentContextArgs) {
+  const baseRecentMessages = getTaskFlowRecentMessages(args.gptStateRef);
+  const requestRecentMessages = args.userMessage
+    ? appendTaskFlowRecentMessage(
+        baseRecentMessages,
+        args.chatRecentLimit,
+        args.userMessage
+      )
+    : baseRecentMessages;
+
+  return {
+    baseRecentMessages,
+    requestRecentMessages,
+  };
+}
+
 export function startTaskFlowRequest(args: TaskFlowStartArgs) {
   if (args.userMessage) {
     args.setGptMessages((prev) => [...prev, args.userMessage as Message]);
@@ -148,4 +175,34 @@ export async function applyTaskFlowSummaryUsage(args: TaskFlowSummaryArgs) {
   if (memoryResult.summaryUsage) {
     args.applySummaryUsage(memoryResult.summaryUsage);
   }
+}
+
+export async function completeTaskFlowSuccess(args: TaskFlowSuccessArgs) {
+  const updatedRecentMessages = appendTaskFlowRecentMessage(
+    args.requestRecentMessages,
+    args.chatRecentLimit,
+    args.assistantMessage
+  );
+
+  appendTaskFlowAssistantResult({
+    setGptMessages: args.setGptMessages,
+    assistantMessage: args.assistantMessage,
+    setGptState: args.setGptState,
+    persistCurrentGptState: args.persistCurrentGptState,
+    gptStateRef: args.gptStateRef,
+    recentMessages: updatedRecentMessages,
+    lastUserIntent: args.lastUserIntent,
+    activeReference: args.activeReference,
+  });
+
+  await applyTaskFlowSummaryUsage({
+    recentMessages: updatedRecentMessages,
+    applySummaryUsage: args.applySummaryUsage,
+    handleGptMemory: args.handleGptMemory,
+    currentTaskTitleOverride: args.currentTaskTitleOverride,
+    lastUserIntent: args.lastUserIntent,
+    activeDocument: args.activeDocument,
+  });
+
+  return updatedRecentMessages;
 }

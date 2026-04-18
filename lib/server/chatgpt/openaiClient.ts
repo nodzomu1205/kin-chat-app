@@ -1,20 +1,12 @@
 import {
   extractJsonObjectText,
-  extractResponseText,
-  extractUsage,
-  type UsageSummary,
 } from "@/lib/server/chatgpt/openaiResponse";
-
-type OpenAIResponsesPayload = {
-  model?: string;
-  input: unknown;
-};
-
-type OpenAIResponsesResult = {
-  data: unknown;
-  text: string;
-  usage: UsageSummary;
-};
+import {
+  buildOpenAIResponsesRequestBody,
+  buildOpenAIResponsesResult,
+  type OpenAIResponsesPayload,
+  type OpenAIResponsesResult,
+} from "@/lib/server/chatgpt/openaiClientBuilders";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -29,19 +21,17 @@ export async function callOpenAIResponses(
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: payload.model ?? DEFAULT_MODEL,
-      input: payload.input,
-    }),
+    body: JSON.stringify(
+      buildOpenAIResponsesRequestBody(payload, DEFAULT_MODEL)
+    ),
   });
 
   const data = await response.json();
 
-  return {
+  return buildOpenAIResponsesResult({
     data,
-    text: extractResponseText(data, fallbackText),
-    usage: extractUsage(data),
-  };
+    fallbackText,
+  });
 }
 
 export function extractOpenAIJsonObjectText(

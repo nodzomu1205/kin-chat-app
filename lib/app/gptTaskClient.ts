@@ -3,79 +3,18 @@ import type {
   ImageDetail,
   IngestMode,
 } from "@/components/panels/gpt/gptPanelTypes";
+import type { TaskResult } from "@/types/task";
 import {
-  buildTaskPrepEnvelope,
-  resolveCanonicalDocumentText,
-} from "@/lib/app/ingestDocumentModel";
+  buildPrepInputFromIngestResult,
+  buildTaskApiRequestBody,
+  getExtension,
+  resolveUploadKindFromFile,
+  type TaskCallArgs,
+} from "@/lib/app/gptTaskClientBuilders";
 
-export function getExtension(filename: string) {
-  return filename.split(".").pop()?.toLowerCase() || "";
-}
+export { buildPrepInputFromIngestResult, getExtension, resolveUploadKindFromFile };
 
-export function resolveUploadKindFromFile(
-  file: File,
-  requestedKind: UploadKind
-): UploadKind {
-  const ext = getExtension(file.name);
-
-  const visualExtensions = new Set([
-    "pdf",
-    "png",
-    "jpg",
-    "jpeg",
-    "webp",
-    "gif",
-    "bmp",
-    "svg",
-  ]);
-
-  const textExtensions = new Set([
-    "txt",
-    "md",
-    "json",
-    "csv",
-    "tsv",
-    "js",
-    "jsx",
-    "ts",
-    "tsx",
-    "py",
-    "java",
-    "go",
-    "rs",
-    "c",
-    "cpp",
-    "cs",
-    "rb",
-    "php",
-    "html",
-    "css",
-    "xml",
-    "yml",
-    "yaml",
-    "sql",
-  ]);
-
-  if (ext === "pdf") {
-    return "pdf";
-  }
-
-  if (file.type.startsWith("image/") || visualExtensions.has(ext)) {
-    return "image";
-  }
-
-  if (
-    textExtensions.has(ext) ||
-    file.type.startsWith("text/") ||
-    file.type === "application/json"
-  ) {
-    return "text";
-  }
-
-  return requestedKind;
-}
-
-export function formatTaskResultText(parsed: any, raw: string) {
+export function formatTaskResultText(parsed: TaskResult | null, raw: string) {
   if (!parsed) {
     return raw?.trim() || "⚠️ タスク結果の解析に失敗しました";
   }
@@ -93,7 +32,7 @@ export function formatTaskResultText(parsed: any, raw: string) {
   }
 
   if (Array.isArray(parsed.detailBlocks) && parsed.detailBlocks.length > 0) {
-    parsed.detailBlocks.forEach((block: any) => {
+    parsed.detailBlocks.forEach((block) => {
       lines.push("", `■ ${block.title}`);
       if (Array.isArray(block.body)) {
         block.body.forEach((line: string) => lines.push(`- ${line}`));
@@ -118,42 +57,6 @@ export function formatTaskResultText(parsed: any, raw: string) {
 
   return lines.join("\n");
 }
-
-export function buildPrepInputFromIngestResult(data: any, fileName: string) {
-  const result = data?.result ?? {};
-
-  const title =
-    typeof result?.title === "string" && result.title.trim()
-      ? result.title.trim()
-      : fileName;
-
-  const rawText =
-    typeof result?.rawText === "string" ? result.rawText : "";
-  const detailedText = Array.isArray(result?.kinDetailed)
-    ? result.kinDetailed.join("\n")
-    : "";
-  const compactText = Array.isArray(result?.kinCompact)
-    ? result.kinCompact.join("\n")
-    : "";
-  const content = resolveCanonicalDocumentText({
-    rawText,
-    fallbackText: detailedText || compactText,
-  });
-
-  return buildTaskPrepEnvelope({
-    fileName,
-    title,
-    content,
-  });
-}
-
-type TaskCallArgs = {
-  type: "PREP_TASK" | "DEEPEN_TASK" | "FORMAT_TASK";
-  goal: string;
-  inputRef: string;
-  inputSummary: string;
-  constraints: string[];
-};
 
 export type BuildTaskStructuredInputArgs = {
   title?: string;
@@ -206,22 +109,7 @@ async function callTaskApi(args: TaskCallArgs) {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      task: {
-        type: args.type,
-        taskId: `task-${Date.now()}`,
-        dataKind: "document_package",
-        goal: args.goal,
-        inputRef: args.inputRef,
-        inputSummary: args.inputSummary,
-        constraints: args.constraints,
-        outputFormat: "sections",
-        priority: "HIGH",
-        visibility: "INTERNAL",
-        responseMode: "STRUCTURED_RESULT",
-        groundingMode: "STRICT",
-      },
-    }),
+    body: JSON.stringify(buildTaskApiRequestBody(args)),
   });
 
   return res.json();

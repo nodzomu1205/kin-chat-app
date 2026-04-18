@@ -28,13 +28,38 @@ If a fix idea does not improve authority clarity, it is probably the wrong fix.
 The repository is in a good stopping state.
 
 - `npx tsc --noEmit` passes
+- `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `105 files / 453 tests`
+- current test count: `133 files / 556 tests`
+
+Use `docs/maintenance-checklist.md` as the authoritative completion/status
+checklist before calling maintenance "done" or before downgrading a boundary
+from maintenance-watch to stabilized.
 
 ## What Was Stabilized In This Session
 
-### 1. Google Drive integration shipped and is usable
+### 1. The repo is now in late-stage maintainability watch, not early rescue refactor
+
+This session finished a large amount of structural work across the highest-risk
+boundaries:
+
+- `sendToGptFlow` top-level coordination was thinned and sectioned
+- ingest authority moved closer to one shared canonical-document model
+- page/controller/panel composition was split into narrower grouped contracts
+- task runtime / draft sync / Kin transfer handoff now routes through shared builders
+- server routes and client boundaries now follow a much more consistent thin-entrypoint pattern
+- responsive single-panel heuristics now live behind shared viewport/device helpers with direct tests
+- `GptSettingsWorkspace.tsx` now delegates approval sections and library/ingest sections to dedicated modules, so the workspace root is closer to view-state and top-level composition
+- `taskDraftActionFlows.ts` now delegates prep/update/attach/deepen flows to dedicated modules, and those modules now share recent-message/success-postlude helpers instead of repeating assistant append and summary replay inline
+- `chatPageWorkspaceInputBuilders.ts` now delegates state/actions/services assembly to dedicated builder files, and `sendToGptFlow` helper tests are now split again so guard failures are isolated from step/request builder failures
+
+The practical implication for the next session is:
+
+- do not start from "what giant file should be split next?"
+- start from "which maintenance-watch boundary is being changed, and what narrow test should pin it?"
+
+### 2. Google Drive integration shipped and is usable
 
 Implemented and verified:
 
@@ -54,7 +79,7 @@ Main files:
 - `components/panels/gpt/GptSettingsWorkspace.tsx`
 - `lib/app/ingestClient.ts`
 
-### 2. Ingest text handling moved toward a canonical model
+### 3. Ingest text handling moved toward a canonical model
 
 This was the most important structural lesson of the session.
 
@@ -80,7 +105,7 @@ Main files:
 - `hooks/useGoogleDrivePicker.ts`
 - `docs/ingest-pipeline.md`
 
-### 3. The core development rule had to be re-affirmed again
+### 4. The core development rule had to be re-affirmed again
 
 This session re-confirmed a recurring failure pattern:
 
@@ -154,7 +179,7 @@ Only Drive-specific concerns should stay local, such as:
 
 ## Outstanding Maintainability Work
 
-### Priority A: finish ingest canonicalization
+### Priority A: finish the remaining ingest authority unification
 
 Why:
 
@@ -176,7 +201,7 @@ Primary files:
 - `lib/app/ingestDocumentModel.ts`
 - `docs/ingest-pipeline.md`
 
-### Priority B: reduce legacy/current ingest split
+### Priority B: keep the remaining legacy/current ingest split shrinking
 
 Why:
 
@@ -195,14 +220,18 @@ Primary files:
 - `lib/app/legacyIngestHelpers.ts`
 - `lib/app/legacyIngestFlowHelpers.ts`
 
-### Priority C: continue broad maintainability program
+### Priority C: maintain the now-stabilized boundaries without regrowth
 
 Still under watch:
 
+- `lib/app/sendToGptFlow.ts` and adjacent request/finalize surfaces
 - `app/page.tsx` and page-side composition boundaries
-- `lib/app/sendToGptFlow.ts` and coordinator regrowth risk
-- remaining controller/panel builder reshaping
+- responsive single-panel / panel-focus authority boundaries
+- search-domain enrichment / extraction boundaries
 - user-facing text drift outside owner files
+- `components/panels/gpt/GptSettingsApprovalSections.tsx` / `GptSettingsLibrarySections.tsx` as the next likely UI hubs
+- `lib/app/taskDraftPrepFlows.ts` / `taskDraftAttachFlows.ts` / `taskDraftDeepenFlows.ts` as the next likely workflow hubs
+- `hooks/chatPageWorkspaceStateBuilders.ts` / `chatPageWorkspaceActionBuilders.ts` / `chatPageWorkspaceServiceBuilders.ts` as the next likely page-side builder hubs
 
 Reference:
 
@@ -275,24 +304,39 @@ This is exactly the pattern that wasted time in this session.
 
 ## Recommended Next-Session Order
 
-1. continue ingest canonicalization before adding more ingest-adjacent features
+1. finish the remaining ingest authority work before adding more ingest-adjacent features
 2. fix file-ingest token accounting so usage lands in the correct ingest/task bucket
-3. unify more of `useIngestActions.ts` with `fileIngestFlow.ts`
+3. continue shrinking the remaining legacy/current ingest post-processing split
 4. move device-file ingest UI into the library drawer/settings surfaces
-5. only after that, resume Google Drive enhancements such as upload subfolder selection
-6. keep `sendToGpt` / page composition cleanup on the roadmap, but do not let it distract from ingest authority while that is still actively being stabilized
+5. keep `sendToGpt` / page composition / responsive boundaries in maintenance-watch mode with narrow tests
+6. only after that, resume broader feature additions such as more Google Drive polish
+7. if the next work is not ingest-specific, prefer the split GPT settings section modules and split task-draft flow modules as the next structural cleanup targets
+
+## Maintenance Update Cadence
+
+Whenever maintenance-watch code is touched:
+
+1. rerun verification first
+2. update `README.md`, `docs/refactor-roadmap.md`, `docs/next-session.md`, and the latest dated handoff together
+3. reclassify touched boundaries as `active refactor`, `maintenance-watch`, or `stabilized`
+4. add or move one narrow regression test with the structural change
+
+Reference:
+
+- `docs/maintenance-checklist.md`
 
 ## Files To Review First Next Time
 
 1. `lib/app/ingestDocumentModel.ts`
 2. `lib/app/fileIngestFlow.ts`
 3. `hooks/useIngestActions.ts`
-4. `hooks/useGoogleDrivePicker.ts`
-5. `components/panels/gpt/ReceivedDocsDrawer.tsx`
-6. `components/panels/gpt/GptSettingsWorkspace.tsx`
-7. `docs/ingest-pipeline.md`
-8. `docs/refactor-roadmap.md`
+4. `lib/app/sendToGptFlow.ts`
+5. `app/page.tsx`
+6. `hooks/useResponsive.ts`
+7. `docs/refactor-roadmap.md`
+8. `docs/ingest-pipeline.md`
 9. `docs/architecture-guidelines.md`
+10. `docs/HANDOFF-2026-04-18.md`
 
 ## Verification Commands
 

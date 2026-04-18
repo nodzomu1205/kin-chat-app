@@ -1,5 +1,9 @@
 import { resolveTaskIntentWithFallback, type ApprovedIntentPhrase } from "@/lib/taskIntent";
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
+import {
+  buildCurrentTaskIntentRefreshApplyArgs,
+  buildCurrentTaskIntentRefreshResolverArgs,
+} from "@/lib/app/currentTaskIntentRefreshBuilders";
 import type { TaskIntent } from "@/types/taskProtocol";
 
 export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
@@ -37,29 +41,32 @@ export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
 async function resolveCurrentTaskIntentRefresh(
   args: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs
 ) {
-  const sourceInstruction = args.sourceInstruction.trim();
-  if (!sourceInstruction || !args.currentTaskId || !args.replaceCurrentTaskIntent) {
+  const resolverArgs = buildCurrentTaskIntentRefreshResolverArgs(args);
+  if (!resolverArgs) {
     return null;
   }
 
   const resolved = await resolveTaskIntentWithFallback({
-    input: sourceInstruction,
-    approvedPhrases: args.approvedIntentPhrases,
-    responseMode: args.responseMode,
+    input: resolverArgs.sourceInstruction,
+    approvedPhrases: resolverArgs.approvedPhrases,
+    responseMode: resolverArgs.responseMode,
   });
 
   args.applyTaskUsage(resolved.usage);
 
-  const replaced = args.replaceCurrentTaskIntent({
+  const replaced = resolverArgs.replaceCurrentTaskIntent({
     intent: resolved.intent,
-    title: resolved.suggestedTitle || args.currentTaskTitle || args.currentTaskDraftTitle,
-    originalInstruction: sourceInstruction,
+    title:
+      resolved.suggestedTitle ||
+      resolverArgs.currentTaskTitle ||
+      resolverArgs.currentTaskDraftTitle,
+    originalInstruction: resolverArgs.sourceInstruction,
   });
 
   if (!replaced) return null;
 
   return {
-    sourceInstruction,
+    sourceInstruction: resolverArgs.sourceInstruction,
     resolvedIntent: resolved.intent,
     replacedTask: replaced,
   };
@@ -78,19 +85,9 @@ function applyCurrentTaskIntentRefresh(args: {
   setPendingKinInjectionIndex: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionIndex"];
   setKinInput: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setKinInput"];
 }) {
-  args.syncTaskDraftFromProtocol({
-    taskId: args.replacedTask.taskId,
-    title: args.replacedTask.title,
-    goal: args.resolvedIntent.goal,
-    compiledTaskPrompt: args.replacedTask.compiledTaskPrompt,
-    originalInstruction: args.sourceInstruction,
-  });
-  applyCompiledTaskPromptToKinInput({
-    compiledTaskPrompt: args.replacedTask.compiledTaskPrompt,
-    setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-    setKinInput: args.setKinInput,
-  });
+  const applyArgs = buildCurrentTaskIntentRefreshApplyArgs(args);
+  args.syncTaskDraftFromProtocol(applyArgs.syncTaskDraftArgs);
+  applyCompiledTaskPromptToKinInput(applyArgs.kinInjectionArgs);
 }
 
 export async function syncApprovedIntentPhrasesToCurrentTaskFlow(

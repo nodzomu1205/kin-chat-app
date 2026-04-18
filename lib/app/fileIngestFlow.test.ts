@@ -9,9 +9,19 @@ import {
   resolveFileIngestTransformResult,
   resolveIngestExtractionArtifacts,
   resolvePostIngestTaskTexts,
-} from "@/lib/app/fileIngestFlow";
+  buildStoredDocumentSummary,
+} from "@/lib/app/fileIngestFlowBuilders";
 
 describe("fileIngestFlow helpers", () => {
+  it("builds stored document summary through the builder module", () => {
+    expect(
+      buildStoredDocumentSummary(
+        "Notes alpha. beta gamma. delta epsilon.",
+        "Notes"
+      )
+    ).toContain("alpha.");
+  });
+
   it("resolves extraction artifacts from selected lines", () => {
     const result = resolveIngestExtractionArtifacts({
       data: {

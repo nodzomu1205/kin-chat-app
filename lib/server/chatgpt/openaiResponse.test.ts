@@ -4,6 +4,11 @@ import {
   extractResponseText,
   extractUsage,
 } from "@/lib/server/chatgpt/openaiResponse";
+import {
+  buildJsonObjectText,
+  buildResponseText,
+  buildUsageSummary,
+} from "@/lib/server/chatgpt/openaiResponseBuilders";
 
 describe("openaiResponse helpers", () => {
   it("extracts usage counters with total fallback", () => {
@@ -41,5 +46,30 @@ describe("openaiResponse helpers", () => {
     expect(fromContent).toBe("hello");
     expect(fromOutputText).toBe("world");
     expect(fallback).toBe("fallback text");
+  });
+
+  it("builds response helpers through response builders", () => {
+    expect(
+      buildUsageSummary({
+        usage: {
+          input_tokens: 2,
+          output_tokens: 3,
+        },
+      })
+    ).toEqual({
+      inputTokens: 2,
+      outputTokens: 3,
+      totalTokens: 5,
+    });
+
+    expect(buildJsonObjectText("```json\n{\"topic\":\"Tokyo\"}\n```")).toBe(
+      '{"topic":"Tokyo"}'
+    );
+
+    expect(
+      buildResponseText({
+        output: [{ content: [{ text: "hello" }] }],
+      })
+    ).toBe("hello");
   });
 });

@@ -114,3 +114,20 @@ export type ChatPageControllerCompositionArgs = {
   reset: UseChatPageControllerArgs["panelReset"];
   automation: UseChatPageControllerArgs["protocolAutomation"];
 };
+
+export type ChatPageControllerAppArgs =
+  ChatPageControllerCompositionArgs["app"];
+export type ChatPageControllerUiStateArgs =
+  ChatPageControllerCompositionArgs["uiState"];
+export type ChatPageControllerTaskArgs =
+  ChatPageControllerCompositionArgs["task"];
+export type ChatPageControllerProtocolArgs =
+  ChatPageControllerCompositionArgs["protocol"];
+export type ChatPageControllerSearchArgs =
+  ChatPageControllerCompositionArgs["search"];
+export type ChatPageControllerServicesSectionArgs =
+  ChatPageControllerCompositionArgs["services"];
+export type ChatPageControllerResetArgs =
+  ChatPageControllerCompositionArgs["reset"];
+export type ChatPageControllerAutomationArgs =
+  ChatPageControllerCompositionArgs["automation"];

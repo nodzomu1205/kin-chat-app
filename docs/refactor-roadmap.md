@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-17
+Updated: 2026-04-18
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -14,9 +14,14 @@ The goal is not to rewrite everything at once. The goal is to keep shipping whil
 
 Current verification baseline:
 - `npx tsc --noEmit` passes
+- `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `105 files / 453 tests`
+- test status: `133 files / 556 tests`
+
+This roadmap should now be read together with:
+
+- `docs/maintenance-checklist.md`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -30,11 +35,14 @@ Primary review points:
 - `lib/app/kinMultipart.ts`
 
 Current cleanup priority:
-1. `app/page.tsx`
-2. `lib/app/sendToGptFlow.ts`
-3. `hooks/useChatPageController.ts`
-4. `components/panels/gpt/GptSettingsSections.tsx`
-5. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts`
+1. remaining ingest authority / token-accounting cleanup
+2. `lib/app/sendToGptFlow.ts` maintenance-watch boundaries
+3. `app/page.tsx` / page composition regrow prevention
+4. responsive / panel-mode authority guardrails
+5. user-facing text drift outside owner files
+6. `components/panels/gpt/GptSettingsApprovalSections.tsx` / `GptSettingsLibrarySections.tsx` maintenance-watch
+7. `lib/app/taskDraftPrepFlows.ts` / `taskDraftAttachFlows.ts` / `taskDraftDeepenFlows.ts` maintenance-watch
+8. `hooks/chatPageWorkspaceStateBuilders.ts` / `chatPageWorkspaceActionBuilders.ts` / `chatPageWorkspaceServiceBuilders.ts` maintenance-watch
 
 ## Maintenance Checkpoint
 
@@ -79,6 +87,10 @@ following are true:
 5. new regressions are caught by tests before they reach manual device review
 6. ingest text handling follows one canonical-document model instead of
    symptom-level cleanup at multiple downstream surfaces
+
+Reference:
+
+- `docs/maintenance-checklist.md`
 
 ## Immediate Action Plan
 
@@ -386,6 +398,16 @@ Done:
 - `useChatPageControllerArgs.ts`, `useChatPageKinPanelProps.ts`, and `useChatPageGptPanelArgs.ts` now own the controller/panel argument assembly that previously lived inline in `app/page.tsx`
 - `useChatPagePanelsComposition.tsx` now owns the final page-side controller + panel composition, so `app/page.tsx` no longer instantiates `useChatPageController`, `KinPanel`, `GptPanel`, or `buildGptPanelProps(...)` directly
 - workspace view-args assembly with panel refs now also lives inside `useChatPagePanelsComposition.tsx`, so `app/page.tsx` only passes grouped workspace state/actions/services plus refs instead of constructing final composition view args itself
+- `useChatPageReferenceDomain.ts` now owns the multipart/stored-document/reference-library/Google-Drive page-side composition, so `app/page.tsx` no longer wires that reference domain inline
+- `useChatPageTaskProtocolDomain.ts` now owns the memory-interpreter / GPT-memory / task-protocol / task-draft-helper page-side composition, so `app/page.tsx` no longer wires that domain inline
+- `useChatPageUiState.ts` now owns the page-root chat/panel UI state and scroll wiring, so `app/page.tsx` no longer defines those state roots inline
+- `useChatPageWorkspaceInputs.ts` now owns grouped workspace state/actions/services assembly, so `app/page.tsx` passes domain bundles instead of rebuilding the full workspace contract inline
+- `chatPageWorkspaceCompositionTypes.ts` now re-exports domain-level workspace state/action/service aliases, and `useChatPageWorkspaceInputs.ts` now consumes those aliases instead of re-declaring the full contract locally
+- `chatPageWorkspaceInputBuilders.ts` now builds workspace state/actions/services through domain-level sub-builders instead of one giant flat field map, so the builder layer stays shape-focused and easier to audit
+- `chatPageWorkspaceCompositionBuilders.ts` and `chatPagePanelCompositionBuilders.ts` now also assemble view/panel args through smaller section builders, keeping page-side composition closer to pure shape conversion instead of one large projection block
+- `useChatPageControllerArgs.ts` and `chatPageControllerArgBuilders.ts` now assemble controller-side grouped inputs through smaller section builders as well, so controller composition stays focused on shape conversion instead of one inline projection block
+- `chatPageControllerCompositionTypes.ts` now exposes section-level controller aliases, and `chatPagePanelCompositionTypes.ts` now depends on those narrower aliases instead of repeatedly reaching through the full controller composition type
+- `chatPagePanelCompositionTypes.ts` now also splits `ChatPageWorkspaceViewArgs` into section-level aliases, and `chatPageWorkspaceCompositionTypes.ts` now builds on those aliases instead of indexing through one monolithic workspace-view type everywhere
 - `chatPagePanelCompositionBuilders.ts` now shares one panel-base projection plus GPT references projection helpers instead of repeating the same workspace reshaping across both panel builders
 - `useChatPageController.ts` now assembles the grouped controller return through one helper, keeping the hook focused on domain-action wiring rather than inline return-shape construction
 - `useChatPagePanelsComposition.tsx` now consumes page workspace groups directly and owns task-snapshot glue itself, so the no-op passthrough hooks `useChatPagePanelsView.tsx` and `useChatPageWorkspaceView.tsx` were removed
@@ -677,6 +699,40 @@ Next:
 - more pure-helper extraction around `sendToGptFlowRequestPreparation` / `sendToGptFlowState` / `app/page.tsx` / ingest flow
 - add narrow tests around task-intent approval sync and task-progress archive / clear behavior if those surfaces change again
 - add docs for protocol actions and ingest pipeline before larger phase-2 work
+- composition regrow prevention now has narrow workspace section tests, and `sendToGptFlow` has step builders so the main flow stays orchestration-focused
+- `sendToGptFlow.ts` now builds shared step args and a prepared phase bundle through `sendToGptFlowStepBuilders.ts`, with narrow tests pinning the top-level coordinator handoff so pre-gate, prepared-request, execution, and finalize stages do not regrow inline shape conversion
+- `sendToGptFlowRequestPreparation` / `sendToGptFlowState` now delegate section shaping to dedicated builders, with narrow tests around prepared-request sections and implicit-search / memory state builders
+- `sendToGptFlowResponse` / `sendToGptFlowFinalize` now also use dedicated builders for response shaping and finalize side-effect args, keeping both files orchestration-focused
+- `sendToGptFlowContext` / `sendToGptFlowRequest` now route protocol/search derivation and request payload shaping through dedicated builders, with narrow tests around context derivation and request payload args
+- protocol block generation now shares common line/block builders across `taskRuntimeProtocol` and `sendToGptProtocolBuilders`, with narrow tests to keep wrapper/field formatting stable
+- `app/api/chatgpt/route.ts` now dispatches to mode-specific server handlers, while route builders own search payload / OpenAI message assembly / summarize prompt construction
+- `openaiClient` / `openaiResponse` now route request/response shape conversion through dedicated builders, with narrow tests for payload/result assembly and response extraction
+- `app/api/task/route.ts` and `app/api/kindroid/route.ts` now dispatch into dedicated server handlers, while task / Kindroid request-shaping and response-shaping live in focused route builders with narrow regression tests
+- `app/api/ingest/route.ts` now delegates orchestration to a dedicated server handler with focused ingest response/request builders, and `gptTaskClient` now routes upload-kind detection, prep-envelope shaping, and `/api/task` payload assembly through shared pure builders
+- `ingestClient` now routes shared request-form assembly, fallback title/error extraction, and option bundling through dedicated builders, while `fileIngestFlow` consumes that shared ingest boundary directly instead of hand-casting option bags
+- `fileIngestFlow` now consumes a dedicated `fileIngestFlowBuilders` helper module for extraction / transform / bridge / task-update shaping, so the main flow path is less tied to inline helper implementations even before the remaining local helper bodies are fully removed
+- `fileIngestFlow` helper regression tests now target `fileIngestFlowBuilders` directly, reducing the remaining coupling that needs to be unwound before the duplicate helper bodies in `fileIngestFlow.ts` can be removed safely
+- `fileIngestFlow.ts` now re-exports its public helper surface from `fileIngestFlowBuilders`, so external consumers already see the builder-backed boundary while the remaining legacy helper bodies stay temporarily parked for deletion in a follow-up cleanup
+- `fileIngestFlow.ts` has now dropped those parked legacy helper bodies and unused helper imports entirely, leaving the runtime flow and public helper surface anchored directly on `fileIngestFlowBuilders`
+- `ingestDocumentModel.ts` now owns shared stored-document normalization, override application, ingested/Kin document record shaping, and reference-library document item shaping; `useStoredDocuments.ts` now consumes that shared authority directly, and legacy `useIngestActions.ts` now sources its prep envelope through the same ingest extraction builder instead of a separate fallback path
+- `useReferenceLibrary.ts` now builds document-backed library items through the shared ingest document model, and `useGoogleDrivePicker.ts` now derives stored import text from the same ingest extraction builder used by file ingest, reducing the remaining summary/text authority split between device imports, Drive imports, and library projection
+- `librarySummaryClient` now routes request-body assembly, response parsing, error-message resolution, and usage normalization through dedicated client builders, while `app/api/library-summary/route.ts` now delegates prompt/request normalization and success shaping to focused server-side library summary handlers/builders
+- `app/api/link-preview`, `app/api/url-card`, and `app/api/youtube-transcript` now follow the same thin-route pattern, with shared HTML metadata parsing plus dedicated route builders/handlers owning URL validation, source shaping, transcript candidate selection, and success/fallback payload assembly
+- `serpApiClient` now routes SerpAPI URL construction and error-message shaping through dedicated builders, and the YouTube transcript app helpers now share a single `youtubeTranscriptBuilders` boundary for transcript cleaning, excerpting, Kin block creation, and success/failure artifact shaping
+- `searchService` now routes engine-plan selection, continuation-token extraction, and final merged payload shaping through dedicated builders, while `sendToGptTranscriptHelpers` now delegates YouTube URL parsing and transcript success/failure artifact shaping to focused helper builders instead of carrying that logic inline
+- `search-domain/normalizers.ts` now delegates engine-specific payload shaping and merged payload assembly to dedicated normalizer builders, while `sendToGptYoutubeFlow.ts` now routes transcript request context, request-body assembly, document-record shaping, assistant message shaping, and failure state shaping through focused flow builders
+- the individual search-domain engine modules now route Google / News / Maps / Local / AI Mode / YouTube request argument assembly through shared engine request builders, leaving each engine file closer to pure fetch/enrichment orchestration
+- `search-domain/extractors.ts` now delegates HTML stripping / line scoring / snippet selection to dedicated extractor builders, and Google / News engine enrichment now shares focused enrichment builders instead of duplicating raw-result slicing and snippet-seed shaping inline
+- `useTaskProtocolActions.ts` and `useKinTransferActions.ts` now build task-intent sync and Kin transfer handoff through shared `taskRuntimeActionBuilders.ts`, with narrow tests pinning source-instruction resolution, pending-intent merge policy, and the shared flow-arg bundles so task runtime / Kin injection transport stays out of the page-side hooks
+- `useTaskDraftHelpers.ts` now routes draft mutation, prefixed-field parsing, character-constraint resolution, and base-text selection through shared `taskDraftActionBuilders.ts`, while `currentTaskIntentRefresh.ts` now delegates refresh gating and draft/Kin apply shaping to dedicated builders so the remaining task runtime refresh path reads as orchestration rather than mixed projection logic
+- `useResponsive.ts` now routes mobile-user-agent detection, touch-capability detection, and effective-width selection through shared `responsiveLayout.ts` helpers, with direct tests pinning mobile UA, touch desktop, and narrow-width single-panel behavior
+- `GptSettingsWorkspace.tsx` now delegates its large approval, ingest, and Google Drive sections to `GptSettingsWorkspaceSections.tsx`, reducing the chance that the workspace root regrows into another mixed UI/policy hub
+- `taskDraftActionFlows.ts` now acts as a thin export surface while prep/update/latest-GPT, attach-library, and deepen flows live in dedicated `taskDraft*Flows.ts` modules backed by shared `taskDraftActionFlowTypes.ts`
+- `chatPageWorkspaceInputBuilders.ts` now acts as a thin export surface while state/actions/services assembly lives in dedicated workspace builder modules, reducing the chance that one file silently becomes the next page-side policy hub
+- `sendToGptFlowHelpers.test.ts` is now split by concern, with response/protocol coverage moved to `sendToGptFlowResponseBuilders.test.ts` and state/finalize coverage moved to `sendToGptFlowStateBuilders.test.ts`, leaving the remaining helper test file focused on gate/step/request builder phases
+- GPT settings workspace sections are now split again into `GptSettingsApprovalSections.tsx` and `GptSettingsLibrarySections.tsx`, so approval workflows and library/ingest controls no longer share one section hub by default
+- `taskDraft*Flows.ts` now share recent-message context and success-postlude helpers through `taskDraftFlowShared.ts`, reducing repeated assistant-append and summary-replay logic across prep/update/attach/deepen orchestration
+- `sendToGptFlow` guard coverage now lives in `sendToGptFlowGuards.test.ts`, so guard failures are diagnosed separately from step/request builder regressions
 
 ## Next Review Points
 At the start of each new refactor step, review these files first:

@@ -1,5 +1,3 @@
-import { generateId } from "@/lib/uuid";
-
 export type Memory = {
   facts: string[];
   preferences: string[];

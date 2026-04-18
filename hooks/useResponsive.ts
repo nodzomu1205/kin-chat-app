@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
+import {
+  detectMobileUserAgent,
+  detectSinglePanelLayoutHeuristic,
+  detectTouchCapability,
+  resolveEffectiveWidth,
+} from "@/lib/app/responsiveLayout";
 
 // This module decides only whether the workspace should use the single-panel
 // layout. It must not choose which panel is focused.
 function hasMobileUserAgent() {
   if (typeof navigator === "undefined") return false;
 
-  return /Android|iPhone|iPad|iPod|Mobile|Windows Phone|webOS|BlackBerry|Opera Mini|IEMobile/i.test(
-    navigator.userAgent || ""
-  );
+  return detectMobileUserAgent(navigator.userAgent);
 }
 
 function hasTouchCapability() {
@@ -15,44 +19,23 @@ function hasTouchCapability() {
     return false;
   }
 
-  return (
-    "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0 ||
-    window.matchMedia?.("(pointer: coarse)").matches === true
-  );
+  return detectTouchCapability({
+    hasTouchStart: "ontouchstart" in window,
+    maxTouchPoints: navigator.maxTouchPoints,
+    coarsePointer: window.matchMedia?.("(pointer: coarse)").matches === true,
+  });
 }
 
 function getEffectiveWidth() {
   if (typeof window === "undefined") return Number.POSITIVE_INFINITY;
 
-  const candidates = [
+  return resolveEffectiveWidth([
     window.innerWidth,
     window.outerWidth,
     window.visualViewport?.width,
     window.screen?.width,
     window.screen?.availWidth,
-  ].filter((value): value is number => typeof value === "number" && value > 0);
-
-  if (candidates.length === 0) return Number.POSITIVE_INFINITY;
-  return Math.min(...candidates);
-}
-
-export function detectSinglePanelLayoutHeuristic(params: {
-  breakpoint: number;
-  effectiveWidth: number;
-  mobileUserAgent: boolean;
-  touchLike: boolean;
-}) {
-  if (params.mobileUserAgent) return true;
-  if (params.effectiveWidth <= params.breakpoint) return true;
-  if (
-    params.touchLike &&
-    params.effectiveWidth <= Math.min(860, params.breakpoint)
-  ) {
-    return true;
-  }
-
-  return false;
+  ]);
 }
 
 function detectSinglePanelLayout(breakpoint: number) {

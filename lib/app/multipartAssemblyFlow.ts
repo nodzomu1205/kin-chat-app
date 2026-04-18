@@ -218,7 +218,6 @@ export function processMultipartTaskDoneText(params: {
   let latestValidationSummary = "";
 
   for (const multipart of parts) {
-    const updated = applyMultipartPart(workingAssemblies, multipart);
     const enriched = applyMultipartPart(workingAssemblies, {
       ...multipart,
       taskTitle:

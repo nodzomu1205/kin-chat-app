@@ -3,6 +3,11 @@ import type {
   TaskRuntimeState,
 } from "@/types/taskProtocol";
 export { extractTaskProtocolEvents } from "@/lib/taskProtocolParser";
+import {
+  buildProtocolBlock,
+  buildProtocolLine,
+  buildProtocolSection,
+} from "@/lib/protocolBlockBuilders";
 
 export function buildTaskConfirmBlock(
   runtime: TaskRuntimeState,
@@ -22,28 +27,37 @@ export function buildTaskConfirmBlock(
       )
     : ["- none"];
 
-  return [
-    "<<SYS_TASK_CONFIRM>>",
-    `TASK_ID: ${runtime.currentTaskId}`,
-    `STATUS: ${runtime.taskStatus.toUpperCase()}`,
-    `SUMMARY: ${note.trim() || runtime.latestSummary || runtime.currentTaskIntent?.goal || runtime.currentTaskTitle}`,
-    "PROGRESS:",
-    ...progressLines,
-    "PENDING_REQUESTS:",
-    ...pendingLines,
-    "<<END_SYS_TASK_CONFIRM>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_TASK_CONFIRM",
+    lines: [
+      buildProtocolLine("TASK_ID", runtime.currentTaskId),
+      buildProtocolLine("STATUS", runtime.taskStatus.toUpperCase()),
+      buildProtocolLine(
+        "SUMMARY",
+        note.trim() ||
+          runtime.latestSummary ||
+          runtime.currentTaskIntent?.goal ||
+          runtime.currentTaskTitle
+      ),
+      ...buildProtocolSection("PROGRESS:", progressLines),
+      ...buildProtocolSection("PENDING_REQUESTS:", pendingLines),
+    ],
+  });
 }
 
 export function buildWaitingAckBlock(request: PendingExternalRequest): string {
-  return [
-    "<<SYS_TASK_CONFIRM>>",
-    `TASK_ID: ${request.taskId}`,
-    `ACTION_ID: ${request.actionId}`,
-    "STATUS: WAITING_USER_RESPONSE",
-    `SUMMARY: ${request.id} was received. Waiting for the user's reply. Continue any other work that can proceed in parallel.`,
-    "<<END_SYS_TASK_CONFIRM>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_TASK_CONFIRM",
+    lines: [
+      buildProtocolLine("TASK_ID", request.taskId),
+      buildProtocolLine("ACTION_ID", request.actionId),
+      buildProtocolLine("STATUS", "WAITING_USER_RESPONSE"),
+      buildProtocolLine(
+        "SUMMARY",
+        `${request.id} was received. Waiting for the user's reply. Continue any other work that can proceed in parallel.`
+      ),
+    ],
+  });
 }
 
 export function buildTaskSuspendBlock(
@@ -52,20 +66,25 @@ export function buildTaskSuspendBlock(
 ): string | null {
   if (!runtime.currentTaskId) return null;
 
-  return [
-    "<<SYS_TASK_CONFIRM>>",
-    `TASK_ID: ${runtime.currentTaskId}`,
-    "STATUS: SUSPENDED",
-    `SUMMARY: ${
-      note.trim() ||
-      runtime.latestSummary ||
-      runtime.currentTaskIntent?.goal ||
-      runtime.currentTaskTitle ||
-      "Suspend this task for now and keep the current progress for later resume."
-    }`,
-    "BODY: Hold this task without discarding current progress. Resume after the blocking condition is resolved.",
-    "<<END_SYS_TASK_CONFIRM>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_TASK_CONFIRM",
+    lines: [
+      buildProtocolLine("TASK_ID", runtime.currentTaskId),
+      buildProtocolLine("STATUS", "SUSPENDED"),
+      buildProtocolLine(
+        "SUMMARY",
+        note.trim() ||
+          runtime.latestSummary ||
+          runtime.currentTaskIntent?.goal ||
+          runtime.currentTaskTitle ||
+          "Suspend this task for now and keep the current progress for later resume."
+      ),
+      buildProtocolLine(
+        "BODY",
+        "Hold this task without discarding current progress. Resume after the blocking condition is resolved."
+      ),
+    ],
+  });
 }
 
 export function buildUserResponseBlock(params: {
@@ -73,13 +92,14 @@ export function buildUserResponseBlock(params: {
   actionId: string;
   body: string;
 }) {
-  return [
-    "<<SYS_USER_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `BODY: ${params.body}`,
-    "<<END_SYS_USER_RESPONSE>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_USER_RESPONSE",
+    lines: [
+      buildProtocolLine("TASK_ID", params.taskId),
+      buildProtocolLine("ACTION_ID", params.actionId),
+      buildProtocolLine("BODY", params.body),
+    ],
+  });
 }
 
 export function buildLimitExceededBlock(params: {
@@ -87,34 +107,42 @@ export function buildLimitExceededBlock(params: {
   actionId?: string;
   summary: string;
 }) {
-  return [
-    "<<SYS_TASK_CONFIRM>>",
-    `TASK_ID: ${params.taskId}`,
-    ...(params.actionId ? [`ACTION_ID: ${params.actionId}`] : []),
-    "STATUS: REJECTED_LIMIT",
-    `SUMMARY: ${params.summary}`,
-    "<<END_SYS_TASK_CONFIRM>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_TASK_CONFIRM",
+    lines: [
+      buildProtocolLine("TASK_ID", params.taskId),
+      ...(params.actionId
+        ? [buildProtocolLine("ACTION_ID", params.actionId)]
+        : []),
+      buildProtocolLine("STATUS", "REJECTED_LIMIT"),
+      buildProtocolLine("SUMMARY", params.summary),
+    ],
+  });
 }
 
 export function buildProgressAckResponseBlock(params: { taskId: string }) {
-  return [
-    "<<SYS_GPT_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    "ACTION_ID: PROGRESS_ACK",
-    "BODY: Noted. Continue the work.",
-    "<<END_SYS_GPT_RESPONSE>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_GPT_RESPONSE",
+    lines: [
+      buildProtocolLine("TASK_ID", params.taskId),
+      buildProtocolLine("ACTION_ID", "PROGRESS_ACK"),
+      buildProtocolLine("BODY", "Noted. Continue the work."),
+    ],
+  });
 }
 
 export function buildResendLastMessageBlock(params?: { taskId?: string }) {
-  return [
-    "<<SYS_GPT_RESPONSE>>",
-    ...(params?.taskId ? [`TASK_ID: ${params.taskId}`] : []),
-    "ACTION_ID: RESEND_LAST_MESSAGE",
-    "BODY: The last message didn't successfully come through. Resend the message. If your message is over 600 characters, split it into 600-700 character parts labeled as PART n/total, and clearly mark the final part.",
-    "<<END_SYS_GPT_RESPONSE>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_GPT_RESPONSE",
+    lines: [
+      ...(params?.taskId ? [buildProtocolLine("TASK_ID", params.taskId)] : []),
+      buildProtocolLine("ACTION_ID", "RESEND_LAST_MESSAGE"),
+      buildProtocolLine(
+        "BODY",
+        "The last message didn't successfully come through. Resend the message. If your message is over 600 characters, split it into 600-700 character parts labeled as PART n/total, and clearly mark the final part."
+      ),
+    ],
+  });
 }
 
 export function buildYoutubeTranscriptRetryBlock(params: {
@@ -122,12 +150,21 @@ export function buildYoutubeTranscriptRetryBlock(params: {
   actionId?: string;
   url?: string;
 }) {
-  return [
-    "<<SYS_GPT_RESPONSE>>",
-    ...(params.taskId ? [`TASK_ID: ${params.taskId}`] : []),
-    `ACTION_ID: ${params.actionId || "YOUTUBE_TRANSCRIPT_RETRY"}`,
-    "BODY: The requested YouTube transcript could not be fetched because the URL was invalid or did not lead to a usable transcript. Request a new YouTube search if needed, identify the correct video URL, and retry with a valid YouTube link.",
-    ...(params.url ? [`DETAIL: Failed URL: ${params.url}`] : []),
-    "<<END_SYS_GPT_RESPONSE>>",
-  ].join("\n");
+  return buildProtocolBlock({
+    name: "SYS_GPT_RESPONSE",
+    lines: [
+      ...(params.taskId ? [buildProtocolLine("TASK_ID", params.taskId)] : []),
+      buildProtocolLine(
+        "ACTION_ID",
+        params.actionId || "YOUTUBE_TRANSCRIPT_RETRY"
+      ),
+      buildProtocolLine(
+        "BODY",
+        "The requested YouTube transcript could not be fetched because the URL was invalid or did not lead to a usable transcript. Request a new YouTube search if needed, identify the correct video URL, and retry with a valid YouTube link."
+      ),
+      ...(params.url
+        ? [buildProtocolLine("DETAIL", `Failed URL: ${params.url}`)]
+        : []),
+    ],
+  });
 }

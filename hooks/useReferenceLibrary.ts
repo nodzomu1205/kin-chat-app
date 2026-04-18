@@ -14,6 +14,10 @@ import {
   resolveSelectedLibraryItemId,
 } from "@/lib/app/referenceLibraryState";
 import {
+  buildCanonicalDocumentSummary,
+  buildReferenceLibraryDocumentItem,
+} from "@/lib/app/ingestDocumentModel";
+import {
   cleanImportedDocumentText,
   cleanImportSummarySource,
 } from "@/lib/app/importSummaryText";
@@ -112,66 +116,11 @@ function loadInitialReferenceLibraryState() {
 }
 
 function buildFallbackSummary(text: string, fallbackTitle: string) {
-  const trimmed = cleanImportSummarySource(text).trim();
-  if (!trimmed) return fallbackTitle;
-  const normalized = trimmed.replace(/\s+/g, " ").trim();
-  const withoutTitle = normalized.startsWith(fallbackTitle)
-    ? normalized.slice(fallbackTitle.length).trimStart()
-    : normalized;
-  const basis = withoutTitle || normalized;
-  const sentenceParts = basis
-    .split(/(?<=[。．.!?！？])/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  const summary = (sentenceParts.slice(0, 2).join(" ") || basis).trim();
-  return summary.length > 220 ? `${summary.slice(0, 220).trimEnd()}...` : summary;
+  return buildCanonicalDocumentSummary(text, fallbackTitle);
 }
 
 function toDocumentLibraryItem(item: StoredDocument): ReferenceLibraryItem {
-  const cleanedText = cleanImportedDocumentText(item.text);
-  const cleanedSummary = item.summary
-    ? cleanImportSummarySource(item.summary).trim()
-    : "";
-  const detailPrefix =
-    item.artifactType === "task_result"
-      ? "成果物"
-      : item.artifactType === "task_snapshot"
-        ? "タスク保存"
-        : item.sourceType === "kin_created"
-          ? "Kin作成"
-          : "取込";
-
-  const subtitleParts = [
-    detailPrefix,
-    item.taskTitle || item.filename,
-    item.kinName || "",
-    item.completedAt
-      ? new Date(item.completedAt).toLocaleString("ja-JP", {
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "",
-  ].filter(Boolean);
-
-  return {
-    id: `doc:${item.id}`,
-    sourceId: item.id,
-    itemType: item.sourceType,
-    artifactType: item.artifactType,
-    title: item.title,
-    subtitle: subtitleParts.join(" / "),
-    summary: cleanedSummary || buildFallbackSummary(cleanedText, item.title),
-    excerptText: cleanedText,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-    filename: item.filename,
-    taskId: item.taskId,
-    taskTitle: item.taskTitle,
-    kinName: item.kinName,
-    completedAt: item.completedAt,
-  };
+  return buildReferenceLibraryDocumentItem(item);
 }
 
 function toSearchLibraryItem(item: SearchContext): ReferenceLibraryItem {
@@ -289,12 +238,13 @@ export function useReferenceLibrary(params: {
   }, [selectedTaskLibraryItemId]);
 
   const baseItems = useMemo(() => {
-  const documentItems = storedDocuments.map(toDocumentLibraryItem);
+    const documentItems = storedDocuments.map(toDocumentLibraryItem);
     const searchItems = searchHistory.map(toSearchLibraryItem);
     return [...documentItems, ...searchItems].sort(
       (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
     );
   }, [searchHistory, storedDocuments]);
+
   const libraryOrder = useMemo(
     () =>
       reconcileReferenceLibraryOrder(
@@ -331,6 +281,7 @@ export function useReferenceLibrary(params: {
       })),
     [libraryItemModeOverrides, libraryItems]
   );
+
   const resolvedSelectedTaskLibraryItemId = useMemo(
     () =>
       resolveSelectedLibraryItemId(

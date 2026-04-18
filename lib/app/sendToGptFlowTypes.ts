@@ -239,6 +239,26 @@ export type PreparedRequestExecutionContext = {
   requestAnswerBody?: string;
 };
 
+export type PreparedRequestContextSource = PreparedRequestGateContext & {
+  finalRequestText: string;
+  effectiveDocumentReferenceContext: string;
+  libraryReferenceContext: string;
+  continuationDetails: {
+    cleanQuery?: string;
+  };
+  searchRequestEvent?: SearchResponseEventLike;
+  effectiveParsedSearchQuery: string;
+  searchSeriesId?: string;
+  continuationToken?: string;
+  askAiModeLink?: string;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  askGptEvent?: ProtocolTaskEventLike;
+  requestToAnswer?: PendingRequestLike | null;
+  requestAnswerBody?: string;
+};
+
 export type PreparedRequestFinalizeContext = {
   searchRequestEvent?: SearchResponseEventLike;
   effectiveSearchMode: SearchMode;
@@ -282,3 +302,117 @@ export type SendToGptMemoryPreparation = {
   };
   requestMemory: Memory;
 };
+
+export type SendToGptImplicitSearchArtifactsArgs = {
+  data: ChatApiSearchLike;
+  searchRequestEvent?: SearchResponseEventLike;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  searchSeriesId?: string;
+  cleanQuery?: string;
+  effectiveParsedSearchQuery?: string;
+  finalRequestText: string;
+  applySearchUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applyChatUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  recordSearchContext: SearchContextRecorder;
+};
+
+export type ProtocolInteractionContext = {
+  protocolEvents: ReturnType<typeof import("@/lib/taskRuntimeProtocol").extractTaskProtocolEvents>;
+  askGptEvent?: ProtocolTaskEventLike;
+  searchRequestEvent?: SearchResponseEventLike;
+  youtubeTranscriptRequestEvent?: TaskProtocolEvent & { url?: string };
+  libraryIndexRequestEvent?: SearchResponseEventLike;
+  libraryItemRequestEvent?: SearchResponseEventLike;
+  userQuestionEvent?: ProtocolTaskEventLike;
+  requestToAnswer?: PendingRequestLike | null;
+  requestAnswerBody?: string;
+};
+
+export type DerivedSearchContext = {
+  inlineSearchQuery: string;
+  effectiveParsedSearchQuery: string;
+  continuationDetails: ReturnType<
+    typeof import("@/lib/search-domain/continuations").parseSearchContinuation
+  >;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  searchSeriesId?: string;
+  continuationToken?: string;
+  askAiModeLink?: string;
+};
+
+export type GptAssistantRequestPayloadArgs = {
+  requestMemory: Memory;
+  recentMessages: Message[];
+  finalRequestText: string;
+  storedDocumentContext: string;
+  storedLibraryContext: string;
+  cleanQuery?: string;
+  searchRequestEvent?: SearchResponseEventLike;
+  effectiveParsedSearchQuery: string;
+  searchSeriesId?: string;
+  continuationToken?: string;
+  askAiModeLink?: string;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  instructionMode: string;
+  responseMode: string;
+};
+
+export type RequestGptAssistantArtifactsArgs = GptAssistantRequestPayloadArgs & {
+  parseWrappedSearchResponse: (text: string) => WrappedSearchResponse;
+  askGptEvent?: ProtocolTaskEventLike;
+  currentTaskId?: string | null;
+  requestToAnswer?: PendingRequestLike | null;
+  requestAnswerBody?: string;
+  recordSearchContext: SearchContextRecorder;
+};
+
+export type ProtocolSearchResponseArtifactsArgs = {
+  data: ChatApiSearchLike;
+  searchRequestEvent: SearchResponseEventLike;
+  currentTaskId?: string | null;
+  wrappedSearchResponse: WrappedSearchResponse;
+  effectiveSearchMode: SearchMode;
+  effectiveSearchEngines: SearchEngine[];
+  effectiveSearchLocation: string;
+  searchSeriesId?: string;
+  cleanQuery?: string;
+  recordSearchContext: SearchContextRecorder;
+};
+
+export type FinalizeSendToGptFlowArgs = {
+  data: ChatApiSearchLike;
+  assistantText: string;
+  normalizedSources: SourceItem[];
+  memoryContext: {
+    recentWithUser: Message[];
+    previousCommittedTopic?: string;
+  };
+  chatRecentLimit: number;
+  preparedRequest: PreparedRequestFinalizeContext;
+  ingestProtocolMessage: (
+    text: string,
+    direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
+  ) => void;
+  taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
+  setGptMessages: Dispatch<SetStateAction<Message[]>>;
+  applySearchUsage: (usage: ChatApiSearchLike["usage"]) => void;
+  applyChatUsage: (usage: ChatApiSearchLike["usage"]) => void;
+  recordSearchContext: SearchContextRecorder;
+  handleGptMemory: (
+    recent: Message[],
+    options?: { previousCommittedTopic?: string }
+  ) => Promise<{ summaryUsage?: ChatApiSearchLike["usage"] }>;
+  applySummaryUsage: (usage: ChatApiSearchLike["usage"]) => void;
+};
+
+export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
+  SendToGptFlowSearchArgs &
+  SendToGptFlowProtocolArgs &
+  SendToGptFlowMemoryArgs &
+  SendToGptFlowUiArgs;

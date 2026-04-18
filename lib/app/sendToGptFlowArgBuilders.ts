@@ -2,6 +2,7 @@ import { buildLimitExceededBlock, extractTaskProtocolEvents } from "@/lib/taskRu
 import { shouldInjectTaskContext } from "@/lib/taskChatBridge";
 import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
 import type {
+  RunSendToGptFlowArgs,
   SendToGptFlowMemoryArgs,
   SendToGptFlowProtocolArgs,
   SendToGptFlowRequestArgs,
@@ -138,5 +139,21 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
       responseMode: args.responseMode,
       recordIngestedDocument: args.recordIngestedDocument,
     },
+  };
+}
+
+export function mergeSendToGptFlowArgs(args: {
+  protocolArgs: SendToGptFlowProtocolArgs;
+  searchArgs: SendToGptFlowSearchArgs;
+  memoryArgs: SendToGptFlowMemoryArgs;
+  uiArgs: SendToGptFlowUiArgs;
+  requestArgs: SendToGptFlowRequestArgs;
+}): RunSendToGptFlowArgs {
+  return {
+    ...args.protocolArgs,
+    ...args.searchArgs,
+    ...args.memoryArgs,
+    ...args.uiArgs,
+    ...args.requestArgs,
   };
 }

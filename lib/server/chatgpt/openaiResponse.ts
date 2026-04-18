@@ -3,46 +3,23 @@ export type UsageSummary = {
   outputTokens: number;
   totalTokens: number;
 };
+import {
+  buildJsonObjectText,
+  buildResponseText,
+  buildUsageSummary,
+} from "@/lib/server/chatgpt/openaiResponseBuilders";
 
-export function extractUsage(data: any): UsageSummary {
-  const inputTokens =
-    typeof data?.usage?.input_tokens === "number" ? data.usage.input_tokens : 0;
-
-  const outputTokens =
-    typeof data?.usage?.output_tokens === "number"
-      ? data.usage.output_tokens
-      : 0;
-
-  const totalTokens =
-    typeof data?.usage?.total_tokens === "number"
-      ? data.usage.total_tokens
-      : inputTokens + outputTokens;
-
-  return {
-    inputTokens,
-    outputTokens,
-    totalTokens,
-  };
+export function extractUsage(data: Parameters<typeof buildUsageSummary>[0]): UsageSummary {
+  return buildUsageSummary(data);
 }
 
 export function extractJsonObjectText(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fencedMatch?.[1]?.trim()) {
-    return fencedMatch[1].trim();
-  }
-
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    return trimmed.slice(start, end + 1);
-  }
-
-  return trimmed;
+  return buildJsonObjectText(value);
 }
 
-export function extractResponseText(data: any, fallback = "GPT reply not found.") {
-  return data.output?.[0]?.content?.[0]?.text || data.output_text || fallback;
+export function extractResponseText(
+  data: Parameters<typeof buildResponseText>[0],
+  fallback = "GPT reply not found."
+) {
+  return buildResponseText(data, fallback);
 }

@@ -1,4 +1,5 @@
 import type React from "react";
+import type { MemorySettings } from "@/lib/memory";
 import type { KinMemoryState, Message } from "@/types/chat";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { normalizeUsage } from "@/lib/tokenStats";
@@ -17,7 +18,7 @@ export type GptMemoryRuntime = {
 };
 
 export type GptMemorySettingsControls = {
-  updateMemorySettings: (next: any) => void;
+  updateMemorySettings: (next: MemorySettings) => void;
   resetMemorySettings: () => void;
 };
 

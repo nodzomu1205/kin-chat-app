@@ -1,11 +1,13 @@
 import {
-  buildProtocolSourceLines,
-  buildSearchResponseBlock,
-} from "@/lib/app/sendToGptProtocolBuilders";
+  buildProtocolSearchMessageParts,
+  buildProtocolSearchRecordArgs,
+  buildSourceItems,
+} from "@/lib/app/sendToGptFlowResponseBuilders";
 import { buildUserResponseBlock } from "@/lib/taskRuntimeProtocol";
 import type {
   ChatApiSearchLike,
   PendingRequestLike,
+  ProtocolSearchResponseArtifactsArgs,
   ProtocolTaskEventLike,
   SearchContextRecorder,
   SearchResponseEventLike,
@@ -16,20 +18,7 @@ import type { SourceItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
 export function toSourceItems(sources?: SearchSource[]): SourceItem[] {
-  return Array.isArray(sources)
-    ? sources.map((source) => ({
-        title: source.title || "",
-        link: source.link || "",
-        snippet: source.snippet,
-        sourceType: source.sourceType,
-        publishedAt: source.publishedAt,
-        thumbnailUrl: source.thumbnailUrl,
-        channelName: source.channelName,
-        duration: source.duration,
-        viewCount: source.viewCount,
-        videoId: source.videoId,
-      }))
-    : [];
+  return buildSourceItems(sources);
 }
 
 export function wrapProtocolAssistantText(params: {
@@ -66,101 +55,25 @@ export function wrapProtocolAssistantText(params: {
   return nextAssistantText;
 }
 
-export function buildProtocolSearchResponseArtifacts(params: {
-  data: ChatApiSearchLike;
-  searchRequestEvent: SearchResponseEventLike;
-  currentTaskId?: string | null;
-  wrappedSearchResponse: WrappedSearchResponse;
-  effectiveSearchMode: SearchMode;
-  effectiveSearchEngines: SearchEngine[];
-  effectiveSearchLocation: string;
-  searchSeriesId?: string;
-  cleanQuery?: string;
-  recordSearchContext: SearchContextRecorder;
-}) {
+export function buildProtocolSearchResponseArtifacts(
+  params: ProtocolSearchResponseArtifactsArgs
+) {
   const requestedMode = params.searchRequestEvent.outputMode || "summary";
   const normalizedSources = toSourceItems(params.data.sources);
   const recordedSearch = params.data.searchUsed
-    ? params.recordSearchContext({
-        mode: params.effectiveSearchMode,
-        engines: params.effectiveSearchEngines,
-        location: params.effectiveSearchLocation || undefined,
-        seriesId:
-          typeof params.data.searchSeriesId === "string"
-            ? params.data.searchSeriesId
-            : params.searchSeriesId,
-        continuationToken:
-          typeof params.data.searchContinuationToken === "string"
-            ? params.data.searchContinuationToken
-            : undefined,
-        taskId: params.searchRequestEvent.taskId || params.currentTaskId || undefined,
-        actionId: params.searchRequestEvent.actionId || undefined,
-        query:
-          params.cleanQuery ||
-          params.searchRequestEvent.query ||
-          (typeof params.data.searchQuery === "string" ? params.data.searchQuery : "") ||
-          "",
-        goal: params.searchRequestEvent.body || params.searchRequestEvent.summary || "",
-        outputMode:
-          requestedMode === "raw" || requestedMode === "summary_plus_raw"
-            ? "raw_and_summary"
-            : "summary",
-        summaryText:
-          typeof params.data.reply === "string" && params.data.reply.trim()
-            ? params.data.reply.trim()
-            : "",
-        rawText:
-          typeof params.data.searchEvidence === "string" ? params.data.searchEvidence : "",
-        metadata:
-          typeof params.data.searchSeriesId === "string" ||
-          typeof params.data.searchContinuationToken === "string"
-            ? {
-                seriesId:
-                  typeof params.data.searchSeriesId === "string"
-                    ? params.data.searchSeriesId
-                    : params.searchSeriesId,
-                subsequentRequestToken:
-                  typeof params.data.searchContinuationToken === "string"
-                    ? params.data.searchContinuationToken
-                    : undefined,
-              }
-            : undefined,
-        sources: normalizedSources,
-      })
+    ? params.recordSearchContext(
+        buildProtocolSearchRecordArgs({
+          ...params,
+          normalizedSources,
+          requestedMode,
+        })
+      )
     : null;
-
-  const summaryText =
-    params.wrappedSearchResponse?.summary ||
-    (typeof params.data.reply === "string" && params.data.reply.trim()
-      ? params.data.reply.trim()
-      : "Search completed, but no summary text was returned.");
-  const rawExcerpt =
-    params.wrappedSearchResponse?.rawExcerpt ||
-    (typeof params.data.searchEvidence === "string" && params.data.searchEvidence.trim()
-      ? params.data.searchEvidence.trim().slice(0, requestedMode === "raw" ? 2400 : 1200)
-      : "");
-  const sourceLines = buildProtocolSourceLines(
+  const { assistantText } = buildProtocolSearchMessageParts({
+    params,
     normalizedSources,
-    params.searchRequestEvent.searchEngine || params.effectiveSearchEngines[0] || ""
-  );
-  const assistantText = buildSearchResponseBlock({
-    taskId: params.searchRequestEvent.taskId || params.currentTaskId || "",
-    actionId: params.searchRequestEvent.actionId || "",
-    query:
-      params.wrappedSearchResponse?.query ||
-      params.searchRequestEvent.query ||
-      (typeof params.data.searchQuery === "string" ? params.data.searchQuery : "") ||
-      "",
-    engine:
-      params.searchRequestEvent.searchEngine || params.effectiveSearchEngines[0] || "",
-    location:
-      params.searchRequestEvent.searchLocation || params.effectiveSearchLocation || "",
     requestedMode,
     recordedSearch,
-    summaryText,
-    rawExcerpt,
-    wrappedOutputMode: params.wrappedSearchResponse?.outputMode,
-    sourceLines,
   });
 
   return {

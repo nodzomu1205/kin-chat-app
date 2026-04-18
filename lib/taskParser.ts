@@ -1,4 +1,12 @@
-import { TaskResult } from "@/types/task";
+import type { TaskResult, TaskResultStatus, TaskType } from "@/types/task";
+
+function isTaskType(value: string): value is TaskType {
+  return value === "PREP_TASK" || value === "DEEPEN_TASK" || value === "FORMAT_TASK";
+}
+
+function isTaskResultStatus(value: string): value is TaskResultStatus {
+  return value === "OK" || value === "PARTIAL" || value === "NEEDS_MORE";
+}
 
 export function parseTaskResult(text: string): TaskResult | null {
   try {
@@ -14,6 +22,8 @@ export function parseTaskResult(text: string): TaskResult | null {
         .filter(Boolean);
 
     const detailBlocksRaw = getSection("DETAIL_BLOCKS");
+    const typeSection = getSection("TYPE");
+    const statusSection = getSection("STATUS");
 
     const detailBlocks =
       detailBlocksRaw
@@ -29,8 +39,8 @@ export function parseTaskResult(text: string): TaskResult | null {
 
     return {
       taskId: getSection("TASK_ID"),
-      type: getSection("TYPE") as any,
-      status: getSection("STATUS") as any,
+      type: isTaskType(typeSection) ? typeSection : "FORMAT_TASK",
+      status: isTaskResultStatus(statusSection) ? statusSection : "PARTIAL",
       summary: getSection("SUMMARY"),
       keyPoints: list(getSection("KEY_POINTS")),
       detailBlocks,

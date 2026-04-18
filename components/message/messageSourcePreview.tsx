@@ -325,6 +325,9 @@ function NewsPreviewBanner({
   return (
     <div style={buildNewsBannerStyle()}>
       {preview?.image && !failedImage ? (
+        // Third-party preview images are dynamic across arbitrary hosts.
+        // We intentionally keep a plain img here instead of broadening Next image allowlists.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={preview.image}
           alt=""
@@ -446,6 +449,8 @@ function YoutubePreviewBanner({ source }: { source: SourceItem }) {
           }}
         />
       ) : thumbnail ? (
+        // YouTube thumbnails are external runtime URLs in a decorative banner.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={thumbnail}
           alt=""
@@ -508,6 +513,9 @@ function GenericPreviewBanner({
   return (
     <div style={buildDefaultBannerStyle()}>
       {preview?.image && !failedImage ? (
+        // Third-party preview images are dynamic across arbitrary hosts.
+        // We intentionally keep a plain img here instead of broadening Next image allowlists.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={preview.image}
           alt=""

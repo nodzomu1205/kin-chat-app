@@ -1,16 +1,17 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { generateId } from "@/lib/uuid";
-import { buildYoutubeTranscriptRetryBlock } from "@/lib/taskRuntimeProtocol";
 import {
   appendRecentAssistantMessage,
   resolveMemoryUpdateContext,
 } from "@/lib/app/sendToGptFlowState";
+import type { YouTubeTranscriptApiResponse } from "@/lib/app/sendToGptTranscriptHelpers";
 import {
-  buildYoutubeTranscriptFailureText,
-  buildYoutubeTranscriptSuccessArtifacts,
-  extractYouTubeVideoIdFromUrl,
-  type YouTubeTranscriptApiResponse,
-} from "@/lib/app/sendToGptTranscriptHelpers";
+  buildYoutubeTranscriptArtifacts,
+  buildYoutubeTranscriptAssistantMessage,
+  buildYoutubeTranscriptDocumentRecord,
+  buildYoutubeTranscriptFailureState,
+  buildYoutubeTranscriptRequestBody,
+  resolveYoutubeTranscriptFlowContext,
+} from "@/lib/app/sendToGptYoutubeFlowBuilders";
 import type { Memory } from "@/lib/memory";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { Message } from "@/types/chat";
@@ -76,16 +77,20 @@ export async function handleYoutubeTranscriptFlow(args: {
     if (handled) return true;
   }
 
-  const videoId = extractYouTubeVideoIdFromUrl(transcriptUrl);
-  const outputMode =
-    args.youtubeTranscriptRequestEvent.outputMode || "summary_plus_raw";
+  const flowContext = resolveYoutubeTranscriptFlowContext({
+    transcriptUrl,
+    outputMode: args.youtubeTranscriptRequestEvent.outputMode,
+    taskId: args.youtubeTranscriptRequestEvent.taskId,
+    currentTaskId: args.currentTaskId,
+    actionId: args.youtubeTranscriptRequestEvent.actionId,
+  });
 
   args.setGptMessages((prev) => [...prev, args.userMsg]);
   args.setGptInput("");
   args.setGptLoading(true);
 
   try {
-    if (!videoId) {
+    if (!flowContext.videoId) {
       throw new Error("Invalid YouTube URL");
     }
 
@@ -94,55 +99,45 @@ export async function handleYoutubeTranscriptFlow(args: {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ videoId }),
+      body: JSON.stringify(
+        buildYoutubeTranscriptRequestBody(flowContext.videoId)
+      ),
     });
     const data = (await response.json()) as YouTubeTranscriptApiResponse;
 
-    if (!response.ok || !data.text || !videoId) {
+    if (!response.ok || !data.text) {
       throw new Error(data.error || "YouTube transcript fetch failed");
     }
 
     const now = new Date().toISOString();
-    const transcriptArtifacts = buildYoutubeTranscriptSuccessArtifacts({
+    const transcriptArtifacts = buildYoutubeTranscriptArtifacts({
       data,
-      videoId,
+      videoId: flowContext.videoId,
       transcriptUrl,
-      outputMode,
-      taskId: args.youtubeTranscriptRequestEvent.taskId || args.currentTaskId || "",
-      actionId: args.youtubeTranscriptRequestEvent.actionId || "",
+      outputMode: flowContext.outputMode,
+      taskId: flowContext.resolvedTaskId,
+      actionId: flowContext.resolvedActionId,
       storedDocumentId: "",
     });
-    const storedDocument = args.recordIngestedDocument({
-      title: transcriptArtifacts.title,
-      filename: transcriptArtifacts.filename,
-      text: transcriptArtifacts.cleanTranscript,
-      summary: transcriptArtifacts.summary,
-      taskId: args.youtubeTranscriptRequestEvent.taskId || args.currentTaskId || undefined,
-      charCount: transcriptArtifacts.cleanTranscript.length,
-      createdAt: now,
-      updatedAt: now,
-    });
-    const finalizedArtifacts = buildYoutubeTranscriptSuccessArtifacts({
+    const storedDocument = args.recordIngestedDocument(
+      buildYoutubeTranscriptDocumentRecord({
+        artifacts: transcriptArtifacts,
+        taskId: flowContext.resolvedTaskId,
+        now,
+      })
+    );
+    const finalizedArtifacts = buildYoutubeTranscriptArtifacts({
       data,
-      videoId,
+      videoId: flowContext.videoId,
       transcriptUrl,
-      outputMode,
-      taskId: args.youtubeTranscriptRequestEvent.taskId || args.currentTaskId || "",
-      actionId: args.youtubeTranscriptRequestEvent.actionId || "",
+      outputMode: flowContext.outputMode,
+      taskId: flowContext.resolvedTaskId,
+      actionId: flowContext.resolvedActionId,
       storedDocumentId: storedDocument.id,
     });
     const assistantText = finalizedArtifacts.assistantText;
     const kinBlocks = finalizedArtifacts.kinBlocks;
-
-    const assistantMsg: Message = {
-      id: generateId(),
-      role: "gpt",
-      text: assistantText,
-      meta: {
-        kind: "task_info",
-        sourceType: "file_ingest",
-      },
-    };
+    const assistantMsg = buildYoutubeTranscriptAssistantMessage(assistantText);
 
     args.ingestProtocolMessage(assistantText, "gpt_to_kin");
     args.setKinInput(kinBlocks[0] || "");
@@ -168,33 +163,17 @@ export async function handleYoutubeTranscriptFlow(args: {
     args.applySummaryUsage(memoryResult.summaryUsage);
   } catch (error) {
     console.error(error);
-    const failureText = buildYoutubeTranscriptFailureText({
-      taskId: args.youtubeTranscriptRequestEvent.taskId || args.currentTaskId || "",
-      actionId: args.youtubeTranscriptRequestEvent.actionId || "",
+    const failureState = buildYoutubeTranscriptFailureState({
+      taskId: flowContext.resolvedTaskId,
+      actionId: flowContext.resolvedActionId,
       transcriptUrl,
-      outputMode,
+      outputMode: flowContext.outputMode,
     });
-    const retryBlock = buildYoutubeTranscriptRetryBlock({
-      taskId: args.youtubeTranscriptRequestEvent.taskId || args.currentTaskId || "",
-      actionId: args.youtubeTranscriptRequestEvent.actionId || "",
-      url: transcriptUrl,
-    });
-    args.setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: failureText,
-        meta: {
-          kind: "task_info",
-          sourceType: "manual",
-        },
-      },
-    ]);
-    args.ingestProtocolMessage(failureText, "gpt_to_kin");
+    args.setGptMessages((prev) => [...prev, failureState.message]);
+    args.ingestProtocolMessage(failureState.failureText, "gpt_to_kin");
     args.setPendingKinInjectionBlocks([]);
     args.setPendingKinInjectionIndex(0);
-    args.setKinInput(retryBlock);
+    args.setKinInput(failureState.retryBlock);
     args.setActiveTabToKin?.();
   } finally {
     args.setGptLoading(false);

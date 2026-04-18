@@ -130,7 +130,7 @@ export function applyTaskProtocolEvent(
     .filter(Boolean)
     .join("\n");
 
-  let next: TaskRuntimeState = {
+  const next: TaskRuntimeState = {
     ...state,
     currentTaskId: state.currentTaskId ?? params.resolvedTaskId,
     latestSummary: event.summary || event.body || state.latestSummary,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_GOOGLE_DRIVE_FOLDER_LINK,
   resolveGoogleDriveFolderId,
@@ -17,15 +17,15 @@ export function useGoogleDriveLibrary() {
   const [googleDriveFolderLink, setGoogleDriveFolderLink] = useState(
     loadInitialGoogleDriveFolderLink
   );
+  const updateGoogleDriveFolderLink = useCallback((value: string) => {
+    setGoogleDriveFolderLink(sanitizeGoogleDriveFolderLink(value));
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const normalized = sanitizeGoogleDriveFolderLink(googleDriveFolderLink);
     if (normalized) {
       window.localStorage.setItem(GOOGLE_DRIVE_FOLDER_LINK_KEY, normalized);
-      if (normalized !== googleDriveFolderLink) {
-        setGoogleDriveFolderLink(normalized);
-      }
       return;
     }
     window.localStorage.removeItem(GOOGLE_DRIVE_FOLDER_LINK_KEY);
@@ -46,7 +46,7 @@ export function useGoogleDriveLibrary() {
 
   return {
     googleDriveFolderLink,
-    setGoogleDriveFolderLink,
+    setGoogleDriveFolderLink: updateGoogleDriveFolderLink,
     googleDriveFolderId,
     googleDriveIntegrationMode: "manual_link" as const,
     openGoogleDriveFolder,

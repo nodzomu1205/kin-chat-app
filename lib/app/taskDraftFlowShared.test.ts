@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   appendTaskFlowAssistantResult,
   appendTaskFlowRecentMessage,
+  buildTaskFlowRecentContext,
+  completeTaskFlowSuccess,
   applyTaskFlowSummaryUsage,
   startTaskFlowRequest,
 } from "@/lib/app/taskDraftFlowShared";
@@ -93,6 +95,83 @@ describe("taskDraftFlowShared", () => {
       inputTokens: 10,
       outputTokens: 3,
       totalTokens: 13,
+    });
+  });
+
+  it("builds request recent messages from the current GPT state and optional user input", () => {
+    const result = buildTaskFlowRecentContext({
+      gptStateRef: {
+        current: {
+          recentMessages: [{ id: "1", role: "user", text: "a" }],
+          memory: {
+            facts: [],
+            preferences: [],
+            lists: {},
+            context: {},
+          },
+        },
+      } as never,
+      chatRecentLimit: 3,
+      userMessage: { id: "2", role: "gpt", text: "b" },
+    });
+
+    expect(result.baseRecentMessages).toEqual([
+      { id: "1", role: "user", text: "a" },
+    ]);
+    expect(result.requestRecentMessages).toEqual([
+      { id: "1", role: "user", text: "a" },
+      { id: "2", role: "gpt", text: "b" },
+    ]);
+  });
+
+  it("completes a task flow success by appending the assistant result and replaying summary usage", async () => {
+    const setGptMessages = vi.fn();
+    const setGptState = vi.fn();
+    const persistCurrentGptState = vi.fn();
+    const applySummaryUsage = vi.fn();
+    const handleGptMemory = vi.fn(async () => ({
+      summaryUsage: {
+        inputTokens: 5,
+        outputTokens: 2,
+        totalTokens: 7,
+      },
+    }));
+
+    const updatedRecentMessages = await completeTaskFlowSuccess({
+      setGptMessages,
+      assistantMessage: { id: "g1", role: "gpt", text: "prepared" },
+      setGptState,
+      persistCurrentGptState,
+      gptStateRef: {
+        current: {
+          recentMessages: [{ id: "u1", role: "user", text: "prep" }],
+          memory: {
+            facts: [],
+            preferences: [],
+            lists: {},
+            context: {},
+          },
+        },
+      } as never,
+      requestRecentMessages: [{ id: "u1", role: "user", text: "prep" }],
+      chatRecentLimit: 4,
+      lastUserIntent: "Task prep",
+      applySummaryUsage,
+      handleGptMemory,
+      currentTaskTitleOverride: "Prepared task",
+    });
+
+    expect(updatedRecentMessages).toEqual([
+      { id: "u1", role: "user", text: "prep" },
+      { id: "g1", role: "gpt", text: "prepared" },
+    ]);
+    expect(setGptMessages).toHaveBeenCalledTimes(1);
+    expect(persistCurrentGptState).toHaveBeenCalledTimes(1);
+    expect(handleGptMemory).toHaveBeenCalledTimes(1);
+    expect(applySummaryUsage).toHaveBeenCalledWith({
+      inputTokens: 5,
+      outputTokens: 2,
+      totalTokens: 7,
     });
   });
 });

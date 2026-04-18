@@ -62,6 +62,165 @@ function buildChatPageWorkspaceGptReferences(
   };
 }
 
+function buildChatPageWorkspaceKinState(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageKinPanelCompositionArgs["kinState"] {
+  return {
+    kinIdInput: args.kin.kinIdInput,
+    setKinIdInput: args.kin.setKinIdInput,
+    kinNameInput: args.kin.kinNameInput,
+    setKinNameInput: args.kin.setKinNameInput,
+    currentKin: args.app.currentKin,
+    kinMessages: args.ui.kinMessages,
+    kinInput: args.ui.kinInput,
+    setKinInput: args.ui.setKinInput,
+    renameKin: args.kin.renameKin,
+    kinBottomRef: args.ui.kinBottomRef,
+    loading: args.ui.kinLoading,
+    pendingInjectionBlocks: args.ui.pendingKinInjectionBlocks,
+    pendingInjectionIndex: args.ui.pendingKinInjectionIndex,
+  };
+}
+
+function buildChatPageWorkspaceGptState(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageGptPanelCompositionArgs["gptState"] {
+  return {
+    gptState: args.gpt.gptState,
+    gptMessages: args.ui.gptMessages,
+    gptInput: args.ui.gptInput,
+    setGptInput: args.ui.setGptInput,
+    gptBottomRef: args.ui.gptBottomRef,
+    loading: args.ui.gptLoading,
+    ingestLoading: args.ui.ingestLoading,
+  };
+}
+
+function buildChatPageWorkspaceGptTask(args: {
+  workspace: ChatPageWorkspaceViewArgs;
+  onSaveTaskSnapshot: () => void;
+}): ChatPageGptPanelCompositionArgs["task"] {
+  return {
+    currentTaskDraft: args.workspace.task.currentTaskDraft,
+    taskDraftCount: args.workspace.task.taskDraftCount,
+    activeTaskDraftIndex: args.workspace.task.activeTaskDraftIndex,
+    resetCurrentTaskDraft: args.workspace.task.resetCurrentTaskDraft,
+    updateTaskDraftFields: args.workspace.task.updateTaskDraftFields,
+    pendingRequests: args.workspace.task.taskProtocolView.pendingRequests,
+    buildTaskRequestAnswerDraft: args.workspace.task.buildTaskRequestAnswerDraft,
+    onSaveTaskSnapshot: args.onSaveTaskSnapshot,
+    onSelectPreviousTaskDraft: args.workspace.task.onSelectPreviousTaskDraft,
+    onSelectNextTaskDraft: args.workspace.task.onSelectNextTaskDraft,
+  };
+}
+
+function buildChatPageWorkspaceGptSettings(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageGptPanelCompositionArgs["settings"] {
+  return {
+    memorySettings: args.memory.memorySettings,
+    defaultMemorySettings: args.gpt.defaultMemorySettings,
+    tokenStats: args.memory.tokenStats,
+    responseMode: args.gpt.responseMode,
+    uploadKind: args.gpt.uploadKind,
+    ingestMode: args.gpt.ingestMode,
+    imageDetail: args.gpt.imageDetail,
+    postIngestAction: args.gpt.postIngestAction,
+    fileReadPolicy: args.gpt.fileReadPolicy,
+    driveImportAutoSummary: args.gpt.driveImportAutoSummary,
+    compactCharLimit: args.gpt.compactCharLimit,
+    simpleImageCharLimit: args.gpt.simpleImageCharLimit,
+    ingestLoading: args.ui.ingestLoading,
+    canInjectFile: !args.ui.gptLoading && !args.ui.ingestLoading,
+    searchMode: args.search.searchMode,
+    searchEngines: args.search.searchEngines,
+    searchLocation: args.search.searchLocation,
+    sourceDisplayCount: args.search.sourceDisplayCount,
+    autoLibraryReferenceEnabled: args.references.autoLibraryReferenceEnabled,
+    libraryReferenceMode: args.references.libraryReferenceMode,
+    libraryIndexResponseCount: args.references.libraryIndexResponseCount,
+    libraryReferenceCount: args.references.libraryReferenceCount,
+    libraryStorageMB: args.references.libraryStorageMB,
+    libraryReferenceEstimatedTokens:
+      args.references.libraryReferenceEstimatedTokens,
+    autoSendKinSysInput: args.bridge.autoBridgeSettings.autoSendKinSysInput,
+    autoCopyKinSysResponseToGpt:
+      args.bridge.autoBridgeSettings.autoCopyKinSysResponseToGpt,
+    autoSendGptSysInput: args.bridge.autoBridgeSettings.autoSendGptSysInput,
+    autoCopyGptSysResponseToKin:
+      args.bridge.autoBridgeSettings.autoCopyGptSysResponseToKin,
+    autoCopyFileIngestSysInfoToKin:
+      args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+    googleDriveFolderLink: args.references.googleDriveFolderLink,
+    googleDriveFolderId: args.references.googleDriveFolderId,
+    googleDriveIntegrationMode: args.references.googleDriveIntegrationMode,
+    onChangeResponseMode: args.gpt.onChangeResponseMode,
+    onChangeUploadKind: args.gpt.onChangeUploadKind,
+    onChangeIngestMode: args.gpt.onChangeIngestMode,
+    onChangeImageDetail: args.gpt.onChangeImageDetail,
+    onChangeCompactCharLimit: args.gpt.onChangeCompactCharLimit,
+    onChangeSimpleImageCharLimit: args.gpt.onChangeSimpleImageCharLimit,
+    onChangePostIngestAction: args.gpt.onChangePostIngestAction,
+    onChangeFileReadPolicy: args.gpt.onChangeFileReadPolicy,
+    onChangeDriveImportAutoSummary: args.gpt.onChangeDriveImportAutoSummary,
+    onChangeSearchMode: args.search.onChangeSearchMode,
+    onChangeSearchEngines: args.search.onChangeSearchEngines,
+    onChangeSearchLocation: args.search.onChangeSearchLocation,
+    onChangeSourceDisplayCount: args.search.onChangeSourceDisplayCount,
+    onChangeAutoLibraryReferenceEnabled:
+      args.references.onChangeAutoLibraryReferenceEnabled,
+    onChangeLibraryReferenceMode:
+      args.references.onChangeLibraryReferenceMode,
+    onChangeLibraryIndexResponseCount:
+      args.references.onChangeLibraryIndexResponseCount,
+    onChangeLibraryReferenceCount:
+      args.references.onChangeLibraryReferenceCount,
+    onChangeAutoSendKinSysInput: args.bridge.onChangeAutoSendKinSysInput,
+    onChangeAutoCopyKinSysResponseToGpt:
+      args.bridge.onChangeAutoCopyKinSysResponseToGpt,
+    onChangeAutoSendGptSysInput: args.bridge.onChangeAutoSendGptSysInput,
+    onChangeAutoCopyGptSysResponseToKin:
+      args.bridge.onChangeAutoCopyGptSysResponseToKin,
+    onChangeAutoCopyFileIngestSysInfoToKin:
+      args.bridge.onChangeAutoCopyFileIngestSysInfoToKin,
+    onChangeGoogleDriveFolderLink:
+      args.references.onChangeGoogleDriveFolderLink,
+    onOpenGoogleDriveFolder: args.references.onOpenGoogleDriveFolder,
+    onImportGoogleDriveFile: args.references.onImportGoogleDriveFile,
+    onIndexGoogleDriveFolder: args.references.onIndexGoogleDriveFolder,
+    onImportGoogleDriveFolder: args.references.onImportGoogleDriveFolder,
+    onChangeMemoryInterpreterSettings:
+      args.memory.onChangeMemoryInterpreterSettings,
+  };
+}
+
+function buildChatPageWorkspaceProtocolState(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageGptPanelCompositionArgs["protocolState"] {
+  return {
+    protocolPrompt: args.protocol.protocolPrompt,
+    protocolRulebook: args.protocol.protocolRulebook,
+    pendingIntentCandidates: args.protocol.pendingIntentCandidates,
+    approvedIntentPhrases: args.protocol.approvedIntentPhrases,
+    onChangeProtocolPrompt: args.protocol.onChangeProtocolPrompt,
+    onChangeProtocolRulebook: args.protocol.onChangeProtocolRulebook,
+  };
+}
+
+function buildChatPageWorkspaceMemoryState(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageGptPanelCompositionArgs["memoryState"] {
+  return {
+    memoryInterpreterSettings: args.memory.memoryInterpreterSettings,
+    pendingMemoryRuleCandidates: args.memory.pendingMemoryRuleCandidates,
+    approvedMemoryRules: args.memory.approvedMemoryRules,
+    onApproveMemoryRuleCandidate: args.memory.onApproveMemoryRuleCandidate,
+    onRejectMemoryRuleCandidate: args.memory.onRejectMemoryRuleCandidate,
+    onUpdateMemoryRuleCandidate: args.memory.onUpdateMemoryRuleCandidate,
+    onDeleteApprovedMemoryRule: args.memory.onDeleteApprovedMemoryRule,
+  };
+}
+
 export function buildChatPageWorkspaceKinPanelArgs(
   args: ChatPageWorkspaceViewArgs,
   controller: ChatPageControllerGroups
@@ -69,21 +228,7 @@ export function buildChatPageWorkspaceKinPanelArgs(
   return {
     ...buildChatPagePanelBaseArgs(args, controller),
     onSwitchToGptPanel: args.app.focusGptPanel,
-    kinState: {
-      kinIdInput: args.kin.kinIdInput,
-      setKinIdInput: args.kin.setKinIdInput,
-      kinNameInput: args.kin.kinNameInput,
-      setKinNameInput: args.kin.setKinNameInput,
-      currentKin: args.app.currentKin,
-      kinMessages: args.ui.kinMessages,
-      kinInput: args.ui.kinInput,
-      setKinInput: args.ui.setKinInput,
-      renameKin: args.kin.renameKin,
-      kinBottomRef: args.ui.kinBottomRef,
-      loading: args.ui.kinLoading,
-      pendingInjectionBlocks: args.ui.pendingKinInjectionBlocks,
-      pendingInjectionIndex: args.ui.pendingKinInjectionIndex,
-    },
+    kinState: buildChatPageWorkspaceKinState(args),
   };
 }
 
@@ -98,121 +243,15 @@ export function buildChatPageWorkspaceGptPanelArgs(
       blocks: args.ui.pendingKinInjectionBlocks,
       index: args.ui.pendingKinInjectionIndex,
     },
-    gptState: {
-      gptState: args.gpt.gptState,
-      gptMessages: args.ui.gptMessages,
-      gptInput: args.ui.gptInput,
-      setGptInput: args.ui.setGptInput,
-      gptBottomRef: args.ui.gptBottomRef,
-      loading: args.ui.gptLoading,
-      ingestLoading: args.ui.ingestLoading,
-    },
-    task: {
-      currentTaskDraft: args.task.currentTaskDraft,
-      taskDraftCount: args.task.taskDraftCount,
-      activeTaskDraftIndex: args.task.activeTaskDraftIndex,
-      resetCurrentTaskDraft: args.task.resetCurrentTaskDraft,
-      updateTaskDraftFields: args.task.updateTaskDraftFields,
-      pendingRequests: args.task.taskProtocolView.pendingRequests,
-      buildTaskRequestAnswerDraft: args.task.buildTaskRequestAnswerDraft,
+    gptState: buildChatPageWorkspaceGptState(args),
+    task: buildChatPageWorkspaceGptTask({
+      workspace: args,
       onSaveTaskSnapshot: options.onSaveTaskSnapshot,
-      onSelectPreviousTaskDraft: args.task.onSelectPreviousTaskDraft,
-      onSelectNextTaskDraft: args.task.onSelectNextTaskDraft,
-    },
+    }),
     references: buildChatPageWorkspaceGptReferences(args),
-    settings: {
-      memorySettings: args.memory.memorySettings,
-      defaultMemorySettings: args.gpt.defaultMemorySettings,
-      tokenStats: args.memory.tokenStats,
-      responseMode: args.gpt.responseMode,
-      uploadKind: args.gpt.uploadKind,
-      ingestMode: args.gpt.ingestMode,
-      imageDetail: args.gpt.imageDetail,
-      postIngestAction: args.gpt.postIngestAction,
-      fileReadPolicy: args.gpt.fileReadPolicy,
-      driveImportAutoSummary: args.gpt.driveImportAutoSummary,
-      compactCharLimit: args.gpt.compactCharLimit,
-      simpleImageCharLimit: args.gpt.simpleImageCharLimit,
-      ingestLoading: args.ui.ingestLoading,
-      canInjectFile: !args.ui.gptLoading && !args.ui.ingestLoading,
-      searchMode: args.search.searchMode,
-      searchEngines: args.search.searchEngines,
-      searchLocation: args.search.searchLocation,
-      sourceDisplayCount: args.search.sourceDisplayCount,
-      autoLibraryReferenceEnabled: args.references.autoLibraryReferenceEnabled,
-      libraryReferenceMode: args.references.libraryReferenceMode,
-      libraryIndexResponseCount: args.references.libraryIndexResponseCount,
-      libraryReferenceCount: args.references.libraryReferenceCount,
-      libraryStorageMB: args.references.libraryStorageMB,
-      libraryReferenceEstimatedTokens:
-        args.references.libraryReferenceEstimatedTokens,
-      autoSendKinSysInput: args.bridge.autoBridgeSettings.autoSendKinSysInput,
-      autoCopyKinSysResponseToGpt:
-        args.bridge.autoBridgeSettings.autoCopyKinSysResponseToGpt,
-      autoSendGptSysInput: args.bridge.autoBridgeSettings.autoSendGptSysInput,
-      autoCopyGptSysResponseToKin:
-        args.bridge.autoBridgeSettings.autoCopyGptSysResponseToKin,
-      autoCopyFileIngestSysInfoToKin:
-        args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
-      googleDriveFolderLink: args.references.googleDriveFolderLink,
-      googleDriveFolderId: args.references.googleDriveFolderId,
-      googleDriveIntegrationMode: args.references.googleDriveIntegrationMode,
-      onChangeResponseMode: args.gpt.onChangeResponseMode,
-      onChangeUploadKind: args.gpt.onChangeUploadKind,
-      onChangeIngestMode: args.gpt.onChangeIngestMode,
-      onChangeImageDetail: args.gpt.onChangeImageDetail,
-      onChangeCompactCharLimit: args.gpt.onChangeCompactCharLimit,
-      onChangeSimpleImageCharLimit: args.gpt.onChangeSimpleImageCharLimit,
-      onChangePostIngestAction: args.gpt.onChangePostIngestAction,
-      onChangeFileReadPolicy: args.gpt.onChangeFileReadPolicy,
-      onChangeDriveImportAutoSummary:
-        args.gpt.onChangeDriveImportAutoSummary,
-      onChangeSearchMode: args.search.onChangeSearchMode,
-      onChangeSearchEngines: args.search.onChangeSearchEngines,
-      onChangeSearchLocation: args.search.onChangeSearchLocation,
-      onChangeSourceDisplayCount: args.search.onChangeSourceDisplayCount,
-      onChangeAutoLibraryReferenceEnabled:
-        args.references.onChangeAutoLibraryReferenceEnabled,
-      onChangeLibraryReferenceMode:
-        args.references.onChangeLibraryReferenceMode,
-      onChangeLibraryIndexResponseCount:
-        args.references.onChangeLibraryIndexResponseCount,
-      onChangeLibraryReferenceCount:
-        args.references.onChangeLibraryReferenceCount,
-      onChangeAutoSendKinSysInput: args.bridge.onChangeAutoSendKinSysInput,
-      onChangeAutoCopyKinSysResponseToGpt:
-        args.bridge.onChangeAutoCopyKinSysResponseToGpt,
-      onChangeAutoSendGptSysInput: args.bridge.onChangeAutoSendGptSysInput,
-      onChangeAutoCopyGptSysResponseToKin:
-        args.bridge.onChangeAutoCopyGptSysResponseToKin,
-      onChangeAutoCopyFileIngestSysInfoToKin:
-        args.bridge.onChangeAutoCopyFileIngestSysInfoToKin,
-      onChangeGoogleDriveFolderLink:
-        args.references.onChangeGoogleDriveFolderLink,
-      onOpenGoogleDriveFolder: args.references.onOpenGoogleDriveFolder,
-      onImportGoogleDriveFile: args.references.onImportGoogleDriveFile,
-      onIndexGoogleDriveFolder: args.references.onIndexGoogleDriveFolder,
-      onImportGoogleDriveFolder: args.references.onImportGoogleDriveFolder,
-      onChangeMemoryInterpreterSettings:
-        args.memory.onChangeMemoryInterpreterSettings,
-    },
-    protocolState: {
-      protocolPrompt: args.protocol.protocolPrompt,
-      protocolRulebook: args.protocol.protocolRulebook,
-      pendingIntentCandidates: args.protocol.pendingIntentCandidates,
-      approvedIntentPhrases: args.protocol.approvedIntentPhrases,
-      onChangeProtocolPrompt: args.protocol.onChangeProtocolPrompt,
-      onChangeProtocolRulebook: args.protocol.onChangeProtocolRulebook,
-    },
-    memoryState: {
-      memoryInterpreterSettings: args.memory.memoryInterpreterSettings,
-      pendingMemoryRuleCandidates: args.memory.pendingMemoryRuleCandidates,
-      approvedMemoryRules: args.memory.approvedMemoryRules,
-      onApproveMemoryRuleCandidate: args.memory.onApproveMemoryRuleCandidate,
-      onRejectMemoryRuleCandidate: args.memory.onRejectMemoryRuleCandidate,
-      onUpdateMemoryRuleCandidate: args.memory.onUpdateMemoryRuleCandidate,
-      onDeleteApprovedMemoryRule: args.memory.onDeleteApprovedMemoryRule,
-    },
+    settings: buildChatPageWorkspaceGptSettings(args),
+    protocolState: buildChatPageWorkspaceProtocolState(args),
+    memoryState: buildChatPageWorkspaceMemoryState(args),
   };
 }
 

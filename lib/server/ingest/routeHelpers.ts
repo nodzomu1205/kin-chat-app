@@ -56,7 +56,24 @@ export function safeJsonParse<T>(text: string): T | null {
   }
 }
 
-export function extractIngestOutputText(data: any): string {
+type IngestUsageLike = {
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    total_tokens?: number;
+  };
+};
+
+type IngestOutputLike = {
+  output_text?: string;
+  output?: Array<{
+    content?: Array<{
+      text?: string;
+    }>;
+  }>;
+};
+
+export function extractIngestOutputText(data: IngestOutputLike): string {
   if (typeof data?.output_text === "string" && data.output_text.trim()) {
     return data.output_text;
   }
@@ -73,7 +90,7 @@ export function extractIngestOutputText(data: any): string {
   return parts.join("\n").trim();
 }
 
-export function extractIngestUsage(data: any) {
+export function extractIngestUsage(data: IngestUsageLike) {
   const inputTokens =
     typeof data?.usage?.input_tokens === "number" ? data.usage.input_tokens : 0;
   const outputTokens =

@@ -1,5 +1,3 @@
-import { generateId } from "@/lib/uuid";
-
 export function buildPrompt(input: string) {
   return `
 あなたは20代の若い女性です。

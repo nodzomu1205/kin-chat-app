@@ -1,11 +1,176 @@
 import type {
   ChatPageActionArgGroups,
+  ChatPageIdentityArgs,
+  ChatPageProtocolArgs,
+  ChatPageSearchArgs,
+  ChatPageServicesArgs,
+  ChatPageTaskArgs,
+  ChatPageUiStateArgs,
   UseFileIngestActionsArgs,
   UseGptMessageActionsArgs,
   UseKinTransferActionsArgs,
   UseTaskDraftActionsArgs,
   UseTaskProtocolActionsArgs,
 } from "@/hooks/chatPageActionTypes";
+import type { UseChatPageControllerArgs } from "@/hooks/useChatPageController";
+import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelCompositionTypes";
+
+export function buildChatPageControllerIdentityArgs(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageIdentityArgs {
+  return {
+    currentKin: args.app.currentKin,
+    kinList: args.app.kinList,
+    isMobile: args.app.isMobile,
+    setActivePanelTab: args.app.setActivePanelTab,
+    focusKinPanel: args.app.focusKinPanel,
+    focusGptPanel: args.app.focusGptPanel,
+    setKinConnectionState: args.app.setKinConnectionState,
+  };
+}
+
+export function buildChatPageControllerUiStateArgs(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageUiStateArgs {
+  return {
+    gptInput: args.ui.gptInput,
+    kinInput: args.ui.kinInput,
+    gptLoading: args.ui.gptLoading,
+    kinLoading: args.ui.kinLoading,
+    ingestLoading: args.ui.ingestLoading,
+    gptMessages: args.ui.gptMessages,
+    kinMessages: args.ui.kinMessages,
+    pendingKinInjectionBlocks: args.ui.pendingKinInjectionBlocks,
+    pendingKinInjectionIndex: args.ui.pendingKinInjectionIndex,
+    setKinInput: args.ui.setKinInput,
+    setGptInput: args.ui.setGptInput,
+    setKinMessages: args.ui.setKinMessages,
+    setGptMessages: args.ui.setGptMessages,
+    setKinLoading: args.ui.setKinLoading,
+    setGptLoading: args.ui.setGptLoading,
+    setIngestLoading: args.ui.setIngestLoading,
+    setPendingKinInjectionBlocks: args.ui.setPendingKinInjectionBlocks,
+    setPendingKinInjectionIndex: args.ui.setPendingKinInjectionIndex,
+  };
+}
+
+export function buildChatPageControllerTaskArgs(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageTaskArgs {
+  return {
+    currentTaskDraft: args.task.currentTaskDraft,
+    currentTaskIntentConstraints: args.task.taskProtocolView.currentTaskIntentConstraints,
+    setCurrentTaskDraft: args.task.setCurrentTaskDraft,
+    getTaskBaseText: args.task.getTaskBaseText,
+    getTaskLibraryItem: args.task.getTaskLibraryItem,
+    getResolvedTaskTitle: args.task.getResolvedTaskTitle,
+    resolveTaskTitleFromDraft: args.task.resolveTaskTitleFromDraft,
+    getTaskSlotLabel: args.task.getTaskSlotLabel,
+    syncTaskDraftFromProtocol: args.task.syncTaskDraftFromProtocol,
+    applyPrefixedTaskFieldsFromText: args.task.applyPrefixedTaskFieldsFromText,
+    getCurrentTaskCharConstraint: args.task.getCurrentTaskCharConstraint,
+    resetCurrentTaskDraft: args.task.resetCurrentTaskDraft,
+  };
+}
+
+export function buildChatPageControllerProtocolArgs(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageProtocolArgs {
+  return {
+    approvedIntentPhrases: args.protocol.approvedIntentPhrases,
+    rejectedIntentCandidateSignatures: args.protocol.rejectedIntentCandidateSignatures,
+    pendingIntentCandidates: args.protocol.pendingIntentCandidates,
+    protocolPrompt: args.protocol.protocolPrompt,
+    protocolRulebook: args.protocol.protocolRulebook,
+    chatBridgeSettings: args.protocol.chatBridgeSettings,
+    taskProtocol: args.task.taskProtocol,
+    setPendingIntentCandidates: args.protocol.setPendingIntentCandidates,
+    setApprovedIntentPhrases: args.protocol.setApprovedIntentPhrases,
+    setRejectedIntentCandidateSignatures:
+      args.protocol.setRejectedIntentCandidateSignatures,
+    setProtocolPrompt: args.protocol.setProtocolPrompt,
+    setProtocolRulebook: args.protocol.setProtocolRulebook,
+    promptDefaultKey: args.protocol.promptDefaultKey,
+    rulebookDefaultKey: args.protocol.rulebookDefaultKey,
+  };
+}
+
+export function buildChatPageControllerSearchArgs(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageSearchArgs {
+  return {
+    lastSearchContext: args.search.lastSearchContext,
+    searchMode: args.search.searchMode,
+    searchEngines: args.search.searchEngines,
+    searchLocation: args.search.searchLocation,
+    processMultipartTaskDoneText: args.search.processMultipartTaskDoneText,
+    recordSearchContext: args.search.recordSearchContext,
+    getContinuationTokenForSeries: args.search.getContinuationTokenForSeries,
+    getAskAiModeLinkForQuery: args.search.getAskAiModeLinkForQuery,
+    clearSearchHistory: args.search.clearSearchHistory,
+    deleteSearchHistoryItemBase: args.search.deleteSearchHistoryItemBase,
+  };
+}
+
+export function buildChatPageControllerServicesArgs(
+  args: ChatPageWorkspaceViewArgs
+): ChatPageServicesArgs {
+  return {
+    responseMode: args.gpt.responseMode,
+    autoCopyFileIngestSysInfoToKin:
+      args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
+    autoGenerateFileImportSummary: args.gpt.driveImportAutoSummary,
+    gptMemoryRuntime: args.gpt.gptMemoryRuntime,
+    setUploadKind: args.gpt.onChangeUploadKind,
+    applySearchUsage: args.usage.applySearchUsage,
+    applyChatUsage: args.usage.applyChatUsage,
+    applySummaryUsage: args.usage.applySummaryUsage,
+    applyTaskUsage: args.usage.applyTaskUsage,
+    applyIngestUsage: args.usage.applyIngestUsage,
+    buildLibraryReferenceContext: args.references.buildLibraryReferenceContext,
+    referenceLibraryItems: args.references.referenceLibraryItems,
+    libraryIndexResponseCount: args.references.libraryIndexResponseCount,
+    recordIngestedDocument: args.usage.recordIngestedDocument,
+    gptMemorySettingsControls: args.gpt.gptMemorySettingsControls,
+    ingestProtocolMessage: args.task.taskProtocolView.ingestProtocolMessage,
+  };
+}
+
+export function buildChatPageProtocolAutomationArgs(
+  args: ChatPageWorkspaceViewArgs
+): UseChatPageControllerArgs["protocolAutomation"] {
+  return {
+    autoBridgeSettings: args.bridge.autoBridgeSettings,
+    kinInput: args.ui.kinInput,
+    gptInput: args.ui.gptInput,
+    kinLoading: args.ui.kinLoading,
+    gptLoading: args.ui.gptLoading,
+    kinMessages: args.ui.kinMessages,
+    gptMessages: args.ui.gptMessages,
+    setGptInput: args.ui.setGptInput,
+    setKinInput: args.ui.setKinInput,
+    focusKinPanel: args.app.focusKinPanel,
+    focusGptPanel: args.app.focusGptPanel,
+  };
+}
+
+export function buildChatPagePanelResetArgs(
+  args: ChatPageWorkspaceViewArgs
+): UseChatPageControllerArgs["panelReset"] {
+  return {
+    setKinMessages: args.ui.setKinMessages,
+    setGptMessages: args.ui.setGptMessages,
+    resetTokenStats: args.reset.resetTokenStats,
+    resetCurrentTaskDraft: args.task.resetCurrentTaskDraft,
+    focusKinPanel: args.app.focusKinPanel,
+    connectKin: args.reset.connectKin,
+    switchKin: args.reset.switchKin,
+    disconnectKin: args.reset.disconnectKin,
+    removeKinState: args.reset.removeKinState,
+    removeKin: args.reset.removeKin,
+    resetGptForCurrentKin: args.gpt.resetGptForCurrentKin,
+  };
+}
 
 export function buildGptMessageActionArgs(
   groups: ChatPageActionArgGroups

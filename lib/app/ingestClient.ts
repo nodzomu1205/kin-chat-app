@@ -1,6 +1,12 @@
 import {
   resolveUploadKindFromFile,
 } from "@/lib/app/gptTaskClient";
+import {
+  buildSharedIngestOptions,
+  buildIngestRequestFormData,
+  resolveIngestErrorMessage,
+  resolveIngestFileTitle,
+} from "@/lib/app/ingestClientBuilders";
 import type {
   FileReadPolicy,
   ImageDetail,
@@ -32,25 +38,6 @@ export type SharedIngestResult = {
   kinBlocks?: string[];
 };
 
-export function buildIngestRequestFormData(params: {
-  file: File;
-  resolvedKind: UploadKind;
-  options: SharedIngestOptions;
-}) {
-  const form = new FormData();
-  form.append("file", params.file);
-  form.append("kind", params.resolvedKind);
-  form.append("mode", params.options.mode);
-  form.append("detail", params.options.detail);
-  form.append("readPolicy", params.options.readPolicy);
-  form.append("compactCharLimit", String(params.options.compactCharLimit));
-  form.append(
-    "simpleImageCharLimit",
-    String(params.options.simpleImageCharLimit)
-  );
-  return form;
-}
-
 export async function requestFileIngest(params: {
   file: File;
   options: SharedIngestOptions;
@@ -76,22 +63,9 @@ export async function requestFileIngest(params: {
     resolvedKind,
   };
 }
-
-export function resolveIngestFileTitle(params: {
-  data: SharedIngestResult;
-  fallback: string;
-}) {
-  const title = params.data?.result?.title;
-  return typeof title === "string" && title.trim()
-    ? title.trim()
-    : params.fallback;
-}
-
-export function resolveIngestErrorMessage(params: {
-  data: SharedIngestResult;
-  fallback: string;
-}) {
-  return typeof params.data?.error === "string" && params.data.error.trim()
-    ? params.data.error.trim()
-    : params.fallback;
-}
+export {
+  buildIngestRequestFormData,
+  buildSharedIngestOptions,
+  resolveIngestErrorMessage,
+  resolveIngestFileTitle,
+};

@@ -118,23 +118,26 @@ export const kinTileStyle = (active: boolean): React.CSSProperties => ({
   minWidth: 0,
 });
 
-export const panelShellStyle = (isMobile: boolean): React.CSSProperties => ({
-  flex: 1,
-  width: "100%",
-  minHeight: 0,
-  display: "flex",
-  flexDirection: "column",
-  border: "1px solid rgba(0,0,0,0.08)",
-  borderRadius: 0,
-  overflow: "visible",
-  backgroundImage: "url('/backgrounds/kin-bg.png')",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-  backgroundColor: "rgba(255,255,255,0.74)",
-  backgroundBlendMode: "lighten",
-  backdropFilter: "blur(2px)",
-});
+export const panelShellStyle = (isMobile: boolean): React.CSSProperties => {
+  void isMobile;
+  return {
+    flex: 1,
+    width: "100%",
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    border: "1px solid rgba(0,0,0,0.08)",
+    borderRadius: 0,
+    overflow: "visible",
+    backgroundImage: "url('/backgrounds/kin-bg.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundColor: "rgba(255,255,255,0.74)",
+    backgroundBlendMode: "lighten",
+    backdropFilter: "blur(2px)",
+  };
+};
 
 export const drawerWrapStyle: React.CSSProperties = {
   padding: 10,

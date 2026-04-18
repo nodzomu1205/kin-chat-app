@@ -1,5 +1,10 @@
 import type { ReferenceLibraryItem, SourceItem } from "@/types/chat";
 import type { SearchRecord } from "@/lib/app/sendToGptFlowTypes";
+import {
+  buildProtocolBlock,
+  buildProtocolLine,
+  buildProtocolSection,
+} from "@/lib/protocolBlockBuilders";
 
 export function buildAskGptRequestBlock(params: {
   taskId: string;
@@ -91,9 +96,8 @@ export function buildLibraryIndexResponseDraft(params: {
   libraryIndexResponseCount: number;
 }) {
   const lines = [
-    "<<SYS_LIBRARY_INDEX_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
+    buildProtocolLine("TASK_ID", params.taskId),
+    buildProtocolLine("ACTION_ID", params.actionId),
     "BODY:",
   ];
 
@@ -111,8 +115,10 @@ export function buildLibraryIndexResponseDraft(params: {
     });
   }
 
-  lines.push("<<END_SYS_LIBRARY_INDEX_RESPONSE>>");
-  return lines.join("\n");
+  return buildProtocolBlock({
+    name: "SYS_LIBRARY_INDEX_RESPONSE",
+    lines,
+  });
 }
 
 export function buildLibraryItemResponseDraft(params: {
@@ -132,11 +138,13 @@ export function buildLibraryItemResponseDraft(params: {
   );
 
   const lines = [
-    "<<SYS_LIBRARY_ITEM_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `ITEM_ID: ${requestedItemId || item?.id || ""}`,
-    `OUTPUT_MODE: ${requestedMode === "raw" ? "summary_plus_raw" : requestedMode}`,
+    buildProtocolLine("TASK_ID", params.taskId),
+    buildProtocolLine("ACTION_ID", params.actionId),
+    buildProtocolLine("ITEM_ID", requestedItemId || item?.id || ""),
+    buildProtocolLine(
+      "OUTPUT_MODE",
+      requestedMode === "raw" ? "summary_plus_raw" : requestedMode
+    ),
   ];
 
   if (!item) {
@@ -148,8 +156,10 @@ export function buildLibraryItemResponseDraft(params: {
     }
   }
 
-  lines.push("<<END_SYS_LIBRARY_ITEM_RESPONSE>>");
-  return lines.join("\n");
+  return buildProtocolBlock({
+    name: "SYS_LIBRARY_ITEM_RESPONSE",
+    lines,
+  });
 }
 
 export function buildSearchResponseBlock(params: {
@@ -166,15 +176,19 @@ export function buildSearchResponseBlock(params: {
   sourceLines: string[];
 }) {
   const responseLines = [
-    "<<SYS_SEARCH_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `QUERY: ${params.query}`,
-    `ENGINE: ${params.engine}`,
-    `LOCATION: ${params.location}`,
-    `OUTPUT_MODE: ${params.wrappedOutputMode || params.requestedMode}`,
-    `RAW_RESULT_AVAILABLE: ${params.recordedSearch ? "YES" : "NO"}`,
-    ...(params.recordedSearch ? [`RAW_RESULT_ID: ${params.recordedSearch.rawResultId}`] : []),
+    buildProtocolLine("TASK_ID", params.taskId),
+    buildProtocolLine("ACTION_ID", params.actionId),
+    buildProtocolLine("QUERY", params.query),
+    buildProtocolLine("ENGINE", params.engine),
+    buildProtocolLine("LOCATION", params.location),
+    buildProtocolLine("OUTPUT_MODE", params.wrappedOutputMode || params.requestedMode),
+    buildProtocolLine(
+      "RAW_RESULT_AVAILABLE",
+      params.recordedSearch ? "YES" : "NO"
+    ),
+    ...(params.recordedSearch
+      ? [buildProtocolLine("RAW_RESULT_ID", params.recordedSearch.rawResultId)]
+      : []),
   ];
 
   if (params.requestedMode !== "raw") {
@@ -188,8 +202,10 @@ export function buildSearchResponseBlock(params: {
 
   if (shouldIncludeSources) {
     responseLines.push(
-      "SOURCES:",
-      ...(params.sourceLines.length > 0 ? params.sourceLines : ["- none"])
+      ...buildProtocolSection(
+        "SOURCES:",
+        params.sourceLines.length > 0 ? params.sourceLines : ["- none"]
+      )
     );
   }
 
@@ -200,8 +216,10 @@ export function buildSearchResponseBlock(params: {
     responseLines.push("RAW_EXCERPT:", params.rawExcerpt);
   }
 
-  responseLines.push("<<END_SYS_SEARCH_RESPONSE>>");
-  return responseLines.join("\n");
+  return buildProtocolBlock({
+    name: "SYS_SEARCH_RESPONSE",
+    lines: responseLines,
+  });
 }
 
 export function buildProtocolSourceLines(
@@ -237,15 +255,13 @@ export function buildYouTubeTranscriptResponseBlock(params: {
   libraryItemId?: string;
 }) {
   const lines = [
-    "<<SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>",
-    `TASK_ID: ${params.taskId}`,
-    `ACTION_ID: ${params.actionId}`,
-    `URL: ${params.url}`,
-    `OUTPUT_MODE: ${params.outputMode}`,
-    `TITLE: ${params.title}`,
-    `CHANNEL: ${params.channel}`,
-    "SUMMARY:",
-    params.summary,
+    buildProtocolLine("TASK_ID", params.taskId),
+    buildProtocolLine("ACTION_ID", params.actionId),
+    buildProtocolLine("URL", params.url),
+    buildProtocolLine("OUTPUT_MODE", params.outputMode),
+    buildProtocolLine("TITLE", params.title),
+    buildProtocolLine("CHANNEL", params.channel),
+    ...buildProtocolSection("SUMMARY:", [params.summary]),
   ];
 
   if (params.rawExcerpt) {
@@ -256,6 +272,8 @@ export function buildYouTubeTranscriptResponseBlock(params: {
     lines.push(`LIBRARY_ITEM_ID: ${params.libraryItemId}`);
   }
 
-  lines.push("<<END_SYS_YOUTUBE_TRANSCRIPT_RESPONSE>>");
-  return lines.join("\n");
+  return buildProtocolBlock({
+    name: "SYS_YOUTUBE_TRANSCRIPT_RESPONSE",
+    lines,
+  });
 }

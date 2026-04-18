@@ -1,16 +1,11 @@
 import { requestSerpApi } from "@/lib/search-domain/serpApiClient";
-import { buildLocationAwareQuery } from "@/lib/search-domain/presets";
+import { buildGoogleMapsRequest } from "@/lib/search-domain/engineRequestBuilders";
 import type { SearchEngineResult, SearchRequest } from "@/lib/search-domain/types";
 
 export async function runGoogleMapsEngine(
   request: SearchRequest
 ): Promise<SearchEngineResult> {
-  const query = buildLocationAwareQuery(request.query, request.location);
-  const raw = await requestSerpApi({
-    engine: "google_maps",
-    q: query,
-    num: request.maxResults ?? 5,
-  });
+  const raw = await requestSerpApi(buildGoogleMapsRequest(request));
 
   return {
     engine: "google_maps",

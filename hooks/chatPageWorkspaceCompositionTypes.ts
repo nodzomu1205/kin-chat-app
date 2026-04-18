@@ -1,12 +1,25 @@
-import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelCompositionTypes";
+import type {
+  ChatPageWorkspaceViewAppArgs,
+  ChatPageWorkspaceViewBridgeArgs,
+  ChatPageWorkspaceViewGptArgs,
+  ChatPageWorkspaceViewKinArgs,
+  ChatPageWorkspaceViewMemoryArgs,
+  ChatPageWorkspaceViewProtocolArgs,
+  ChatPageWorkspaceViewReferencesArgs,
+  ChatPageWorkspaceViewResetArgs,
+  ChatPageWorkspaceViewSearchArgs,
+  ChatPageWorkspaceViewTaskArgs,
+  ChatPageWorkspaceViewUiArgs,
+  ChatPageWorkspaceViewUsageArgs,
+} from "@/hooks/chatPagePanelCompositionTypes";
 
 export type ChatPageWorkspaceCompositionState = {
   app: Pick<
-    ChatPageWorkspaceViewArgs["app"],
+    ChatPageWorkspaceViewAppArgs,
     "currentKin" | "currentKinLabel" | "kinStatus" | "kinList" | "isMobile"
   >;
   ui: Omit<
-    ChatPageWorkspaceViewArgs["ui"],
+    ChatPageWorkspaceViewUiArgs,
     | "setKinInput"
     | "setGptInput"
     | "setKinMessages"
@@ -20,11 +33,11 @@ export type ChatPageWorkspaceCompositionState = {
     | "gptBottomRef"
   >;
   task: Pick<
-    ChatPageWorkspaceViewArgs["task"],
+    ChatPageWorkspaceViewTaskArgs,
     "currentTaskDraft" | "taskDraftCount" | "activeTaskDraftIndex"
   >;
   protocol: Pick<
-    ChatPageWorkspaceViewArgs["protocol"],
+    ChatPageWorkspaceViewProtocolArgs,
     | "approvedIntentPhrases"
     | "rejectedIntentCandidateSignatures"
     | "pendingIntentCandidates"
@@ -32,7 +45,7 @@ export type ChatPageWorkspaceCompositionState = {
     | "protocolRulebook"
   >;
   search: Pick<
-    ChatPageWorkspaceViewArgs["search"],
+    ChatPageWorkspaceViewSearchArgs,
     | "lastSearchContext"
     | "searchHistory"
     | "selectedTaskSearchResultId"
@@ -42,7 +55,7 @@ export type ChatPageWorkspaceCompositionState = {
     | "sourceDisplayCount"
   >;
   references: Pick<
-    ChatPageWorkspaceViewArgs["references"],
+    ChatPageWorkspaceViewReferencesArgs,
     | "multipartAssemblies"
     | "storedDocuments"
     | "referenceLibraryItems"
@@ -58,7 +71,7 @@ export type ChatPageWorkspaceCompositionState = {
     | "googleDriveIntegrationMode"
   >;
   gpt: Pick<
-    ChatPageWorkspaceViewArgs["gpt"],
+    ChatPageWorkspaceViewGptArgs,
     | "gptState"
     | "responseMode"
     | "uploadKind"
@@ -71,25 +84,25 @@ export type ChatPageWorkspaceCompositionState = {
     | "driveImportAutoSummary"
     | "defaultMemorySettings"
   >;
-  bridge: Pick<ChatPageWorkspaceViewArgs["bridge"], "autoBridgeSettings">;
+  bridge: Pick<ChatPageWorkspaceViewBridgeArgs, "autoBridgeSettings">;
   memory: Pick<
-    ChatPageWorkspaceViewArgs["memory"],
+    ChatPageWorkspaceViewMemoryArgs,
     | "tokenStats"
     | "memorySettings"
     | "memoryInterpreterSettings"
     | "pendingMemoryRuleCandidates"
     | "approvedMemoryRules"
   >;
-  kin: Pick<ChatPageWorkspaceViewArgs["kin"], "kinIdInput" | "kinNameInput">;
+  kin: Pick<ChatPageWorkspaceViewKinArgs, "kinIdInput" | "kinNameInput">;
 };
 
 export type ChatPageWorkspaceCompositionActions = {
   app: Pick<
-    ChatPageWorkspaceViewArgs["app"],
+    ChatPageWorkspaceViewAppArgs,
     "setActivePanelTab" | "focusKinPanel" | "focusGptPanel" | "setKinConnectionState"
   >;
   ui: Pick<
-    ChatPageWorkspaceViewArgs["ui"],
+    ChatPageWorkspaceViewUiArgs,
     | "setKinInput"
     | "setGptInput"
     | "setKinMessages"
@@ -101,7 +114,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "setPendingKinInjectionIndex"
   >;
   task: Pick<
-    ChatPageWorkspaceViewArgs["task"],
+    ChatPageWorkspaceViewTaskArgs,
     | "setCurrentTaskDraft"
     | "resetCurrentTaskDraft"
     | "updateTaskDraftFields"
@@ -110,7 +123,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onSelectNextTaskDraft"
   >;
   protocol: Pick<
-    ChatPageWorkspaceViewArgs["protocol"],
+    ChatPageWorkspaceViewProtocolArgs,
     | "setPendingIntentCandidates"
     | "setApprovedIntentPhrases"
     | "setRejectedIntentCandidateSignatures"
@@ -120,7 +133,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeProtocolRulebook"
   >;
   search: Pick<
-    ChatPageWorkspaceViewArgs["search"],
+    ChatPageWorkspaceViewSearchArgs,
     | "clearSearchHistory"
     | "deleteSearchHistoryItemBase"
     | "onMoveSearchHistoryItem"
@@ -132,7 +145,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeSourceDisplayCount"
   >;
   references: Pick<
-    ChatPageWorkspaceViewArgs["references"],
+    ChatPageWorkspaceViewReferencesArgs,
     | "onDeleteMultipartAssembly"
     | "onLoadMultipartAssemblyToGptInput"
     | "onDownloadMultipartAssembly"
@@ -158,7 +171,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onImportGoogleDriveFolder"
   >;
   gpt: Pick<
-    ChatPageWorkspaceViewArgs["gpt"],
+    ChatPageWorkspaceViewGptArgs,
     | "resetGptForCurrentKin"
     | "onChangeResponseMode"
     | "onChangeUploadKind"
@@ -171,7 +184,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeDriveImportAutoSummary"
   >;
   bridge: Pick<
-    ChatPageWorkspaceViewArgs["bridge"],
+    ChatPageWorkspaceViewBridgeArgs,
     | "onChangeAutoSendKinSysInput"
     | "onChangeAutoCopyKinSysResponseToGpt"
     | "onChangeAutoSendGptSysInput"
@@ -179,7 +192,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeAutoCopyFileIngestSysInfoToKin"
   >;
   memory: Pick<
-    ChatPageWorkspaceViewArgs["memory"],
+    ChatPageWorkspaceViewMemoryArgs,
     | "onChangeMemoryInterpreterSettings"
     | "onApproveMemoryRuleCandidate"
     | "onRejectMemoryRuleCandidate"
@@ -187,15 +200,15 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onDeleteApprovedMemoryRule"
   >;
   kin: Pick<
-    ChatPageWorkspaceViewArgs["kin"],
+    ChatPageWorkspaceViewKinArgs,
     "setKinIdInput" | "setKinNameInput" | "renameKin"
   >;
-  reset: ChatPageWorkspaceViewArgs["reset"];
+  reset: ChatPageWorkspaceViewResetArgs;
 };
 
 export type ChatPageWorkspaceCompositionServices = {
   task: Pick<
-    ChatPageWorkspaceViewArgs["task"],
+    ChatPageWorkspaceViewTaskArgs,
     | "getTaskBaseText"
     | "getTaskLibraryItem"
     | "getResolvedTaskTitle"
@@ -208,25 +221,25 @@ export type ChatPageWorkspaceCompositionServices = {
     | "taskProtocolView"
   >;
   protocol: Pick<
-    ChatPageWorkspaceViewArgs["protocol"],
+    ChatPageWorkspaceViewProtocolArgs,
     "chatBridgeSettings" | "promptDefaultKey" | "rulebookDefaultKey"
   >;
   search: Pick<
-    ChatPageWorkspaceViewArgs["search"],
+    ChatPageWorkspaceViewSearchArgs,
     | "processMultipartTaskDoneText"
     | "recordSearchContext"
     | "getContinuationTokenForSeries"
     | "getAskAiModeLinkForQuery"
   >;
   references: Pick<
-    ChatPageWorkspaceViewArgs["references"],
+    ChatPageWorkspaceViewReferencesArgs,
     "buildLibraryReferenceContext"
   >;
   gpt: Pick<
-    ChatPageWorkspaceViewArgs["gpt"],
+    ChatPageWorkspaceViewGptArgs,
     "gptMemoryRuntime" | "gptMemorySettingsControls"
   >;
-  usage: ChatPageWorkspaceViewArgs["usage"];
+  usage: ChatPageWorkspaceViewUsageArgs;
 };
 
 export type ChatPageWorkspaceCompositionInput = {
@@ -234,3 +247,55 @@ export type ChatPageWorkspaceCompositionInput = {
   actions: ChatPageWorkspaceCompositionActions;
   services: ChatPageWorkspaceCompositionServices;
 };
+
+export type ChatPageWorkspaceStateApp = ChatPageWorkspaceCompositionState["app"];
+export type ChatPageWorkspaceStateUi = ChatPageWorkspaceCompositionState["ui"];
+export type ChatPageWorkspaceStateTask = ChatPageWorkspaceCompositionState["task"];
+export type ChatPageWorkspaceStateProtocol =
+  ChatPageWorkspaceCompositionState["protocol"];
+export type ChatPageWorkspaceStateSearch =
+  ChatPageWorkspaceCompositionState["search"];
+export type ChatPageWorkspaceStateReferences =
+  ChatPageWorkspaceCompositionState["references"];
+export type ChatPageWorkspaceStateGpt = ChatPageWorkspaceCompositionState["gpt"];
+export type ChatPageWorkspaceStateBridge =
+  ChatPageWorkspaceCompositionState["bridge"];
+export type ChatPageWorkspaceStateMemory =
+  ChatPageWorkspaceCompositionState["memory"];
+export type ChatPageWorkspaceStateKin = ChatPageWorkspaceCompositionState["kin"];
+
+export type ChatPageWorkspaceActionsApp =
+  ChatPageWorkspaceCompositionActions["app"];
+export type ChatPageWorkspaceActionsUi =
+  ChatPageWorkspaceCompositionActions["ui"];
+export type ChatPageWorkspaceActionsTask =
+  ChatPageWorkspaceCompositionActions["task"];
+export type ChatPageWorkspaceActionsProtocol =
+  ChatPageWorkspaceCompositionActions["protocol"];
+export type ChatPageWorkspaceActionsSearch =
+  ChatPageWorkspaceCompositionActions["search"];
+export type ChatPageWorkspaceActionsReferences =
+  ChatPageWorkspaceCompositionActions["references"];
+export type ChatPageWorkspaceActionsGpt =
+  ChatPageWorkspaceCompositionActions["gpt"];
+export type ChatPageWorkspaceActionsBridge =
+  ChatPageWorkspaceCompositionActions["bridge"];
+export type ChatPageWorkspaceActionsMemory =
+  ChatPageWorkspaceCompositionActions["memory"];
+export type ChatPageWorkspaceActionsKin =
+  ChatPageWorkspaceCompositionActions["kin"];
+export type ChatPageWorkspaceActionsReset =
+  ChatPageWorkspaceCompositionActions["reset"];
+
+export type ChatPageWorkspaceServicesTask =
+  ChatPageWorkspaceCompositionServices["task"];
+export type ChatPageWorkspaceServicesProtocol =
+  ChatPageWorkspaceCompositionServices["protocol"];
+export type ChatPageWorkspaceServicesSearch =
+  ChatPageWorkspaceCompositionServices["search"];
+export type ChatPageWorkspaceServicesReferences =
+  ChatPageWorkspaceCompositionServices["references"];
+export type ChatPageWorkspaceServicesGpt =
+  ChatPageWorkspaceCompositionServices["gpt"];
+export type ChatPageWorkspaceServicesUsage =
+  ChatPageWorkspaceCompositionServices["usage"];

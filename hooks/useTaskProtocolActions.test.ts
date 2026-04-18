@@ -21,7 +21,9 @@ vi.mock("@/lib/app/currentTaskIntentRefresh", () => ({
 
 import { useTaskProtocolActions } from "@/hooks/useTaskProtocolActions";
 
-function createArgs(overrides: Record<string, unknown> = {}) {
+function createArgs(
+  overrides: Partial<Parameters<typeof useTaskProtocolActions>[0]> = {}
+): Parameters<typeof useTaskProtocolActions>[0] {
   return {
     applyTaskUsage: vi.fn(),
     approvedIntentPhrases: [],
@@ -61,7 +63,7 @@ function createArgs(overrides: Record<string, unknown> = {}) {
       prepareTaskSuspendMessage: vi.fn(),
     },
     ...overrides,
-  } as any;
+  };
 }
 
 describe("useTaskProtocolActions", () => {

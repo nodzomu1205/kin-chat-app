@@ -83,9 +83,9 @@ Recent progress includes:
 - `useChatPageController` now composes smaller domain controller hooks while shared page-action contracts live in `chatPageActionTypes.ts`
 - `useChatPageControllerArgs`, `useChatPageKinPanelProps`, and `useChatPageGptPanelArgs` now own most controller/panel argument assembly that used to sit inline in `app/page.tsx`
 - `useChatPagePanelsComposition.tsx` now owns the final page-side controller + panel composition, so `app/page.tsx` no longer instantiates the controller hook or panel builder/render chain directly
-- `useChatPagePanelsView.tsx` now owns shared panel-app wiring and task-snapshot glue, so `app/page.tsx` no longer duplicates that setup across both panel branches
-- `useChatPageWorkspaceView.tsx` now owns the page-facing source wiring for controller + panel composition, so `app/page.tsx` passes source-of-truth domain groups instead of duplicating nested controller and panel trees
-- `chatPageWorkspaceViewBuilders.ts` now keeps that workspace-view wiring split into controller-source and panel-source builders, so the new page adapter does not become another monolithic hotspot
+- `useChatPagePanelsComposition.tsx` now consumes the workspace source groups directly, so the no-op passthrough layers `useChatPagePanelsView.tsx` and `useChatPageWorkspaceView.tsx` are gone
+- `chatPageControllerCompositionTypes.ts` and `chatPagePanelCompositionTypes.ts` now split the old page-composition type hub into controller-facing and panel-facing contracts
+- `chatPageControllerCompositionBuilders.ts` and `chatPagePanelCompositionBuilders.ts` now split workspace reshaping by authority boundary, making controller wiring and panel wiring easier to audit independently
 - the page-to-controller action contract is now grouped by domain, and controller-side domain hooks consume those grouped sources directly
 - shared recent-message / memory-update helper extraction for `sendToGptFlow`
 - `sendToGptFlow` split into dedicated `context` / `builders` / `helpers` / `types` modules
@@ -101,10 +101,12 @@ Recent progress includes:
 The current verification baseline is:
 
 - `npx tsc --noEmit` passes
+- `npm run lint` passes
 - `npm test` passes
-- current test count: `67 files / 288 tests`
+- `npm run build` passes
+- current test count: `133 files / 556 tests`
 
-Recent regression fixes include:
+Recent regression fixes and maintainability wins include:
 
 - rejected memory-rule candidates now trigger memory reapplication, so an incorrect tentative topic can be cleared immediately after rejection
 - GPT chat scroll position now stays stable when moving into and back out of the settings workspace on both desktop and mobile
@@ -115,6 +117,13 @@ Recent regression fixes include:
   - count / limit phrases stay out of the first draft and appear in the approval flow instead
   - approving a task-intent candidate immediately updates the Kin draft and the task-progress action items
   - task progress entries can now be cleared directly from the task-progress view if the user decides not to proceed
+- `sendToGptFlow` now routes phase handoff, request shaping, finalize shaping, and protocol block assembly through focused builders instead of regrowing those decisions inline
+- ingest authority is now much closer to one shared model across device ingest, Drive import, stored documents, and reference-library projection
+- task runtime / draft sync / Kin transfer handoff now routes through shared builder boundaries instead of inline hook-local flow arg assembly
+- responsive single-panel mode now routes through shared viewport/device helpers with direct tests for mobile UA, touch capability, and narrow-width selection
+- GPT settings workspace sections are now split by approval authority and library/ingest authority, so the old section hub is less likely to regrow mixed UI/policy wiring
+- task-draft prep/update/attach/deepen flows now share recent-message and success-postlude helpers instead of repeating assistant append and summary replay inline
+- `sendToGptFlow` guard tests now live in their own test file, so gate failures are easier to diagnose separately from step/request builder failures
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -123,7 +132,9 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Architecture](./docs/architecture.md)
 - [Domain Model](./docs/domain-model.md)
 - [Refactor Roadmap](./docs/refactor-roadmap.md)
+- [Maintenance Checklist](./docs/maintenance-checklist.md)
 - [Next Session Handover](./docs/next-session.md)
+- [Handoff 2026-04-18](./docs/HANDOFF-2026-04-18.md)
 - [Handoff 2026-04-16](./docs/HANDOFF-2026-04-16.md)
 - [Handoff 2026-04-15](./docs/HANDOFF-2026-04-15.md)
 - [Architecture Guidelines](./docs/architecture-guidelines.md)
@@ -159,15 +170,14 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. remove dead helper branches that are still physically present after the recent refactors
-   - especially the remaining broad helper surfaces inside `lib/app/sendToGptFlowRequestPreparation.ts` and `lib/app/sendToGptFlowState.ts`
-2. residual workspace-view orchestration review and cleanup of any regrown glue
-   - especially the broad `useChatPageWorkspaceView(...)` / `chatPageWorkspaceViewBuilders.ts` source bundle that now sits above narrower domain modules
-3. `lib/app/sendToGptFlowRequestPreparation.ts` / `lib/app/sendToGptFlowState.ts` / `lib/app/sendToGptFlow.ts` flow-surface thinning
-   - keep `sendToGptFlowContext.ts`, `sendToGptProtocolBuilders.ts`, and `sendToGptFlowTypes.ts` aligned with that thinning so the GPT flow keeps a clean domain boundary
-4. `app/api/ingest/route.ts` / `hooks/useIngestActions.ts` ingest-flow cleanup
+1. finish the remaining Sprint 4 cleanup around search-domain / responsive / docs maintenance-watch boundaries
+   - especially keep `useResponsive.ts` heuristic-only and avoid regrowing panel-focus policy into it
+2. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
+3. continue shrinking the remaining legacy/current ingest split after the now-shared ingest authority model
+4. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
 5. final live-surface copy sweep across remaining non-settings panels such as `GptMetaDrawer`
-6. protocol / task / ingest test hardening around the next touched area
+6. keep `GptSettingsApprovalSections.tsx`, `GptSettingsLibrarySections.tsx`, and `taskDraft*Flows.ts` in maintenance-watch mode instead of letting them become the next mixed hubs
+7. continue adding narrow regression tests around the next touched boundary instead of broad rewrites
 
 `hooks/useGptMemory.ts` and `lib/app/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
 

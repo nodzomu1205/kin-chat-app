@@ -1,50 +1,25 @@
 import { parseTaskInput } from "@/lib/taskInputParser";
 import { parseSearchContinuation } from "@/lib/search-domain/continuations";
-import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
 import type {
   ParsedInputLike,
   PendingRequestLike,
   ProtocolLimitEvent,
 } from "@/lib/app/sendToGptFlowTypes";
 import type { SearchEngine, SearchMode } from "@/types/task";
+import {
+  buildDerivedSearchContext,
+  buildProtocolInteractionContext,
+} from "@/lib/app/sendToGptFlowContextBuilders";
 
 export function extractProtocolInteractionContext(params: {
   rawText: string;
   findPendingRequest: (requestId: string) => PendingRequestLike | null;
 }) {
-  const protocolEvents = extractTaskProtocolEvents(params.rawText);
-  const askGptEvent = protocolEvents.find((event) => event.type === "ask_gpt");
-  const searchRequestEvent = protocolEvents.find(
-    (event) => event.type === "search_request"
-  );
-  const youtubeTranscriptRequestEvent = protocolEvents.find(
-    (event) => event.type === "youtube_transcript_request"
-  );
-  const libraryIndexRequestEvent = protocolEvents.find(
-    (event) => event.type === "library_index_request"
-  );
-  const libraryItemRequestEvent = protocolEvents.find(
-    (event) => event.type === "library_item_request"
-  );
-  const userQuestionEvent = protocolEvents.find(
-    (event) => event.type === "user_question"
-  );
-  const { requestToAnswer, requestAnswerBody } = resolveRequestAnswerContext({
+  return buildProtocolInteractionContext({
     rawText: params.rawText,
     findPendingRequest: params.findPendingRequest,
+    resolveRequestAnswerContext,
   });
-
-  return {
-    protocolEvents,
-    askGptEvent,
-    searchRequestEvent,
-    youtubeTranscriptRequestEvent,
-    libraryIndexRequestEvent,
-    libraryItemRequestEvent,
-    userQuestionEvent,
-    requestToAnswer,
-    requestAnswerBody,
-  };
 }
 
 export function resolveDerivedSearchContext(params: {
@@ -61,47 +36,18 @@ export function resolveDerivedSearchContext(params: {
   getContinuationTokenForSeries: (seriesId: string) => string;
   getAskAiModeLinkForQuery: (query: string) => string;
 }) {
-  const inlineSearchQuery = extractInlineSearchQuery(params.rawText);
-  const effectiveParsedSearchQuery =
-    params.parsedInput.searchQuery || inlineSearchQuery;
-  const continuationDetails = parseSearchContinuation(
-    params.searchRequestEvent?.query ||
-      params.parsedInput.searchQuery ||
-      inlineSearchQuery ||
-      ""
-  );
-  const protocolSearchOverrides = resolveProtocolSearchOverrides({
-    requestedEngine: params.searchRequestEvent?.searchEngine,
-    requestedLocation: params.searchRequestEvent?.searchLocation,
-    fallbackMode: params.searchMode,
-    fallbackEngines: params.searchEngines,
-    fallbackLocation: params.searchLocation,
+  return buildDerivedSearchContext({
+    parsedInput: params.parsedInput,
+    searchRequestEvent: params.searchRequestEvent,
+    searchMode: params.searchMode,
+    searchEngines: params.searchEngines,
+    searchLocation: params.searchLocation,
+    inlineSearchQuery: extractInlineSearchQuery(params.rawText),
+    resolveProtocolSearchOverrides,
+    resolveAiContinuationArtifacts,
+    getContinuationTokenForSeries: params.getContinuationTokenForSeries,
+    getAskAiModeLinkForQuery: params.getAskAiModeLinkForQuery,
   });
-  const effectiveSearchMode = protocolSearchOverrides.searchMode;
-  const effectiveSearchEngines = protocolSearchOverrides.searchEngines;
-  const effectiveSearchLocation = protocolSearchOverrides.searchLocation;
-  const { searchSeriesId, continuationToken, askAiModeLink } =
-    resolveAiContinuationArtifacts({
-      effectiveSearchMode,
-      effectiveSearchEngines,
-      continuationDetails,
-      searchRequestQuery: params.searchRequestEvent?.query,
-      effectiveParsedSearchQuery,
-      getContinuationTokenForSeries: params.getContinuationTokenForSeries,
-      getAskAiModeLinkForQuery: params.getAskAiModeLinkForQuery,
-    });
-
-  return {
-    inlineSearchQuery,
-    effectiveParsedSearchQuery,
-    continuationDetails,
-    effectiveSearchMode,
-    effectiveSearchEngines,
-    effectiveSearchLocation,
-    searchSeriesId,
-    continuationToken,
-    askAiModeLink,
-  };
 }
 
 export function resolveRequestAnswerContext(params: {

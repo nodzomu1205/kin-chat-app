@@ -5,20 +5,11 @@ import {
 import { runSendKinMessageFlow } from "@/lib/app/sendToKinFlow";
 import { runStartKinTaskFlow } from "@/lib/app/kinTaskFlow";
 import {
-  buildPendingIntentCandidateKey,
-  extractTaskGoalFromSysTaskBlock,
-  getIntentCandidateSignature,
-  toTransformResponseMode,
-} from "@/lib/app/chatPageHelpers";
-import {
-  looksLikeTaskInstruction,
-  resolveTaskIntentWithFallback,
-} from "@/lib/taskIntent";
-import {
-  resolveTransformIntent,
-  shouldTransformContent,
-  transformTextWithIntent,
-} from "@/lib/app/transformIntent";
+  buildSendCurrentTaskContentToKinFlowArgs,
+  buildSendLatestGptContentToKinFlowArgs,
+  buildStartKinTaskFlowArgs,
+  createPendingIntentCandidateMerger,
+} from "@/lib/app/taskRuntimeActionBuilders";
 import type { UseKinTransferActionsArgs } from "@/hooks/chatPageActionTypes";
 
 export function useKinTransferActions(
@@ -30,42 +21,12 @@ export function useKinTransferActions(
     args.setPendingKinInjectionIndex(0);
   };
 
-  const mergePendingIntentCandidates = (candidates: typeof args.pendingIntentCandidates) => {
-    args.setPendingIntentCandidates((prev) => {
-      const rejected = new Set(args.rejectedIntentCandidateSignatures);
-      const approved = new Set(
-        args.approvedIntentPhrases.map((item) => getIntentCandidateSignature(item))
-      );
-      const existingKeys = new Set(
-        prev.map((item) => buildPendingIntentCandidateKey(item))
-      );
-      const additions = candidates.filter((item) => {
-        const key = buildPendingIntentCandidateKey(item);
-        const signature = getIntentCandidateSignature(item);
-        return !existingKeys.has(key) && !rejected.has(signature) && !approved.has(signature);
-      });
-      return additions.length > 0 ? [...additions, ...prev].slice(0, 50) : prev;
-    });
-  };
+  const mergePendingIntentCandidates = createPendingIntentCandidateMerger(args);
 
   const runStartKinTaskFromInput = async () => {
-    await runStartKinTaskFlow({
-      rawInput: args.gptInput,
-      approvedIntentPhrases: args.approvedIntentPhrases,
-      responseMode: args.responseMode === "creative" ? "creative" : "strict",
-      resolveIntent: resolveTaskIntentWithFallback,
-      applyTaskUsage: args.applyTaskUsage,
-      mergePendingIntentCandidates,
-      startTask: args.taskProtocol.startTask,
-      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setKinInput: args.setKinInput,
-      setGptInput: args.setGptInput,
-      appendGptMessage: (message) => args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToKin: args.focusKinPanel,
-      extractTaskGoalFromSysTaskBlock,
-    });
+    await runStartKinTaskFlow(
+      buildStartKinTaskFlowArgs(args, mergePendingIntentCandidates)
+    );
   };
 
   const sendKinMessage = async (text: string) => {
@@ -101,64 +62,19 @@ export function useKinTransferActions(
   };
 
   const sendLatestGptContentToKin = async () => {
-    await sendLatestGptContentToKinFlow({
-      gptMessages: args.gptMessages,
-      gptInput: args.gptInput,
-      currentTaskSlot: args.currentTaskDraft.slot,
-      currentTaskTitle: args.currentTaskDraft.title,
-      approvedIntentPhrases: args.approvedIntentPhrases,
-      resolveTransformIntent: ({ input, defaultMode, responseMode }) =>
-        resolveTransformIntent({ input, defaultMode, responseMode }),
-      resolveTaskIntent: resolveTaskIntentWithFallback,
-      mergePendingIntentCandidates,
-      startTask: args.taskProtocol.startTask,
-      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-      responseMode: toTransformResponseMode(args.responseMode),
-      applyTaskUsage: args.applyTaskUsage,
-      shouldTransformContent,
-      transformTextWithIntent: ({ text, intent, responseMode }) =>
-        transformTextWithIntent({ text, intent, responseMode }),
-      setGptLoading: args.setGptLoading,
-      setGptMessages: args.setGptMessages,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setKinInput: args.setKinInput,
-      setGptInput: args.setGptInput,
-      getTaskSlotLabel: args.getTaskSlotLabel,
-      setActiveTabToKin: args.focusKinPanel,
-    });
+    await sendLatestGptContentToKinFlow(
+      buildSendLatestGptContentToKinFlowArgs(args, mergePendingIntentCandidates)
+    );
   };
 
   const sendCurrentTaskContentToKin = async () => {
-    await sendCurrentTaskContentToKinFlow({
-      gptInput: args.gptInput,
-      getTaskBaseText: args.getTaskBaseText,
-      currentTaskSlot: args.currentTaskDraft.slot,
-      currentTaskTitle: args.currentTaskDraft.title,
-      currentTaskInstruction: args.currentTaskDraft.userInstruction,
-      approvedIntentPhrases: args.approvedIntentPhrases,
-      looksLikeTaskInstruction,
-      runStartKinTaskFromInput,
-      resolveTransformIntent: ({ input, defaultMode, responseMode }) =>
-        resolveTransformIntent({ input, defaultMode, responseMode }),
-      resolveTaskIntent: resolveTaskIntentWithFallback,
-      mergePendingIntentCandidates,
-      startTask: args.taskProtocol.startTask,
-      syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-      responseMode: toTransformResponseMode(args.responseMode),
-      applyTaskUsage: args.applyTaskUsage,
-      shouldTransformContent,
-      transformTextWithIntent: ({ text, intent, responseMode }) =>
-        transformTextWithIntent({ text, intent, responseMode }),
-      setGptLoading: args.setGptLoading,
-      setGptMessages: args.setGptMessages,
-      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
-      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
-      setKinInput: args.setKinInput,
-      setGptInput: args.setGptInput,
-      getTaskSlotLabel: args.getTaskSlotLabel,
-      setActiveTabToKin: args.focusKinPanel,
-    });
+    await sendCurrentTaskContentToKinFlow(
+      buildSendCurrentTaskContentToKinFlowArgs(
+        args,
+        mergePendingIntentCandidates,
+        runStartKinTaskFromInput
+      )
+    );
   };
 
   return {
