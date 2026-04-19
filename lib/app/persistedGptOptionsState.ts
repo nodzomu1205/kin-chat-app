@@ -2,7 +2,6 @@ import type {
   FileReadPolicy,
   ImageDetail,
   IngestMode,
-  PostIngestAction,
   ResponseMode,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
@@ -13,7 +12,6 @@ export const RESPONSE_MODE_KEY = "gpt_response_mode";
 export const UPLOAD_KIND_KEY = "gpt_upload_kind";
 export const INGEST_MODE_KEY = "gpt_ingest_mode";
 export const IMAGE_DETAIL_KEY = "gpt_image_detail";
-export const POST_INGEST_ACTION_KEY = "gpt_post_ingest_action";
 export const FILE_READ_POLICY_KEY = "gpt_file_read_policy";
 export const COMPACT_CHAR_LIMIT_KEY = "gpt_compact_char_limit";
 export const SIMPLE_IMAGE_CHAR_LIMIT_KEY = "gpt_simple_image_char_limit";
@@ -27,20 +25,18 @@ export type PersistedGptOptionsState = {
   imageDetail: ImageDetail;
   compactCharLimit: number;
   simpleImageCharLimit: number;
-  postIngestAction: PostIngestAction;
   fileReadPolicy: FileReadPolicy;
   driveImportAutoSummary: boolean;
 };
 
 export function getDefaultPersistedGptOptionsState(): PersistedGptOptionsState {
   return {
-    responseMode: "creative",
+    responseMode: "strict",
     uploadKind: "text",
     ingestMode: "detailed",
     imageDetail: "detailed",
     compactCharLimit: 500,
     simpleImageCharLimit: 500,
-    postIngestAction: "inject_only",
     fileReadPolicy: "text_and_layout",
     driveImportAutoSummary: true,
   };
@@ -52,13 +48,6 @@ export function loadPersistedGptOptionsState(
   const initialState = getDefaultPersistedGptOptionsState();
   if (!storage) {
     return initialState;
-  }
-
-  const savedMode = storage.getItem(RESPONSE_MODE_KEY);
-  if (savedMode === "strict" || savedMode === "creative") {
-    initialState.responseMode = savedMode;
-  } else if (savedMode === "balanced") {
-    initialState.responseMode = "strict";
   }
 
   const savedUploadKind = storage.getItem(UPLOAD_KIND_KEY);
@@ -98,16 +87,6 @@ export function loadPersistedGptOptionsState(
     initialState.imageDetail = "detailed";
   } else if (savedImageDetail === "high") {
     initialState.imageDetail = "max";
-  }
-
-  const savedPostIngestAction = storage.getItem(POST_INGEST_ACTION_KEY);
-  if (
-    savedPostIngestAction === "inject_only" ||
-    savedPostIngestAction === "inject_and_prep" ||
-    savedPostIngestAction === "inject_prep_deepen" ||
-    savedPostIngestAction === "attach_to_current_task"
-  ) {
-    initialState.postIngestAction = savedPostIngestAction;
   }
 
   const savedFileReadPolicy = storage.getItem(FILE_READ_POLICY_KEY);

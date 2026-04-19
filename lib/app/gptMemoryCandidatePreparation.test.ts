@@ -136,4 +136,50 @@ describe("gptMemoryCandidatePreparation", () => {
       })
     );
   });
+
+  it("does not persist fallback debug payload into candidate memory", async () => {
+    resolveMemoryFallbackOptionsMock.mockResolvedValue({
+      adjudication: {},
+      pendingCandidates: [],
+      usedFallback: true,
+      debug: {
+        prompt: "debug prompt",
+        rawReply: "debug raw",
+        parsed: { currentTopic: "Debug Topic" },
+      },
+    });
+    const candidateMemory = {
+      facts: [],
+      preferences: [],
+      lists: {},
+      context: {},
+    };
+    buildCandidateMemoryStateMock.mockReturnValue({
+      trimmedRecent: [{ id: "m1", role: "user", text: "hello" }],
+      candidateMemory,
+    });
+    shouldSummarizeMemoryUpdateMock.mockReturnValue(false);
+
+    const result = await prepareCandidateMemoryUpdate({
+      currentMemory: {
+        facts: [],
+        preferences: [],
+        lists: {},
+        context: {},
+      },
+      updatedRecent: [{ id: "m1", role: "user", text: "hello" }],
+      settings: DEFAULT_MEMORY_SETTINGS,
+      memoryInterpreterSettings: {
+        llmFallbackEnabled: true,
+        saveRuleCandidates: true,
+      },
+      approvedRules: [],
+      rejectedMemoryRuleCandidateSignatures: [],
+    });
+
+    expect(result.candidateMemory.lists).toEqual({});
+    expect(result.candidateMemory.lists).not.toHaveProperty(
+      "memoryInterpretDebug"
+    );
+  });
 });

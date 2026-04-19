@@ -1,6 +1,7 @@
 import type { TaskCountRule, TaskIntent, TaskOutputType } from "@/types/taskProtocol";
 import {
   buildTaskIntentFallbackPrompt as buildTaskIntentFallbackPromptClean,
+  type TaskIntentFallbackCandidate,
   extractTaskIntentFallbackPayload,
 } from "@/lib/taskIntentFallback";
 
@@ -38,6 +39,13 @@ export type PendingIntentCandidate = ApprovedIntentPhrase & {
   draftText?: string;
 };
 
+type DraftTextKind =
+  | IntentPhraseKind
+  | "output_limit"
+  | "gpt_request"
+  | "library_index_request"
+  | "library_item_request";
+
 export const STRONG_APPROVED_INTENT_MATCH_SCORE = 6;
 
 const SEARCH_KEYWORDS = ["検索", "search", "google"];
@@ -72,6 +80,8 @@ const AT_LEAST_KEYWORDS = [
 ];
 const UP_TO_KEYWORDS = [
   "up to",
+  "maximum",
+  "max",
   "at most",
   "no more than",
   "not more than",
@@ -80,12 +90,17 @@ const UP_TO_KEYWORDS = [
   "以内",
   "まで",
 ];
-const AROUND_KEYWORDS = ["around", "about", "approximately", "前後", "程度"];
+const AROUND_KEYWORDS = ["around", "about", "approximately", "前後", "程度", "約", "くらい"];
 const EXACT_KEYWORDS = ["exactly", "ちょうど", "ぴったり", "正確に"];
 
 function includesAnyKeyword(text: string, keywords: string[]) {
   const lower = text.toLowerCase();
   return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
+}
+
+function extractFirstPositiveNumber(text: string) {
+  const match = text.match(/(\d+)/);
+  return match?.[1] ? Number(match[1]) : undefined;
 }
 
 export function normalizeLegacyIntentPhraseText(text: string) {
@@ -120,26 +135,18 @@ export function normalizePendingIntentCandidate(
 export function normalizeApprovedIntentPhraseFromCandidate(
   candidate: PendingIntentCandidate
 ): ApprovedIntentPhrase {
-  const sanitizedCandidate = normalizePendingIntentCandidate(candidate);
-  const normalizedCandidate = {
-    ...sanitizedCandidate,
-    ...parseIntentCandidateDraftText(
-      sanitizedCandidate.draftText || sanitizedCandidate.phrase,
-      sanitizedCandidate
-    ),
-  };
-
+  const sanitized = normalizePendingIntentCandidate(candidate);
   return {
-    id: normalizedCandidate.id,
-    phrase: normalizedCandidate.phrase,
-    kind: normalizedCandidate.kind,
-    count: normalizedCandidate.count,
-    rule: normalizedCandidate.rule,
-    charLimit: normalizedCandidate.charLimit,
-    draftText: normalizedCandidate.draftText,
-    approvedCount: normalizedCandidate.approvedCount,
-    rejectedCount: normalizedCandidate.rejectedCount,
-    createdAt: normalizedCandidate.createdAt,
+    id: sanitized.id,
+    phrase: sanitized.phrase,
+    kind: sanitized.kind,
+    count: sanitized.count,
+    rule: sanitized.rule,
+    charLimit: sanitized.charLimit,
+    draftText: sanitized.draftText,
+    approvedCount: sanitized.approvedCount,
+    rejectedCount: sanitized.rejectedCount,
+    createdAt: sanitized.createdAt,
   };
 }
 
@@ -227,46 +234,60 @@ export function buildNextApprovedIntentPhrasesOnDelete(args: {
 }
 
 export function formatIntentCandidateDraftText(candidate: {
-  kind: IntentPhraseKind;
+  kind: DraftTextKind;
   count?: number;
   rule?: TaskCountRule;
   charLimit?: number;
 }) {
-  const mode = candidate.rule === "exact" ? "MUST" : "CAN";
-  if (candidate.kind === "char_limit" && candidate.charLimit) {
-    const clause =
-      candidate.rule === "at_least"
-        ? `at least ${candidate.charLimit} Japanese characters`
-        : candidate.rule === "up_to"
-          ? `up to ${candidate.charLimit} Japanese characters`
-          : candidate.rule === "exact"
-            ? `exactly ${candidate.charLimit} Japanese characters`
-            : `around ${candidate.charLimit} Japanese characters`;
-    return `${mode} keep final output ${clause}`;
+  if (
+    (candidate.kind === "char_limit" || candidate.kind === "output_limit") &&
+    candidate.charLimit
+  ) {
+    if (candidate.rule === "at_least") {
+      return `Please keep the final output at least ${candidate.charLimit} characters.`;
+    }
+    if (candidate.rule === "around") {
+      return `Please summarize the final output around ${candidate.charLimit} characters.`;
+    }
+    return `Please summarize in up to ${candidate.charLimit} characters.`;
   }
 
-  const label =
-    candidate.kind === "ask_gpt"
-      ? "ask GPT"
-      : candidate.kind === "ask_user"
-        ? "ask user"
-        : candidate.kind === "search_request"
-          ? "search request"
-          : candidate.kind === "youtube_transcript_request"
-            ? "content request"
-            : "library reference";
-
   const count = candidate.count ?? 1;
-  const countClause =
-    candidate.rule === "at_least"
-      ? `at least ${count} times`
-      : candidate.rule === "up_to"
-        ? `up to ${count} times`
-        : candidate.rule === "around"
-          ? `around ${count} times`
-          : `exactly ${count} times`;
-
-  return `${mode} ${label} ${countClause}`;
+  const requestRule = candidate.rule ?? "up_to";
+  const pluralize = (singular: string, plural: string) =>
+    count === 1 ? singular : plural;
+  const formatCountInstruction = (verb: string, singular: string, plural: string) => {
+    const subject = pluralize(singular, plural);
+    if (requestRule === "at_least") {
+      return `${verb} at least ${count} ${subject}.`;
+    }
+    if (requestRule === "exact") {
+      return `${verb} exactly ${count} ${subject}.`;
+    }
+    if (requestRule === "around") {
+      return `${verb} around ${count} ${subject}.`;
+    }
+    return `${verb} up to ${count} ${subject}.`;
+  };
+  if (candidate.kind === "ask_gpt" || candidate.kind === "gpt_request") {
+    return formatCountInstruction("Make", "request to GPT", "requests to GPT");
+  }
+  if (candidate.kind === "ask_user") {
+    return formatCountInstruction("Ask", "question to the user", "questions to the user");
+  }
+  if (candidate.kind === "search_request") {
+    return formatCountInstruction("Perform", "search", "searches");
+  }
+  if (candidate.kind === "youtube_transcript_request") {
+    return formatCountInstruction("Fetch", "YouTube transcript", "YouTube transcripts");
+  }
+  if (candidate.kind === "library_index_request") {
+    return formatCountInstruction("Request", "library index entry", "library index entries");
+  }
+  if (candidate.kind === "library_item_request") {
+    return formatCountInstruction("Request", "library content item", "library content items");
+  }
+  return formatCountInstruction("Request", "library content item", "library content items");
 }
 
 export function parseIntentCandidateDraftText(
@@ -274,34 +295,29 @@ export function parseIntentCandidateDraftText(
   fallback: PendingIntentCandidate
 ): Partial<PendingIntentCandidate> {
   const normalized = normalizeLegacyIntentPhraseText(text).trim();
-  const countMatch = normalized.match(/(\d+)/);
-  const count = countMatch?.[1] ? Number(countMatch[1]) : fallback.count;
-
+  const count = extractFirstPositiveNumber(normalized) ?? fallback.count;
   const rule = detectTaskCountRule(normalized, fallback.rule || "exact");
   const lower = normalized.toLowerCase();
-  const kind: IntentPhraseKind = includesAnyKeyword(lower, ASK_GPT_KEYWORDS)
-    ? "ask_gpt"
-    : includesAnyKeyword(lower, ASK_USER_KEYWORDS)
-      ? "ask_user"
-      : includesAnyKeyword(lower, [
-            "content request",
-            "transcript",
-            "文字起こし",
-            "コンテンツ取得",
-          ])
-        ? "youtube_transcript_request"
-        : includesAnyKeyword(lower, ["library reference", "ライブラリ参照", "資料参照"])
-          ? "library_reference"
-          : /japanese characters|文字/.test(lower)
-            ? "char_limit"
-            : includesAnyKeyword(lower, ["search request", "検索", "search"])
-              ? "search_request"
-              : fallback.kind;
+
+  const kind: IntentPhraseKind =
+    /final output|summari[sz]e|characters?|文字/.test(lower)
+      ? "char_limit"
+      : includesAnyKeyword(lower, ["search", "検索"])
+        ? "search_request"
+        : includesAnyKeyword(lower, ["youtube", "transcript", "文字起こし"])
+          ? "youtube_transcript_request"
+          : includesAnyKeyword(lower, ["library", "ライブラリ"])
+            ? "library_reference"
+            : includesAnyKeyword(lower, ["ask user", "user", "ユーザー"])
+              ? "ask_user"
+              : includesAnyKeyword(lower, ["gpt", "chatgpt"])
+                ? "ask_gpt"
+                : fallback.kind;
 
   return {
     kind,
     count: kind === "char_limit" ? undefined : count,
-    charLimit: kind === "char_limit" ? count : fallback.charLimit,
+    charLimit: kind === "char_limit" ? (count ?? fallback.charLimit) : undefined,
     rule,
     draftText: normalized,
   };
@@ -412,6 +428,44 @@ function buildBaseTaskIntent(text: string): TaskIntent {
   };
 }
 
+function applyConstraintWorkflowHints(intent: TaskIntent): TaskIntent {
+  const next: TaskIntent = {
+    ...intent,
+    workflow: { ...intent.workflow },
+  };
+
+  for (const constraint of intent.constraints || []) {
+    const normalized = normalizeLegacyIntentPhraseText(constraint).toLowerCase();
+    const count = extractFirstPositiveNumber(normalized);
+    const rule = detectTaskCountRule(normalized, "up_to");
+
+    if (includesAnyKeyword(normalized, ["gpt", "chatgpt"])) {
+      next.workflow!.askGptCount = count ?? next.workflow!.askGptCount;
+      next.workflow!.askGptCountRule = rule;
+    } else if (includesAnyKeyword(normalized, ["search", "検索"])) {
+      next.workflow!.allowSearchRequest = true;
+      next.workflow!.searchRequestCount =
+        count ?? next.workflow!.searchRequestCount;
+      next.workflow!.searchRequestCountRule = rule;
+    } else if (includesAnyKeyword(normalized, ["youtube", "transcript", "文字起こし"])) {
+      next.workflow!.allowYoutubeTranscriptRequest = true;
+      next.workflow!.youtubeTranscriptRequestCount =
+        count ?? next.workflow!.youtubeTranscriptRequestCount;
+      next.workflow!.youtubeTranscriptRequestCountRule = rule;
+    } else if (includesAnyKeyword(normalized, ["library", "ライブラリ"])) {
+      next.workflow!.allowLibraryReference = true;
+      next.workflow!.libraryReferenceCount =
+        count ?? next.workflow!.libraryReferenceCount;
+      next.workflow!.libraryReferenceCountRule = rule;
+    } else if (includesAnyKeyword(normalized, ["user", "ユーザー"])) {
+      next.workflow!.askUserCount = count ?? next.workflow!.askUserCount;
+      next.workflow!.askUserCountRule = rule;
+    }
+  }
+
+  return next;
+}
+
 function applyApprovedIntentPhrases(
   intent: TaskIntent,
   text: string,
@@ -424,58 +478,34 @@ function applyApprovedIntentPhrases(
     constraints: [...(intent.constraints || [])],
   };
   const normalizedText = normalizePhraseForMatch(text);
+  const approvedConstraintLines = new Set<string>();
 
   for (const phrase of approvedPhrases) {
     const normalizedPhrase = normalizePhraseForMatch(phrase.phrase);
-    if (!normalizedPhrase || !normalizedText.includes(normalizedPhrase)) continue;
+    if (
+      normalizedPhrase &&
+      normalizedText &&
+      !normalizedText.includes(normalizedPhrase)
+    ) {
+      continue;
+    }
 
-    if (phrase.kind === "ask_gpt" && phrase.count) {
-      next.workflow!.askGptCount = phrase.count;
-      next.workflow!.askGptCountRule = phrase.rule || "exact";
-    }
-    if (phrase.kind === "ask_user" && phrase.count) {
-      next.workflow!.askUserCount = phrase.count;
-      next.workflow!.askUserCountRule = phrase.rule || "exact";
-    }
-    if (phrase.kind === "search_request" && phrase.count) {
-      next.workflow!.searchRequestCount = phrase.count;
-      next.workflow!.searchRequestCountRule = phrase.rule || "exact";
-      next.workflow!.allowSearchRequest = true;
-    }
-    if (phrase.kind === "youtube_transcript_request" && phrase.count) {
-      next.workflow!.youtubeTranscriptRequestCount = phrase.count;
-      next.workflow!.youtubeTranscriptRequestCountRule = phrase.rule || "exact";
-      next.workflow!.allowYoutubeTranscriptRequest = true;
-    }
-    if (phrase.kind === "library_reference" && phrase.count) {
-      next.workflow!.libraryReferenceCount = phrase.count;
-      next.workflow!.libraryReferenceCountRule = phrase.rule || "exact";
-      next.workflow!.allowLibraryReference = true;
-    }
-    if (phrase.kind === "char_limit" && phrase.charLimit) {
-      const nextConstraints = (next.constraints || []).filter(
-        (item) => !/Japanese characters/i.test(item)
-      );
-      nextConstraints.push(formatCharConstraint(phrase.charLimit, phrase.rule));
-      next.constraints = nextConstraints;
-    }
+    const constraintLine =
+      (phrase.draftText || "").trim() ||
+      formatIntentCandidateDraftText({
+        kind: phrase.kind,
+        count: phrase.count,
+        rule: phrase.rule,
+        charLimit: phrase.charLimit,
+      });
+    if (constraintLine) approvedConstraintLines.add(constraintLine);
   }
 
-  return next;
-}
+  next.constraints = [
+    ...new Set([...(next.constraints || []), ...approvedConstraintLines]),
+  ];
 
-function formatCharConstraint(limit: number, rule: TaskCountRule | undefined) {
-  switch (rule) {
-    case "exact":
-      return `Keep the final output at exactly ${limit} Japanese characters if feasible.`;
-    case "at_least":
-      return `Keep the final output at or above ${limit} Japanese characters if feasible.`;
-    case "up_to":
-      return `Keep the final output at or under ${limit} Japanese characters.`;
-    case "around":
-    default:
-      return `Target around ${limit} Japanese characters.`;
-  }
+  return applyConstraintWorkflowHints(next);
 }
 
 function findStrongApprovedIntentPhraseMatches(
@@ -547,12 +577,6 @@ function shouldRunTaskIntentFallback(args: {
   return hasResidualIntentReviewSignal(remaining);
 }
 
-function asRule(value: unknown): TaskCountRule | null {
-  return value === "exact" || value === "at_least" || value === "up_to" || value === "around"
-    ? value
-    : null;
-}
-
 function buildIntentCandidateKey(candidate: {
   kind: IntentPhraseKind;
   phrase: string;
@@ -579,46 +603,66 @@ function buildPendingCandidates(
 
   for (const raw of parsed.candidates) {
     if (!raw || typeof raw !== "object") continue;
-    const item = raw as Record<string, unknown>;
-    const kind =
-      item.kind === "ask_gpt" ||
-      item.kind === "ask_user" ||
-      item.kind === "search_request" ||
-      item.kind === "youtube_transcript_request" ||
-      item.kind === "library_reference" ||
-      item.kind === "char_limit"
-        ? item.kind
-        : null;
+    const item = raw as TaskIntentFallbackCandidate;
     const phrase = typeof item.phrase === "string" ? item.phrase.trim() : "";
-    if (!kind || !phrase || !sourceText.includes(phrase)) continue;
+    if (!phrase) continue;
+
+    const kind: IntentPhraseKind =
+      item.kind === "output_limit"
+        ? "char_limit"
+        : item.kind === "gpt_request"
+          ? "ask_gpt"
+          : item.kind === "search_request"
+            ? "search_request"
+            : item.kind === "youtube_transcript_request"
+              ? "youtube_transcript_request"
+              : item.kind === "ask_user"
+                ? "ask_user"
+                : "library_reference";
+
+    const candidateRule =
+      item.rule === "exact" ||
+      item.rule === "at_least" ||
+      item.rule === "up_to" ||
+      item.rule === "around"
+        ? item.rule
+        : undefined;
 
     const candidate: PendingIntentCandidate = {
       id: `cand-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       phrase,
       kind,
-      count: typeof item.count === "number" && item.count > 0 ? Math.floor(item.count) : undefined,
-      rule: asRule(item.rule) || undefined,
+      count:
+        kind === "char_limit"
+          ? undefined
+          : typeof item.count === "number" && item.count > 0
+            ? Math.floor(item.count)
+            : undefined,
+      rule: candidateRule,
       charLimit:
-        typeof item.charLimit === "number" && item.charLimit > 0
+        kind === "char_limit" &&
+        typeof item.charLimit === "number" &&
+        item.charLimit > 0
           ? Math.floor(item.charLimit)
           : undefined,
       createdAt: new Date().toISOString(),
       sourceText,
-      draftText:
-        typeof item.draftText === "string" && item.draftText.trim()
-          ? item.draftText.trim()
-          : formatIntentCandidateDraftText({
-              kind,
-              count:
-                typeof item.count === "number" && item.count > 0
-                  ? Math.floor(item.count)
-                  : undefined,
-              rule: asRule(item.rule) || undefined,
-              charLimit:
-                typeof item.charLimit === "number" && item.charLimit > 0
-                  ? Math.floor(item.charLimit)
-                  : undefined,
-            }),
+      draftText: formatIntentCandidateDraftText({
+        kind: item.kind,
+        count:
+          kind === "char_limit"
+            ? undefined
+            : typeof item.count === "number" && item.count > 0
+              ? Math.floor(item.count)
+              : undefined,
+        rule: candidateRule,
+        charLimit:
+          kind === "char_limit" &&
+          typeof item.charLimit === "number" &&
+          item.charLimit > 0
+            ? Math.floor(item.charLimit)
+            : undefined,
+      }),
     };
 
     const key = buildIntentCandidateKey(candidate);
@@ -708,7 +752,7 @@ export async function resolveTaskIntentWithFallback(args: {
       ),
       usedFallback: true,
       usage: data?.usage ?? null,
-      suggestedTitle: payload.suggestedTitle,
+      suggestedTitle: null,
     };
   } catch {
     return {

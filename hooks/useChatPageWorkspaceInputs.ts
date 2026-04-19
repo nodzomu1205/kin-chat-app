@@ -150,7 +150,6 @@ export function useChatPageWorkspaceInputs(args: UseChatPageWorkspaceInputsArgs)
       imageDetail: args.gpt.imageDetail,
       compactCharLimit: args.gpt.compactCharLimit,
       simpleImageCharLimit: args.gpt.simpleImageCharLimit,
-      postIngestAction: args.gpt.postIngestAction,
       fileReadPolicy: args.gpt.fileReadPolicy,
       driveImportAutoSummary: args.gpt.driveImportAutoSummary,
       defaultMemorySettings: args.gpt.defaultMemorySettings,

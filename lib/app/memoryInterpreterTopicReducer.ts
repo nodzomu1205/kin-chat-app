@@ -2,7 +2,8 @@ import type { PendingMemoryRuleCandidate, TopicDecision, UserUtteranceIntent } f
 import type { MemoryInterpreterFallbackResponse } from "@/lib/app/memoryInterpreterFallbackHelpers";
 import { buildPatternMetadata } from "@/lib/app/memoryInterpreterPatternMemory";
 import type { MemoryUtteranceClassification } from "@/lib/app/memoryInterpreterUtterance";
-import { normalizeText, normalizeTopicCandidate } from "@/lib/app/memoryInterpreterText";
+import { normalizeText } from "@/lib/app/memoryInterpreterText";
+import { normalizeTopicCandidate } from "@/lib/app/memoryInterpreterTopicExtractor";
 import {
   buildFallbackTopicAdjudication,
   type MemoryTopicAdjudication,

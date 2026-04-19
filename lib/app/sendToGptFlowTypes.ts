@@ -6,6 +6,8 @@ import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { GptInstructionMode, ResponseMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { ReferenceLibraryItem } from "@/types/chat";
 import type { TaskProtocolEvent, TaskRuntimeState } from "@/types/taskProtocol";
+import type { ConversationUsageOptions } from "@/lib/tokenStats";
+import type { ChatPromptMetrics } from "@/lib/chatPromptMetrics";
 
 export type ParsedInputLike = {
   searchQuery?: string;
@@ -48,6 +50,8 @@ export type SearchSource = {
 export type ChatApiSearchLike = {
   reply?: string;
   usage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
+  usageDetails?: Record<string, unknown> | null;
+  promptMetrics?: ChatPromptMetrics | null;
   searchUsed?: boolean;
   searchQuery?: string;
   searchSeriesId?: string;
@@ -135,7 +139,13 @@ export type SearchContextRecorder = (args: {
 }) => SearchRecord;
 
 export type MemoryResultLike = {
-  summaryUsage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
+  compressionUsage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
+  fallbackUsage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
+  fallbackUsageDetails?: Record<string, unknown> | null;
+  fallbackMetrics?: {
+    promptChars: number;
+    rawReplyChars: number;
+  } | null;
 };
 
 export type SendToGptFlowSearchArgs = {
@@ -147,7 +157,10 @@ export type SendToGptFlowSearchArgs = {
   getContinuationTokenForSeries: (seriesId: string) => string;
   getAskAiModeLinkForQuery: (query: string) => string;
   applySearchUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
-  applyChatUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applyChatUsage: (
+    usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
 };
 
 export type SendToGptFlowProtocolArgs = {
@@ -172,7 +185,7 @@ export type SendToGptFlowMemoryArgs = {
     recent: Message[],
     options?: MemoryUpdateOptions
   ) => Promise<MemoryResultLike>;
-  applySummaryUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applyCompressionUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
   chatRecentLimit: number;
   gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: Memory }>;
 };
@@ -314,7 +327,10 @@ export type SendToGptImplicitSearchArtifactsArgs = {
   effectiveParsedSearchQuery?: string;
   finalRequestText: string;
   applySearchUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
-  applyChatUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applyChatUsage: (
+    usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
   recordSearchContext: SearchContextRecorder;
 };
 
@@ -402,13 +418,24 @@ export type FinalizeSendToGptFlowArgs = {
   taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   applySearchUsage: (usage: ChatApiSearchLike["usage"]) => void;
-  applyChatUsage: (usage: ChatApiSearchLike["usage"]) => void;
+  applyChatUsage: (
+    usage: ChatApiSearchLike["usage"],
+    options?: ConversationUsageOptions
+  ) => void;
   recordSearchContext: SearchContextRecorder;
   handleGptMemory: (
     recent: Message[],
     options?: { previousCommittedTopic?: string }
-  ) => Promise<{ summaryUsage?: ChatApiSearchLike["usage"] }>;
-  applySummaryUsage: (usage: ChatApiSearchLike["usage"]) => void;
+  ) => Promise<{
+    compressionUsage?: ChatApiSearchLike["usage"];
+    fallbackUsage?: ChatApiSearchLike["usage"];
+    fallbackUsageDetails?: Record<string, unknown> | null;
+    fallbackMetrics?: {
+      promptChars: number;
+      rawReplyChars: number;
+    } | null;
+  }>;
+  applyCompressionUsage: (usage: ChatApiSearchLike["usage"]) => void;
 };
 
 export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
@@ -416,3 +443,4 @@ export type RunSendToGptFlowArgs = SendToGptFlowRequestArgs &
   SendToGptFlowProtocolArgs &
   SendToGptFlowMemoryArgs &
   SendToGptFlowUiArgs;
+

@@ -29,7 +29,8 @@ type SearchSource = {
 };
 
 export type ExecutedSearchResult = {
-  searchText: string;
+  searchPromptText: string;
+  searchEvidenceText: string;
   returnedSearchContinuationToken: string;
   sources: SearchSource[];
   rawSources: SearchSource[];
@@ -126,7 +127,10 @@ export function buildExecutedSearchResult(result: {
   }));
 
   return {
-    searchText: result.rawText || result.summaryText || result.aiSummary || "",
+    searchPromptText:
+      result.summaryText || result.aiSummary || result.rawText || "",
+    searchEvidenceText:
+      result.rawText || result.summaryText || result.aiSummary || "",
     returnedSearchContinuationToken:
       typeof result.continuationToken === "string"
         ? result.continuationToken

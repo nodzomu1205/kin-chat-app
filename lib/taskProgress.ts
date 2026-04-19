@@ -1,125 +1,260 @@
 import type {
   PendingExternalRequest,
-  TaskCountRule,
   TaskIntent,
   TaskRequirementProgress,
   UserFacingTaskRequest,
 } from "@/types/taskProtocol";
 
-function formatCountLabel(prefix: string, count: number, rule: TaskCountRule) {
-  switch (rule) {
-    case "at_least":
-      return `${prefix}を最低${count}回`;
-    case "up_to":
-      return `${prefix}を最大${count}回`;
-    case "around":
-      return `${prefix}を${count}回前後`;
-    case "exact":
-    default:
-      return `${prefix}を${count}回`;
+type ProgressKind = TaskRequirementProgress["kind"];
+type ProgressRule = NonNullable<TaskRequirementProgress["rule"]>;
+
+const SEARCH_PROGRESS_LABEL = "検索";
+const GPT_PROGRESS_LABEL = "GPTへの依頼";
+const USER_PROGRESS_LABEL = "ユーザー確認";
+const MATERIAL_PROGRESS_LABEL = "資料依頼";
+const TRANSCRIPT_PROGRESS_LABEL = "文字起こし取得";
+const LIBRARY_PROGRESS_LABEL = "ライブラリ参照";
+const FINALIZE_PROGRESS_LABEL = "最終成果物";
+
+const AT_LEAST_KEYWORDS = [
+  "at least",
+  "minimum",
+  "no less than",
+  "not less than",
+  "or more",
+  "以上",
+  "最低",
+  "少なくとも",
+];
+const UP_TO_KEYWORDS = [
+  "up to",
+  "at most",
+  "no more than",
+  "not more than",
+  "or less",
+  "まで",
+  "以内",
+  "内",
+];
+const AROUND_KEYWORDS = ["around", "about", "approximately", "前後", "程度", "約", "くらい"];
+const EXACT_KEYWORDS = ["exactly", "ちょうど", "ぴったり", "正確に"];
+
+function buildRequirementProgressItem(params: {
+  id: string;
+  label: string;
+  category: TaskRequirementProgress["category"];
+  kind: ProgressKind;
+  rule?: ProgressRule;
+  targetCount?: number;
+}): TaskRequirementProgress {
+  return {
+    id: params.id,
+    label: params.label,
+    category: params.category,
+    kind: params.kind,
+    rule: params.rule,
+    targetCount: params.targetCount,
+    completedCount: 0,
+    status: "not_started",
+  };
+}
+
+function normalizeConstraintText(text: string) {
+  return text.normalize("NFKC").replace(/\s+/g, " ").trim();
+}
+
+function extractFirstPositiveNumber(text: string) {
+  const match = text.match(/(\d+)/);
+  return match?.[1] ? Number(match[1]) : undefined;
+}
+
+function includesAnyKeyword(text: string, keywords: string[]) {
+  const lower = text.toLowerCase();
+  return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
+}
+
+function detectConstraintRule(
+  text: string,
+  fallbackRule: ProgressRule = "unknown"
+): ProgressRule {
+  const normalized = normalizeConstraintText(text).toLowerCase();
+
+  if (includesAnyKeyword(normalized, AT_LEAST_KEYWORDS)) return "at_least";
+  if (includesAnyKeyword(normalized, UP_TO_KEYWORDS)) return "up_to";
+  if (includesAnyKeyword(normalized, AROUND_KEYWORDS)) return "around";
+  if (includesAnyKeyword(normalized, EXACT_KEYWORDS)) return "exact";
+  return fallbackRule;
+}
+
+function inferConstraintKind(text: string): ProgressKind | null {
+  const normalized = normalizeConstraintText(text).toLowerCase();
+  if (/final output|summari[sz]e|characters?|文字/.test(normalized)) {
+    return "finalize";
   }
+  if (/search|検索/.test(normalized)) return "search_request";
+  if (/youtube|transcript|文字起こし/.test(normalized)) {
+    return "youtube_transcript_request";
+  }
+  if (/library|ライブラリ/.test(normalized)) return "library_reference";
+  if (/user|ユーザー/.test(normalized)) return "ask_user";
+  if (/gpt|chatgpt/.test(normalized)) return "ask_gpt";
+  return null;
+}
+
+function resolveConstraintCategory(
+  kind: ProgressKind,
+  rule: ProgressRule
+): TaskRequirementProgress["category"] {
+  if (kind === "finalize") return "required";
+  return rule === "at_least" || rule === "exact" ? "required" : "optional";
+}
+
+function resolveConstraintLabel(kind: ProgressKind) {
+  switch (kind) {
+    case "ask_gpt":
+      return GPT_PROGRESS_LABEL;
+    case "ask_user":
+      return USER_PROGRESS_LABEL;
+    case "request_material":
+      return MATERIAL_PROGRESS_LABEL;
+    case "search_request":
+      return SEARCH_PROGRESS_LABEL;
+    case "youtube_transcript_request":
+      return TRANSCRIPT_PROGRESS_LABEL;
+    case "library_reference":
+      return LIBRARY_PROGRESS_LABEL;
+    case "finalize":
+    default:
+      return FINALIZE_PROGRESS_LABEL;
+  }
+}
+
+function buildConstraintRequirement(text: string): TaskRequirementProgress | null {
+  const kind = inferConstraintKind(text);
+  if (!kind) return null;
+
+  const rule = detectConstraintRule(text, kind === "finalize" ? "exact" : "unknown");
+  const label = resolveConstraintLabel(kind);
+
+  if (kind === "finalize") {
+    return buildRequirementProgressItem({
+      id: "finalize",
+      label,
+      category: resolveConstraintCategory(kind, rule),
+      kind,
+      rule,
+      targetCount: 1,
+    });
+  }
+
+  const targetCount = extractFirstPositiveNumber(text) ?? 1;
+  return buildRequirementProgressItem({
+    id: kind,
+    label,
+    category: resolveConstraintCategory(kind, rule),
+    kind,
+    rule,
+    targetCount,
+  });
+}
+
+function buildWorkflowFallbackRequirement(
+  kind: Extract<
+    ProgressKind,
+    | "ask_gpt"
+    | "ask_user"
+    | "request_material"
+    | "search_request"
+    | "youtube_transcript_request"
+    | "library_reference"
+  >,
+  count?: number,
+  rule: ProgressRule = "up_to"
+) {
+  if (!count || count <= 0) return null;
+
+  return buildRequirementProgressItem({
+    id: kind,
+    label: resolveConstraintLabel(kind),
+    category: resolveConstraintCategory(kind, rule),
+    kind,
+    rule,
+    targetCount: count,
+  });
 }
 
 export function buildInitialRequirementProgress(
   intent: TaskIntent
 ): TaskRequirementProgress[] {
   const items: TaskRequirementProgress[] = [];
+  const seenKinds = new Set<ProgressKind>();
 
-  const askGptCount = intent.workflow?.askGptCount ?? 0;
-  if (askGptCount > 0) {
-    items.push({
-      id: "ask_gpt",
-      label: formatCountLabel("GPTに質問", askGptCount, intent.workflow?.askGptCountRule ?? "exact"),
-      category:
-        intent.workflow?.askGptCountRule === "up_to" ? "optional" : "required",
-      kind: "ask_gpt",
-      targetCount: askGptCount,
-      completedCount: 0,
-      status: "not_started",
-    });
+  for (const constraint of intent.constraints || []) {
+    const requirement = buildConstraintRequirement(constraint);
+    if (!requirement || seenKinds.has(requirement.kind)) continue;
+    seenKinds.add(requirement.kind);
+    items.push(requirement);
   }
 
-  const askUserCount = intent.workflow?.askUserCount ?? 0;
-  if (askUserCount > 0) {
-    items.push({
-      id: "ask_user",
-      label: formatCountLabel("ユーザーに質問", askUserCount, intent.workflow?.askUserCountRule ?? "exact"),
-      category: "optional",
-      kind: "ask_user",
-      targetCount: askUserCount,
-      completedCount: 0,
-      status: "not_started",
-    });
+  const workflowFallbacks = [
+    buildWorkflowFallbackRequirement(
+      "ask_gpt",
+      intent.workflow?.askGptCount,
+      intent.workflow?.askGptCountRule ?? "up_to"
+    ),
+    buildWorkflowFallbackRequirement(
+      "ask_user",
+      intent.workflow?.askUserCount,
+      intent.workflow?.askUserCountRule ?? "up_to"
+    ),
+    intent.workflow?.allowMaterialRequest
+      ? buildRequirementProgressItem({
+          id: "request_material",
+          label: MATERIAL_PROGRESS_LABEL,
+          category: "optional",
+          kind: "request_material",
+          rule: "up_to",
+          targetCount: 1,
+        })
+      : null,
+    buildWorkflowFallbackRequirement(
+      "search_request",
+      intent.workflow?.searchRequestCount ??
+        (intent.workflow?.allowSearchRequest ? 1 : undefined),
+      intent.workflow?.searchRequestCountRule ?? "up_to"
+    ),
+    buildWorkflowFallbackRequirement(
+      "youtube_transcript_request",
+      intent.workflow?.youtubeTranscriptRequestCount ??
+        (intent.workflow?.allowYoutubeTranscriptRequest ? 1 : undefined),
+      intent.workflow?.youtubeTranscriptRequestCountRule ?? "up_to"
+    ),
+    buildWorkflowFallbackRequirement(
+      "library_reference",
+      intent.workflow?.libraryReferenceCount ??
+        (intent.workflow?.allowLibraryReference ? 1 : undefined),
+      intent.workflow?.libraryReferenceCountRule ?? "up_to"
+    ),
+  ];
+
+  for (const fallback of workflowFallbacks) {
+    if (!fallback || seenKinds.has(fallback.kind)) continue;
+    seenKinds.add(fallback.kind);
+    items.push(fallback);
   }
 
-  if (intent.workflow?.allowMaterialRequest) {
-    items.push({
-      id: "request_material",
-      label: "資料を要求",
-      category: "optional",
-      kind: "request_material",
-      targetCount: 1,
-      completedCount: 0,
-      status: "not_started",
-    });
+  if (!seenKinds.has("finalize")) {
+    items.push(
+      buildRequirementProgressItem({
+        id: "finalize",
+        label: FINALIZE_PROGRESS_LABEL,
+        category: "required",
+        kind: "finalize",
+        rule: "exact",
+        targetCount: 1,
+      })
+    );
   }
-
-  if (intent.workflow?.allowSearchRequest) {
-    const searchCount = intent.workflow?.searchRequestCount ?? 1;
-    const searchRule = intent.workflow?.searchRequestCountRule ?? "exact";
-    items.push({
-      id: "search_request",
-      label: formatCountLabel("検索を要求", searchCount, searchRule),
-      category: searchRule === "up_to" ? "optional" : "required",
-      kind: "search_request",
-      targetCount: searchCount,
-      completedCount: 0,
-      status: "not_started",
-    });
-  }
-
-  if (intent.workflow?.allowYoutubeTranscriptRequest) {
-    const transcriptCount = intent.workflow?.youtubeTranscriptRequestCount ?? 1;
-    const transcriptRule =
-      intent.workflow?.youtubeTranscriptRequestCountRule ?? "exact";
-    items.push({
-      id: "youtube_transcript_request",
-      label: formatCountLabel(
-        "YouTube transcript取得",
-        transcriptCount,
-        transcriptRule
-      ),
-      category: transcriptRule === "up_to" ? "optional" : "required",
-      kind: "youtube_transcript_request",
-      targetCount: transcriptCount,
-      completedCount: 0,
-      status: "not_started",
-    });
-  }
-
-  const libraryReferenceCount = intent.workflow?.libraryReferenceCount ?? 0;
-  if (intent.workflow?.allowLibraryReference || libraryReferenceCount > 0) {
-    const libraryRule = intent.workflow?.libraryReferenceCountRule ?? "exact";
-    items.push({
-      id: "library_reference",
-      label: formatCountLabel("ライブラリ参照", libraryReferenceCount || 1, libraryRule),
-      category: libraryRule === "up_to" ? "optional" : "required",
-      kind: "library_reference",
-      targetCount: libraryReferenceCount || 1,
-      completedCount: 0,
-      status: "not_started",
-    });
-  }
-
-  items.push({
-    id: "finalize",
-    label: "最終成果物を提出",
-    category: "required",
-    kind: "finalize",
-    targetCount: 1,
-    completedCount: 0,
-    status: "not_started",
-  });
 
   return items;
 }
@@ -128,19 +263,19 @@ export function toUserFacingRequests(
   pendingRequests: PendingExternalRequest[]
 ): UserFacingTaskRequest[] {
   return pendingRequests
-    .filter((r) => r.status === "pending")
-    .map((r) => ({
-    requestId: r.id,
-    taskId: r.taskId,
-    actionId: r.actionId,
-    kind: r.kind,
-    body: r.body,
-    required: r.required,
-    status: r.status,
-    createdAt: r.createdAt,
-    answeredAt: r.answeredAt,
-    answerText: r.answerText,
-  }));
+    .filter((request) => request.status === "pending")
+    .map((request) => ({
+      requestId: request.id,
+      taskId: request.taskId,
+      actionId: request.actionId,
+      kind: request.kind,
+      body: request.body,
+      required: request.required,
+      status: request.status,
+      createdAt: request.createdAt,
+      answeredAt: request.answeredAt,
+      answerText: request.answerText,
+    }));
 }
 
 export function markRequirementProgress(

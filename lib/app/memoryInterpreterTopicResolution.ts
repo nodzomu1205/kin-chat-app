@@ -1,8 +1,8 @@
 import {
   normalizeText,
-  normalizeTopicCandidate,
   shouldPreserveExistingTopic,
 } from "@/lib/app/memoryInterpreterText";
+import { normalizeTopicCandidate } from "@/lib/app/memoryInterpreterTopicExtractor";
 import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
 
 export function resolveTopicFromInputs(params: {

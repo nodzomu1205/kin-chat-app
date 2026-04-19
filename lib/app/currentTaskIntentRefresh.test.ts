@@ -27,7 +27,6 @@ describe("currentTaskIntentRefresh", () => {
         outputTokens: 20,
         totalTokens: 30,
       },
-      suggestedTitle: "Updated title",
     });
 
     const applyTaskUsage = vi.fn();
@@ -85,7 +84,7 @@ describe("currentTaskIntentRefresh", () => {
       intent: {
         goal: "Updated goal",
       },
-      title: "Updated title",
+      title: "Current title",
       originalInstruction: "Original instruction text",
     });
     expect(syncTaskDraftFromProtocol).toHaveBeenCalledWith({

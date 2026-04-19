@@ -116,7 +116,7 @@ function buildTaskProgressOutput(view: TaskProgressView) {
     ? view.requirementProgress.map((item) => {
         const target = typeof item.targetCount === "number" ? `/${item.targetCount}` : "";
         const category = item.category === "required" ? "required" : "optional";
-        return `- ${item.kind}: ${item.completedCount ?? 0}${target} (${category}, ${item.status})`;
+        return `- ${item.label}: ${item.completedCount ?? 0}${target} (${category}, ${item.status})`;
       })
     : ["- none"];
 

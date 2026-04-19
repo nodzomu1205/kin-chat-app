@@ -6,7 +6,7 @@ import {
   resolvePreparedRequestGateDecision,
 } from "@/lib/app/sendToGptFlowDecisionState";
 import type { Dispatch, SetStateAction } from "react";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type {
   InlineUrlGateContext,
@@ -244,8 +244,12 @@ export async function handleYoutubeTranscriptGate(args: {
   handleGptMemory: (
     recent: Message[],
     options?: Record<string, unknown>
-  ) => Promise<{ summaryUsage?: unknown }>;
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  ) => Promise<{ compressionUsage?: unknown; fallbackUsage?: unknown }>;
+  applyChatUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
   if (!args.youtubeTranscriptRequestEvent?.url?.trim()) return false;
 
@@ -266,7 +270,8 @@ export async function handleYoutubeTranscriptGate(args: {
     gptStateRef: args.gptStateRef as never,
     chatRecentLimit: args.chatRecentLimit,
     handleGptMemory: args.handleGptMemory as never,
-    applySummaryUsage: args.applySummaryUsage as never,
+    applyChatUsage: args.applyChatUsage as never,
+    applyCompressionUsage: args.applyCompressionUsage as never,
   });
   return true;
 }
@@ -320,8 +325,12 @@ export async function runPreparedRequestGates(args: {
   handleGptMemory: (
     recent: Message[],
     options?: Record<string, unknown>
-  ) => Promise<{ summaryUsage?: unknown }>;
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  ) => Promise<{ compressionUsage?: unknown; fallbackUsage?: unknown }>;
+  applyChatUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
   const taskDirectiveOnlyGateContext = buildTaskDirectiveOnlyGateContext({
     preparedRequest: args.preparedRequest,
@@ -385,6 +394,8 @@ export async function runPreparedRequestGates(args: {
     gptStateRef: args.gptStateRef,
     chatRecentLimit: args.chatRecentLimit,
     handleGptMemory: args.handleGptMemory,
-    applySummaryUsage: args.applySummaryUsage,
+    applyChatUsage: args.applyChatUsage,
+    applyCompressionUsage: args.applyCompressionUsage,
   });
 }
+

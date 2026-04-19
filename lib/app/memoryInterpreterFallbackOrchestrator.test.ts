@@ -52,6 +52,7 @@ describe("memoryInterpreterFallbackOrchestrator", () => {
       }),
       pendingCandidates: [],
       usedFallback: false,
+      fallbackUsage: null,
     });
   });
 
@@ -161,6 +162,7 @@ describe("memoryInterpreterFallbackOrchestrator", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(result.usedFallback).toBe(true);
+    expect(result.fallbackUsage).toBeNull();
   });
 
   it("does not bypass approval for an unapproved mid-conversation switch", async () => {
@@ -204,6 +206,7 @@ describe("memoryInterpreterFallbackOrchestrator", () => {
       preserveExistingTopic: true,
       proposedTopic: "Edo period",
     });
+    expect(result.fallbackUsage).toBeNull();
   });
 
   it("exposes approved rule adjudication resolution as a pure helper", () => {

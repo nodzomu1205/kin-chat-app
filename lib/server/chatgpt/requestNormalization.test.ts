@@ -10,7 +10,7 @@ import {
 describe("requestNormalization", () => {
   it("resolves only supported route modes", () => {
     expect(resolveChatRouteMode({ mode: "chat" })).toBe("chat");
-    expect(resolveChatRouteMode({ mode: "summarize" })).toBe("summarize");
+    expect(resolveChatRouteMode({ mode: "compact_recent" })).toBe("compact_recent");
     expect(resolveChatRouteMode({ mode: "memory_interpret" })).toBe(
       "memory_interpret"
     );
@@ -76,3 +76,4 @@ describe("requestNormalization", () => {
     );
   });
 });
+

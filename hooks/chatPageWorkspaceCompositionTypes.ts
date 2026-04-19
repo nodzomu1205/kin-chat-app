@@ -79,7 +79,6 @@ export type ChatPageWorkspaceCompositionState = {
     | "imageDetail"
     | "compactCharLimit"
     | "simpleImageCharLimit"
-    | "postIngestAction"
     | "fileReadPolicy"
     | "driveImportAutoSummary"
     | "defaultMemorySettings"
@@ -179,7 +178,6 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeImageDetail"
     | "onChangeCompactCharLimit"
     | "onChangeSimpleImageCharLimit"
-    | "onChangePostIngestAction"
     | "onChangeFileReadPolicy"
     | "onChangeDriveImportAutoSummary"
   >;

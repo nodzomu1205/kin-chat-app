@@ -38,39 +38,39 @@ const baseIntent: TaskIntent = {
     finalizationPolicy: "auto_when_ready",
   },
   constraints: [],
-  entities: ["りすこ"],
+  entities: ["rivals"],
 };
 
 describe("taskProtocolTaskState", () => {
   it("prefers original instruction for task recompile input", () => {
     expect(
       resolveTaskRecompileSourceInstruction({
-        originalInstruction: "  farmers 360の再起戦略をまとめて。GPTへのリクエスト3回迄  ",
-        draftUserInstruction: "短いドラフト",
-        intentGoal: "要約済みgoal",
+        originalInstruction: "  original instruction  ",
+        draftUserInstruction: "draft instruction",
+        intentGoal: "goal",
       })
-    ).toBe("farmers 360の再起戦略をまとめて。GPTへのリクエスト3回迄");
+    ).toBe("original instruction");
   });
 
   it("falls back from draft instruction to goal when the runtime copy is empty", () => {
     expect(
       resolveTaskRecompileSourceInstruction({
         originalInstruction: "   ",
-        draftUserInstruction: "  ドラフトの依頼文  ",
-        intentGoal: "要約済みgoal",
+        draftUserInstruction: "  draft instruction  ",
+        intentGoal: "goal",
       })
-    ).toBe("ドラフトの依頼文");
+    ).toBe("draft instruction");
 
     expect(
       resolveTaskRecompileSourceInstruction({
         originalInstruction: "",
         draftUserInstruction: " ",
-        intentGoal: "  要約済みgoal  ",
+        intentGoal: "  goal  ",
       })
-    ).toBe("要約済みgoal");
+    ).toBe("goal");
   });
 
-  it("builds a started task state with compiled prompt and log", () => {
+  it("builds a started task state without inventing a title", () => {
     const result = buildStartedTaskState({
       prev: createRuntime(),
       taskId: "123456",
@@ -79,33 +79,13 @@ describe("taskProtocolTaskState", () => {
       now: 1000,
     });
 
-    expect(result.title).toBeTruthy();
+    expect(result.title).toBe("");
     expect(result.compiledTaskPrompt).toContain("<<SYS_TASK>>");
+    expect(result.compiledTaskPrompt).not.toContain("TITLE:");
     expect(result.nextState.currentTaskId).toBe("123456");
     expect(result.nextState.taskStatus).toBe("running");
     expect(result.nextState.originalInstruction).toBe("Analyze rivals");
     expect(result.nextState.protocolLog).toHaveLength(1);
-  });
-
-  it("derives a clearer Japanese title from the original instruction", () => {
-    const intent: TaskIntent = {
-      ...baseIntent,
-      goal: "縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して",
-      entities: [],
-    };
-
-    const result = buildStartedTaskState({
-      prev: createRuntime(),
-      taskId: "123456",
-      originalInstruction:
-        "縄文時代に関する動画をYouTubeで最低3つ見つけて分析してレポートを提出して！1000文字以上。検索3回迄。コンテンツ取得5回迄。",
-      intent,
-      now: 1000,
-    });
-
-    expect(result.title).toContain("縄文時代");
-    expect(result.title).toContain("YouTube");
-    expect(result.title).not.toBe("縄文時代に関する動画をYouTube");
   });
 
   it("preserves prior progress when replacing the current task intent", () => {

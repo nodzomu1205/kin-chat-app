@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  clearTaskScopedMemory,
   createEmptyMemory,
+  DISPLAYED_CONTEXT_MEMORY_LIST_KEYS,
   mergeMemory,
   normalizeMemorySettings,
   normalizeMemoryShape,
   safeParseMemory,
+  STABLE_MEMORY_CONTEXT_KEYS,
+  STABLE_MEMORY_LIST_KEYS,
+  TASK_SCOPED_MEMORY_CONTEXT_KEYS,
+  TASK_SCOPED_MEMORY_LIST_KEYS,
 } from "@/lib/memory";
 
 describe("memory helpers", () => {
@@ -99,4 +105,54 @@ describe("memory helpers", () => {
       recentKeep: 3,
     });
   });
+
+  it("clears only task-scoped memory fields", () => {
+    const next = clearTaskScopedMemory({
+      facts: ["fact"],
+      preferences: ["pref"],
+      lists: {
+        activeDocument: { title: "Doc A" },
+        worksByEntity: { TopicA: ["Work A"] },
+        trackedEntities: ["TopicA"],
+        recentSearchQueries: ["query"],
+      },
+      context: {
+        currentTopic: "TopicA",
+        proposedTopic: "TopicB",
+        currentTask: "TaskA",
+        followUpRule: "RuleA",
+        lastUserIntent: "IntentA",
+      },
+    });
+
+    expect(next.facts).toEqual(["fact"]);
+    expect(next.preferences).toEqual(["pref"]);
+    expect(next.lists.recentSearchQueries).toEqual(["query"]);
+    expect(next.lists.activeDocument).toBeUndefined();
+    expect(next.lists.worksByEntity).toBeUndefined();
+    expect(next.lists.trackedEntities).toBeUndefined();
+    expect(next.context.currentTopic).toBeUndefined();
+    expect(next.context.proposedTopic).toBe("TopicB");
+    expect(next.context.currentTask).toBeUndefined();
+    expect(next.context.followUpRule).toBeUndefined();
+    expect(next.context.lastUserIntent).toBeUndefined();
+  });
+
+  it("declares lifecycle keys for task-scoped lists and context", () => {
+    expect(TASK_SCOPED_MEMORY_LIST_KEYS).toEqual([
+      "activeDocument",
+      "worksByEntity",
+      "trackedEntities",
+    ]);
+    expect(TASK_SCOPED_MEMORY_CONTEXT_KEYS).toEqual([
+      "currentTopic",
+      "currentTask",
+      "followUpRule",
+      "lastUserIntent",
+    ]);
+    expect(DISPLAYED_CONTEXT_MEMORY_LIST_KEYS).toEqual(["activeDocument"]);
+    expect(STABLE_MEMORY_LIST_KEYS).toEqual(["recentSearchQueries"]);
+    expect(STABLE_MEMORY_CONTEXT_KEYS).toEqual(["proposedTopic"]);
+  });
 });
+

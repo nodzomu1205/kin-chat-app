@@ -100,13 +100,22 @@ export function handleImplicitSearchArtifacts(
   params: SendToGptImplicitSearchArtifactsArgs
 ) {
   if (params.data.searchUsed && !params.searchRequestEvent) {
+    if (params.data.promptMetrics) {
+      params.applyChatUsage(null, {
+        promptMetrics: params.data.promptMetrics,
+        usageDetails: params.data.usageDetails,
+      });
+    }
     params.applySearchUsage(params.data.usage);
     params.recordSearchContext(buildImplicitSearchRecordArgs(params));
     return;
   }
 
   if (!params.searchRequestEvent) {
-    params.applyChatUsage(params.data.usage);
+    params.applyChatUsage(params.data.usage, {
+      promptMetrics: params.data.promptMetrics,
+      usageDetails: params.data.usageDetails,
+    });
   }
 }
 

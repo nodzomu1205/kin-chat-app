@@ -43,12 +43,15 @@ export function buildFinalizeMemoryFollowUpArgs(args: {
   updatedRecent: FinalizeSendToGptFlowArgs["memoryContext"]["recentWithUser"];
   previousCommittedTopic?: string;
   handleGptMemory: FinalizeSendToGptFlowArgs["handleGptMemory"];
-  applySummaryUsage: FinalizeSendToGptFlowArgs["applySummaryUsage"];
+  applyChatUsage: FinalizeSendToGptFlowArgs["applyChatUsage"];
+  applyCompressionUsage: FinalizeSendToGptFlowArgs["applyCompressionUsage"];
 }) {
   return {
     updatedRecent: args.updatedRecent,
     previousCommittedTopic: args.previousCommittedTopic,
     handleGptMemory: args.handleGptMemory,
-    applySummaryUsage: args.applySummaryUsage,
+    applyChatUsage: args.applyChatUsage,
+    applyCompressionUsage: args.applyCompressionUsage,
   };
 }
+

@@ -1,7 +1,5 @@
 import { compileKinTaskPrompt } from "@/lib/taskCompiler";
-import { generateTaskTitle } from "@/lib/taskTitle";
 import { mergeRequirementProgressForIntent } from "@/lib/taskProtocolState";
-import { suggestTaskTitle } from "@/lib/app/contextNaming";
 import type {
   TaskIntent,
   TaskRequirementProgress,
@@ -50,23 +48,7 @@ function resolveTaskTitle(params: {
   fallbackTitle?: string;
   originalInstruction?: string;
 }) {
-  const titleSource = params.originalInstruction || params.intent.goal;
-  const generated = generateTaskTitle({
-    goal: titleSource,
-    outputType: params.intent.output.type,
-    entities: params.intent.entities,
-  });
-  const suggested = suggestTaskTitle({
-    freeText: titleSource,
-    fallback: params.fallbackTitle || params.intent.goal,
-  });
-
-  return (
-    params.title?.trim() ||
-    params.fallbackTitle ||
-    generated ||
-    suggested
-  );
+  return params.title?.trim() || params.fallbackTitle || "";
 }
 
 function buildTaskRuntimePromptArtifacts(params: {

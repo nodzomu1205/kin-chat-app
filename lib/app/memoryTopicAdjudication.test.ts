@@ -57,14 +57,14 @@ describe("memoryTopicAdjudication", () => {
     });
   });
 
-  it("commits an initial fallback topic only on the first topic seed path", () => {
+  it("commits an initial fallback topic on the first topic seed path even when confidence is low", () => {
     expect(
       buildFallbackTopicAdjudication({
         hasCurrentTopic: false,
         isTruthCheckQuestion: false,
         isClosingReply: false,
         parsedDecision: "keep",
-        parsedConfidence: 0.9,
+        parsedConfidence: 0.2,
         currentTopic: "",
         proposedTopic: "weather",
         trackedEntityOverride: "weather",

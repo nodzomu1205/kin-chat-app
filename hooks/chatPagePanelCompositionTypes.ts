@@ -286,10 +286,6 @@ export type ChatPageWorkspaceViewGptArgs = {
     ChatPageGptPanelCompositionArgs["settings"]["simpleImageCharLimit"];
   onChangeSimpleImageCharLimit:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeSimpleImageCharLimit"];
-  postIngestAction:
-    ChatPageGptPanelCompositionArgs["settings"]["postIngestAction"];
-  onChangePostIngestAction:
-    ChatPageGptPanelCompositionArgs["settings"]["onChangePostIngestAction"];
   fileReadPolicy: ChatPageGptPanelCompositionArgs["settings"]["fileReadPolicy"];
   driveImportAutoSummary:
     ChatPageGptPanelCompositionArgs["settings"]["driveImportAutoSummary"];
@@ -342,7 +338,7 @@ export type ChatPageWorkspaceViewUsageArgs = Pick<
   ChatPageControllerServicesSectionArgs,
   | "applySearchUsage"
   | "applyChatUsage"
-  | "applySummaryUsage"
+  | "applyCompressionUsage"
   | "applyTaskUsage"
   | "applyIngestUsage"
   | "recordIngestedDocument"
@@ -380,3 +376,4 @@ export type ChatPageWorkspaceViewArgs = {
   kin: ChatPageWorkspaceViewKinArgs;
   reset: ChatPageWorkspaceViewResetArgs;
 };
+

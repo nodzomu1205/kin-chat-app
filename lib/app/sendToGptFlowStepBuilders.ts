@@ -110,7 +110,8 @@ export function buildSendToGptPreparedRequestGateArgs(args: {
     gptStateRef: args.flowArgs.gptStateRef,
     chatRecentLimit: args.flowArgs.chatRecentLimit,
     handleGptMemory: args.flowArgs.handleGptMemory,
-    applySummaryUsage: args.flowArgs.applySummaryUsage,
+    applyChatUsage: args.flowArgs.applyChatUsage,
+    applyCompressionUsage: args.flowArgs.applyCompressionUsage,
   };
 }
 
@@ -206,6 +207,7 @@ export function buildSendToGptFinalizeArgs(args: {
     applyChatUsage: args.flowArgs.applyChatUsage,
     recordSearchContext: args.flowArgs.recordSearchContext,
     handleGptMemory: args.flowArgs.handleGptMemory,
-    applySummaryUsage: args.flowArgs.applySummaryUsage,
+    applyCompressionUsage: args.flowArgs.applyCompressionUsage,
   };
 }
+

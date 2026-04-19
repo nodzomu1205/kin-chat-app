@@ -204,16 +204,10 @@ export default function GptMetaDrawer({
 }: Props) {
   const searchTotal = toTokenUsage(tokenStats.threadSearchTotal);
   const taskTotal = toTokenUsage(tokenStats.threadTaskTotal);
-  const summaryTotal = toTokenUsage(tokenStats.threadSummaryTotal);
+  const compressionTotal = toTokenUsage(tokenStats.threadCompressionTotal);
   const ingestTotal = toTokenUsage(tokenStats.threadIngestTotal);
   const threadChatTotal = toTokenUsage(tokenStats.threadChatTotal);
-
-  const conversationTrackedTotal = mergeUsage(threadChatTotal, summaryTotal);
-
-  const otherTrackedTotal = mergeUsage(
-    searchTotal,
-    mergeUsage(taskTotal, ingestTotal)
-  );
+  const conversationTrackedTotal = mergeUsage(threadChatTotal, compressionTotal);
 
   const facts = Array.isArray(gptState.memory?.facts) ? gptState.memory.facts : [];
   const preferences = Array.isArray(gptState.memory?.preferences)
@@ -223,14 +217,6 @@ export default function GptMetaDrawer({
     gptState.memory?.lists && typeof gptState.memory.lists === "object"
       ? Object.entries(gptState.memory.lists)
       : [];
-  const memoryInterpretDebug =
-    gptState.memory?.lists &&
-    typeof gptState.memory.lists === "object" &&
-    gptState.memory.lists.memoryInterpretDebug &&
-    typeof gptState.memory.lists.memoryInterpretDebug === "object"
-      ? (gptState.memory.lists.memoryInterpretDebug as Record<string, unknown>)
-      : null;
-
   if (mode === "memory") {
     return (
       <div
@@ -347,28 +333,6 @@ export default function GptMetaDrawer({
           )}
         </div>
 
-        {memoryInterpretDebug ? (
-          <div style={tokenCardStyle}>
-            <div style={{ ...tokenLeftLabelStyle, marginBottom: 8 }}>
-              {GPT_META_DRAWER_TEXT.memoryInterpretDebug}
-            </div>
-            <pre
-              style={{
-                margin: 0,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                fontSize: 12,
-                lineHeight: 1.6,
-                color: "#0f172a",
-                maxHeight: isMobile ? "24dvh" : "28dvh",
-                overflowY: "auto",
-              }}
-            >
-              {JSON.stringify(memoryInterpretDebug, null, 2)}
-            </pre>
-          </div>
-        ) : null}
-
         <div style={tokenCardStyle}>
           <div
             style={{
@@ -430,7 +394,7 @@ export default function GptMetaDrawer({
       }}
     >
       <div style={{ ...tokenLineStyle, padding: "0 2px" }}>
-        {GPT_META_DRAWER_TEXT.totalTokenUsage} <UsageTriple usage={mergeUsage(totalUsage, otherTrackedTotal)} />
+        {GPT_META_DRAWER_TEXT.totalTokenUsage} <UsageTriple usage={totalUsage} />
       </div>
 
       <div style={tokenCardStyle}>
@@ -457,8 +421,8 @@ export default function GptMetaDrawer({
           <br />
           {GPT_META_DRAWER_TEXT.recent5} <UsageTriple usage={recent5Chat} />
           <br />
-          {GPT_META_DRAWER_TEXT.summary} <RunCount count={toNumber(tokenStats.summaryRunCount)} />{" "}
-          <UsageTriple usage={summaryTotal} />
+          {GPT_META_DRAWER_TEXT.compression} <RunCount count={toNumber(tokenStats.compressionRunCount)} />{" "}
+          <UsageTriple usage={compressionTotal} />
         </div>
       </div>
 
@@ -478,7 +442,8 @@ export default function GptMetaDrawer({
         </div>
 
         <div style={{ ...tokenLineStyle, marginBottom: 8 }}>
-          {GPT_META_DRAWER_TEXT.cumulative} <UsageTriple usage={otherTrackedTotal} />
+          {GPT_META_DRAWER_TEXT.cumulative}{" "}
+          <UsageTriple usage={mergeUsage(searchTotal, mergeUsage(taskTotal, ingestTotal))} />
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
@@ -492,6 +457,7 @@ export default function GptMetaDrawer({
           <UsageTriple usage={taskTotal} />
         </div>
       </div>
+
     </div>
   );
 }

@@ -3,52 +3,47 @@ import { resolveDraftTitle, suggestTaskTitle } from "@/lib/app/contextNaming";
 import { createEmptyTaskDraft } from "@/types/task";
 
 describe("contextNaming", () => {
-  it("extracts a concise task title from a sentence-like input", () => {
+  it("prefers explicit task titles", () => {
     expect(
       suggestTaskTitle({
-        freeText: "日本の歴史についてもっと詳しく教えてください。",
+        explicitTitle: "Explicit title",
+        freeText: "User comment that should not become a title",
+        fallback: "Fallback title",
       })
-    ).toBe("日本の歴史");
+    ).toBe("Explicit title");
   });
 
-  it("extracts a concise title from task-result text instead of truncating the first sentence", () => {
+  it("uses search queries when no explicit title is given", () => {
     expect(
       suggestTaskTitle({
-        freeText:
-          "[タスク整理結果]\n概要: 森鴎外と夏目漱石の関係について、時代背景と作品比較を整理する。\n\n- 森鴎外の時代背景\n- 夏目漱石との比較",
+        searchQuery: "Rival analysis",
+        freeText: "User comment that should not become a title",
+        fallback: "Fallback title",
       })
-    ).toBe("森鴎外と夏目漱石の関係");
+    ).toBe("Rival analysis");
   });
 
-  it("ignores generic summary leads like その点", () => {
+  it("falls back instead of inferring from free text", () => {
     expect(
       suggestTaskTitle({
-        freeText:
-          "[タスク整理結果]\n概要: 「その点」に関する見解として、森鴎外と夏目漱石の関係には時代差がある。\n\n- 背景整理",
+        freeText: "Please analyze this long user comment in detail",
+        fallback: "Fallback title",
       })
-    ).toBe("森鴎外と夏目漱石の関係");
+    ).toBe("Fallback title");
   });
 
-  it("extracts quoted work names when they are the most concrete title signal", () => {
-    expect(
-      suggestTaskTitle({
-        freeText: "はい、「檸檬」「蜜柑」「あばばばば」が好きです。",
-      })
-    ).toBe("檸檬・蜜柑・あばばばば");
-  });
-
-  it("keeps deriving a concise title even when a draft already exists", () => {
+  it("keeps the existing draft title when no explicit title exists", () => {
     expect(
       resolveDraftTitle(
         {
           ...createEmptyTaskDraft(),
-          title: "既存タスク",
-          taskName: "既存タスク",
+          title: "Existing task",
+          taskName: "Existing task",
         },
         {
-          freeText: "日本の歴史について整理したいです。",
+          freeText: "Please analyze this long user comment in detail",
         }
       )
-    ).toBe("日本の歴史");
+    ).toBe("Existing task");
   });
 });

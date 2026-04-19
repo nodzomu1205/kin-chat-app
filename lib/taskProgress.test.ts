@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildInitialRequirementProgress, markRequirementProgress, toUserFacingRequests } from "@/lib/taskProgress";
+import {
+  buildInitialRequirementProgress,
+  markRequirementProgress,
+  toUserFacingRequests,
+} from "@/lib/taskProgress";
 import type { PendingExternalRequest, TaskIntent } from "@/types/taskProtocol";
 
-function createIntent(overrides?: Partial<TaskIntent["workflow"]>): TaskIntent {
+function createIntent(overrides?: Partial<TaskIntent>): TaskIntent {
   return {
     mode: "task",
     goal: "Review five videos",
@@ -17,48 +21,140 @@ function createIntent(overrides?: Partial<TaskIntent["workflow"]>): TaskIntent {
       youtubeTranscriptRequestCount: 5,
       allowSearchRequest: true,
       allowYoutubeTranscriptRequest: true,
-      ...overrides,
     },
+    constraints: [
+      "You can perform up to 2 searches.",
+      "You can make up to 3 requests to GPT.",
+      "Please summarize the final output within 1000 characters.",
+    ],
+    ...overrides,
   };
 }
 
 describe("taskProgress", () => {
-  it("builds requirement progress from task intent workflow", () => {
+  it("builds requirement progress from constraints before workflow", () => {
     const progress = buildInitialRequirementProgress(createIntent());
 
-    expect(progress.some((item) => item.kind === "ask_gpt")).toBe(true);
-    expect(progress.some((item) => item.kind === "search_request")).toBe(true);
+    expect(progress.find((item) => item.kind === "search_request")?.label).toBe(
+      "検索"
+    );
     expect(
-      progress.some((item) => item.kind === "youtube_transcript_request")
-    ).toBe(true);
-    expect(progress.some((item) => item.kind === "finalize")).toBe(true);
+      progress.find((item) => item.kind === "search_request")?.targetCount
+    ).toBe(2);
+    expect(progress.find((item) => item.kind === "ask_gpt")?.label).toBe(
+      "GPTへの依頼"
+    );
+    expect(progress.find((item) => item.kind === "ask_gpt")?.targetCount).toBe(
+      3
+    );
+    expect(progress.find((item) => item.kind === "finalize")?.label).toBe(
+      "最終成果物"
+    );
   });
 
-  it("marks up_to search workflow as optional and exact transcript workflow as required", () => {
+  it("marks request constraints as optional and final output as required", () => {
     const progress = buildInitialRequirementProgress(createIntent());
 
     expect(
       progress.find((item) => item.kind === "search_request")?.category
     ).toBe("optional");
+    expect(progress.find((item) => item.kind === "ask_gpt")?.category).toBe(
+      "optional"
+    );
+    expect(progress.find((item) => item.kind === "finalize")?.category).toBe(
+      "required"
+    );
+  });
+
+  it("treats at_least request constraints as required", () => {
+    const progress = buildInitialRequirementProgress(
+      createIntent({
+        constraints: ["Make at least 2 requests to GPT."],
+        workflow: {},
+      })
+    );
+
+    expect(progress.find((item) => item.kind === "ask_gpt")?.category).toBe(
+      "required"
+    );
+    expect(progress.find((item) => item.kind === "ask_gpt")?.rule).toBe(
+      "at_least"
+    );
+  });
+
+  it("treats around constraints as optional guidance", () => {
+    const progress = buildInitialRequirementProgress(
+      createIntent({
+        constraints: ["Please summarize the final output around 1000 characters."],
+        workflow: {},
+      })
+    );
+
+    expect(progress.find((item) => item.kind === "finalize")?.category).toBe(
+      "required"
+    );
+    expect(progress.find((item) => item.kind === "finalize")?.rule).toBe(
+      "around"
+    );
+  });
+
+  it("keeps unknown request rules optional instead of forcing up_to", () => {
+    const progress = buildInitialRequirementProgress(
+      createIntent({
+        constraints: [
+          "Restrict to 2 searches.",
+          "Limit to 3 requests to GPT.",
+        ],
+        workflow: {},
+      })
+    );
+
+    expect(progress.find((item) => item.kind === "search_request")?.category).toBe(
+      "optional"
+    );
+    expect(progress.find((item) => item.kind === "search_request")?.rule).toBe(
+      "unknown"
+    );
+    expect(progress.find((item) => item.kind === "ask_gpt")?.category).toBe(
+      "optional"
+    );
+    expect(progress.find((item) => item.kind === "ask_gpt")?.rule).toBe(
+      "unknown"
+    );
+  });
+
+  it("falls back to workflow when matching constraints are absent", () => {
+    const progress = buildInitialRequirementProgress(
+      createIntent({
+        constraints: [],
+        workflow: {
+          askGptCount: 2,
+          allowSearchRequest: true,
+          searchRequestCount: 1,
+        },
+      })
+    );
+
+    expect(progress.find((item) => item.kind === "ask_gpt")?.targetCount).toBe(
+      2
+    );
     expect(
-      progress.find((item) => item.kind === "youtube_transcript_request")
-        ?.category
-    ).toBe("required");
+      progress.find((item) => item.kind === "search_request")?.targetCount
+    ).toBe(1);
+    expect(progress.find((item) => item.kind === "finalize")).toBeTruthy();
   });
 
   it("marks requirement progress with increment and done status", () => {
-    const base = buildInitialRequirementProgress(
-      createIntent({ askGptCount: 1 })
-    );
+    const base = buildInitialRequirementProgress(createIntent());
     const next = markRequirementProgress(base, "ask_gpt");
 
     const askGpt = next.find((item) => item.kind === "ask_gpt");
     expect(askGpt?.completedCount).toBe(1);
-    expect(askGpt?.status).toBe("done");
+    expect(askGpt?.status).toBe("in_progress");
   });
 
   it("does not change unrelated progress kinds", () => {
-    const base = buildInitialRequirementProgress(createIntent({ askGptCount: 1 }));
+    const base = buildInitialRequirementProgress(createIntent());
     const next = markRequirementProgress(base, "search_request");
 
     expect(next.find((item) => item.kind === "search_request")?.completedCount).toBe(1);

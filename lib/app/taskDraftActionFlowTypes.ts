@@ -1,7 +1,11 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { KinMemoryState, Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchContext, TaskDraft } from "@/types/task";
-import { normalizeUsage } from "@/lib/tokenStats";
+import {
+  normalizeUsage,
+  type BucketUsageOptions,
+  type ConversationUsageOptions,
+} from "@/lib/tokenStats";
 
 export type ParsedInputLike = {
   title?: string;
@@ -32,8 +36,15 @@ export type CommonTaskDraftFlowArgs = {
   setCurrentTaskDraft: SetTaskDraft;
   gptStateRef: MutableRefObject<KinMemoryState>;
   chatRecentLimit: number;
-  applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyChatUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyTaskUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: BucketUsageOptions
+  ) => void;
+  applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   handleGptMemory: (
     recent: Message[],
     options?: {
@@ -41,7 +52,21 @@ export type CommonTaskDraftFlowArgs = {
       lastUserIntent?: string;
       activeDocument?: Record<string, unknown> | null;
     }
-  ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
+  ) => Promise<{
+    compressionUsage: Parameters<typeof normalizeUsage>[0] | null;
+    fallbackUsage: Parameters<typeof normalizeUsage>[0] | null;
+    fallbackUsageDetails: Record<string, unknown> | null;
+    fallbackMetrics: {
+      promptChars: number;
+      rawReplyChars: number;
+    } | null;
+    fallbackDebug: {
+      prompt: string;
+      rawReply: string;
+      parsed: unknown;
+      usageDetails?: Record<string, unknown> | null;
+    } | null;
+  }>;
 };
 
 export type PrepTaskFromInputFlowArgs = CommonTaskDraftFlowArgs & {

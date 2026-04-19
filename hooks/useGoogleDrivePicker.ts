@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import {
   DEFAULT_GOOGLE_DRIVE_FOLDER_LINK,
@@ -24,7 +24,13 @@ import {
   buildCanonicalDocumentSummary,
   buildCanonicalSummarySource,
 } from "@/lib/app/ingestDocumentModel";
-import { normalizeUsage } from "@/lib/tokenStats";
+import {
+  buildDriveFolderIndexMessage,
+  buildDriveUploadDestinationPrompt,
+  resolveDriveUploadDestinationIndex,
+  type DriveFolderNode,
+} from "@/hooks/googleDrivePickerBuilders";
+import { addUsage, normalizeUsage } from "@/lib/tokenStats";
 
 const GOOGLE_API_KEY = "AIzaSyCQc_DKFE3WxU6SgVSE47X2SQv7nxZvm08";
 const GOOGLE_OAUTH_CLIENT_ID =
@@ -42,19 +48,15 @@ type GooglePickerDocument = {
   type?: string;
 };
 
-type DriveFolderNode = {
-  id: string;
-  name: string;
-  mimeType: string;
-  path: string;
-};
-
 type GooglePickerCallbackData = {
   action?: string;
   docs?: GooglePickerDocument[];
 };
 
-type GoogleDrivePickerMode = "file_import" | "folder_index" | "folder_import";
+type GoogleDrivePickerMode =
+  | "file_import"
+  | "folder_index"
+  | "folder_import";
 
 type GoogleTokenClient = {
   callback: (response: { access_token?: string; error?: string }) => void;
@@ -120,7 +122,6 @@ type UseGoogleDrivePickerArgs = {
   ) => StoredDocument;
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   focusGptPanel: () => boolean;
 };
 
@@ -132,7 +133,7 @@ function appendUiMessage(
     ...prev,
     {
       id: `drive-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      role: "user",
+      role: "gpt",
       text,
       meta: {
         kind: "task_info",
@@ -360,12 +361,18 @@ async function listDriveFolderChildren(args: {
 
   do {
     const response = await fetchDriveJson<{
-      files?: Array<{ id: string; name: string; mimeType: string }>;
+      files?: Array<{
+        id: string;
+        name: string;
+        mimeType: string;
+        modifiedTime?: string;
+        size?: string;
+      }>;
       nextPageToken?: string;
     }>(
       `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
         `'${args.folderId}' in parents and trashed = false`
-      )}&fields=nextPageToken,files(id,name,mimeType)&pageSize=200${
+      )}&fields=nextPageToken,files(id,name,mimeType,modifiedTime,size)&pageSize=200${
         pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""
       }`,
       args.accessToken
@@ -378,6 +385,11 @@ async function listDriveFolderChildren(args: {
         name: file.name,
         mimeType: file.mimeType,
         path,
+        modifiedTime: file.modifiedTime,
+        sizeBytes:
+          typeof file.size === "string" && file.size.trim().length > 0
+            ? Number(file.size)
+            : null,
       });
       if (file.mimeType === "application/vnd.google-apps.folder") {
         files.push(
@@ -396,17 +408,31 @@ async function listDriveFolderChildren(args: {
   return files;
 }
 
-function buildDriveFolderIndexMessage(args: {
-  folderName: string;
-  entries: Array<{ path: string; mimeType: string }>;
-}) {
-  const lines = args.entries.map(
-    (entry, index) => `${index + 1}. ${entry.path} (${entry.mimeType})`
+async function listDriveChildFolders(args: {
+  accessToken: string;
+  folderId: string;
+}): Promise<DriveFolderNode[]> {
+  const response = await fetchDriveJson<{
+    files?: Array<{
+      id: string;
+      name: string;
+      mimeType: string;
+      modifiedTime?: string;
+    }>;
+  }>(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+      `'${args.folderId}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`
+    )}&fields=files(id,name,mimeType,modifiedTime)&pageSize=200`,
+    args.accessToken
   );
-  return [
-    `Google Drive folder index: ${args.folderName}`,
-    lines.length > 0 ? lines.join("\n") : "No files found.",
-  ].join("\n\n");
+
+  return (response.files || []).map((file) => ({
+    id: file.id,
+    name: file.name,
+    mimeType: file.mimeType,
+    path: file.name,
+    modifiedTime: file.modifiedTime,
+  }));
 }
 
 export function useGoogleDrivePicker({
@@ -418,7 +444,6 @@ export function useGoogleDrivePicker({
   recordIngestedDocument,
   setGptMessages,
   applyIngestUsage,
-  applySummaryUsage,
   focusGptPanel,
 }: UseGoogleDrivePickerArgs) {
   const [pickerReady, setPickerReady] = useState(false);
@@ -490,7 +515,7 @@ export function useGoogleDrivePicker({
         file: downloadedFile,
         options: ingestOptions,
       });
-      applyIngestUsage(data?.usage);
+      let totalIngestUsage = normalizeUsage(data?.usage);
       if (!response.ok) {
         appendUiMessage(
           setGptMessages,
@@ -524,11 +549,16 @@ export function useGoogleDrivePicker({
           if (summaryResult.summary?.trim()) {
             summary = cleanImportSummarySource(summaryResult.summary).trim();
           }
-          applySummaryUsage(normalizeLibrarySummaryUsage(summaryResult.usage));
+          totalIngestUsage = addUsage(
+            totalIngestUsage,
+            normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+          );
         } catch (error) {
           console.warn("Drive import summary generation failed", error);
         }
       }
+
+      applyIngestUsage(totalIngestUsage);
 
       recordIngestedDocument({
         title,
@@ -543,7 +573,6 @@ export function useGoogleDrivePicker({
     },
     [
       applyIngestUsage,
-      applySummaryUsage,
       currentTaskId,
       ensureAccessToken,
       focusGptPanel,
@@ -633,27 +662,66 @@ export function useGoogleDrivePicker({
 
   const uploadLibraryItemToDrive = useCallback(
     async (item: ReferenceLibraryItem) => {
-      if (typeof window === "undefined" || !folderId) return false;
+      if (typeof window === "undefined" || !folderId) {
+        return "unavailable" as const;
+      }
       const normalizedFolderLink = sanitizeGoogleDriveFolderLink(
         folderLink || DEFAULT_GOOGLE_DRIVE_FOLDER_LINK
       );
-        if (normalizedFolderLink && normalizedFolderLink !== folderLink) {
-          setFolderLink(normalizedFolderLink);
-        }
+      if (normalizedFolderLink && normalizedFolderLink !== folderLink) {
+        setFolderLink(normalizedFolderLink);
+      }
       const accessToken = await ensureAccessToken();
+      let destinationFolderId = folderId;
+      let destinationFolderName = "configured folder";
+      const childFolders = await listDriveChildFolders({
+        accessToken,
+        folderId,
+      });
+
+      if (childFolders.length > 0) {
+        const selectionInput = window.prompt(
+          buildDriveUploadDestinationPrompt({
+            childFolders,
+          })
+        );
+        if (selectionInput === null) {
+          appendUiMessage(setGptMessages, "Google Drive upload cancelled.");
+          focusGptPanel();
+          return "cancelled" as const;
+        }
+        const selectionIndex = resolveDriveUploadDestinationIndex({
+          input: selectionInput,
+          childFolderCount: childFolders.length,
+        });
+        if (selectionIndex === null) {
+          appendUiMessage(
+            setGptMessages,
+            "Google Drive upload cancelled: invalid child-folder selection."
+          );
+          focusGptPanel();
+          return "cancelled" as const;
+        }
+        if (selectionIndex >= 0) {
+          const selectedFolder = childFolders[selectionIndex];
+          destinationFolderId = selectedFolder.id;
+          destinationFolderName = selectedFolder.name;
+        }
+      }
+
       const artifact = buildLibraryItemDriveExport(item);
       const uploaded = await uploadDriveTextFile({
         accessToken,
-        folderId,
+        folderId: destinationFolderId,
         fileName: artifact.fileName,
         text: artifact.text,
       });
       appendUiMessage(
         setGptMessages,
-        `Google Drive uploaded: ${uploaded.name || artifact.fileName}`
+        `Google Drive uploaded: ${uploaded.name || artifact.fileName} -> ${destinationFolderName}`
       );
       focusGptPanel();
-      return true;
+      return "uploaded" as const;
     },
     [
       ensureAccessToken,
@@ -674,3 +742,5 @@ export function useGoogleDrivePicker({
     uploadLibraryItemToDrive,
   };
 }
+
+

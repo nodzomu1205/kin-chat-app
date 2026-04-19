@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   extractJsonObjectText,
   extractResponseText,
+  extractUsageDetails,
   extractUsage,
 } from "@/lib/server/chatgpt/openaiResponse";
 import {
   buildJsonObjectText,
   buildResponseText,
+  buildUsageDetails,
   buildUsageSummary,
 } from "@/lib/server/chatgpt/openaiResponseBuilders";
 
@@ -71,5 +73,41 @@ describe("openaiResponse helpers", () => {
         output: [{ content: [{ text: "hello" }] }],
       })
     ).toBe("hello");
+  });
+
+  it("passes through raw usage details when present", () => {
+    expect(
+      extractUsageDetails({
+        usage: {
+          input_tokens: 2,
+          output_tokens: 3,
+          total_tokens: 5,
+          output_tokens_details: {
+            reasoning_tokens: 11,
+          },
+        },
+      })
+    ).toEqual({
+      input_tokens: 2,
+      output_tokens: 3,
+      total_tokens: 5,
+      output_tokens_details: {
+        reasoning_tokens: 11,
+      },
+    });
+
+    expect(
+      buildUsageDetails({
+        usage: {
+          input_tokens: 1,
+          output_tokens: 2,
+          total_tokens: 3,
+        },
+      })
+    ).toEqual({
+      input_tokens: 1,
+      output_tokens: 2,
+      total_tokens: 3,
+    });
   });
 });

@@ -9,11 +9,24 @@ import type {
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
 import { normalizeText } from "@/lib/app/memoryInterpreterText";
+import type { TokenUsage } from "@/lib/app/gptMemoryStateHelpers";
 
 export type MemoryFallbackResult = {
   adjudication: MemoryTopicAdjudication;
   pendingCandidates: PendingMemoryRuleCandidate[];
   usedFallback: boolean;
+  fallbackUsage?: TokenUsage | null;
+  fallbackUsageDetails?: Record<string, unknown> | null;
+  fallbackMetrics?: {
+    promptChars: number;
+    rawReplyChars: number;
+  } | null;
+  debug?: {
+    prompt: string;
+    rawReply: string;
+    parsed: unknown;
+    usageDetails?: Record<string, unknown> | null;
+  } | null;
 };
 
 export function filterPendingMemoryRuleCandidates(

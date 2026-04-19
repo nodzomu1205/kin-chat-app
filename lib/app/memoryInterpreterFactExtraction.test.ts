@@ -25,4 +25,22 @@ describe("memoryInterpreterFactExtraction", () => {
     expect(pruneFactsForTopic(["old"], ["new"], false)).toEqual(["old", "new"]);
     expect(pruneFactsForTopic(["old"], ["new"], true)).toEqual(["new"]);
   });
+
+  it("ignores SYS-formatted blocks and accepts library/task-info display text", () => {
+    expect(
+      extractFacts([
+        {
+          id: "sys-1",
+          role: "gpt",
+          text: "<<SYS_TASK>>\nBODY: hidden\n<<END_SYS_TASK>>",
+        },
+        {
+          id: "lib-1",
+          role: "user",
+          text: "Library: Review Notes\n\nDetail:\nNapoleon remained influential in French political memory.",
+          meta: { kind: "task_info", sourceType: "manual" },
+        },
+      ])
+    ).toEqual(["Napoleon remained influential in French political memory."]);
+  });
 });

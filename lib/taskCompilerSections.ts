@@ -80,11 +80,15 @@ export function buildRuleLines(intent: TaskIntent): string[] {
     );
   }
 
-  lines.push("- Use <<SYS_TASK_DONE>> only when completion criteria are satisfied.");
+  lines.push(
+    "- Use <<SYS_TASK_DONE>> only when the final output is ready and task constraints are satisfied."
+  );
   lines.push(
     "- If waiting for a user reply, say so clearly, but continue any other parallelizable work."
   );
-  lines.push("- Do not output the final deliverable until required workflow steps are satisfied.");
+  lines.push(
+    "- Do not output the final deliverable until task constraints are satisfied."
+  );
   lines.push("- Respect DELIVERY_LIMITS for every user-facing output.");
 
   return lines;

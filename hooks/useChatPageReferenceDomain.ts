@@ -7,8 +7,9 @@ import { useReferenceLibraryUiActions } from "@/hooks/useReferenceLibraryUiActio
 import { useStoredDocuments } from "@/hooks/useStoredDocuments";
 import { useStoredDocumentUiActions } from "@/hooks/useStoredDocumentUiActions";
 import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
+import type { GptMemoryRuntime } from "@/lib/app/chatPageGptMemoryControls";
 import type { SharedIngestOptions } from "@/lib/app/ingestClient";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type { SearchContext } from "@/types/task";
 
@@ -29,9 +30,15 @@ type UseChatPageReferenceDomainArgs = {
   getCurrentTaskCharConstraint: () => TaskCharConstraint | null;
   setKinInput: React.Dispatch<React.SetStateAction<string>>;
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
+  gptMessages: Message[];
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  gptMemoryRuntime: GptMemoryRuntime;
+  applyChatUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   focusGptPanel: () => boolean;
   focusKinPanel: () => boolean;
   setFinalizeReviewed: (params: { accepted: boolean; summary?: string }) => void;
@@ -116,7 +123,6 @@ export function useChatPageReferenceDomain(
     recordIngestedDocument,
     setGptMessages: args.setGptMessages,
     applyIngestUsage: args.applyIngestUsage,
-    applySummaryUsage: args.applySummaryUsage,
     focusGptPanel: args.focusGptPanel,
   });
 
@@ -156,10 +162,14 @@ export function useChatPageReferenceDomain(
     importGoogleDriveFolder,
   } = useReferenceLibraryUiActions({
     getLibraryItemById,
+    gptMessages: args.gptMessages,
     setGptMessages: args.setGptMessages,
     setKinInput: args.setKinInput,
     focusGptPanel: args.focusGptPanel,
     focusKinPanel: args.focusKinPanel,
+    gptMemoryRuntime: args.gptMemoryRuntime,
+    applyChatUsage: args.applyChatUsage,
+    applyCompressionUsage: args.applyCompressionUsage,
     openGoogleDriveFolder,
     importGoogleDriveFilePicker: openFileImportPicker,
     indexGoogleDriveFolderPicker: openFolderIndexPicker,
@@ -212,3 +222,4 @@ export function useChatPageReferenceDomain(
     importGoogleDriveFolder,
   };
 }
+

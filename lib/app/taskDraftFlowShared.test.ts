@@ -64,7 +64,7 @@ describe("taskDraftFlowShared", () => {
       persistCurrentGptState,
       gptStateRef,
       recentMessages: [{ id: "g1", role: "gpt", text: "prepared" }],
-      lastUserIntent: "タスク整理: Prepared task",
+      lastUserIntent: "タスク整琁E Prepared task",
     });
 
     expect(setGptMessages).toHaveBeenCalledTimes(1);
@@ -73,9 +73,9 @@ describe("taskDraftFlowShared", () => {
   });
 
   it("applies summary usage after GPT memory handling resolves", async () => {
-    const applySummaryUsage = vi.fn();
+    const applyCompressionUsage = vi.fn();
     const handleGptMemory = vi.fn(async () => ({
-      summaryUsage: {
+      compressionUsage: {
         inputTokens: 10,
         outputTokens: 3,
         totalTokens: 13,
@@ -84,14 +84,14 @@ describe("taskDraftFlowShared", () => {
 
     await applyTaskFlowSummaryUsage({
       recentMessages: [{ id: "g1", role: "gpt", text: "prepared" }],
-      applySummaryUsage,
+      applyCompressionUsage,
       handleGptMemory,
       currentTaskTitleOverride: "Prepared task",
-      lastUserIntent: "タスク整理: Prepared task",
+      lastUserIntent: "タスク整琁E Prepared task",
     });
 
     expect(handleGptMemory).toHaveBeenCalledTimes(1);
-    expect(applySummaryUsage).toHaveBeenCalledWith({
+    expect(applyCompressionUsage).toHaveBeenCalledWith({
       inputTokens: 10,
       outputTokens: 3,
       totalTokens: 13,
@@ -128,9 +128,9 @@ describe("taskDraftFlowShared", () => {
     const setGptMessages = vi.fn();
     const setGptState = vi.fn();
     const persistCurrentGptState = vi.fn();
-    const applySummaryUsage = vi.fn();
+    const applyCompressionUsage = vi.fn();
     const handleGptMemory = vi.fn(async () => ({
-      summaryUsage: {
+      compressionUsage: {
         inputTokens: 5,
         outputTokens: 2,
         totalTokens: 7,
@@ -156,7 +156,7 @@ describe("taskDraftFlowShared", () => {
       requestRecentMessages: [{ id: "u1", role: "user", text: "prep" }],
       chatRecentLimit: 4,
       lastUserIntent: "Task prep",
-      applySummaryUsage,
+      applyCompressionUsage,
       handleGptMemory,
       currentTaskTitleOverride: "Prepared task",
     });
@@ -168,10 +168,11 @@ describe("taskDraftFlowShared", () => {
     expect(setGptMessages).toHaveBeenCalledTimes(1);
     expect(persistCurrentGptState).toHaveBeenCalledTimes(1);
     expect(handleGptMemory).toHaveBeenCalledTimes(1);
-    expect(applySummaryUsage).toHaveBeenCalledWith({
+    expect(applyCompressionUsage).toHaveBeenCalledWith({
       inputTokens: 5,
       outputTokens: 2,
       totalTokens: 7,
     });
   });
 });
+

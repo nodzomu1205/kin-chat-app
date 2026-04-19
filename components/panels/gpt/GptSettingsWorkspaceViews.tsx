@@ -4,7 +4,6 @@ import React from "react";
 import type {
   GptPanelProtocolProps,
   GptPanelSettingsProps,
-  ResponseMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
   buttonPrimary,
@@ -231,45 +230,6 @@ export function ChatSettingsWorkspaceView(props: {
         </div>
       </div>
 
-      <div
-        style={{
-          borderRadius: 18,
-          border: "1px solid #dbe4f0",
-          background: "rgba(255,255,255,0.96)",
-          boxShadow: "0 16px 40px rgba(15,23,42,0.08)",
-          padding: props.isMobile ? 14 : 16,
-        }}
-      >
-        <div style={{ ...labelStyle, marginBottom: 8 }}>
-          {GPT_SETTINGS_WORKSPACE_TEXT.outputMode}
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["creative", "strict"] as ResponseMode[]).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              style={{
-                appearance: "none",
-                borderRadius: 999,
-                border: props.settings.responseMode === mode
-                  ? "1px solid #0f766e"
-                  : "1px solid #cbd5e1",
-                background: props.settings.responseMode === mode
-                  ? "linear-gradient(135deg, #ccfbf1 0%, #dcfce7 100%)"
-                  : "#f8fafc",
-                color: "#0f172a",
-                fontWeight: 800,
-                fontSize: 12,
-                padding: "8px 12px",
-                cursor: "pointer",
-              }}
-              onClick={() => props.settings.onChangeResponseMode(mode)}
-            >
-              {mode.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
     </>
   );
 }
@@ -374,6 +334,8 @@ export function LibrarySettingsWorkspaceView(props: {
 
       <IngestSettingsSection
         isMobile={props.isMobile}
+        uploadKind={props.settings.uploadKind}
+        onChangeUploadKind={props.settings.onChangeUploadKind}
         ingestMode={props.settings.ingestMode}
         onChangeIngestMode={props.settings.onChangeIngestMode}
         imageDetail={props.settings.imageDetail}
@@ -399,3 +361,4 @@ export function LibrarySettingsWorkspaceView(props: {
     </>
   );
 }
+

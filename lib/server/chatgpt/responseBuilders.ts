@@ -1,4 +1,5 @@
 import type { UsageSummary } from "@/lib/server/chatgpt/openaiResponse";
+import type { ChatPromptMetrics } from "@/lib/chatPromptMetrics";
 
 type ChatRouteSource = {
   title: string;
@@ -42,12 +43,16 @@ export function buildMapLinkShortcutResponse(params: {
 export function buildChatRouteResponse(params: {
   reply: string;
   usage: UsageSummary;
+  usageDetails: Record<string, unknown> | null;
   search: ChatRouteSearchPayload;
+  promptMetrics: ChatPromptMetrics;
 }) {
   return {
     reply: params.reply,
     sources: params.search.sources,
     usage: params.usage,
+    usageDetails: params.usageDetails,
+    promptMetrics: params.promptMetrics,
     searchUsed: params.search.searchUsed,
     searchQuery: params.search.searchQuery,
     searchSeriesId: params.search.searchSeriesId,

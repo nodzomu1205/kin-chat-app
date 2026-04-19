@@ -83,8 +83,8 @@ describe("runAttachSearchResultToTaskFlow", () => {
       },
       chatRecentLimit: 8,
       applyTaskUsage: vi.fn(),
-      applySummaryUsage: vi.fn(),
-      handleGptMemory: async () => ({ summaryUsage: null }),
+      applyCompressionUsage: vi.fn(),
+      handleGptMemory: async () => ({ compressionUsage: null }),
       gptInput: "",
       lastSearchContext: null,
     });
@@ -94,3 +94,4 @@ describe("runAttachSearchResultToTaskFlow", () => {
     expect(setGptMessages).toHaveBeenCalled();
   });
 });
+

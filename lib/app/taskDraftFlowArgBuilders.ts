@@ -42,8 +42,9 @@ export function buildCommonTaskDraftFlowArgs(
     setCurrentTaskDraft: args.setCurrentTaskDraft,
     gptStateRef: args.gptMemoryRuntime.gptStateRef,
     chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
+    applyChatUsage: args.applyChatUsage,
     applyTaskUsage: args.applyTaskUsage,
-    applySummaryUsage: args.applySummaryUsage,
+    applyCompressionUsage: args.applyCompressionUsage,
     handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
   };
 }
@@ -100,3 +101,4 @@ export function buildDeepenTaskFromLastFlowArgs(
     gptInput: args.gptInput,
   };
 }
+

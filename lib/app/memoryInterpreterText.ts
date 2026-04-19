@@ -1,4 +1,4 @@
-import {
+﻿import {
   extractQuestionSubject as extractQuestionSubjectFromTopicExtractor,
   isWeakTopicCandidate as isWeakTopicCandidateFromTopicExtractor,
   normalizeTopicCandidate as normalizeTopicCandidateFromTopicExtractor,
@@ -11,9 +11,10 @@ import {
 import { stripTopicTailText } from "@/lib/app/memoryInterpreterTopicText";
 
 export const SEARCH_PREFIX_RE = /^(?:検索|search)\s*[:：]/i;
+const SYS_FORMAT_RE = /<<(?:END_)?SYS_[A-Z_]+>>/i;
 
 const QUESTIONISH_RE =
-  /(?:誰|何|どこ|いつ|なぜ|何故|どうして|ですか|でしょうか|ますか|教えて|知りたい|説明して)/u;
+  /(?:\?|・毫謨吶∴縺ｦ|遏･縺｣縺ｦ縺・∪縺吶°|遏･縺｣縺ｦ縺ｾ縺吶°|隱ｰ縺ｧ縺吶°|菴輔〒縺吶°|縺ゅｊ縺ｾ縺吶°|縺・∪縺吶°|縺ｪ縺忿縺ｩ縺・＠縺ｦ)/u;
 const ACK_LEAD_IN_RE = MEMORY_ACK_LEAD_IN_RE;
 const CLAUSE_SEPARATOR_RE = MEMORY_CLAUSE_SEPARATOR_RE;
 
@@ -21,18 +22,22 @@ export function normalizeText(text: string) {
   return text.normalize("NFKC").replace(/\s+/g, " ").trim();
 }
 
+export function isSysFormattedText(text: string) {
+  return SYS_FORMAT_RE.test(text);
+}
+
 export function normalizeLine(text: string) {
   return normalizeText(text)
     .replace(/^#{1,6}\s*/, "")
     .replace(/^\d+[.)]\s*/, "")
-    .replace(/^[-*•]\s*/, "")
+    .replace(/^[-*窶｢]\s*/, "")
     .replace(/\*\*/g, "")
     .trim();
 }
 
 export function stripLeadIn(text: string) {
   return normalizeText(text)
-    .replace(/^(?:はい|では|要するに|ちなみにでは)[、,\s]*/u, "")
+    .replace(/^(?:はい|なるほど|ちなみに|要するに|ええと|well|so)[、,\s]*/iu, "")
     .trim();
 }
 
@@ -58,7 +63,7 @@ export function isClosingReplyText(text: string) {
   if (!normalized) return true;
 
   if (
-    /(?:ありがとう|もう大丈夫です|大丈夫です|一旦いい|そこは一旦|もう十分|この話題は一旦いい|別件で|終わりで)(?:[!！.\s]|$)/u.test(
+    /(?:ありがとう.*もう大丈夫(?:です)?|もう大丈夫(?:です)?|もういい|一旦いい|終わり|別件)(?:[!！.\s]|$)/u.test(
       normalized
     )
   ) {
@@ -77,7 +82,7 @@ export function isSearchDirectiveText(text: string) {
 }
 
 export function isShortAcknowledgementText(text: string) {
-  const normalized = stripLeadIn(text);
+  const normalized = normalizeText(text);
   if (!normalized) return false;
 
   return (

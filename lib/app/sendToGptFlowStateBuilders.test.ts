@@ -393,8 +393,9 @@ describe("sendToGptFlow state builders", () => {
       applySearchUsage: () => undefined,
       applyChatUsage: () => undefined,
       recordSearchContext: () => ({ rawResultId: "RAW-1" }),
-      handleGptMemory: async () => ({ summaryUsage: null }),
-      applySummaryUsage: () => undefined,
+      handleGptMemory: async () => ({ compressionUsage: null, fallbackUsage: null }),
+      applyChatUsage: () => undefined,
+      applyCompressionUsage: () => undefined,
     } as never;
 
     expect(buildFinalizeAssistantMessageArgs(finalizeArgs)).toMatchObject({
@@ -422,7 +423,8 @@ describe("sendToGptFlow state builders", () => {
         updatedRecent: [{ id: "u1", role: "user", text: "hello" }],
         previousCommittedTopic: "topic-a",
         handleGptMemory: finalizeArgs.handleGptMemory,
-        applySummaryUsage: finalizeArgs.applySummaryUsage,
+        applyChatUsage: finalizeArgs.applyChatUsage,
+        applyCompressionUsage: finalizeArgs.applyCompressionUsage,
       })
     ).toMatchObject({
       updatedRecent: [{ id: "u1", role: "user", text: "hello" }],
@@ -439,14 +441,16 @@ describe("sendToGptFlow state builders", () => {
       handleGptMemory: async (recent, options) => {
         calls.push(`${recent.length}:${options?.previousCommittedTopic}`);
         return {
-          summaryUsage: {
+          fallbackUsage: null,
+          compressionUsage: {
             inputTokens: 4,
             outputTokens: 5,
             totalTokens: 9,
           },
         };
       },
-      applySummaryUsage: () => calls.push("summary"),
+      applyChatUsage: () => calls.push("chat"),
+      applyCompressionUsage: () => calls.push("summary"),
     });
 
     expect(calls).toEqual(["1:topic-a", "summary"]);

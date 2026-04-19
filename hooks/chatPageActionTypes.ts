@@ -27,7 +27,11 @@ import type {
   ChatPanelFocusHandler,
   ChatPanelTab,
 } from "@/lib/app/panelLayout";
-import { normalizeUsage } from "@/lib/tokenStats";
+import {
+  normalizeUsage,
+  type BucketUsageOptions,
+  type ConversationUsageOptions,
+} from "@/lib/tokenStats";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import type { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
 import type {
@@ -172,9 +176,15 @@ export type ChatPageServicesArgs = {
   gptMemoryRuntime: GptMemoryRuntime;
   setUploadKind: React.Dispatch<React.SetStateAction<UploadKind>>;
   applySearchUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
-  applyChatUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
-  applySummaryUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
-  applyTaskUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
+  applyChatUsage: (
+    stats: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyCompressionUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
+  applyTaskUsage: (
+    stats: Parameters<typeof normalizeUsage>[0],
+    options?: BucketUsageOptions
+  ) => void;
   applyIngestUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
@@ -210,7 +220,7 @@ export type UseGptMessageActionsArgs = Pick<
   | "applyChatUsage"
   | "applyPrefixedTaskFieldsFromText"
   | "applySearchUsage"
-  | "applySummaryUsage"
+  | "applyCompressionUsage"
   | "buildLibraryReferenceContext"
   | "chatBridgeSettings"
   | "currentTaskDraft"
@@ -279,8 +289,9 @@ export type UseKinTransferActionsArgs = Pick<
 
 export type UseTaskDraftActionsArgs = Pick<
   UseChatPageActionsArgs,
+  | "applyChatUsage"
   | "applyPrefixedTaskFieldsFromText"
-  | "applySummaryUsage"
+  | "applyCompressionUsage"
   | "applyTaskUsage"
   | "currentTaskDraft"
   | "getResolvedTaskTitle"
@@ -325,20 +336,16 @@ export type UseTaskProtocolActionsArgs = Pick<
 export type UseFileIngestActionsArgs = Pick<
   UseChatPageActionsArgs,
   | "applyIngestUsage"
-  | "applySummaryUsage"
-  | "applyTaskUsage"
   | "autoCopyFileIngestSysInfoToKin"
   | "autoGenerateFileImportSummary"
   | "currentTaskDraft"
   | "getResolvedTaskTitle"
   | "getTaskBaseText"
-  | "gptInput"
   | "gptMemoryRuntime"
   | "focusKinPanel"
   | "ingestLoading"
   | "recordIngestedDocument"
   | "resolveTaskTitleFromDraft"
-  | "responseMode"
   | "setCurrentTaskDraft"
   | "setGptInput"
   | "setGptMessages"
@@ -402,3 +409,4 @@ export type ChatPageActionGroups = {
     handleResetMemorySettings: () => void;
   };
 };
+

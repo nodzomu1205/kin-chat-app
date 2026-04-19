@@ -2,6 +2,7 @@ import type { Memory } from "@/lib/memory";
 import {
   SEARCH_PREFIX_RE,
   isClosingReplyText,
+  isSysFormattedText,
   normalizeText,
   stripTopicTail,
 } from "@/lib/app/memoryInterpreterText";
@@ -22,7 +23,9 @@ export function extractRecentSearchQueries(messages: Message[]) {
   return Array.from(
     new Set(
       messages
-        .filter((message) => message.role === "user")
+        .filter(
+          (message) => message.role === "user" && !isSysFormattedText(message.text || "")
+        )
         .flatMap((message) => message.text.split(/\r?\n/))
         .map((line) => normalizeText(line))
         .filter((line) => SEARCH_PREFIX_RE.test(line))
@@ -36,7 +39,9 @@ export function extractPreferences(messages: Message[]) {
   return Array.from(
     new Set(
       messages
-        .filter((message) => message.role === "user")
+        .filter(
+          (message) => message.role === "user" && !isSysFormattedText(message.text || "")
+        )
         .map((message) => sanitizePreference(message.text))
         .filter(Boolean)
     )

@@ -2,79 +2,50 @@ function normalizeFreeText(text: string) {
   return text.normalize("NFKC").replace(/\s+/g, " ").trim();
 }
 
-function isDismissiveOrClosingText(text: string) {
-  const normalized = normalizeFreeText(text);
-  if (!normalized) return true;
-
-  const phrases = [
-    "もう大丈夫",
-    "それでいい",
-    "一旦いい",
-    "大丈夫",
-    "終了",
-    "この話題は一旦いい",
-    "この話題は一旦大丈夫",
-    "もう十分",
-    "ひとまずいい",
-  ];
-
-  return phrases.some((phrase) => normalized.includes(phrase));
-}
-
 function stripLeadIn(text: string) {
-  return normalizeFreeText(text).replace(
-    /^(?:ははは|うん|へー|へえそうなんです・?|なるほど|たしかに|確かに|ありがとう|ありがとう[、。\s]*)/iu,
-    ""
-  );
-}
-
-function trimTopicCandidate(value: string) {
-  return stripLeadIn(value)
-    .replace(/^(?:次は|次に|次の?)\s*/iu, "")
-    .replace(/^(?:もっと詳しく|一番|いちばん有名な)[、。\s]*/iu, "")
-    .replace(
-      /(?:について|に関して|に関する|を中心に|のこと|って話とは話とは|って|して)[、。\s]*$/iu,
-      ""
-    )
-    .replace(/[、。\s.!！?？]+$/gu, "")
+  return normalizeFreeText(text)
+    .replace(/^(?:はい|ええと|つまり|要するに|ちなみに|well|so)[、,\s]*/iu, "")
     .trim();
 }
 
-export function normalizePromptTopic(text: string) {
-  const normalized = normalizeFreeText(text).replace(/^検索[:：\s]*/iu, "").trim();
-  if (!normalized) return "";
-  if (isDismissiveOrClosingText(normalized)) return "";
+function stripTrailingPunctuation(text: string) {
+  return text.replace(/[!！?？。.\s]+$/u, "").trim();
+}
 
-  const strongPatterns: Array<[RegExp, number]> = [
-    [/^(?:一番|いちばん有名なのは)?(.+?)(?:でしょうか)?[。.!！?？]*$/iu, 1],
-    [/^(.+?)について(?:詳しく)?(?:教えて|知りたい|説明して)(?:ください|下さい)?[。.!！?？]*$/iu, 1],
-    [/^(.+?)に関して(?:詳しく)?(?:教えて|知りたい|説明して)(?:ください|下さい)?[。.!！?？]*$/iu, 1],
-    [/^(.+?)を(?:もっと)?(?:詳しく)?(?:教えて|知りたい|説明して)(?:ください|下さい)?[。.!！?？]*$/iu, 1],
-    [/^(.+?)は(?:ありますか)?[。.!！?？]*$/iu, 1],
-    [/^(.+?)って(?:何|誰)(?:ですか)?[。.!！?？]*$/iu, 1],
-  ];
+function isClosingText(text: string) {
+  return /(?:ありがとう.*もう大丈夫|もう大丈夫|もういい|一旦いい|終わり|別件)/u.test(text);
+}
+
+function isWeakSurface(text: string) {
+  return /^(?:それ|これ|あれ|なるほど|へー|ok|okay|thanks|thank you)$/iu.test(text);
+}
+
+function trimTopicCandidate(text: string) {
+  return stripTrailingPunctuation(stripLeadIn(text));
+}
+
+export function normalizePromptTopic(text: string) {
+  const normalized = normalizeFreeText(text).replace(/^user[:：]\s*/iu, "").trim();
+  if (!normalized) return "";
+  if (isClosingText(normalized)) return "";
 
   const stripped = stripLeadIn(normalized);
-  for (const [pattern, groupIndex] of strongPatterns) {
+
+  const directPatterns = [
+    /^(.+?)について(?:もっと|もう少し)?(?:詳しく|くわしく)?(?:教えて|知りたい|説明して)(?:ください|下さい)?/u,
+    /^(.+?)のことを(?:もっと|もう少し)?(?:詳しく|くわしく)?(?:教えて|知りたい|説明して)(?:ください|下さい)?/u,
+    /^(.+?)(?:って|とは)(?:何|なに|誰|だれ|どこ|いつ|どういうもの|どんなもの|何ですか)/u,
+    /^(.+?)(?:は|って)?(?:本当|事実|正しい)(?:ですか|なの|なんですか)?/u,
+  ];
+
+  for (const pattern of directPatterns) {
     const match = stripped.match(pattern);
-    if (!match) continue;
-    const candidate = trimTopicCandidate(match[groupIndex] || "");
-    if (candidate && !isDismissiveOrClosingText(candidate)) return candidate;
+    if (!match?.[1]) continue;
+    const candidate = trimTopicCandidate(match[1]);
+    if (candidate && !isWeakSurface(candidate)) return candidate;
   }
 
   const candidate = trimTopicCandidate(stripped);
-  if (!candidate) return "";
-  if (isDismissiveOrClosingText(candidate)) return "";
-  if (/^(?:へー|なるほど|そうなんですね|それ|これ|あれ)$/u.test(candidate)) {
-    return "";
-  }
-
-  if (
-    /(?:ですか|ますか|でしょうか|ませんか)$/iu.test(candidate) ||
-    candidate.includes("教えて")
-  ) {
-    return "";
-  }
-
+  if (!candidate || isWeakSurface(candidate)) return "";
   return candidate;
 }

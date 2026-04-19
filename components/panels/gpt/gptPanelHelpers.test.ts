@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   applyLocalSettingsUpdate,
   buildLocalSettingsSourceKey,
@@ -128,3 +128,5 @@ describe("local settings helpers", () => {
     });
   });
 });
+
+

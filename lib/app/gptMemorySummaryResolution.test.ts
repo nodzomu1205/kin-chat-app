@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
-import { resolveMemorySummaryState } from "@/lib/app/gptMemorySummaryResolution";
+import { resolveMemoryCompressionState } from "@/lib/app/gptMemorySummaryResolution";
 
 describe("gptMemorySummaryResolution", () => {
   afterEach(() => {
@@ -13,14 +13,7 @@ describe("gptMemorySummaryResolution", () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
-          memory: {
-            facts: ["summary fact"],
-            preferences: [],
-            lists: {},
-            context: {
-              currentTopic: "Topic A",
-            },
-          },
+          compactedText: "Older discussion stayed on Topic A and no unresolved blockers remained.",
           usage: {
             inputTokens: 10,
             outputTokens: 4,
@@ -29,7 +22,7 @@ describe("gptMemorySummaryResolution", () => {
       })
     );
 
-    const result = await resolveMemorySummaryState({
+    const result = await resolveMemoryCompressionState({
       candidateMemory: {
         facts: ["candidate fact"],
         preferences: [],
@@ -38,12 +31,19 @@ describe("gptMemorySummaryResolution", () => {
           currentTopic: "Topic A",
         },
       },
-      trimmedRecent: [{ id: "m1", role: "user", text: "Topic A" }],
+      trimmedRecent: Array.from({ length: 6 }, (_, index) => ({
+        id: `m${index + 1}`,
+        role: index % 2 === 0 ? ("user" as const) : ("gpt" as const),
+        text: `Topic A turn ${index + 1}`,
+      })),
       settings: DEFAULT_MEMORY_SETTINGS,
     });
 
-    expect(result.nextState.memory.facts).toEqual(["candidate fact", "summary fact"]);
-    expect(result.summaryUsage).toEqual({
+    expect(result.nextState.memory.facts).toEqual(["candidate fact"]);
+    expect(result.nextState.recentMessages[0]?.text).toContain(
+      "Older discussion stayed on Topic A"
+    );
+    expect(result.compressionUsage).toEqual({
       inputTokens: 10,
       outputTokens: 4,
       totalTokens: 14,
@@ -60,7 +60,7 @@ describe("gptMemorySummaryResolution", () => {
       })
     );
 
-    const result = await resolveMemorySummaryState({
+    const result = await resolveMemoryCompressionState({
       candidateMemory: {
         facts: ["candidate fact"],
         preferences: [],
@@ -75,6 +75,7 @@ describe("gptMemorySummaryResolution", () => {
     expect(result.nextState.recentMessages).toEqual([
       { id: "m1", role: "user", text: "hello" },
     ]);
-    expect(result.summaryUsage).toBeNull();
+    expect(result.compressionUsage).toBeNull();
   });
 });
+

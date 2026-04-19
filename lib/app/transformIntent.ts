@@ -410,9 +410,7 @@ function mergeIntent(
   const merged: TransformIntent = {
     ...base,
     ...patch,
-    mode: explicitModeLocked
-      ? base.mode
-      : coerceMode(patch.mode, base.mode),
+    mode: explicitModeLocked ? base.mode : coerceMode(patch.mode, base.mode),
     translateTo:
       typeof patch.translateTo === "string" && patch.translateTo.trim()
         ? patch.translateTo.trim()
@@ -517,7 +515,7 @@ function buildIntentParserPrompt(
     "5. Do not drop a language/style/format directive just because extraction is also requested.",
     "",
     "Return an object with these keys:",
-    '{',
+    "{",
     '  "mode": "sys_info" | "sys_task",',
     '  "translateTo": string | null,',
     '  "finalOutputLanguage": string | null,',
@@ -543,7 +541,7 @@ function buildIntentParserPrompt(
     '  "requireDifferentSelection": boolean,',
     '  "preferLatestMaterial": boolean,',
     '  "extraDirectiveLines": string[]',
-    '}',
+    "}",
     "",
     `DEFAULT_MODE: ${defaultMode}`,
     "USER_DIRECTIVE_START",
@@ -996,9 +994,7 @@ export async function transformTextWithIntent(args: {
 
   if (!res.ok) {
     throw new Error(
-      typeof data?.error === "string"
-        ? data.error
-        : "transform request failed"
+      typeof data?.error === "string" ? data.error : "transform request failed"
     );
   }
 

@@ -6,6 +6,7 @@ export type PreparedTaskDraftUpdateParams = {
   title: string;
   userInstruction?: string;
   body: string;
+  taskTitleDebug?: TaskDraft["taskTitleDebug"];
   objective?: string;
   prepText?: string;
   searchContext?: TaskDraft["searchContext"];
@@ -23,6 +24,10 @@ export function buildPreparedTaskDraftUpdate(
     taskName: params.title,
     userInstruction: params.userInstruction || previous.userInstruction,
     body: params.body,
+    taskTitleDebug:
+      params.taskTitleDebug !== undefined
+        ? params.taskTitleDebug
+        : previous.taskTitleDebug,
     ...(params.objective !== undefined ? { objective: params.objective } : {}),
     ...(params.searchContext !== undefined
       ? { searchContext: params.searchContext }
@@ -44,6 +49,7 @@ export function buildDeepenedTaskDraftUpdate(
   params: {
     title: string;
     userInstruction?: string;
+    taskTitleDebug?: TaskDraft["taskTitleDebug"];
     body: string;
     status?: TaskDraftStatus;
   }
@@ -54,6 +60,10 @@ export function buildDeepenedTaskDraftUpdate(
     taskName: params.title,
     userInstruction: params.userInstruction || previous.userInstruction,
     body: params.body,
+    taskTitleDebug:
+      params.taskTitleDebug !== undefined
+        ? params.taskTitleDebug
+        : previous.taskTitleDebug,
     deepenText: params.body,
     mergedText: params.body,
     kinTaskText: "",

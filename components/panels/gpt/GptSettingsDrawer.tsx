@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import type {
@@ -22,7 +22,6 @@ import type {
   ImageDetail,
   IngestMode,
   LibraryReferenceMode,
-  ResponseMode,
 } from "./gptPanelTypes";
 import {
   buttonPrimary,
@@ -58,7 +57,6 @@ type Tab =
   | "search"
   | "library"
   | "rules"
-  | "output"
   | "protocol";
 
 type Props = {
@@ -67,8 +65,6 @@ type Props = {
   onReset: () => void;
   onSave: () => void;
   memoryCapacityPreview: number;
-  responseMode: ResponseMode;
-  onChangeResponseMode: (v: ResponseMode) => void;
   ingestMode: IngestMode;
   onChangeIngestMode: (v: IngestMode) => void;
   imageDetail: ImageDetail;
@@ -186,7 +182,6 @@ export default function GptSettingsDrawer(props: Props) {
     ["search", GPT_SETTINGS_DRAWER_TEXT.tabs.search],
     ["library", GPT_SETTINGS_DRAWER_TEXT.tabs.library],
     ["rules", GPT_SETTINGS_DRAWER_TEXT.tabs.rules],
-    ["output", GPT_SETTINGS_DRAWER_TEXT.tabs.output],
     ["protocol", GPT_SETTINGS_DRAWER_TEXT.tabs.protocol],
   ];
 
@@ -437,27 +432,6 @@ export default function GptSettingsDrawer(props: Props) {
         />
       ) : null}
 
-      {activeTab === "output" ? (
-        <div style={sectionCard}>
-          <div style={{ ...labelStyle, marginBottom: 8 }}>{GPT_SETTINGS_DRAWER_TEXT.outputMode}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(["creative", "strict"] as ResponseMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                style={tabButton(props.responseMode === mode)}
-                onClick={() => props.onChangeResponseMode(mode)}
-              >
-                {mode.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <div style={{ ...helpTextStyle, marginTop: 8 }}>
-            {GPT_SETTINGS_DRAWER_TEXT.outputModeHelp}
-          </div>
-        </div>
-      ) : null}
-
       {activeTab === "protocol" ? (
         <ProtocolSettingsSection
           autoSendKinSysInput={props.autoSendKinSysInput}
@@ -483,3 +457,4 @@ export default function GptSettingsDrawer(props: Props) {
     </div>
   );
 }
+

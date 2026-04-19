@@ -1,26 +1,45 @@
 import type { TaskIntent } from "@/types/taskProtocol";
 
-export type TaskIntentFallbackKind =
-  | "ask_gpt"
-  | "ask_user"
+export type TaskIntentFallbackRule = "exact" | "at_least" | "up_to" | "around";
+
+export type TaskIntentFallbackSlotKind =
+  | "output_limit"
+  | "gpt_request"
   | "search_request"
   | "youtube_transcript_request"
-  | "library_reference"
-  | "char_limit";
+  | "library_index_request"
+  | "library_item_request"
+  | "ask_user";
 
 export type TaskIntentFallbackCandidate = {
+  kind: TaskIntentFallbackSlotKind;
   phrase: string;
-  draftText?: string;
-  kind: TaskIntentFallbackKind;
-  count?: number | null;
-  rule?: "exact" | "at_least" | "up_to" | "around" | null;
-  charLimit?: number | null;
+  count?: number;
+  charLimit?: number;
+  rule?: TaskIntentFallbackRule;
 };
 
 export type TaskIntentFallbackPayload = {
-  suggestedTitle: string | null;
   candidates: TaskIntentFallbackCandidate[];
 };
+
+type SlotValue = {
+  matched: boolean;
+  phrase: string;
+  count?: number | null;
+  charLimit?: number | null;
+  rule?: TaskIntentFallbackRule | null;
+};
+
+const SLOT_KINDS: TaskIntentFallbackSlotKind[] = [
+  "output_limit",
+  "gpt_request",
+  "search_request",
+  "youtube_transcript_request",
+  "library_index_request",
+  "library_item_request",
+  "ask_user",
+];
 
 function tryParseJsonObject(text: string): Record<string, unknown> | null {
   const trimmed = text.trim();
@@ -45,73 +64,85 @@ function tryParseJsonObject(text: string): Record<string, unknown> | null {
   return null;
 }
 
-function asKind(value: unknown): TaskIntentFallbackKind | null {
-  return value === "ask_gpt" ||
-    value === "ask_user" ||
-    value === "search_request" ||
-    value === "youtube_transcript_request" ||
-    value === "library_reference" ||
-    value === "char_limit"
-    ? value
-    : null;
+function normalizeRule(value: unknown): TaskIntentFallbackRule | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim().toLowerCase();
+  if (
+    trimmed === "exact" ||
+    trimmed === "at_least" ||
+    trimmed === "up_to" ||
+    trimmed === "around"
+  ) {
+    return trimmed;
+  }
+  return undefined;
 }
 
-function asRule(value: unknown): "exact" | "at_least" | "up_to" | "around" | null {
-  return value === "exact" ||
-    value === "at_least" ||
-    value === "up_to" ||
-    value === "around"
-    ? value
-    : null;
+function normalizeSlotValue(raw: unknown): SlotValue | null {
+  if (!raw || typeof raw !== "object") return null;
+  const item = raw as Record<string, unknown>;
+  const matched = item.matched === true;
+  const phrase = typeof item.phrase === "string" ? item.phrase.trim() : "";
+  const count =
+    typeof item.count === "number" && item.count > 0 ? Math.floor(item.count) : null;
+  const charLimit =
+    typeof item.charLimit === "number" && item.charLimit > 0
+      ? Math.floor(item.charLimit)
+      : null;
+  const rule = normalizeRule(item.rule) ?? null;
+
+  return {
+    matched,
+    phrase,
+    count,
+    charLimit,
+    rule,
+  };
+}
+
+function buildSlotSchemaLines(kind: TaskIntentFallbackSlotKind) {
+  if (kind === "output_limit") {
+    return [
+      `  "${kind}": {`,
+      '    "matched": boolean,',
+      '    "phrase": string,',
+      '    "charLimit": number | null,',
+      '    "rule": "up_to" | "around" | "at_least" | "exact" | null',
+      "  }",
+    ];
+  }
+
+  return [
+    `  "${kind}": {`,
+    '    "matched": boolean,',
+    '    "phrase": string,',
+    '    "count": number | null,',
+    '    "rule": "up_to" | "exact" | "at_least" | null',
+    "  }",
+  ];
 }
 
 export function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
+  const schemaLines = SLOT_KINDS.flatMap((kind, index) => {
+    const lines = buildSlotSchemaLines(kind);
+    if (index < SLOT_KINDS.length - 1) {
+      lines[lines.length - 1] = `${lines[lines.length - 1]},`;
+    }
+    return lines;
+  });
+
   return [
-    "You are a task-intent parser for a Kin/GPT workflow.",
     "Read USER_TEXT and return JSON only.",
-    "No markdown. No explanation. No code fences.",
     "",
     "Return this exact JSON shape:",
     "{",
-    '  "suggestedTitle": string | null,',
-    '  "candidates": [',
-    "    {",
-    '      "phrase": string,',
-    '      "draftText": string,',
-    '      "kind": "ask_gpt" | "ask_user" | "search_request" | "youtube_transcript_request" | "library_reference" | "char_limit",',
-    '      "count": number | null,',
-    '      "rule": "exact" | "at_least" | "up_to" | "around" | null,',
-    '      "charLimit": number | null',
-    "    }",
-    "  ]",
+    ...schemaLines,
     "}",
     "",
     "Rules:",
-    "- Extract only explicit phrases that literally appear in USER_TEXT.",
-    "- phrase must be copied from USER_TEXT exactly as written.",
-    "- Do not infer hidden limits or rewrite the user's meaning.",
-    '- Set draftText to an editable protocol sentence such as "CAN ask GPT up to 3 times".',
-    "- Classify by meaning, not by surface similarity.",
-    "- If a phrase limits asking GPT or requesting GPT help, classify it as ask_gpt.",
-    "- If a phrase limits web search, online search, Google search, or external fact lookup, classify it as search_request.",
-    "- If a phrase limits asking the user something, classify it as ask_user.",
-    "- If a phrase limits fetching YouTube transcripts, video transcripts, or content extraction from videos, classify it as youtube_transcript_request.",
-    "- If a phrase limits retrieving stored library items or library references, classify it as library_reference.",
-    "- If a phrase specifies output length or character count, classify it as char_limit.",
-    "- Never convert ask_gpt into search_request.",
-    "- Never convert search_request into ask_gpt.",
-    "- Preserve the intended count rule: exactly, at least, up to, or around.",
-    "- For Japanese wording like 以上, use at_least.",
-    "- For Japanese wording like まで, 迄, 以内, use up_to.",
-    "- Suggested title should be short, concrete, and preserve the user language when possible.",
-    "",
-    "draftText patterns:",
-    '- ask_gpt -> "CAN ask GPT up to 3 times"',
-    '- ask_user -> "CAN ask user up to 2 times"',
-    '- search_request -> "CAN search request up to 3 times"',
-    '- youtube_transcript_request -> "CAN content request up to 5 times"',
-    '- library_reference -> "CAN library reference up to 2 times"',
-    '- char_limit -> "MUST keep final output at least 1000 Japanese characters"',
+    "- Always return every slot above.",
+    "- Set matched=true only when USER_TEXT explicitly contains that requirement.",
+    "- Write phrase as a snippet around the number including the subject, but not necessarily the whole sentence.",
     "",
     `BASELINE_ALLOW_SEARCH_REQUEST: ${baseline.workflow?.allowSearchRequest ? "YES" : "NO"}`,
     `BASELINE_ALLOW_YOUTUBE_TRANSCRIPT_REQUEST: ${baseline.workflow?.allowYoutubeTranscriptRequest ? "YES" : "NO"}`,
@@ -129,35 +160,20 @@ export function extractTaskIntentFallbackPayload(
   const parsed = tryParseJsonObject(replyText);
   if (!parsed) return null;
 
-  const candidates: TaskIntentFallbackCandidate[] = Array.isArray(parsed.candidates)
-    ? parsed.candidates.flatMap((raw) => {
-        if (!raw || typeof raw !== "object") return [];
-        const item = raw as Record<string, unknown>;
-        const kind = asKind(item.kind);
-        const phrase = typeof item.phrase === "string" ? item.phrase.trim() : "";
-        if (!kind || !phrase) return [];
+  const candidates: TaskIntentFallbackCandidate[] = SLOT_KINDS.flatMap((kind) => {
+    const slot = normalizeSlotValue(parsed[kind]);
+    if (!slot?.matched || !slot.phrase) return [];
 
-        return [
-          {
-            phrase,
-            draftText:
-              typeof item.draftText === "string" && item.draftText.trim()
-                ? item.draftText.trim()
-                : undefined,
-            kind,
-            count: typeof item.count === "number" ? item.count : null,
-            rule: asRule(item.rule),
-            charLimit: typeof item.charLimit === "number" ? item.charLimit : null,
-          },
-        ];
-      })
-    : [];
+    return [
+      {
+        kind,
+        phrase: slot.phrase,
+        count: slot.count ?? undefined,
+        charLimit: slot.charLimit ?? undefined,
+        rule: slot.rule ?? undefined,
+      },
+    ];
+  });
 
-  return {
-    suggestedTitle:
-      typeof parsed.suggestedTitle === "string" && parsed.suggestedTitle.trim()
-        ? parsed.suggestedTitle.trim()
-        : null,
-    candidates,
-  };
+  return { candidates };
 }

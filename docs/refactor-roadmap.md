@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-18
+Updated: 2026-04-19
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -17,11 +17,12 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `133 files / 556 tests`
+- test status: `135 files / 562 tests`
 
 This roadmap should now be read together with:
 
 - `docs/maintenance-checklist.md`
+- `docs/memory-lifecycle.md`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -35,14 +36,14 @@ Primary review points:
 - `lib/app/kinMultipart.ts`
 
 Current cleanup priority:
-1. remaining ingest authority / token-accounting cleanup
-2. `lib/app/sendToGptFlow.ts` maintenance-watch boundaries
-3. `app/page.tsx` / page composition regrow prevention
-4. responsive / panel-mode authority guardrails
-5. user-facing text drift outside owner files
-6. `components/panels/gpt/GptSettingsApprovalSections.tsx` / `GptSettingsLibrarySections.tsx` maintenance-watch
-7. `lib/app/taskDraftPrepFlows.ts` / `taskDraftAttachFlows.ts` / `taskDraftDeepenFlows.ts` maintenance-watch
-8. `hooks/chatPageWorkspaceStateBuilders.ts` / `chatPageWorkspaceActionBuilders.ts` / `chatPageWorkspaceServiceBuilders.ts` maintenance-watch
+1. task-intent / task-progress / compiler residue cleanup around the now-stable `CONSTRAINTS` path
+2. repo-wide `strict` / `creative` / `responseMode` cleanup
+3. mojibake cleanup in active parsing/matching files
+4. remaining ingest authority / token-accounting cleanup
+5. `lib/app/sendToGptFlow.ts` maintenance-watch boundaries
+6. `app/page.tsx` / page composition regrow prevention
+7. responsive / panel-mode authority guardrails
+8. user-facing text drift outside owner files
 
 ## Maintenance Checkpoint
 
@@ -74,6 +75,56 @@ high-signal review points before and after changes.
   library, GPT chat, and Kin protocol surfaces
 - remaining builder reshaping across controller/panel composition
 - future user-facing copy drift outside the text-owner files
+- task-intent/task-progress/compiler boundaries while old helper residue is still present
+- repo-wide `strict` / `creative` / `responseMode` carry-through after the UI simplifications
+
+### Deletion Principle
+
+When a feature is replaced, we should delete the obsolete path back to its root
+owner whenever practical.
+
+That means:
+
+1. remove hidden UI-state carry-through, not just visible controls
+2. remove persistence and builder pass-through when no live caller remains
+3. remove adjacent dead helpers in the same neighborhood when they are clearly
+   orphaned
+4. leave temporary compatibility branches only when an active caller is still
+   confirmed
+
+### LLM Debug Principle
+
+For LLM-backed boundaries, do not mark an old behavior as removed until the
+full adopted-value path has been observed.
+
+Required trace:
+
+1. prompt
+2. raw reply
+3. parsed reply
+4. post-parse transforms / harmonizers
+5. final resolved value written to state/UI
+
+This exists because the repo has repeatedly regressed when a recently touched
+guard was removed but an older overwrite path still remained elsewhere.
+
+The preferred fix style is subtractive:
+
+- find the exact owner that rewrites the value
+- remove that rewrite at the root
+- avoid compensating rules, blockers, or prompt inflation unless the root cause
+  is already understood and still required
+
+### Debug Honesty Principle
+
+During regression work, do not convert a local reading into a repo-wide claim.
+
+Required discipline:
+
+1. say what was directly observed
+2. say what is still inference
+3. do not call a path removed until the end-to-end runtime trace proves it
+4. prefer "unverified" over a false sense of certainty
 
 ### Exit Criteria For "Maintenance Complete"
 
@@ -97,36 +148,39 @@ Reference:
 This is the practical maintainability plan to follow next.
 It is intentionally ordered by regression risk, not by which files are easiest to split.
 
-### Priority 1: Freeze the LLM-first intent boundary
+### Priority 1: Finish the new task-constraint boundary by removing old residue
 
 Why first:
-- recent regressions showed that task generation becomes fragile when original user text is reduced, rewritten, or pre-classified before LLM review
-- the same rule must stay true for both task generation and topic generation
+- the visible `SYS_TASK` / `CONSTRAINTS` behavior is now stable
+- but the implementation still mixes the new fixed-slot path with old rewrite-era helpers
+- this is exactly the kind of half-migration that creates the next false diagnosis
 
 Primary authority:
 - `lib/taskIntent.ts`
 - `lib/taskIntentFallback.ts`
+- `lib/taskProgress.ts`
 - `lib/taskCompiler.ts`
-- `hooks/useTaskProtocolActions.ts`
-- `lib/app/memoryInterpreterFallbackOrchestrator.ts`
-- `lib/app/memoryInterpreterFallbackFlow.ts`
-- `docs/architecture-guidelines.md`
+- `lib/taskCompilerSections.ts`
 
 Boundary rules to keep:
-- entry text goes to LLM broadly
-- approval / rejection changes the live draft immediately
-- only exact strong-confidence approved fragments may shortcut later
-- no phrase-specific entry rules and no hidden fallback answer tables
+- the front LLM path uses fixed slots, not open-ended free-form candidate lists
+- approved wording is the visible source of truth in `CONSTRAINTS`
+- progress derives from `CONSTRAINTS`
+- do not reintroduce rewrite-heavy English text parsing as the primary authority
 
 Mini phases:
-1. remove dead compatibility-era helpers from `lib/taskIntent.ts`
-2. document source-of-truth fields for task recompile input in one place
-3. add regression tests for "raw instruction survives approval / recompile / resend"
-4. re-check memory/topic fallback for the same shortcut boundary
+1. remove or isolate dead compatibility-era helpers from `lib/taskIntent.ts`
+2. remove old `buildCompletionCriteria(...)`, `buildRequiredWorkflow(...)`, and `buildOptionalWorkflow(...)` from `lib/taskCompilerSections.ts`
+3. keep the deterministic English constraint formatter but pin it with narrow tests only
+4. document the new authority split:
+   - fixed-slot LLM JSON
+   - approved `CONSTRAINTS`
+   - rule-based progress derivation
 
 Done when:
-- `task intent` and `topic intent` both follow the same LLM-first rule
-- new work no longer needs guesswork about whether to read `goal`, `title`, or raw instruction
+- `lib/taskIntent.ts` no longer mixes the new path with old rewrite residue
+- `lib/taskCompilerSections.ts` no longer exports dead workflow/completion sections
+- the next session cannot plausibly misread an old path as still authoritative
 
 ### Priority 2: Untangle task runtime, draft sync, and Kin injection
 
@@ -624,9 +678,15 @@ Done:
 - `useIngestActions.ts` was rewritten around helper-backed orchestration as well, so the legacy hook no longer carries private low-level helper implementations inline
 - legacy local helper block removed from `route.ts`
 - `lib/app/ingestClient.ts` now owns shared `/api/ingest` request assembly, fetch, title resolution, and error resolution for both `useIngestActions.ts` and `fileIngestFlow.ts`
-- ingest-side task-draft projection now also flows through shared `ingestTaskDraftUpdates.ts`, so both the legacy ingest hook and `fileIngestFlow.ts` reuse the same attach/prep/deepen draft mutation helpers
+- obsolete post-ingest task-update branches have now been removed from the active device-ingest path instead of being kept dormant behind hidden settings
 - `docs/ingest-pipeline.md` now documents the current ingest boundaries so the legacy hook and newer flow do not drift back into separate private helper stacks
 - approved-candidate reapply now uses the same formal memory recomputation path as approved-rule reapply
+- fallback debug payload is no longer persisted inside memory state, and the obsolete summary-merge branch `gptMemoryStateSummaryMerge.ts` has been removed so recent-message compaction now has one authoritative path
+- `lib/memory.ts` now declares task-scoped memory keys explicitly and `gptMemoryStorage` clears task-scoped state through that shared lifecycle helper instead of a private local cleanup path
+- `useMemoryInterpreterSettings.ts` now delegates rule-store persistence to `lib/app/memoryRuleStore.ts`, so interpreter settings, pending candidates, approved rules, and rejected signatures share one persistence boundary
+- `useGptMemory.ts` now delegates runtime load/update/reapply orchestration to `lib/app/gptMemoryRuntime.ts`, shrinking the hook toward a lifecycle facade and giving memory runtime handoff its own tested boundary
+- `docs/memory-lifecycle.md` now fixes the intended split between stable memory, task-scoped memory, and displayed-context memory, and `lib/memory.ts` exposes matching lifecycle key lists
+- token accounting now restores total-token aggregation, counts memory compaction inside conversation recent/cumulative usage, relabels the old summary line as compaction, and routes ingest-time summary generation usage into the ingest bucket
 - closing-reply detection now uses a single source of truth
 - chat topic adjudication flow was structurally rebuilt and reached a stable live-reviewed state
 - task title auto-generation was rebuilt around a clean naming pipeline
@@ -733,6 +793,7 @@ Next:
 - GPT settings workspace sections are now split again into `GptSettingsApprovalSections.tsx` and `GptSettingsLibrarySections.tsx`, so approval workflows and library/ingest controls no longer share one section hub by default
 - `taskDraft*Flows.ts` now share recent-message context and success-postlude helpers through `taskDraftFlowShared.ts`, reducing repeated assistant-append and summary-replay logic across prep/update/attach/deepen orchestration
 - `sendToGptFlow` guard coverage now lives in `sendToGptFlowGuards.test.ts`, so guard failures are diagnosed separately from step/request builder regressions
+- Google Drive library export now lets the user choose a child folder under the configured parent before upload, and Drive folder indexing now includes per-entry timestamps, file sizes, and importable-item counts through `googleDrivePickerBuilders.ts`
 
 ## Next Review Points
 At the start of each new refactor step, review these files first:

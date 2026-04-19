@@ -47,6 +47,11 @@ describe("openaiClient builders", () => {
         outputTokens: 3,
         totalTokens: 5,
       },
+      usageDetails: {
+        input_tokens: 2,
+        output_tokens: 3,
+        total_tokens: 5,
+      },
     });
   });
 });

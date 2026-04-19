@@ -54,6 +54,9 @@ The current maintainability principles are:
 3. reduce multi-path state mutation
 4. add tests before risky refactors
 5. update docs together with structural changes
+6. when replacing old behavior with new behavior, remove the obsolete path back to its root when practical instead of leaving dormant code behind
+7. for LLM-backed flows, never claim that a rewrite/overwrite path is gone until the full runtime path has been verified from prompt -> raw reply -> parsed reply -> post-parse transforms -> final adopted value
+8. do not overstate certainty from a local read of recently touched files; if end-to-end verification is incomplete, say so plainly instead of promoting an inference to a fact
 
 ## Key Files To Review Before New Work
 
@@ -104,7 +107,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `133 files / 556 tests`
+- current test count: `135 files / 562 tests`
 
 Recent regression fixes and maintainability wins include:
 
@@ -124,6 +127,29 @@ Recent regression fixes and maintainability wins include:
 - GPT settings workspace sections are now split by approval authority and library/ingest authority, so the old section hub is less likely to regrow mixed UI/policy wiring
 - task-draft prep/update/attach/deepen flows now share recent-message and success-postlude helpers instead of repeating assistant append and summary replay inline
 - `sendToGptFlow` guard tests now live in their own test file, so gate failures are easier to diagnose separately from step/request builder failures
+- library-first device ingest now routes through the library surface instead of the old file-tab flow, and the obsolete post-ingest UI/state/task-update branches have been removed rather than hidden
+- fallback debug payload is no longer persisted into memory state, and the obsolete `gptMemoryStateSummaryMerge.ts` branch has been removed so memory compaction now follows one authoritative path
+- memory lifecycle boundaries are now more explicit: `lib/memory.ts` names task-scoped list/context keys directly, and task-scoped cleanup now flows through one shared helper instead of local storage-specific cleanup logic
+- memory rule persistence now flows through `lib/app/memoryRuleStore.ts`, so `useMemoryInterpreterSettings` no longer owns raw localStorage parsing/writing inline
+- `useGptMemory.ts` now delegates runtime load/update/reapply handoff to `lib/app/gptMemoryRuntime.ts`, keeping the hook closer to a state facade instead of a mixed orchestration surface
+- token accounting now restores correct total-token aggregation, treats memory compaction as a conversation-internal token line, and routes ingest-time summary-generation usage into the ingest bucket instead of the conversation compaction bucket
+- task-intent constraint extraction now uses a fixed-slot LLM JSON schema instead of free-form candidate lists
+- approved task constraints now compile directly into `CONSTRAINTS`, and task progress now derives from `CONSTRAINTS` instead of the removed `REQUIRED_WORKFLOW` / `OPTIONAL_WORKFLOW` sections
+- task-intent approval wording is now deterministic and rule-aware (`up_to` / `exact` / `at_least` / `around`) instead of relying on drifting fallback prose
+
+Current caution after the latest task/constraint stabilization:
+
+- `lib/taskIntent.ts` still contains mixed old/new logic:
+  - legacy response-mode plumbing
+  - the old `parseIntentCandidateDraftText(...)` parser path
+  - large mojibake keyword tables
+- `lib/taskCompilerSections.ts` still exports old workflow/completion helpers that are no longer emitted by `lib/taskCompiler.ts`
+- repo-wide `strict` / `creative` / `responseMode` remnants still exist far outside the now-simplified normal chat prompt
+- mojibake cleanup is still needed in active files such as:
+  - `lib/taskIntent.ts`
+  - `lib/taskProgress.ts`
+  - `lib/server/chatgpt/routeBuilders.ts`
+  - `lib/app/memoryInterpreterText.ts`
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -133,6 +159,7 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Domain Model](./docs/domain-model.md)
 - [Refactor Roadmap](./docs/refactor-roadmap.md)
 - [Maintenance Checklist](./docs/maintenance-checklist.md)
+- [Memory Lifecycle](./docs/memory-lifecycle.md)
 - [Next Session Handover](./docs/next-session.md)
 - [Handoff 2026-04-18](./docs/HANDOFF-2026-04-18.md)
 - [Handoff 2026-04-16](./docs/HANDOFF-2026-04-16.md)
@@ -152,6 +179,14 @@ For each maintainability step:
 5. run `npm test`
 6. update docs and roadmap
 
+For LLM-integrated bug fixing, do not stop at "the nearby helper looks clean".
+The default expectation is end-to-end tracing of the adopted value. Prefer
+removing the interfering path at its root over adding guards, overrides, or
+prompt-side compensations.
+
+Do not treat a tidy explanation as proof. Runtime observation outranks theory.
+If only part of the path has been verified, state that limitation explicitly.
+
 ## Development Commands
 
 ```bash
@@ -170,13 +205,14 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. finish the remaining Sprint 4 cleanup around search-domain / responsive / docs maintenance-watch boundaries
-   - especially keep `useResponsive.ts` heuristic-only and avoid regrowing panel-focus policy into it
-2. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
-3. continue shrinking the remaining legacy/current ingest split after the now-shared ingest authority model
-4. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
-5. final live-surface copy sweep across remaining non-settings panels such as `GptMetaDrawer`
-6. keep `GptSettingsApprovalSections.tsx`, `GptSettingsLibrarySections.tsx`, and `taskDraft*Flows.ts` in maintenance-watch mode instead of letting them become the next mixed hubs
+1. simplify the task-intent path now that the fixed-slot constraint model is stable
+   - remove dead compatibility helpers from `lib/taskIntent.ts`
+   - delete unused workflow/completion builders from `lib/taskCompilerSections.ts`
+2. audit repo-wide `strict` / `creative` / `responseMode` remnants and remove dead carry-through paths
+3. clean mojibake text/constants in still-active files before they cause the next misread or false match
+4. continue shrinking the remaining legacy/current ingest split after the now-shared ingest authority model
+5. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
+6. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
 7. continue adding narrow regression tests around the next touched boundary instead of broad rewrites
 
 `hooks/useGptMemory.ts` and `lib/app/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.

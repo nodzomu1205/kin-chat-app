@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import { safeParseMemory } from "@/lib/memory";
-import {
-  callOpenAIResponses,
-  extractOpenAIJsonObjectText,
-} from "@/lib/server/chatgpt/openaiClient";
+import { callOpenAIResponses } from "@/lib/server/chatgpt/openaiClient";
 import {
   buildChatRouteResponse,
   buildMapLinkShortcutResponse,
@@ -16,8 +12,9 @@ import {
 } from "@/lib/server/chatgpt/requestNormalization";
 import {
   buildChatCompletionMessages,
+  buildChatPromptMetrics,
   buildChatSearchPayload,
-  buildMemoryUpdatePrompt,
+  buildMemoryCompactionPrompt,
   wantsGoogleMapsLink,
 } from "@/lib/server/chatgpt/routeBuilders";
 import { executeSearchRequest } from "@/lib/server/chatgpt/searchExecution";
@@ -61,7 +58,8 @@ export async function handleChatRoute(body: Record<string, unknown>) {
   const parsedContinuation = resolvedSearch.continuation;
   const useSearch = resolvedSearch.useSearch;
 
-  let searchText = "";
+  let searchPromptText = "";
+  let searchEvidenceText = "";
   let sources: {
     title: string;
     link: string;
@@ -83,7 +81,7 @@ export async function handleChatRoute(body: Record<string, unknown>) {
       searchQuery: parsedContinuation.cleanQuery || searchQuery || "",
       searchSeriesId: resolvedSearch.effectiveSeriesId,
       searchContinuationToken: returnedSearchContinuationToken,
-      searchEvidence: searchText,
+      searchEvidence: searchEvidenceText,
     });
 
   if (useSearch && searchQuery) {
@@ -104,7 +102,8 @@ export async function handleChatRoute(body: Record<string, unknown>) {
         typeof searchLocation === "string" ? searchLocation : undefined,
     });
 
-    searchText = executedSearch.searchText;
+    searchPromptText = executedSearch.searchPromptText;
+    searchEvidenceText = executedSearch.searchEvidenceText;
     returnedSearchContinuationToken =
       executedSearch.returnedSearchContinuationToken;
     sources = executedSearch.sources;
@@ -142,12 +141,26 @@ export async function handleChatRoute(body: Record<string, unknown>) {
     storedLibraryContext,
     storedSearchContext,
     storedDocumentContext,
-    searchQuery:
-      useSearch && searchQuery ? parsedContinuation.cleanQuery || searchQuery : "",
-    searchText,
+      searchQuery:
+        useSearch && searchQuery ? parsedContinuation.cleanQuery || searchQuery : "",
+    searchText: searchPromptText,
+  });
+  const promptMetrics = buildChatPromptMetrics({
+    messages,
+    normalizedMemory,
+    reasoningMode: safeReasoningMode,
+    instructionMode: safeInstructionMode,
+    input,
+    recentMessages,
+    storedLibraryContext,
+    storedSearchContext,
+    storedDocumentContext,
+      searchQuery:
+        useSearch && searchQuery ? parsedContinuation.cleanQuery || searchQuery : "",
+    searchText: searchPromptText,
   });
 
-  const { text: reply, usage } = await callOpenAIResponses(
+  const { text: reply, usage, usageDetails } = await callOpenAIResponses(
     { input: messages },
     "GPT reply not found."
   );
@@ -156,31 +169,34 @@ export async function handleChatRoute(body: Record<string, unknown>) {
     buildChatRouteResponse({
       reply,
       usage,
+      usageDetails,
       search: buildSearchPayload(),
+      promptMetrics,
     })
   );
 }
 
-export async function handleSummarizeRoute(body: Record<string, unknown>) {
+export async function handleCompactRecentRoute(body: Record<string, unknown>) {
   const { memory, messages } = body;
   const normalizedMemory = normalizeMemoryInput(memory);
   const safeMessages = normalizeChatMessages(messages);
-  const prompt = buildMemoryUpdatePrompt({
+  const recentKeep =
+    typeof body.recentKeep === "number" && Number.isFinite(body.recentKeep)
+      ? Math.max(1, Math.floor(body.recentKeep))
+      : 4;
+  const prompt = buildMemoryCompactionPrompt({
     normalizedMemory,
     safeMessages,
+    recentKeep,
   });
 
-  const { text: rawMemory, usage } = await callOpenAIResponses(
+  const { text: compactedText, usage } = await callOpenAIResponses(
     { input: prompt },
-    JSON.stringify(normalizedMemory)
-  );
-
-  const parsedMemory = safeParseMemory(
-    extractOpenAIJsonObjectText(rawMemory, JSON.stringify(normalizedMemory))
+    ""
   );
 
   return NextResponse.json({
-    memory: parsedMemory,
+    compactedText: compactedText.trim(),
     usage,
   });
 }
@@ -192,10 +208,15 @@ export async function handleMemoryInterpretRoute(body: Record<string, unknown>) 
     return NextResponse.json({ error: "input missing" }, { status: 400 });
   }
 
-  const { text: reply, usage } = await callOpenAIResponses({ input }, "{}");
+  const { text: reply, usage, usageDetails } = await callOpenAIResponses(
+    { input },
+    "{}"
+  );
 
   return NextResponse.json({
     reply,
     usage,
+    usageDetails,
   });
 }
+

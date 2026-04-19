@@ -11,7 +11,21 @@ export type GptMemoryRuntime = {
   handleGptMemory: (
     recent: Message[],
     options?: MemoryUpdateOptions
-  ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
+  ) => Promise<{
+    compressionUsage: Parameters<typeof normalizeUsage>[0] | null;
+    fallbackUsage: Parameters<typeof normalizeUsage>[0] | null;
+    fallbackUsageDetails: Record<string, unknown> | null;
+    fallbackMetrics: {
+      promptChars: number;
+      rawReplyChars: number;
+    } | null;
+    fallbackDebug: {
+      prompt: string;
+      rawReply: string;
+      parsed: unknown;
+      usageDetails?: Record<string, unknown> | null;
+    } | null;
+  }>;
   chatRecentLimit: number;
   clearTaskScopedMemory: () => void;
   resetGptForCurrentKin: () => void;
@@ -31,3 +45,4 @@ export function buildChatPageGptMemorySettingsControls(
 ): GptMemorySettingsControls {
   return params;
 }
+

@@ -21,23 +21,40 @@ function createIntent(overrides?: Partial<TaskIntent["workflow"]>): TaskIntent {
       finalizationPolicy: "auto_when_ready",
       ...overrides,
     },
-    constraints: ["Keep the final output at or above 1000 Japanese characters if feasible."],
+    constraints: [
+      "You can perform up to 2 searches.",
+      "You can make up to 3 requests to GPT.",
+      "Please summarize the final output within 1000 characters.",
+    ],
   };
 }
 
 describe("taskCompiler", () => {
-  it("includes youtube search and transcript rules when youtube workflow is enabled", () => {
+  it("places constraints near the top and omits completion criteria", () => {
     const prompt = compileKinTaskPrompt({
       taskId: "123456",
       title: "りすこのライバル女性YouTuber",
       intent: createIntent(),
     });
 
-    expect(prompt).toContain("Supported ENGINE values are google_search, google_ai_mode, google_news, google_local, and youtube_search.");
-    expect(prompt).toContain("Use <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>> when you want GPT to fetch a YouTube transcript by URL.");
-    expect(prompt).toContain("Before requesting transcripts, keep likely candidate video metadata in <<SYS_TASK_PROGRESS>> whenever possible, especially URL, TITLE, and CHANNEL.");
-    expect(prompt).toContain("Request YouTube transcript support exactly 5 time(s).");
-    expect(prompt).toContain("You may request web search support up to 3 time(s).");
+    expect(prompt).toContain("CONSTRAINTS:");
+    expect(prompt).toContain("- You can perform up to 2 searches.");
+    expect(prompt).toContain("- You can make up to 3 requests to GPT.");
+    expect(prompt).toContain(
+      "- Please summarize the final output within 1000 characters."
+    );
+    expect(prompt).not.toContain("COMPLETION_CRITERIA:");
+  });
+
+  it("omits required and optional workflow sections", () => {
+    const prompt = compileKinTaskPrompt({
+      taskId: "123456",
+      title: "Workflowless task",
+      intent: createIntent(),
+    });
+
+    expect(prompt).not.toContain("REQUIRED_WORKFLOW:");
+    expect(prompt).not.toContain("OPTIONAL_WORKFLOW:");
   });
 
   it("includes multipart delivery constraints", () => {
@@ -72,46 +89,5 @@ describe("taskCompiler", () => {
     expect(prompt).toContain("URL: https://www.youtube.com/watch?v=example");
     expect(prompt).toContain("Candidate YouTube videos shortlisted for transcript fetch.");
     expect(prompt).toContain("CHANNEL: Example channel");
-  });
-
-  it("omits youtube transcript sections when youtube workflow is disabled", () => {
-    const prompt = compileKinTaskPrompt({
-      taskId: "123456",
-      title: "Search only task",
-      intent: createIntent({
-        allowYoutubeTranscriptRequest: false,
-        youtubeTranscriptRequestCount: 0,
-      }),
-    });
-
-    expect(prompt).not.toContain("<<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>");
-    expect(prompt).not.toContain("Request YouTube transcript support");
-    expect(prompt).not.toContain("keep likely candidate video metadata");
-  });
-
-  it("treats non-up_to search workflow as required instead of optional", () => {
-    const prompt = compileKinTaskPrompt({
-      taskId: "123456",
-      title: "Required search task",
-      intent: createIntent({
-        searchRequestCountRule: "exact",
-      }),
-    });
-
-    expect(prompt).toContain("Request web search support exactly 3 time(s).");
-    expect(prompt).not.toContain("You may request web search support up to 3 time(s).");
-  });
-
-  it("treats up_to youtube transcript workflow as optional", () => {
-    const prompt = compileKinTaskPrompt({
-      taskId: "123456",
-      title: "Optional transcript task",
-      intent: createIntent({
-        youtubeTranscriptRequestCountRule: "up_to",
-      }),
-    });
-
-    expect(prompt).toContain("You may request YouTube transcript support up to 5 time(s).");
-    expect(prompt).not.toContain("Request YouTube transcript support exactly 5 time(s).");
   });
 });

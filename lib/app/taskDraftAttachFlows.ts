@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+﻿import { generateId } from "@/lib/uuid";
 import {
   buildTaskInput,
   buildTaskStructuredInput,
@@ -10,7 +10,6 @@ import {
   buildPreparedTaskDraftUpdate,
 } from "@/lib/app/taskDraftFlowProjection";
 import {
-  resolveTaskTitleFromResult,
   resolveUpdateTaskTitle,
 } from "@/lib/app/taskDraftFlowResolvers";
 import {
@@ -21,6 +20,11 @@ import {
 } from "@/lib/app/taskDraftFlowShared";
 import type { AttachSearchResultToTaskFlowArgs } from "@/lib/app/taskDraftActionFlowTypes";
 import type { Message } from "@/types/chat";
+import {
+  mergeTaskTitleInstructions,
+  resolveGeneratedTaskTitle,
+  resolveTaskDraftUserInstruction,
+} from "@/lib/taskTitleGeneration";
 
 export async function runAttachSearchResultToTaskFlow(
   args: AttachSearchResultToTaskFlowArgs
@@ -35,6 +39,10 @@ export async function runAttachSearchResultToTaskFlow(
     taskLibraryItem?.itemType === "search"
       ? taskSearchContext?.rawText?.trim() || taskLibraryItem.excerptText.trim()
       : taskLibraryItem?.excerptText.trim() || "";
+  const titleMaterialText =
+    taskLibraryItem?.summary?.trim() ||
+    taskLibraryItem?.excerptText.trim() ||
+    materialText;
 
   if (!materialText) {
     appendTaskInfoMessage(
@@ -45,7 +53,7 @@ export async function runAttachSearchResultToTaskFlow(
   }
 
   const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
-  const resolvedTitle = resolveUpdateTaskTitle({
+  const fallbackTitle = resolveUpdateTaskTitle({
     explicitTitle: parsedInput.title,
     currentTitle: args.currentTaskDraft.title,
     currentTaskName: args.currentTaskDraft.taskName,
@@ -58,6 +66,25 @@ export async function runAttachSearchResultToTaskFlow(
       "Task",
     getResolvedTaskTitle: args.getResolvedTaskTitle,
   });
+  const resolvedTitleResult = await resolveGeneratedTaskTitle({
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title || args.currentTaskDraft.taskName,
+    taskBody: currentTaskText || args.currentTaskDraft.body,
+    additionalSource: titleMaterialText,
+    userInstruction: mergeTaskTitleInstructions(
+      parsedInput.freeText,
+      parsedInput.userInstruction,
+      args.currentTaskDraft.userInstruction
+    ),
+    fallbackTitle,
+    includeCurrentTitle: false,
+  });
+  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const nextUserInstruction = resolveTaskDraftUserInstruction(
+    parsedInput.userInstruction,
+    parsedInput.freeText,
+    args.currentTaskDraft.userInstruction
+  );
 
   const { requestRecentMessages } = buildTaskFlowRecentContext({
     gptStateRef: args.gptStateRef,
@@ -67,8 +94,7 @@ export async function runAttachSearchResultToTaskFlow(
   if (!currentTaskText) {
     const prepInput = buildTaskStructuredInput({
       title: resolvedTitle,
-      userInstruction:
-        parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+      userInstruction: nextUserInstruction,
       body: materialText,
       searchRawText:
         taskLibraryItem?.itemType === "search" ? taskSearchContext?.rawText || "" : "",
@@ -83,15 +109,6 @@ export async function runAttachSearchResultToTaskFlow(
     try {
       const data = await runAutoPrepTask(prepInput, "attach-library-item");
       const taskText = formatTaskResultText(data?.parsed, data?.raw);
-      const finalizedTitle = resolveTaskTitleFromResult({
-        explicitTitle: parsedInput.title,
-        currentTitle: args.currentTaskDraft.title,
-        currentTaskName: args.currentTaskDraft.taskName,
-        resultText: taskText,
-        searchQuery: parsedInput.searchQuery || taskSearchContext?.query,
-        fallback: resolvedTitle,
-        getResolvedTaskTitle: args.getResolvedTaskTitle,
-      });
       const assistantMsg: Message = {
         id: generateId(),
         role: "gpt",
@@ -110,18 +127,19 @@ export async function runAttachSearchResultToTaskFlow(
         gptStateRef: args.gptStateRef,
         requestRecentMessages,
         chatRecentLimit: args.chatRecentLimit,
-        lastUserIntent: `繝ｩ繧､繝悶Λ繝ｪ繧｢繧､繝・Β縲・{taskLibraryItem?.title || finalizedTitle}縲阪ｒ譁ｰ隕上ち繧ｹ繧ｯ縺ｫ蜿冶ｾｼ`,
+        lastUserIntent: `郢晢ｽｩ郢ｧ・､郢晄じﾎ帷ｹ晢ｽｪ郢ｧ・｢郢ｧ・､郢昴・ﾎ堤ｸｲ繝ｻ{taskLibraryItem?.title || resolvedTitle}邵ｲ髦ｪ・定ｭ・ｽｰ髫穂ｸ翫■郢ｧ・ｹ郢ｧ・ｯ邵ｺ・ｫ陷ｿ蜀ｶ・ｾ・ｼ`,
         activeReference: {
-          title: taskLibraryItem?.title || taskSearchContext?.query || finalizedTitle,
+          title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
           kind: taskLibraryItem?.itemType || "library",
           sourceId: taskLibraryItem?.id,
           excerpt: materialText.slice(0, 400),
         },
-        applySummaryUsage: args.applySummaryUsage,
+        applyChatUsage: args.applyChatUsage,
+        applyCompressionUsage: args.applyCompressionUsage,
         handleGptMemory: args.handleGptMemory,
-        currentTaskTitleOverride: finalizedTitle,
+        currentTaskTitleOverride: resolvedTitle,
         activeDocument: {
-          title: taskLibraryItem?.title || taskSearchContext?.query || finalizedTitle,
+          title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
           kind: taskLibraryItem?.itemType || "library",
           sourceId: taskLibraryItem?.id,
           excerpt: materialText.slice(0, 400),
@@ -137,8 +155,9 @@ export async function runAttachSearchResultToTaskFlow(
 
       args.setCurrentTaskDraft((prev) =>
         buildPreparedTaskDraftUpdate(prev, {
-          title: finalizedTitle,
-          userInstruction: parsedInput.userInstruction,
+          title: resolvedTitle,
+          userInstruction: nextUserInstruction,
+          taskTitleDebug: resolvedTitleResult.debug,
           body: taskText,
           searchContext:
             taskLibraryItem?.itemType === "search"
@@ -155,6 +174,7 @@ export async function runAttachSearchResultToTaskFlow(
         })
       );
 
+      args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
       args.applyTaskUsage(data?.usage);
     } catch (error) {
       console.error(error);
@@ -170,8 +190,7 @@ export async function runAttachSearchResultToTaskFlow(
 
   const taskInput = buildTaskInput({
     title: resolvedTitle,
-    userInstruction:
-      parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+    userInstruction: nextUserInstruction,
     actionInstruction: parsedInput.freeText || args.gptInput.trim(),
     body: currentTaskText,
     material: materialText,
@@ -186,15 +205,6 @@ export async function runAttachSearchResultToTaskFlow(
   try {
     const data = await runAutoPrepTask(taskInput, "attach-search-result");
     const taskText = formatTaskResultText(data?.parsed, data?.raw);
-    const finalizedTitle = resolveTaskTitleFromResult({
-      explicitTitle: parsedInput.title,
-      currentTitle: args.currentTaskDraft.title,
-      currentTaskName: args.currentTaskDraft.taskName,
-      resultText: taskText,
-      searchQuery: parsedInput.searchQuery || taskSearchContext?.query,
-      fallback: resolvedTitle,
-      getResolvedTaskTitle: args.getResolvedTaskTitle,
-    });
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
@@ -213,18 +223,19 @@ export async function runAttachSearchResultToTaskFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `繝ｩ繧､繝悶Λ繝ｪ繧｢繧､繝・Β縲・{taskLibraryItem?.title || finalizedTitle}縲阪ｒ繧ｿ繧ｹ繧ｯ縺ｫ邨ｱ蜷・`,
+      lastUserIntent: `郢晢ｽｩ郢ｧ・､郢晄じﾎ帷ｹ晢ｽｪ郢ｧ・｢郢ｧ・､郢昴・ﾎ堤ｸｲ繝ｻ{taskLibraryItem?.title || resolvedTitle}邵ｲ髦ｪ・堤ｹｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ邵ｺ・ｫ驍ｨ・ｱ陷ｷ繝ｻ`,
       activeReference: {
-        title: taskLibraryItem?.title || taskSearchContext?.query || finalizedTitle,
+        title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
         kind: taskLibraryItem?.itemType || "library",
         sourceId: taskLibraryItem?.id,
         excerpt: materialText.slice(0, 400),
       },
-      applySummaryUsage: args.applySummaryUsage,
+      applyChatUsage: args.applyChatUsage,
+      applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,
-      currentTaskTitleOverride: finalizedTitle,
+      currentTaskTitleOverride: resolvedTitle,
       activeDocument: {
-        title: taskLibraryItem?.title || taskSearchContext?.query || finalizedTitle,
+        title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
         kind: taskLibraryItem?.itemType || "library",
         sourceId: taskLibraryItem?.id,
         excerpt: materialText.slice(0, 400),
@@ -240,8 +251,9 @@ export async function runAttachSearchResultToTaskFlow(
 
     args.setCurrentTaskDraft((prev) =>
       buildPreparedTaskDraftUpdate(prev, {
-        title: finalizedTitle,
-        userInstruction: parsedInput.userInstruction,
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        taskTitleDebug: resolvedTitleResult.debug,
         body: taskText,
         searchContext:
           taskLibraryItem?.itemType === "search"
@@ -251,6 +263,7 @@ export async function runAttachSearchResultToTaskFlow(
       })
     );
 
+    args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
@@ -262,3 +275,5 @@ export async function runAttachSearchResultToTaskFlow(
     args.setGptLoading(false);
   }
 }
+
+

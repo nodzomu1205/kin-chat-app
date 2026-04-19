@@ -20,14 +20,14 @@ function createStorage(values: Record<string, string | null>) {
 describe("persistedGptOptionsState", () => {
   it("returns defaults when storage is unavailable", () => {
     expect(loadPersistedGptOptionsState(null)).toMatchObject({
-      responseMode: "creative",
+      responseMode: "strict",
       ingestMode: "detailed",
       imageDetail: "detailed",
       compactCharLimit: 500,
     });
   });
 
-  it("migrates legacy mode values to current normalized values", () => {
+  it("ignores legacy response mode values and keeps the unified default", () => {
     expect(
       loadPersistedGptOptionsState(
         createStorage({

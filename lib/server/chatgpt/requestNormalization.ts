@@ -4,7 +4,7 @@ import {
   safeParseMemory,
 } from "@/lib/memory";
 
-export type ChatRouteMode = "chat" | "summarize" | "memory_interpret";
+export type ChatRouteMode = "chat" | "compact_recent" | "memory_interpret";
 
 export type ChatMessage = {
   role: "user" | "gpt" | "kin" | "assistant";
@@ -22,7 +22,7 @@ export type ReasoningMode = "strict" | "creative";
 export function resolveChatRouteMode(body: unknown): ChatRouteMode | null {
   if (!body || typeof body !== "object") return null;
   const mode = (body as { mode?: unknown }).mode;
-  return mode === "chat" || mode === "summarize" || mode === "memory_interpret"
+  return mode === "chat" || mode === "compact_recent" || mode === "memory_interpret"
     ? mode
     : null;
 }
@@ -64,3 +64,4 @@ export function normalizeChatMessages(messages: unknown): ChatMessage[] {
       typeof (message as { text?: unknown }).text === "string"
   );
 }
+

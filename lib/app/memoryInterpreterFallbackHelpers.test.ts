@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   applyApprovedMemoryRule,
   buildMemoryFallbackPrompt,
-  harmonizeFallbackResponseLanguage,
   shouldUseMemoryFallback,
   tryParseMemoryFallbackJson,
 } from "@/lib/app/memoryInterpreterFallbackHelpers";
@@ -93,32 +92,23 @@ describe("memoryInterpreterFallbackHelpers", () => {
       earlierMeaningfulText: "tell me about greek philosophy",
     });
 
-    expect(prompt).toContain("CURRENT_TOPIC: Greek philosophy");
-    expect(prompt).toContain("CURRENT_TASK: organize philosophy notes");
-    expect(prompt).toContain("LAST_USER_INTENT: expand the current topic");
-    expect(prompt).toContain("PRIOR_MEANINGFUL_TEXT: please organize the notes first");
-    expect(prompt).toContain("EARLIER_MEANINGFUL_TEXT: tell me about greek philosophy");
-    expect(prompt).toContain('"evidenceText": string | null');
-    expect(prompt).toContain("prefer Japanese topic labels");
-    expect(prompt).toContain("LATEST_USER_TEXT_START");
-  });
-
-  it("prefers a Japanese topic label over a lowercase English phrase when the user text is Japanese", () => {
-    expect(
-      harmonizeFallbackResponseLanguage({
-        latestUserText: "最近天気悪いよ！",
-        parsed: {
-          topic: "weather difficulty",
-          proposedTopic: "weather difficulty",
-          trackedEntity: "weather difficulty",
-        },
-      })
-    ).toEqual(
-      expect.objectContaining({
-        topic: "最近天気悪いよ",
-        proposedTopic: "最近天気悪いよ",
-        trackedEntity: "最近天気悪いよ",
-      })
+    expect(prompt).toContain("TOPIC: Greek philosophy");
+    expect(prompt).toContain("TASK: organize philosophy notes");
+    expect(prompt).toContain("LAST_INTENT: expand the current topic");
+    expect(prompt).toContain("PRIOR: please organize the notes first");
+    expect(prompt).toContain("EARLIER: tell me about greek philosophy");
+    expect(prompt).toContain("Return JSON only.");
+    expect(prompt).toContain(
+      "Write topic labels in the same language used in the chat."
     );
+    expect(prompt).toContain(
+      'Always return non-null strings for "proposedTopic".'
+    );
+    expect(prompt).not.toContain('"confidence": number');
+    expect(prompt).toContain('"proposedTopic": string');
+    expect(prompt).toContain('"topic": string');
+    expect(prompt).not.toContain('"trackedEntity": string | null');
+    expect(prompt).not.toContain('"evidenceText": string | null');
+    expect(prompt).toContain("USER:");
   });
 });

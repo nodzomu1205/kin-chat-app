@@ -93,7 +93,6 @@ function buildWorkspaceStateGpt(args: ChatPageWorkspaceStateGpt) {
     imageDetail: args.imageDetail,
     compactCharLimit: args.compactCharLimit,
     simpleImageCharLimit: args.simpleImageCharLimit,
-    postIngestAction: args.postIngestAction,
     fileReadPolicy: args.fileReadPolicy,
     driveImportAutoSummary: args.driveImportAutoSummary,
     defaultMemorySettings: args.defaultMemorySettings,
@@ -139,4 +138,3 @@ export function buildChatPageWorkspaceState(
     kin: buildWorkspaceStateKin(args.kin),
   } satisfies ChatPageWorkspaceCompositionState;
 }
-

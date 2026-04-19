@@ -18,15 +18,17 @@ const sampleTask: TaskRequest = {
   priority: "MID",
   visibility: "USER_VISIBLE",
   responseMode: "STRUCTURED_RESULT",
-  groundingMode: "BALANCED",
+  existingTitle: "Existing title",
 };
 
 describe("task route builders", () => {
   it("builds the OpenAI responses request from a task", () => {
-    expect(buildTaskResponsesRequest(sampleTask)).toEqual({
-      model: TASK_ROUTE_MODEL,
-      input: expect.stringContaining("TASK_ID: TASK-1"),
-    });
+    const request = buildTaskResponsesRequest(sampleTask);
+
+    expect(request.model).toBe(TASK_ROUTE_MODEL);
+    expect(request.input).toContain("TASK_ID: TASK-1");
+    expect(request.input).toContain("EXISTING_TITLE: Existing title");
+    expect(request.input).toContain("Do not create a new title.");
   });
 
   it("builds the task route response payload", () => {

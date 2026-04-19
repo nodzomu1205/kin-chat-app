@@ -29,6 +29,12 @@ Working estimate:
 
 - maintainability program overall: `80-90% complete`
 - still open before we call it complete: `ingest authority finish`, `token accounting cleanup`, `maintenance-watch discipline`
+- memory lifecycle now has explicit `stable / task-scoped / displayed-context`
+  naming; treat new memory fields as incomplete until that classification is
+  explicit too
+- task-constraint behavior is functionally stable, but cleanup is still open
+  around old helper residue (`taskIntent.ts`, `taskCompilerSections.ts`,
+  repo-wide `responseMode` carry-through, mojibake in active parser files)
 
 ## Exit Checklist
 
@@ -84,6 +90,21 @@ Treat the maintainability program as complete only when every item below is
 
 Use these rules every time maintenance-watch code is touched.
 
+### Rule 0: Replace means remove
+
+When old behavior is replaced by new behavior:
+
+- trace the old behavior back to its root owner, not just the visible UI
+- delete old state, persistence, routing, and helper layers when they are no
+  longer needed
+- do not keep dormant branches "just in case" unless there is a confirmed live
+  caller
+- while touching that area, also look for adjacent cleanup that can be removed
+  safely in the same session
+
+The default expectation is not "hide the old feature". The default expectation
+is "remove the obsolete path all the way back when practical".
+
 ### Rule 1: Update status only from fresh verification
 
 If you update counts or completion language, run the current verification first.
@@ -125,6 +146,59 @@ Maintenance is complete only when the exit checklist is green.
 If even one item remains open, say "late-stage maintenance-watch", not
 "complete".
 
+### Rule 6: Record deletion candidates when replacement stops early
+
+If a session replaces a feature but cannot fully delete every old branch in the
+same turn:
+
+- record the remaining obsolete branches explicitly
+- state which are still live and which are dormant
+- make the next cleanup target concrete instead of leaving "legacy" unnamed
+
+### Rule 7: Never declare an overwrite path gone from partial inspection
+
+For any LLM-backed flow, do not say "the old overwrite path is gone" or
+"nothing rewrites this anymore" unless the full runtime path has been checked.
+
+Minimum verification:
+
+1. prompt sent to the LLM
+2. raw LLM reply
+3. parsed reply
+4. every post-parse transform or harmonization step
+5. the final adopted value shown in UI/state
+
+Do not infer safety only from:
+
+- the files changed in the current session
+- recently added guards being removed
+- one helper looking clean in isolation
+
+The required posture is subtractive debugging:
+
+- trace the adopted value end-to-end
+- identify the exact owner that rewrites it
+- remove that interfering path at its root
+- do not layer new guards or compensating rules on top unless a live root
+  caller still requires them
+
+### Rule 8: Do not overstate confidence from local inspection
+
+When investigating a regression:
+
+- do not say "confirmed", "gone", or "fixed" from a partial read of nearby
+  files
+- do not infer repo-wide truth from the most recent patch alone
+- do not prefer a neat theory over the observed runtime path
+- if verification is incomplete, explicitly say what remains unverified
+
+The expected reasoning posture is:
+
+1. inspect the real runtime path first
+2. separate observation from inference
+3. label uncertainty honestly
+4. only then summarize what is actually proven
+
 ## Session Close Template
 
 Use this short template at the end of future maintenance sessions:
@@ -148,6 +222,7 @@ Use this short template at the end of future maintenance sessions:
 If no higher-priority product bug appears first, the next development item after
 this checklist setup should be:
 
-1. finish ingest authority cleanup
-2. correct ingest token accounting
-3. use that work to support device-file ingest consolidation into library surfaces
+1. remove task-intent/task-progress/compiler half-migration residue
+2. audit and remove dead repo-wide `strict` / `creative` / `responseMode` carry-through
+3. clean mojibake in active parsing/matching files
+4. then return to ingest authority cleanup and ingest token accounting

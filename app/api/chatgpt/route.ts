@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   handleChatRoute,
   handleMemoryInterpretRoute,
-  handleSummarizeRoute,
+  handleCompactRecentRoute,
 } from "@/lib/server/chatgpt/routeHandlers";
 import { resolveChatRouteMode } from "@/lib/server/chatgpt/requestNormalization";
 
@@ -15,8 +15,8 @@ export async function POST(req: Request) {
       return handleChatRoute(body);
     }
 
-    if (mode === "summarize") {
-      return handleSummarizeRoute(body);
+    if (mode === "compact_recent") {
+      return handleCompactRecentRoute(body);
     }
 
     if (mode === "memory_interpret") {
@@ -29,3 +29,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "ChatGPT error" }, { status: 500 });
   }
 }
+

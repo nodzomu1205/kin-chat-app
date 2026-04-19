@@ -2,99 +2,143 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
+  applyConversationUsage,
+  buildDisplayTokenStats,
+  type BucketUsageOptions,
+  type ConversationUsageOptions,
   type TokenStats,
+  addUsage,
   emptyTokenStats,
   emptyUsage,
+  incrementBucketRunCount,
+  isZeroUsage,
   normalizeUsage,
+  resolveLatestPromptMetrics,
 } from "@/lib/tokenStats";
 
 export function useTokenTracking() {
   const [tokenStats, setTokenStats] = useState<TokenStats>(emptyTokenStats());
 
-  const applyChatUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
-    const safeUsage = normalizeUsage(usage);
+  const applyChatUsage = useCallback(
+    (
+      usage: Parameters<typeof normalizeUsage>[0],
+      options?: ConversationUsageOptions
+    ) => {
+      if (!usage && !options?.promptMetrics) {
+        return;
+      }
 
-    setTokenStats((prev) => {
-      const recentChatUsages = [...prev.recentChatUsages, safeUsage].slice(-5);
-
-      return {
+      setTokenStats((prev) => ({
         ...prev,
-        lastChatUsage: safeUsage,
-        recentChatUsages,
-        threadChatTotal: {
-          inputTokens: prev.threadChatTotal.inputTokens + safeUsage.inputTokens,
-          outputTokens: prev.threadChatTotal.outputTokens + safeUsage.outputTokens,
-          totalTokens: prev.threadChatTotal.totalTokens + safeUsage.totalTokens,
-        },
-      };
-    });
-  }, []);
+        lastChatUsageDetails:
+          options?.usageDetails && typeof options.usageDetails === "object"
+            ? options.usageDetails
+            : prev.lastChatUsageDetails,
+        lastChatFollowupMetrics:
+          options?.followupMetrics &&
+          typeof options.followupMetrics.promptChars === "number" &&
+          typeof options.followupMetrics.rawReplyChars === "number"
+            ? options.followupMetrics
+            : prev.lastChatFollowupMetrics,
+        lastChatFollowupUsageDetails:
+          options?.followupUsageDetails &&
+          typeof options.followupUsageDetails === "object"
+            ? options.followupUsageDetails
+            : prev.lastChatFollowupUsageDetails,
+        lastChatFollowupDebug:
+          options?.followupDebug &&
+          typeof options.followupDebug.prompt === "string" &&
+          typeof options.followupDebug.rawReply === "string"
+            ? options.followupDebug
+            : prev.lastChatFollowupDebug,
+        lastChatPromptMetrics: resolveLatestPromptMetrics({
+          tokenStats: prev,
+          promptMetrics: options?.promptMetrics,
+        }),
+        ...(() => {
+          if (!usage) {
+            return {};
+          }
 
-  const applySummaryUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
+          const safeUsage = normalizeUsage(usage);
+          if (isZeroUsage(safeUsage)) {
+            return {};
+          }
+
+          return {
+            ...applyConversationUsage({
+              tokenStats: prev,
+              usage: safeUsage,
+              mergeIntoLast: options?.mergeIntoLast === true,
+            }),
+            threadChatTotal: addUsage(prev.threadChatTotal, safeUsage),
+          };
+        })(),
+      }));
+    },
+    []
+  );
+
+  const applyCompressionUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
     if (!usage) return;
 
     const safeUsage = normalizeUsage(usage);
-    if (
-      safeUsage.inputTokens === 0 &&
-      safeUsage.outputTokens === 0 &&
-      safeUsage.totalTokens === 0
-    ) {
+    if (isZeroUsage(safeUsage)) {
       return;
     }
 
     setTokenStats((prev) => ({
       ...prev,
-      lastSummaryUsage: safeUsage,
-      threadSummaryTotal: {
-        inputTokens: prev.threadSummaryTotal.inputTokens + safeUsage.inputTokens,
-        outputTokens: prev.threadSummaryTotal.outputTokens + safeUsage.outputTokens,
-        totalTokens: prev.threadSummaryTotal.totalTokens + safeUsage.totalTokens,
-      },
-      summaryRunCount: prev.summaryRunCount + 1,
+      lastCompressionUsage: safeUsage,
+      threadCompressionTotal: addUsage(prev.threadCompressionTotal, safeUsage),
+      compressionRunCount: prev.compressionRunCount + 1,
     }));
   }, []);
 
   const applySearchUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
+    if (!usage) return;
     const safeUsage = normalizeUsage(usage);
+    if (isZeroUsage(safeUsage)) {
+      return;
+    }
 
     setTokenStats((prev) => ({
       ...prev,
       lastSearchUsage: safeUsage,
-      threadSearchTotal: {
-        inputTokens: prev.threadSearchTotal.inputTokens + safeUsage.inputTokens,
-        outputTokens: prev.threadSearchTotal.outputTokens + safeUsage.outputTokens,
-        totalTokens: prev.threadSearchTotal.totalTokens + safeUsage.totalTokens,
-      },
+      threadSearchTotal: addUsage(prev.threadSearchTotal, safeUsage),
       searchRunCount: prev.searchRunCount + 1,
     }));
   }, []);
 
-  const applyTaskUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
+  const applyTaskUsage = useCallback((
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: BucketUsageOptions
+  ) => {
+    if (!usage) return;
     const safeUsage = normalizeUsage(usage);
+    if (isZeroUsage(safeUsage)) {
+      return;
+    }
 
     setTokenStats((prev) => ({
       ...prev,
       lastTaskUsage: safeUsage,
-      threadTaskTotal: {
-        inputTokens: prev.threadTaskTotal.inputTokens + safeUsage.inputTokens,
-        outputTokens: prev.threadTaskTotal.outputTokens + safeUsage.outputTokens,
-        totalTokens: prev.threadTaskTotal.totalTokens + safeUsage.totalTokens,
-      },
-      taskRunCount: prev.taskRunCount + 1,
+      threadTaskTotal: addUsage(prev.threadTaskTotal, safeUsage),
+      taskRunCount: incrementBucketRunCount(prev.taskRunCount, options),
     }));
   }, []);
 
   const applyIngestUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
+    if (!usage) return;
     const safeUsage = normalizeUsage(usage);
+    if (isZeroUsage(safeUsage)) {
+      return;
+    }
 
     setTokenStats((prev) => ({
       ...prev,
       lastIngestUsage: safeUsage,
-      threadIngestTotal: {
-        inputTokens: prev.threadIngestTotal.inputTokens + safeUsage.inputTokens,
-        outputTokens: prev.threadIngestTotal.outputTokens + safeUsage.outputTokens,
-        totalTokens: prev.threadIngestTotal.totalTokens + safeUsage.totalTokens,
-      },
+      threadIngestTotal: addUsage(prev.threadIngestTotal, safeUsage),
       ingestRunCount: prev.ingestRunCount + 1,
     }));
   }, []);
@@ -103,37 +147,22 @@ export function useTokenTracking() {
     setTokenStats(emptyTokenStats());
   }, []);
 
-  const totalTrackedUsage = useMemo(() => ({
-    inputTokens:
-      tokenStats.threadChatTotal.inputTokens +
-      tokenStats.threadSummaryTotal.inputTokens +
-      tokenStats.threadSearchTotal.inputTokens +
-      tokenStats.threadTaskTotal.inputTokens +
-      tokenStats.threadIngestTotal.inputTokens,
-    outputTokens:
-      tokenStats.threadChatTotal.outputTokens +
-      tokenStats.threadSummaryTotal.outputTokens +
-      tokenStats.threadSearchTotal.outputTokens +
-      tokenStats.threadTaskTotal.outputTokens +
-      tokenStats.threadIngestTotal.outputTokens,
-    totalTokens:
-      tokenStats.threadChatTotal.totalTokens +
-      tokenStats.threadSummaryTotal.totalTokens +
-      tokenStats.threadSearchTotal.totalTokens +
-      tokenStats.threadTaskTotal.totalTokens +
-      tokenStats.threadIngestTotal.totalTokens,
-  }), [tokenStats]);
+  const displayTokenStats = useMemo(
+    () => buildDisplayTokenStats(tokenStats),
+    [tokenStats]
+  );
 
   return {
-    tokenStats,
+    tokenStats: displayTokenStats,
     applyChatUsage,
-    applySummaryUsage,
+    applyCompressionUsage,
     applySearchUsage,
     applyTaskUsage,
     applyIngestUsage,
     resetTokenStats,
-    totalTrackedUsage,
+    totalTrackedUsage: displayTokenStats.cumulative,
   };
 }
 
 export const ZERO_USAGE = emptyUsage();
+

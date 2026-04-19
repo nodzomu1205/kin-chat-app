@@ -1,4 +1,4 @@
-import type { SetStateAction } from "react";
+﻿import type { SetStateAction } from "react";
 import { CHAT_TEXTAREA_TEXT } from "@/components/ui/commonUiText";
 import type { DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import type {
@@ -10,8 +10,7 @@ export type BottomTabKey =
   | "chat"
   | "task_primary"
   | "task_secondary"
-  | "kin"
-  | "file";
+  | "kin";
 
 export type FloatingLabel = {
   kind: string;
@@ -199,5 +198,7 @@ export function getComposerPlaceholder(bottomTab: BottomTabKey) {
   if (bottomTab === "kin") {
     return GPT_PANEL_HELPERS_TEXT.kin;
   }
-  return GPT_PANEL_HELPERS_TEXT.file;
+  return CHAT_TEXTAREA_TEXT.placeholder;
 }
+
+

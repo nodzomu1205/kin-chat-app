@@ -1,5 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { MemorySettings } from "@/lib/memory";
+import type { ChatPromptMetrics } from "@/lib/chatPromptMetrics";
 import type {
   Message,
   MultipartAssembly,
@@ -35,11 +36,6 @@ export type IngestMode = "compact" | "detailed" | "max";
 export type ImageDetail = "simple" | "detailed" | "max";
 export type LibraryReferenceMode = "summary_only" | "summary_with_excerpt";
 export type LibraryItemModeOverride = "default" | LibraryReferenceMode;
-export type PostIngestAction =
-  | "inject_only"
-  | "inject_and_prep"
-  | "inject_prep_deepen"
-  | "attach_to_current_task";
 export type FileReadPolicy = "text_first" | "visual_first" | "text_and_layout";
 
 export type TokenTriplet = {
@@ -61,6 +57,19 @@ export type TokenStats = {
   latest?: TokenTriplet;
   rolling5?: TokenTriplet;
   cumulative?: TokenTriplet;
+  lastChatPromptMetrics?: ChatPromptMetrics | null;
+  lastChatFollowupMetrics?: {
+    promptChars: number;
+    rawReplyChars: number;
+  } | null;
+  lastChatUsageDetails?: Record<string, unknown> | null;
+  lastChatFollowupUsageDetails?: Record<string, unknown> | null;
+  lastChatFollowupDebug?: {
+    prompt: string;
+    rawReply: string;
+    parsed: unknown;
+    usageDetails?: Record<string, unknown> | null;
+  } | null;
   [key: string]: unknown;
 };
 
@@ -110,7 +119,6 @@ export type GptPanelChatProps = {
       kind: UploadKind;
       mode: IngestMode;
       detail: ImageDetail;
-      action: PostIngestAction;
       readPolicy: FileReadPolicy;
       compactCharLimit: number;
       simpleImageCharLimit: number;
@@ -233,7 +241,6 @@ export type GptPanelSettingsProps = {
   uploadKind: UploadKind;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
-  postIngestAction: PostIngestAction;
   fileReadPolicy: FileReadPolicy;
   driveImportAutoSummary: boolean;
   compactCharLimit: number;
@@ -269,7 +276,6 @@ export type GptPanelSettingsProps = {
   onChangeImageDetail: (value: ImageDetail) => void;
   onChangeCompactCharLimit: (value: number) => void;
   onChangeSimpleImageCharLimit: (value: number) => void;
-  onChangePostIngestAction: (value: PostIngestAction) => void;
   onChangeFileReadPolicy: (value: FileReadPolicy) => void;
   onChangeDriveImportAutoSummary: (value: boolean) => void;
   onChangeSearchMode: (value: SearchMode) => void;

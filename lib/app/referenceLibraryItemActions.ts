@@ -9,15 +9,28 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function looksLikeFileNameLine(value: string): boolean {
+  const normalized = value.trim();
+  if (!normalized) return false;
+  if (/\[[0-9]+\s*chars\]/i.test(normalized)) return true;
+  return /\.[A-Za-z0-9]{1,8}$/.test(normalized);
+}
+
 export function normalizeLibraryChatDisplayText(text: string): string {
   const normalized = normalizeWhitespace(text);
-  if (!normalized.startsWith("Library:")) {
-    return normalized;
-  }
-
   const blocks = normalized.split(/\n{2,}/).filter(Boolean);
-  const [header, ...rest] = blocks;
-  const normalizedBlocks = rest.map((block) => {
+  const contentBlocks = blocks
+    .map((block, index) => {
+      if (index === 0 && block.startsWith("Library:")) {
+        return "";
+      }
+      if (looksLikeFileNameLine(block)) {
+        return "";
+      }
+      return block;
+    })
+    .filter(Boolean);
+  const normalizedBlocks = contentBlocks.map((block) => {
     if (block.startsWith("Summary:\n")) {
       return `Summary:\n${cleanImportSummarySource(
         block.slice("Summary:\n".length)
@@ -31,7 +44,7 @@ export function normalizeLibraryChatDisplayText(text: string): string {
     return block;
   });
 
-  return normalizeWhitespace([header, ...normalizedBlocks].join("\n\n"));
+  return normalizeWhitespace(normalizedBlocks.join("\n\n"));
 }
 
 function buildLibraryItemDetailText(item: ReferenceLibraryItem): string {
@@ -48,11 +61,11 @@ function buildLibraryItemDetailText(item: ReferenceLibraryItem): string {
 }
 
 export function buildLibraryItemChatDisplayText(item: ReferenceLibraryItem): string {
-  const header = [`Library`, item.title?.trim() || "Untitled"].join(": ");
   const detail = buildLibraryItemDetailText(item);
-  return normalizeLibraryChatDisplayText(
-    normalizeWhitespace([header, detail].filter(Boolean).join("\n\n"))
-  );
+  if (detail) {
+    return normalizeLibraryChatDisplayText(detail);
+  }
+  return normalizeLibraryChatDisplayText(item.excerptText?.trim() || item.summary?.trim() || "");
 }
 
 export function buildLibraryItemKinSysInfo(item: ReferenceLibraryItem): string {
@@ -70,13 +83,12 @@ export function buildLibraryItemDriveExport(item: ReferenceLibraryItem): {
   fileName: string;
   text: string;
 } {
-  const safeBaseName = (item.title?.trim() || "library-item")
+  const rawName = (item.filename?.trim() || item.title?.trim() || "library-item")
     .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
-    .replace(/\s+/g, "_")
-    .slice(0, 80);
+    .slice(0, 100);
 
   return {
-    fileName: `${safeBaseName || "library-item"}.txt`,
+    fileName: /\.[A-Za-z0-9]+$/.test(rawName) ? rawName : `${rawName}.txt`,
     text: buildLibraryItemChatDisplayText(item),
   };
 }

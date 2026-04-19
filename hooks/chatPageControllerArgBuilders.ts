@@ -124,7 +124,7 @@ export function buildChatPageControllerServicesArgs(
     setUploadKind: args.gpt.onChangeUploadKind,
     applySearchUsage: args.usage.applySearchUsage,
     applyChatUsage: args.usage.applyChatUsage,
-    applySummaryUsage: args.usage.applySummaryUsage,
+    applyCompressionUsage: args.usage.applyCompressionUsage,
     applyTaskUsage: args.usage.applyTaskUsage,
     applyIngestUsage: args.usage.applyIngestUsage,
     buildLibraryReferenceContext: args.references.buildLibraryReferenceContext,
@@ -179,7 +179,7 @@ export function buildGptMessageActionArgs(
     applyChatUsage: groups.services.applyChatUsage,
     applyPrefixedTaskFieldsFromText: groups.task.applyPrefixedTaskFieldsFromText,
     applySearchUsage: groups.services.applySearchUsage,
-    applySummaryUsage: groups.services.applySummaryUsage,
+    applyCompressionUsage: groups.services.applyCompressionUsage,
     buildLibraryReferenceContext: groups.services.buildLibraryReferenceContext,
     chatBridgeSettings: groups.protocol.chatBridgeSettings,
     currentTaskDraft: groups.task.currentTaskDraft,
@@ -255,8 +255,9 @@ export function buildTaskDraftActionArgs(
   groups: ChatPageActionArgGroups
 ): UseTaskDraftActionsArgs {
   return {
+    applyChatUsage: groups.services.applyChatUsage,
     applyPrefixedTaskFieldsFromText: groups.task.applyPrefixedTaskFieldsFromText,
-    applySummaryUsage: groups.services.applySummaryUsage,
+    applyCompressionUsage: groups.services.applyCompressionUsage,
     applyTaskUsage: groups.services.applyTaskUsage,
     currentTaskDraft: groups.task.currentTaskDraft,
     getResolvedTaskTitle: groups.task.getResolvedTaskTitle,
@@ -308,8 +309,6 @@ export function buildFileIngestActionArgs(
 ): UseFileIngestActionsArgs {
   return {
     applyIngestUsage: groups.services.applyIngestUsage,
-    applySummaryUsage: groups.services.applySummaryUsage,
-    applyTaskUsage: groups.services.applyTaskUsage,
     autoCopyFileIngestSysInfoToKin:
       groups.services.autoCopyFileIngestSysInfoToKin,
     autoGenerateFileImportSummary:
@@ -317,13 +316,11 @@ export function buildFileIngestActionArgs(
     currentTaskDraft: groups.task.currentTaskDraft,
     getResolvedTaskTitle: groups.task.getResolvedTaskTitle,
     getTaskBaseText: groups.task.getTaskBaseText,
-    gptInput: groups.uiState.gptInput,
     gptMemoryRuntime: groups.services.gptMemoryRuntime,
     focusKinPanel: groups.identity.focusKinPanel,
     ingestLoading: groups.uiState.ingestLoading,
     recordIngestedDocument: groups.services.recordIngestedDocument,
     resolveTaskTitleFromDraft: groups.task.resolveTaskTitleFromDraft,
-    responseMode: groups.services.responseMode,
     setCurrentTaskDraft: groups.task.setCurrentTaskDraft,
     setGptInput: groups.uiState.setGptInput,
     setGptMessages: groups.uiState.setGptMessages,
@@ -334,3 +331,4 @@ export function buildFileIngestActionArgs(
     setUploadKind: groups.services.setUploadKind,
   };
 }
+

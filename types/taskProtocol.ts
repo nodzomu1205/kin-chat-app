@@ -62,6 +62,7 @@ export type TaskRequirementProgress = {
   id: string;
   label: string;
   category: "required" | "optional";
+  rule?: TaskCountRule | "unknown";
   kind:
     | "ask_gpt"
     | "ask_user"

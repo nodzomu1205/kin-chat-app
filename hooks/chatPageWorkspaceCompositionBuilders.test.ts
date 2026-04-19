@@ -68,7 +68,6 @@ describe("chatPageWorkspaceCompositionBuilders", () => {
             imageDetail: "auto",
             compactCharLimit: 0,
             simpleImageCharLimit: 0,
-            postIngestAction: "none",
             fileReadPolicy: "auto",
             defaultMemorySettings: {} as never,
           },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isSysFormattedText,
   isClosingReplyText,
   isCorrectionOrDisputeText,
   isGenericContinuationQuestion,
@@ -19,6 +20,11 @@ describe("memoryInterpreterText", () => {
     expect(normalizeText("\u3000\u6771\u4eac\u3000 \u30bf\u30ef\u30fc  ")).toBe(
       "\u6771\u4eac \u30bf\u30ef\u30fc"
     );
+  });
+
+  it("detects SYS-formatted blocks", () => {
+    expect(isSysFormattedText("<<SYS_TASK>>\nBODY: hidden\n<<END_SYS_TASK>>")).toBe(true);
+    expect(isSysFormattedText("Library: Review Notes")).toBe(false);
   });
 
   it("extracts a concise topic from a question", () => {

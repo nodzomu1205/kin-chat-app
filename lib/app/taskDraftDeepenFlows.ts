@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+﻿import { generateId } from "@/lib/uuid";
 import {
   buildTaskInput,
   formatTaskResultText,
@@ -13,6 +13,11 @@ import {
 } from "@/lib/app/taskDraftFlowShared";
 import type { DeepenTaskFromLastFlowArgs } from "@/lib/app/taskDraftActionFlowTypes";
 import type { Message } from "@/types/chat";
+import {
+  mergeTaskTitleInstructions,
+  resolveGeneratedTaskTitle,
+  resolveTaskDraftUserInstruction,
+} from "@/lib/taskTitleGeneration";
 
 export async function runDeepenTaskFromLastFlow(
   args: DeepenTaskFromLastFlowArgs
@@ -29,17 +34,35 @@ export async function runDeepenTaskFromLastFlow(
   }
 
   const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
-  const resolvedTitle = args.getResolvedTaskTitle({
+  const fallbackTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
     freeText: parsedInput.freeText || args.gptInput.trim(),
     searchQuery: parsedInput.searchQuery,
     fallback: args.currentTaskDraft.title || "Deepened task",
   });
+  const resolvedTitleResult = await resolveGeneratedTaskTitle({
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title || args.currentTaskDraft.taskName,
+    taskBody: text,
+    additionalSource: "",
+    userInstruction: mergeTaskTitleInstructions(
+      parsedInput.freeText,
+      parsedInput.userInstruction,
+      args.currentTaskDraft.userInstruction
+    ),
+    fallbackTitle,
+    includeCurrentTitle: false,
+  });
+  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const nextUserInstruction = resolveTaskDraftUserInstruction(
+    parsedInput.userInstruction,
+    parsedInput.freeText,
+    args.currentTaskDraft.userInstruction
+  );
 
   const taskInput = buildTaskInput({
     title: resolvedTitle,
-    userInstruction:
-      parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+    userInstruction: nextUserInstruction,
     actionInstruction: parsedInput.freeText || args.gptInput.trim(),
     body: text,
     material: text,
@@ -87,8 +110,9 @@ export async function runDeepenTaskFromLastFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `繧ｿ繧ｹ繧ｯ豺ｱ謗倥ｊ: ${resolvedTitle}`,
-      applySummaryUsage: args.applySummaryUsage,
+      lastUserIntent: `郢ｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ雎ｺ・ｱ隰怜･・・ ${resolvedTitle}`,
+      applyChatUsage: args.applyChatUsage,
+      applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,
       currentTaskTitleOverride: resolvedTitle,
     });
@@ -96,11 +120,13 @@ export async function runDeepenTaskFromLastFlow(
     args.setCurrentTaskDraft((prev) =>
       buildDeepenedTaskDraftUpdate(prev, {
         title: resolvedTitle,
-        userInstruction: parsedInput.userInstruction,
+        userInstruction: nextUserInstruction,
+        taskTitleDebug: resolvedTitleResult.debug,
         body: taskText,
       })
     );
 
+    args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
@@ -109,3 +135,5 @@ export async function runDeepenTaskFromLastFlow(
     args.setGptLoading(false);
   }
 }
+
+

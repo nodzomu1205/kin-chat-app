@@ -92,8 +92,8 @@ describe("runSendToGptFlow", () => {
       getAskAiModeLinkForQuery: () => "",
       applySearchUsage,
       applyChatUsage,
-      handleGptMemory: async () => ({ summaryUsage: null }),
-      applySummaryUsage: () => {},
+      handleGptMemory: async () => ({ compressionUsage: null }),
+      applyCompressionUsage: () => {},
       chatRecentLimit: 8,
       gptStateRef: {
         current: {
@@ -200,8 +200,8 @@ describe("runSendToGptFlow", () => {
       getAskAiModeLinkForQuery: () => "",
       applySearchUsage: () => {},
       applyChatUsage: () => {},
-      handleGptMemory: async () => ({ summaryUsage: null }),
-      applySummaryUsage: () => {},
+      handleGptMemory: async () => ({ compressionUsage: null }),
+      applyCompressionUsage: () => {},
       chatRecentLimit: 8,
       gptStateRef: {
         current: {

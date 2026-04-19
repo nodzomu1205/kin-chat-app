@@ -5,10 +5,12 @@ import type {
   FileReadPolicy,
   ImageDetail,
   IngestMode,
+  UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
   helpTextStyle,
   labelStyle,
+  pillButton,
 } from "@/components/panels/gpt/gptPanelStyles";
 import { sectionCard, subtleCard } from "@/components/panels/gpt/GptSettingsSections";
 import {
@@ -26,6 +28,8 @@ import {
 
 export function IngestSettingsSection(props: {
   isMobile?: boolean;
+  uploadKind: UploadKind;
+  onChangeUploadKind: (v: UploadKind) => void;
   ingestMode: IngestMode;
   onChangeIngestMode: (v: IngestMode) => void;
   imageDetail: ImageDetail;
@@ -42,6 +46,40 @@ export function IngestSettingsSection(props: {
   return (
     <div style={sectionCard}>
       <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={labelStyle}>ファイル取込</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => props.onChangeUploadKind("text")}
+              style={{
+                ...pillButton,
+                background: props.uploadKind === "text" ? "#ecfeff" : "#fff",
+                color: "#0f766e",
+                border: "1px solid #99f6e4",
+              }}
+            >
+              テキスト
+            </button>
+            <button
+              type="button"
+              onClick={() => props.onChangeUploadKind("image")}
+              style={{
+                ...pillButton,
+                background:
+                  props.uploadKind === "image" ||
+                  props.uploadKind === "pdf" ||
+                  props.uploadKind === "mixed"
+                    ? "#ecfeff"
+                    : "#fff",
+                color: "#0f766e",
+                border: "1px solid #99f6e4",
+              }}
+            >
+              画像 / PDF
+            </button>
+          </div>
+        </div>
         <LabeledSelect
           label={GPT_SETTINGS_DRAWER_TEXT.fileReadPolicy}
           value={props.fileReadPolicy}

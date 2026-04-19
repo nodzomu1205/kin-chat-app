@@ -13,8 +13,6 @@ export type TaskVisibility = "INTERNAL" | "USER_VISIBLE";
 
 export type TaskResponseMode = "SILENT_RESULT" | "STRUCTURED_RESULT";
 
-export type GroundingMode = "STRICT" | "BALANCED" | "CREATIVE";
-
 export type TaskRequest = {
   type: TaskType;
   taskId: string;
@@ -27,7 +25,7 @@ export type TaskRequest = {
   priority: TaskPriority;
   visibility: TaskVisibility;
   responseMode: TaskResponseMode;
-  groundingMode?: GroundingMode;
+  existingTitle?: string | null;
 };
 
 export type TaskResultStatus = "OK" | "PARTIAL" | "NEEDS_MORE";
@@ -188,6 +186,14 @@ export type TaskDraft = {
   deepenText: string;
   mergedText: string;
   kinTaskText: string;
+  taskTitleDebug?: {
+    prompt: string;
+    rawReply: string;
+    parsed: unknown;
+    adoptedTitle: string;
+    additionalSource?: string;
+    userInstruction?: string;
+  } | null;
 
   status: TaskDraftStatus;
   sources: TaskSource[];
@@ -219,6 +225,7 @@ export function createEmptyTaskDraft(): TaskDraft {
     deepenText: "",
     mergedText: "",
     kinTaskText: "",
+    taskTitleDebug: null,
     status: "idle",
     sources: [],
     updatedAt: "",

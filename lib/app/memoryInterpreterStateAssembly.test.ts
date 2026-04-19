@@ -121,4 +121,21 @@ describe("memoryInterpreterStateAssembly", () => {
     expect(typeof buildMemoryStateAssemblyInputs).toBe("function");
     expect(typeof buildMemoryStateAssemblyLists).toBe("function");
   });
+
+  it("ignores SYS-formatted user text when choosing the latest prompt", () => {
+    const result = buildMemoryStateAssemblyInputs({
+      currentMemory: {
+        facts: [],
+        preferences: [],
+        lists: {},
+        context: {},
+      },
+      recentMessages: [
+        { id: "u1", role: "user", text: "Normal chat about Napoleon" },
+        { id: "u2", role: "user", text: "<<SYS_TASK>>\nBODY: hidden\n<<END_SYS_TASK>>" },
+      ],
+    });
+
+    expect(result.latestPrompt).toBe("Normal chat about Napoleon");
+  });
 });

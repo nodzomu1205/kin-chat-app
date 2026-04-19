@@ -147,8 +147,9 @@ describe("useTaskProtocolActions", () => {
         approvedIntentPhrases: [
           expect.objectContaining({
             kind: "ask_gpt",
-            count: 5,
+            count: 3,
             rule: "up_to",
+            draftText: "CAN ask GPT up to 5 times",
           }),
         ],
       })

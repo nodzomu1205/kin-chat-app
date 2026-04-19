@@ -14,6 +14,25 @@ type ResolveCanonicalDocumentTextArgs = {
   fallbackText?: string;
 };
 
+const CHAR_COUNT_SUFFIX_PATTERNS = [
+  /\s*__\d+chars$/i,
+  /\s*[_-]\d+chars$/i,
+  /\s*\[\d+\s*chars\]$/i,
+  /\s*\(\d+\s*chars\)$/i,
+  /\s*\d+\s*chars$/i,
+];
+
+function stripTrailingCharCount(value: string) {
+  return CHAR_COUNT_SUFFIX_PATTERNS.reduce(
+    (current, pattern) => current.replace(pattern, "").trim(),
+    value
+  );
+}
+
+function stripTrailingExtension(value: string) {
+  return value.replace(/(\.[A-Za-z0-9]+)+$/u, "").trim();
+}
+
 export function stripTaskPrepEnvelopeMetadata(text: string) {
   return text
     .replace(/^File:\s.*(?:\r?\n)+/u, "")
@@ -66,7 +85,7 @@ export function buildCanonicalDocumentSummary(
     : normalized;
   const basis = withoutTitle || normalized;
   const sentenceParts = basis
-    .split(/(?<=[。！？.!?])/u)
+    .split(/(?<=[。．.!?])/u)
     .map((part) => part.trim())
     .filter(Boolean);
   const summary = (sentenceParts.slice(0, 2).join(" ") || basis).trim();
@@ -77,6 +96,42 @@ export function buildStoredDocumentSummary(text: string, fallbackTitle: string) 
   return buildCanonicalDocumentSummary(text, fallbackTitle);
 }
 
+export function buildLibraryFilenameWithCharCount(filename: string, text: string) {
+  const trimmed = filename.trim() || "library-item.txt";
+  const extensionMatch = trimmed.match(/(\.[A-Za-z0-9]+)$/);
+  const extension = extensionMatch?.[1] || ".txt";
+  const baseName = extensionMatch ? trimmed.slice(0, -extension.length) : trimmed;
+  let normalizedBaseName = CHAR_COUNT_SUFFIX_PATTERNS.reduce(
+    (current, pattern) => current.replace(pattern, "").trim(),
+    baseName
+  );
+  const escapedExtension = extension.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const duplicatedExtensionPattern = new RegExp(`${escapedExtension}$`, "i");
+  while (duplicatedExtensionPattern.test(normalizedBaseName)) {
+    normalizedBaseName = normalizedBaseName
+      .replace(duplicatedExtensionPattern, "")
+      .trim();
+  }
+  const charCount = Array.from(text.trim()).length;
+  return `${normalizedBaseName || "library-item"} [${charCount}chars]${extension}`;
+}
+
+export function buildStoredDocumentDisplayTitle(args: {
+  title: string;
+  filename: string;
+  sourceType: StoredDocument["sourceType"];
+}) {
+  if (args.sourceType !== "ingested_file") {
+    return args.title.trim() || args.filename.trim() || "Untitled";
+  }
+
+  const preferred = args.title.trim() || args.filename.trim();
+  const tailSegment = preferred.split(/[\\/]/).pop() || preferred;
+  const withoutCount = stripTrailingCharCount(tailSegment);
+  const withoutExtension = stripTrailingExtension(withoutCount);
+  return withoutExtension || withoutCount || tailSegment || "Untitled";
+}
+
 export function normalizeStoredDocument(item: StoredDocument): StoredDocument {
   const cleanedText = cleanImportedDocumentText(item.text);
   const cleanedSummary = item.summary
@@ -85,8 +140,18 @@ export function normalizeStoredDocument(item: StoredDocument): StoredDocument {
 
   return {
     ...item,
+    title: buildStoredDocumentDisplayTitle({
+      title: item.title,
+      filename: item.filename,
+      sourceType: item.sourceType,
+    }),
     text: cleanedText,
-    summary: cleanedSummary || buildStoredDocumentSummary(cleanedText, item.title),
+    filename: buildLibraryFilenameWithCharCount(item.filename, cleanedText),
+    summary:
+      cleanedSummary ||
+      (item.sourceType === "kin_created"
+        ? buildStoredDocumentSummary(cleanedText, item.title)
+        : ""),
     charCount: cleanedText.length,
   };
 }
@@ -153,14 +218,14 @@ export function buildReferenceLibraryDocumentItem(
   item: StoredDocument
 ): ReferenceLibraryItem {
   const normalizedItem = normalizeStoredDocument(item);
-  const detailPrefix =
-    normalizedItem.artifactType === "task_result"
-      ? "謌先棡迚ｩ"
-      : normalizedItem.artifactType === "task_snapshot"
-        ? "繧ｿ繧ｹ繧ｯ菫晏ｭ・"
-        : normalizedItem.sourceType === "kin_created"
-          ? "Kin菴懈・"
-          : "蜿冶ｾｼ";
+  const detailPrefix = (() => {
+    if (normalizedItem.artifactType === "task_result") return "タスク成果物";
+    if (normalizedItem.artifactType === "task_snapshot") {
+      return "タスクスナップショット";
+    }
+    if (normalizedItem.sourceType === "kin_created") return "Kin成果物";
+    return "取込文書";
+  })();
 
   const subtitleParts = [
     detailPrefix,
@@ -183,9 +248,7 @@ export function buildReferenceLibraryDocumentItem(
     artifactType: normalizedItem.artifactType,
     title: normalizedItem.title,
     subtitle: subtitleParts.join(" / "),
-    summary:
-      normalizedItem.summary ||
-      buildStoredDocumentSummary(normalizedItem.text, normalizedItem.title),
+    summary: normalizedItem.summary || "",
     excerptText: normalizedItem.text,
     createdAt: normalizedItem.createdAt,
     updatedAt: normalizedItem.updatedAt,

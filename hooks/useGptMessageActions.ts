@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+﻿import { generateId } from "@/lib/uuid";
 import { useState } from "react";
 import { runSendToGptFlow } from "@/lib/app/sendToGptFlow";
 import { receiveLastKinResponseFlow } from "@/lib/app/kinTaskFlow";
@@ -129,7 +129,17 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         updatedRecent,
         {}
       );
-      args.applySummaryUsage(memoryResult.summaryUsage);
+      if (memoryResult.fallbackUsage) {
+        args.applyChatUsage(memoryResult.fallbackUsage, {
+          mergeIntoLast: true,
+          followupMetrics: memoryResult.fallbackMetrics,
+          followupUsageDetails: memoryResult.fallbackUsageDetails,
+          followupDebug: memoryResult.fallbackDebug,
+        });
+      }
+      if (memoryResult.compressionUsage) {
+        args.applyCompressionUsage(memoryResult.compressionUsage);
+      }
     } catch (error) {
       console.error(error);
       const failureText = buildYoutubeTranscriptFailureText({
@@ -276,7 +286,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
 
     await runSendToGptFlow({
       ...buildCommonFlowArgs(),
-      gptInput: `検索：${trimmedQuery}`,
+      gptInput: `検索: ${trimmedQuery}`,
       searchMode: "ai",
       searchEngines: ["google_ai_mode"],
       searchLocation: args.searchLocation,
@@ -459,3 +469,5 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     sendLastGptToKinInfo,
   };
 }
+
+

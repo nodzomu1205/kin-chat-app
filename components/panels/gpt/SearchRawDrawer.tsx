@@ -39,5 +39,13 @@ type Props = Pick<
   >;
 
 export default function SearchRawDrawer(props: Props) {
-  return <ReceivedDocsDrawer {...props} initialTab="search" />;
+  return (
+    <ReceivedDocsDrawer
+      {...props}
+      initialTab="search"
+      onImportDeviceFile={() => Promise.resolve()}
+      deviceImportAccept=".txt,.md,.json,.csv,.pdf,image/*"
+      deviceImportDisabled
+    />
+  );
 }

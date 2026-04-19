@@ -73,8 +73,6 @@ export default function ChatApp() {
     setCompactCharLimit,
     simpleImageCharLimit,
     setSimpleImageCharLimit,
-    postIngestAction,
-    setPostIngestAction,
     fileReadPolicy,
     setFileReadPolicy,
     driveImportAutoSummary,
@@ -85,7 +83,7 @@ export default function ChatApp() {
   const {
     tokenStats,
     applyChatUsage,
-    applySummaryUsage,
+    applyCompressionUsage,
     applySearchUsage,
     applyTaskUsage,
     applyIngestUsage,
@@ -248,9 +246,12 @@ export default function ChatApp() {
       getCurrentTaskCharConstraint() as TaskCharConstraint | null,
     setKinInput,
     setGptInput,
+    gptMessages,
     setGptMessages,
+    gptMemoryRuntime,
+    applyChatUsage,
     applyIngestUsage,
-    applySummaryUsage,
+    applyCompressionUsage,
     focusGptPanel,
     focusKinPanel,
     setFinalizeReviewed: taskProtocolView.setFinalizeReviewed,
@@ -401,7 +402,6 @@ export default function ChatApp() {
         imageDetail,
         compactCharLimit,
         simpleImageCharLimit,
-        postIngestAction,
         fileReadPolicy,
         driveImportAutoSummary,
         defaultMemorySettings,
@@ -412,7 +412,6 @@ export default function ChatApp() {
         onChangeImageDetail: setImageDetail,
         onChangeCompactCharLimit: setCompactCharLimit,
         onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
-        onChangePostIngestAction: setPostIngestAction,
         onChangeFileReadPolicy: setFileReadPolicy,
         onChangeDriveImportAutoSummary: setDriveImportAutoSummary,
         gptMemoryRuntime,
@@ -437,7 +436,7 @@ export default function ChatApp() {
       usage: {
         applySearchUsage,
         applyChatUsage,
-        applySummaryUsage,
+        applyCompressionUsage,
         applyTaskUsage,
         applyIngestUsage,
         recordIngestedDocument,
@@ -499,3 +498,4 @@ export default function ChatApp() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildMemoryFallbackRequestInput,
   buildSafeFallbackFailureResult,
@@ -15,46 +15,46 @@ describe("memoryInterpreterFallbackFlow", () => {
 
   it("builds fallback prompt input with the latest meaningful conversation context", () => {
     const prompt = buildMemoryFallbackRequestInput({
-      latestUserText: "最新の相談です",
+      latestUserText: "latest question",
       recentMessages: [
         {
           id: "g1",
           role: "gpt",
-          text: "最初のチャット系GPTレス",
+          text: "older gpt reply",
           meta: { kind: "normal", sourceType: "gpt_input" },
         },
         {
           id: "u0",
           role: "user",
-          text: "少し前のユーザー相談",
+          text: "older user question",
         },
         {
           id: "g2",
           role: "gpt",
-          text: "最新のタスク系GPTレス",
+          text: "latest gpt task reply",
           meta: { kind: "task_prep", sourceType: "gpt_input" },
         },
-        { id: "u1", role: "user", text: "最新の相談です" },
+        { id: "u1", role: "user", text: "latest question" },
       ],
       currentMemory: {
         facts: [],
         preferences: [],
         lists: {},
         context: {
-          currentTopic: "現在トピック",
-          currentTask: "現在タスク",
-          lastUserIntent: "直前意図",
+          currentTopic: "Current Topic",
+          currentTask: "Current Task",
+          lastUserIntent: "Last Intent",
         },
       },
     });
 
-    expect(prompt).toContain("CURRENT_TOPIC: 現在トピック");
-    expect(prompt).toContain("CURRENT_TASK: 現在タスク");
-    expect(prompt).toContain("LAST_USER_INTENT: 直前意図");
-    expect(prompt).toContain("PRIOR_MEANINGFUL_TEXT: 最新のタスク系GPTレス");
-    expect(prompt).toContain("EARLIER_MEANINGFUL_TEXT: 少し前のユーザー相談");
-    expect(prompt).toContain("LATEST_USER_TEXT_START");
-    expect(prompt).toContain("最新の相談です");
+    expect(prompt).toContain("TOPIC: Current Topic");
+    expect(prompt).toContain("TASK: Current Task");
+    expect(prompt).toContain("LAST_INTENT: Last Intent");
+    expect(prompt).toContain("PRIOR: latest gpt task reply");
+    expect(prompt).toContain("EARLIER: older user question");
+    expect(prompt).toContain("USER:");
+    expect(prompt).toContain("latest question");
   });
 
   it("falls back to preserving the current topic when response parsing fails", async () => {
@@ -71,7 +71,7 @@ describe("memoryInterpreterFallbackFlow", () => {
         facts: [],
         preferences: [],
         lists: {},
-        context: { currentTopic: "ソクラテス" },
+        context: { currentTopic: "Socrates" },
       },
       settings: {
         llmFallbackEnabled: true,
@@ -80,12 +80,14 @@ describe("memoryInterpreterFallbackFlow", () => {
     });
 
     expect(result).toEqual(
-      expect.objectContaining(buildSafeFallbackFailureResult({
-        facts: [],
-        preferences: [],
-        lists: {},
-        context: { currentTopic: "ソクラテス" },
-      }))
+      expect.objectContaining(
+        buildSafeFallbackFailureResult({
+          facts: [],
+          preferences: [],
+          lists: {},
+          context: { currentTopic: "Socrates" },
+        })
+      )
     );
     expect(result.debug).toEqual(
       expect.objectContaining({
@@ -113,8 +115,8 @@ describe("memoryInterpreterFallbackFlow", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await resolveMemoryFallbackFlow({
-      latestUserText: "最初の雑談です",
-      recentMessages: [{ id: "u1", role: "user", text: "最初の雑談です" }],
+      latestUserText: "first topic statement",
+      recentMessages: [{ id: "u1", role: "user", text: "first topic statement" }],
       currentMemory: {
         facts: [],
         preferences: [],
@@ -147,8 +149,8 @@ describe("memoryInterpreterFallbackFlow", () => {
           decision: "switch",
           confidence: 0.97,
           intent: "question",
-          proposedTopic: "江戸時代",
-          topic: "江戸時代",
+          proposedTopic: "Edo period",
+          topic: "Edo period",
           isClosingReply: false,
           trackedEntity: null,
         }),
@@ -157,21 +159,21 @@ describe("memoryInterpreterFallbackFlow", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await resolveMemoryFallbackFlow({
-      latestUserText: "じゃあ江戸時代については？",
+      latestUserText: "tell me more about the Edo period",
       recentMessages: [
         {
           id: "g1",
           role: "gpt",
-          text: "日本の歴史の中でも明治時代は大きな変化がありました。",
+          text: "We were discussing Japanese history.",
           meta: { kind: "normal" },
         },
-        { id: "u1", role: "user", text: "じゃあ江戸時代については？" },
+        { id: "u1", role: "user", text: "tell me more about the Edo period" },
       ],
       currentMemory: {
         facts: [],
         preferences: [],
         lists: {},
-        context: { currentTopic: "日本の歴史" },
+        context: { currentTopic: "Japanese history" },
       },
       settings: {
         llmFallbackEnabled: true,
@@ -182,13 +184,13 @@ describe("memoryInterpreterFallbackFlow", () => {
     expect(result.adjudication).toEqual({
       disableInputTopicInference: true,
       preserveExistingTopic: true,
-      proposedTopic: "江戸時代",
+      proposedTopic: "Edo period",
     });
     expect(result.pendingCandidates).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           kind: "utterance_review",
-          normalizedValue: "江戸時代",
+          normalizedValue: "Edo period",
           topicDecision: "unclear",
         }),
       ])

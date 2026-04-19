@@ -1,21 +1,45 @@
-import { normalizeMemoryShape, type MemorySettings } from "@/lib/memory";
+import { type MemorySettings } from "@/lib/memory";
 import {
-  hasMeaningfulMemoryState,
   normalizeTokenUsage,
-  trimMemoryState,
   type TokenUsage,
 } from "@/lib/app/gptMemoryStateHelpers";
-import { mergeSummarizedMemoryState } from "@/lib/app/gptMemoryStateSummaryMerge";
 import type { KinMemoryState, Message } from "@/types/chat";
 import type { Memory } from "@/lib/memory";
 
-export async function resolveMemorySummaryState(params: {
+function buildCompactedRecentMessages(args: {
+  trimmedRecent: Message[];
+  compactedText: string;
+  recentKeep: number;
+}) {
+  const keptRecent = args.trimmedRecent.slice(-args.recentKeep);
+  const overflow = Math.max(0, args.trimmedRecent.length - keptRecent.length);
+  const compactedText = args.compactedText.trim();
+
+  if (!compactedText || overflow <= 0) {
+    return keptRecent;
+  }
+
+  return [
+    {
+      id: `memory-compact-${Date.now()}`,
+      role: "gpt" as const,
+      text: `[Conversation compaction]\n${compactedText}`,
+      meta: {
+        kind: "task_info" as const,
+        sourceType: "manual" as const,
+      },
+    },
+    ...keptRecent,
+  ];
+}
+
+export async function resolveMemoryCompressionState(params: {
   candidateMemory: Memory;
   trimmedRecent: Message[];
   settings: MemorySettings;
 }): Promise<{
   nextState: KinMemoryState;
-  summaryUsage: TokenUsage | null;
+  compressionUsage: TokenUsage | null;
 }> {
   try {
     const response = await fetch("/api/chatgpt", {
@@ -24,9 +48,10 @@ export async function resolveMemorySummaryState(params: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        mode: "summarize",
+        mode: "compact_recent",
         memory: params.candidateMemory,
         messages: params.trimmedRecent,
+        recentKeep: params.settings.recentKeep,
       }),
     });
 
@@ -35,25 +60,18 @@ export async function resolveMemorySummaryState(params: {
     }
 
     const data = await response.json();
-    const summarizedCandidate = trimMemoryState(
-      normalizeMemoryShape(data?.memory),
-      params.settings
-    );
-    const nextMemory = hasMeaningfulMemoryState(summarizedCandidate)
-      ? mergeSummarizedMemoryState({
-          candidateMemory: params.candidateMemory,
-          summarizedCandidate,
-          settings: params.settings,
-          recentMessages: params.trimmedRecent,
-        })
-      : params.candidateMemory;
 
     return {
       nextState: {
-        memory: nextMemory,
-        recentMessages: params.trimmedRecent.slice(-params.settings.recentKeep),
+        memory: params.candidateMemory,
+        recentMessages: buildCompactedRecentMessages({
+          trimmedRecent: params.trimmedRecent,
+          compactedText:
+            typeof data?.compactedText === "string" ? data.compactedText : "",
+          recentKeep: params.settings.recentKeep,
+        }),
       },
-      summaryUsage: normalizeTokenUsage(data?.usage),
+      compressionUsage: normalizeTokenUsage(data?.usage),
     };
   } catch (error) {
     console.error("gpt memory summarize failed", error);
@@ -63,7 +81,8 @@ export async function resolveMemorySummaryState(params: {
         memory: params.candidateMemory,
         recentMessages: params.trimmedRecent,
       },
-      summaryUsage: null,
+      compressionUsage: null,
     };
   }
 }
+

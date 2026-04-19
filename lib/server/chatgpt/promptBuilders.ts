@@ -85,52 +85,18 @@ export function buildBaseSystemPrompt(params: {
   reasoningMode: ReasoningMode;
 }) {
   const { normalizedMemory, reasoningMode } = params;
-
-  const modeBlock =
-    reasoningMode === "strict"
-      ? `
-You are a strict factual assistant.
-
-- Priority: System > User > Search Evidence > Internal Knowledge.
-- Do not guess missing facts.
-- If explicit evidence exists, treat it as confirmed.
-- If evidence is absent, say it is unknown.
-- Prefer provided search evidence over internal knowledge.
-
-# Output requirement
-For factual verification tasks, use this exact structure:
-1. 結論
-2. 根拠
-3. 不確実点
-4. 出典
-
-# Style
-- Be precise and cautious.
-      `.trim()
-      : `
-You are a helpful conversational assistant.
-
-- Be natural, concise, and clear.
-- Use recent context and memory for continuity.
-- Prefer provided search evidence over vague prior knowledge.
-- Do not invent unsupported facts.
-      `.trim();
+  void reasoningMode;
 
   return `
-${modeBlock}
-
-Use the structured long-term memory below when relevant.
-
-Important conversation rules:
-- Continue the current topic across short follow-up questions when appropriate.
-- If the user gives only a place name and the active topic is weather, interpret it as asking about the weather in that place.
-- Treat structured lists as exact when possible.
 - Prefer the user's latest explicit correction over older memory.
-- Do not mention memory unless asked.
+- Prefer provided evidence over internal knowledge.
+- Do not invent unsupported facts.
 
-=== LONG-TERM MEMORY (JSON) ===
+Use the long-term memory below only when relevant.
+
+== LONG-TERM MEMORY (JSON) ==
 ${memoryToPrompt(normalizedMemory)}
-================================
+==
   `.trim();
 }
 
@@ -139,42 +105,17 @@ export function buildSearchSystemPrompt(
   searchText: string,
   reasoningMode: ReasoningMode
 ) {
-  if (reasoningMode === "strict") {
-    return `
-The user requested factual lookup with this query:
-${searchQuery}
-
-Below is source-grounded evidence collected from search results.
-
-Critical rules:
-- Use this evidence before any general model knowledge.
-- If the evidence includes explicit accepted or supported items in a list, table, or bullet list, treat those items as confirmed.
-- Do not collapse a confirmed item into "unclear".
-- Keep unknowns narrow. Unknown means not explicitly stated in the provided evidence.
-- When answering, rely on the extracted evidence, not on assumptions about the page.
-- Use an audit style when appropriate.
-
-SEARCH EVIDENCE START
-${searchText}
-SEARCH EVIDENCE END
-    `.trim();
-  }
+  void reasoningMode;
 
   return `
-The user requested lookup with this query:
+Search query:
 ${searchQuery}
 
-Below is source-grounded evidence collected from search results.
+Use only the evidence below for factual claims.
+If the evidence is insufficient, say it is unknown.
 
-Guidance:
-- Prefer this evidence over vague prior knowledge.
-- You may summarize the evidence naturally and conversationally.
-- You do not need to preserve a rigid audit structure.
-- If a fact is explicitly listed in the evidence, treat it as reliable.
-- If something is not clearly stated, avoid overstating certainty.
-
-SEARCH EVIDENCE START
+EVIDENCE START
 ${searchText}
-SEARCH EVIDENCE END
+EVIDENCE END
   `.trim();
 }

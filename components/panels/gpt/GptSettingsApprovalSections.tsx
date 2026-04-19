@@ -14,7 +14,6 @@ import {
 import { sectionCard, tabButton } from "@/components/panels/gpt/GptSettingsSections";
 import {
   formatIntentLabel,
-  formatIntentPhraseKindLabel,
   formatTopicDecisionLabel,
   getCandidateIntentValue,
   getCandidateTopicDecisionValue,
@@ -490,7 +489,7 @@ export function SysRuleApprovalSection(props: {
           {props.pendingCandidates.map((candidate) => (
             <SettingsItemCard
               key={candidate.id}
-              title={formatIntentPhraseKindLabel(candidate.kind)}
+              title={WORKSPACE_REVIEW_TEXT.approvedDraft}
             >
               <div style={{ ...helpTextStyle, marginTop: 6 }}>
                 {WORKSPACE_REVIEW_TEXT.detectedPhrase}: {candidate.phrase}
@@ -550,7 +549,7 @@ export function SysRuleApprovalSection(props: {
             {props.approvedPhrases.map((phrase) => (
               <SettingsItemCard
                 key={phrase.id}
-                title={formatIntentPhraseKindLabel(phrase.kind)}
+                title={WORKSPACE_REVIEW_TEXT.approvedDraft}
               >
                 <div style={{ ...helpTextStyle, marginTop: 6 }}>
                   {WORKSPACE_REVIEW_TEXT.detectedPhrase}: {phrase.phrase}

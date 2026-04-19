@@ -8,7 +8,7 @@ import {
 } from "@/lib/app/gptMemoryUpdateCoordinator";
 
 const prepareCandidateMemoryUpdateMock = vi.fn();
-const resolveMemorySummaryStateMock = vi.fn();
+const resolveMemoryCompressionStateMock = vi.fn();
 
 vi.mock("@/lib/app/gptMemoryCandidatePreparation", () => ({
   prepareCandidateMemoryUpdate: (...args: unknown[]) =>
@@ -16,14 +16,14 @@ vi.mock("@/lib/app/gptMemoryCandidatePreparation", () => ({
 }));
 
 vi.mock("@/lib/app/gptMemorySummaryResolution", () => ({
-  resolveMemorySummaryState: (...args: unknown[]) =>
-    resolveMemorySummaryStateMock(...args),
+  resolveMemoryCompressionState: (...args: unknown[]) =>
+    resolveMemoryCompressionStateMock(...args),
 }));
 
 describe("gptMemoryUpdateCoordinator", () => {
   beforeEach(() => {
     prepareCandidateMemoryUpdateMock.mockReset();
-    resolveMemorySummaryStateMock.mockReset();
+    resolveMemoryCompressionStateMock.mockReset();
   });
 
   it("returns candidate state directly when summary is not needed", async () => {
@@ -70,8 +70,9 @@ describe("gptMemoryUpdateCoordinator", () => {
       [expect.objectContaining({ id: "cand-1" })],
       []
     );
-    expect(resolveMemorySummaryStateMock).not.toHaveBeenCalled();
-    expect(result.summaryUsage).toBeNull();
+    expect(resolveMemoryCompressionStateMock).not.toHaveBeenCalled();
+    expect(result.compressionUsage).toBeNull();
+    expect(result.fallbackUsage).toBeNull();
     expect(result.nextState.recentMessages).toEqual([
       { id: "m1", role: "user", text: "hello" },
     ]);
@@ -89,7 +90,7 @@ describe("gptMemoryUpdateCoordinator", () => {
       needsSummary: true,
       filteredPendingCandidates: [],
     });
-    resolveMemorySummaryStateMock.mockResolvedValue({
+    resolveMemoryCompressionStateMock.mockResolvedValue({
       nextState: {
         memory: {
           facts: ["candidate fact", "summary fact"],
@@ -99,7 +100,7 @@ describe("gptMemoryUpdateCoordinator", () => {
         },
         recentMessages: [{ id: "m1", role: "user", text: "hello" }],
       },
-      summaryUsage: {
+      compressionUsage: {
         inputTokens: 10,
         outputTokens: 3,
         totalTokens: 13,
@@ -122,7 +123,7 @@ describe("gptMemoryUpdateCoordinator", () => {
       onAddPendingMemoryRuleCandidates: vi.fn(),
     });
 
-    expect(resolveMemorySummaryStateMock).toHaveBeenCalledWith({
+    expect(resolveMemoryCompressionStateMock).toHaveBeenCalledWith({
       candidateMemory: {
         facts: ["candidate fact"],
         preferences: [],
@@ -132,11 +133,12 @@ describe("gptMemoryUpdateCoordinator", () => {
       trimmedRecent: [{ id: "m1", role: "user", text: "hello" }],
       settings: DEFAULT_MEMORY_SETTINGS,
     });
-    expect(result.summaryUsage).toEqual({
+    expect(result.compressionUsage).toEqual({
       inputTokens: 10,
       outputTokens: 3,
       totalTokens: 13,
     });
+    expect(result.fallbackUsage).toBeNull();
   });
 
   it("returns null reapply state when there are no reapplicable messages", async () => {
@@ -158,11 +160,16 @@ describe("gptMemoryUpdateCoordinator", () => {
 
     expect(result).toEqual({
       nextState: null,
-      summaryUsage: null,
+      compressionUsage: null,
+      fallbackUsage: null,
+      fallbackUsageDetails: null,
+      fallbackMetrics: null,
+      fallbackDebug: null,
     });
   });
 
   it("builds approved-candidate reapply through the shared update cycle", async () => {
+    const onAddPendingMemoryRuleCandidates = vi.fn();
     prepareCandidateMemoryUpdateMock.mockResolvedValue({
       trimmedRecent: [{ id: "u1", role: "user", text: "hello" }],
       candidateMemory: {
@@ -172,7 +179,16 @@ describe("gptMemoryUpdateCoordinator", () => {
         context: {},
       },
       needsSummary: false,
-      filteredPendingCandidates: [],
+      filteredPendingCandidates: [
+        {
+          id: "cand-repeat",
+          kind: "topic_alias",
+          phrase: "Move Planning",
+          normalizedValue: "Move Planning",
+          createdAt: "2026-04-15T00:00:00.000Z",
+          sourceText: "hello",
+        },
+      ],
     });
 
     const result = await runGptMemoryApprovedCandidateReapplyCycle({
@@ -196,7 +212,7 @@ describe("gptMemoryUpdateCoordinator", () => {
         sourceText: "hello",
       },
       approvedMemoryRulesOverride: [],
-      onAddPendingMemoryRuleCandidates: vi.fn(),
+      onAddPendingMemoryRuleCandidates,
     });
 
     expect(prepareCandidateMemoryUpdateMock).toHaveBeenCalledWith(
@@ -217,6 +233,7 @@ describe("gptMemoryUpdateCoordinator", () => {
     expect(result.nextState?.recentMessages).toEqual([
       { id: "u1", role: "user", text: "hello" },
     ]);
+    expect(onAddPendingMemoryRuleCandidates).not.toHaveBeenCalled();
   });
 
   it("builds rejected-candidate reapply through the shared update cycle", async () => {
@@ -273,3 +290,4 @@ describe("gptMemoryUpdateCoordinator", () => {
     );
   });
 });
+

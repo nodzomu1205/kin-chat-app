@@ -1,5 +1,6 @@
 import { resolveTaskIntentWithFallback, type ApprovedIntentPhrase } from "@/lib/taskIntent";
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
+import type { BucketUsageOptions } from "@/lib/tokenStats";
 import {
   buildCurrentTaskIntentRefreshApplyArgs,
   buildCurrentTaskIntentRefreshResolverArgs,
@@ -13,7 +14,10 @@ export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
   currentTaskTitle: string;
   currentTaskDraftTitle: string;
   responseMode: "strict" | "creative";
-  applyTaskUsage: (usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null) => void;
+  applyTaskUsage: (
+    usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null,
+    options?: BucketUsageOptions
+  ) => void;
   replaceCurrentTaskIntent?: (params: {
     intent: TaskIntent;
     title?: string;
@@ -56,10 +60,7 @@ async function resolveCurrentTaskIntentRefresh(
 
   const replaced = resolverArgs.replaceCurrentTaskIntent({
     intent: resolved.intent,
-    title:
-      resolved.suggestedTitle ||
-      resolverArgs.currentTaskTitle ||
-      resolverArgs.currentTaskDraftTitle,
+    title: resolverArgs.currentTaskTitle || resolverArgs.currentTaskDraftTitle,
     originalInstruction: resolverArgs.sourceInstruction,
   });
 

@@ -27,7 +27,7 @@ describe("gptMemorySummarizePolicy", () => {
     ).toBe(true);
   });
 
-  it("requests summarize when token pressure exceeds capacity after threshold", () => {
+  it("requests summarize when recent messages reach the threshold even before the hard cap", () => {
     const trimmedRecent = Array.from({ length: 8 }, (_, index) =>
       buildMessage(`m${index}`, index % 2 === 0 ? "user" : "gpt", `msg-${index}`)
     );
@@ -36,8 +36,8 @@ describe("gptMemorySummarizePolicy", () => {
       shouldSummarizeMemoryUpdate({
         trimmedRecent,
         candidateMemory: {
-          facts: Array.from({ length: 13 }, (_, index) => `fact-${index}`),
-          preferences: Array.from({ length: 10 }, (_, index) => `pref-${index}`),
+          facts: [],
+          preferences: [],
           lists: {},
           context: {},
         },
@@ -65,3 +65,4 @@ describe("gptMemorySummarizePolicy", () => {
     ).toBe(false);
   });
 });
+

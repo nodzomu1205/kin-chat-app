@@ -3,6 +3,7 @@ import { extractPreferredKinTransferText } from "@/lib/app/kinStructuredProtocol
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
 import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
 import { normalizeUsage } from "@/lib/tokenStats";
+import type { BucketUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type { TaskIntent } from "@/types/taskProtocol";
 
@@ -16,7 +17,6 @@ type IntentResolution = {
   intent: TaskIntent;
   usage?: Parameters<typeof normalizeUsage>[0];
   pendingCandidates: PendingIntentCandidate[];
-  suggestedTitle?: string | null;
 };
 
 type StartKinTaskArgs = {
@@ -28,7 +28,10 @@ type StartKinTaskArgs = {
     approvedPhrases: ApprovedIntentPhrase[];
     responseMode: "strict" | "creative";
   }) => Promise<IntentResolution>;
-  applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyTaskUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: BucketUsageOptions
+  ) => void;
   mergePendingIntentCandidates: (candidates: PendingIntentCandidate[]) => void;
   startTask: (params: {
     originalInstruction: string;
@@ -91,7 +94,6 @@ export async function runStartKinTaskFlow({
   const started = startTask({
     originalInstruction: effectiveInput,
     intent: resolved.intent,
-    title: resolved.suggestedTitle || undefined,
   });
 
   syncTaskDraftFromProtocol({

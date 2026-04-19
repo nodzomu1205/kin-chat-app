@@ -1,7 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { generateId } from "@/lib/uuid";
 import type { KinMemoryState, Message, MessageMeta } from "@/types/chat";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
 
 export type TaskMemoryBridgeArgs = {
   setGptState: Dispatch<SetStateAction<KinMemoryState>>;
@@ -31,7 +31,11 @@ export type TaskFlowAssistantResultArgs = {
 
 export type TaskFlowSummaryArgs = {
   recentMessages: Message[];
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyChatUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   handleGptMemory: (
     recent: Message[],
     options?: {
@@ -39,7 +43,21 @@ export type TaskFlowSummaryArgs = {
       lastUserIntent?: string;
       activeDocument?: Record<string, unknown> | null;
     }
-  ) => Promise<{ summaryUsage: Parameters<typeof normalizeUsage>[0] | null }>;
+  ) => Promise<{
+    compressionUsage: Parameters<typeof normalizeUsage>[0] | null;
+    fallbackUsage: Parameters<typeof normalizeUsage>[0] | null;
+    fallbackUsageDetails: Record<string, unknown> | null;
+    fallbackMetrics: {
+      promptChars: number;
+      rawReplyChars: number;
+    } | null;
+    fallbackDebug: {
+      prompt: string;
+      rawReply: string;
+      parsed: unknown;
+      usageDetails?: Record<string, unknown> | null;
+    } | null;
+  }>;
   currentTaskTitleOverride?: string;
   lastUserIntent?: string;
   activeDocument?: Record<string, unknown> | null;
@@ -58,7 +76,7 @@ export type TaskFlowSuccessArgs = {
   currentTaskTitleOverride?: string;
   activeDocument?: Record<string, unknown> | null;
 } & TaskFlowAssistantResultArgs &
-  Pick<TaskFlowSummaryArgs, "applySummaryUsage" | "handleGptMemory">;
+  Pick<TaskFlowSummaryArgs, "applyChatUsage" | "applyCompressionUsage" | "handleGptMemory">;
 
 export function appendTaskInfoMessage(
   setGptMessages: Dispatch<SetStateAction<Message[]>>,
@@ -172,8 +190,16 @@ export async function applyTaskFlowSummaryUsage(args: TaskFlowSummaryArgs) {
     lastUserIntent: args.lastUserIntent,
     activeDocument: args.activeDocument,
   });
-  if (memoryResult.summaryUsage) {
-    args.applySummaryUsage(memoryResult.summaryUsage);
+  if (memoryResult.fallbackUsage) {
+    args.applyChatUsage(memoryResult.fallbackUsage, {
+      mergeIntoLast: true,
+      followupMetrics: memoryResult.fallbackMetrics,
+      followupUsageDetails: memoryResult.fallbackUsageDetails,
+      followupDebug: memoryResult.fallbackDebug,
+    });
+  }
+  if (memoryResult.compressionUsage) {
+    args.applyCompressionUsage(memoryResult.compressionUsage);
   }
 }
 
@@ -197,7 +223,8 @@ export async function completeTaskFlowSuccess(args: TaskFlowSuccessArgs) {
 
   await applyTaskFlowSummaryUsage({
     recentMessages: updatedRecentMessages,
-    applySummaryUsage: args.applySummaryUsage,
+    applyChatUsage: args.applyChatUsage,
+    applyCompressionUsage: args.applyCompressionUsage,
     handleGptMemory: args.handleGptMemory,
     currentTaskTitleOverride: args.currentTaskTitleOverride,
     lastUserIntent: args.lastUserIntent,
@@ -206,3 +233,4 @@ export async function completeTaskFlowSuccess(args: TaskFlowSuccessArgs) {
 
   return updatedRecentMessages;
 }
+

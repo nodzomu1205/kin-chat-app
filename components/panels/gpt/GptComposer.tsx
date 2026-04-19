@@ -1,14 +1,7 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ChatTextarea from "@/components/ChatTextarea";
-import type {
-  FileReadPolicy,
-  UploadKind,
-  ImageDetail,
-  IngestMode,
-  PostIngestAction,
-} from "./gptPanelTypes";
 import { GPT_COMPOSER_TEXT } from "./gptUiText";
 
 type Props = {
@@ -17,59 +10,8 @@ type Props = {
   onSubmit: () => void;
   submitOnEnter?: boolean;
   placeholder?: string;
-  onInjectFile: (
-    file: File,
-    options: {
-      kind: UploadKind;
-      mode: IngestMode;
-      detail: ImageDetail;
-      action: PostIngestAction;
-      readPolicy: FileReadPolicy;
-      compactCharLimit: number;
-      simpleImageCharLimit: number;
-    }
-  ) => void | Promise<void>;
   loading: boolean;
-  ingestLoading: boolean;
-  canInjectFile: boolean;
-  uploadKind: UploadKind;
-  ingestMode: IngestMode;
-  imageDetail: ImageDetail;
-  postIngestAction: PostIngestAction;
-  fileReadPolicy: FileReadPolicy;
-  compactCharLimit: number;
-  simpleImageCharLimit: number;
-  onChangeUploadKind: (kind: UploadKind) => void;
-  onChangeIngestMode: (mode: IngestMode) => void;
-  onChangeImageDetail: (detail: ImageDetail) => void;
-  onChangePostIngestAction: (action: PostIngestAction) => void;
-  showFileTools: boolean;
-  isMobile?: boolean;
 };
-
-const selectStyle: React.CSSProperties = {
-  height: 36,
-  borderRadius: 12,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  fontSize: 12,
-  fontWeight: 700,
-  color: "#334155",
-  padding: "0 12px",
-};
-
-const choiceButton = (active: boolean): React.CSSProperties => ({
-  height: 34,
-  borderRadius: 999,
-  border: active ? "1px solid #67e8f9" : "1px solid #cbd5e1",
-  background: active ? "#ecfeff" : "#fff",
-  color: active ? "#155e75" : "#475569",
-  fontSize: 12,
-  fontWeight: 800,
-  padding: "0 12px",
-  cursor: "pointer",
-  lineHeight: 1,
-});
 
 const verticalButtonStyle: React.CSSProperties = {
   width: 56,
@@ -97,75 +39,27 @@ const verticalButtonStyle: React.CSSProperties = {
   overflow: "hidden",
 };
 
-function getAcceptByKind(kind: UploadKind): string {
-  if (kind === "image" || kind === "pdf" || kind === "mixed") {
-    return ".pdf,image/*";
-  }
-  return ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
-}
-
 export default function GptComposer({
   value,
   onChange,
   onSubmit,
   submitOnEnter = true,
   placeholder,
-  onInjectFile,
   loading,
-  ingestLoading,
-  canInjectFile,
-  uploadKind,
-  ingestMode,
-  imageDetail,
-  postIngestAction,
-  onChangeUploadKind,
-  onChangePostIngestAction,
-  showFileTools,
-  fileReadPolicy,
-  compactCharLimit,
-  simpleImageCharLimit,
 }: Props) {
   const [blink, setBlink] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
-    if (!loading && !ingestLoading) return;
+    if (!loading) return;
 
     const id = window.setInterval(() => {
       setBlink((prev) => !prev);
     }, 520);
 
     return () => window.clearInterval(id);
-  }, [loading, ingestLoading]);
+  }, [loading]);
 
-  const injectDisabled = loading || ingestLoading || !canInjectFile;
-  const sendDisabled = loading || ingestLoading;
-  const accept = useMemo(() => getAcceptByKind(uploadKind), [uploadKind]);
-
-  const buildInjectOptions = () => ({
-    kind: uploadKind,
-    mode: ingestMode,
-    detail: imageDetail,
-    action: postIngestAction,
-    readPolicy: fileReadPolicy,
-    compactCharLimit,
-    simpleImageCharLimit,
-  });
-
-  const handleInject = async (file?: File | null) => {
-    if (!file) return;
-    await onInjectFile(file, buildInjectOptions());
-  };
-
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    event.currentTarget.value = "";
-    await handleInject(file);
-  };
-
-  const canAcceptDrop = showFileTools && !injectDisabled;
+  const sendDisabled = loading;
 
   return (
     <div
@@ -176,150 +70,7 @@ export default function GptComposer({
         minHeight: 0,
         position: "relative",
       }}
-      onDragEnter={(e) => {
-        if (!canAcceptDrop) return;
-        e.preventDefault();
-        setDragActive(true);
-      }}
-      onDragOver={(e) => {
-        if (!canAcceptDrop) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-        setDragActive(true);
-      }}
-      onDragLeave={(e) => {
-        if (!canAcceptDrop) return;
-        const currentTarget = e.currentTarget;
-        const related = e.relatedTarget as Node | null;
-        if (related && currentTarget.contains(related)) return;
-        setDragActive(false);
-      }}
-      onDrop={async (e) => {
-        if (!canAcceptDrop) return;
-        e.preventDefault();
-        setDragActive(false);
-        const file = e.dataTransfer.files?.[0];
-        await handleInject(file);
-      }}
     >
-      {showFileTools && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "stretch",
-            gap: 10,
-            border: dragActive ? "1px solid #22c55e" : "1px solid #cbd5e1",
-            borderRadius: 14,
-            background: dragActive ? "#f0fdf4" : "#f8fafc",
-            padding: 12,
-            boxShadow: dragActive
-              ? "0 0 0 3px rgba(34,197,94,0.12)"
-              : "0 8px 20px rgba(15,23,42,0.08)",
-            transition: "all 160ms ease",
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>
-                {GPT_COMPOSER_TEXT.target}
-              </span>
-              <button
-                type="button"
-                style={choiceButton(uploadKind === "text")}
-                onClick={() => onChangeUploadKind("text")}
-              >
-                {GPT_COMPOSER_TEXT.uploadKindText}
-              </button>
-              <button
-                type="button"
-                style={choiceButton(
-                  uploadKind === "image" || uploadKind === "pdf" || uploadKind === "mixed"
-                )}
-                onClick={() => onChangeUploadKind("image")}
-              >
-                {GPT_COMPOSER_TEXT.uploadKindImagePdf}
-              </button>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: "#475569" }}>
-                {GPT_COMPOSER_TEXT.postIngestAction}
-              </span>
-              <select
-                value={postIngestAction}
-                onChange={(e) => onChangePostIngestAction(e.target.value as PostIngestAction)}
-                style={selectStyle}
-                title={GPT_COMPOSER_TEXT.postIngestActionTitle}
-              >
-                <option value="inject_only">
-                  {GPT_COMPOSER_TEXT.postIngestOptions.inject_only}
-                </option>
-                <option value="inject_and_prep">
-                  {GPT_COMPOSER_TEXT.postIngestOptions.inject_and_prep}
-                </option>
-                <option value="inject_prep_deepen">
-                  {GPT_COMPOSER_TEXT.postIngestOptions.inject_prep_deepen}
-                </option>
-                <option value="attach_to_current_task">
-                  {GPT_COMPOSER_TEXT.postIngestOptions.attach_to_current_task}
-                </option>
-              </select>
-            </div>
-
-            <div
-              style={{
-                fontSize: 12,
-                color: dragActive ? "#166534" : "#64748b",
-                fontWeight: 700,
-              }}
-            >
-              {dragActive ? GPT_COMPOSER_TEXT.dragActive : GPT_COMPOSER_TEXT.dragIdle}
-            </div>
-          </div>
-
-          {injectDisabled ? (
-            <div
-              style={{
-                ...verticalButtonStyle,
-                cursor: "default",
-                opacity: blink ? 0.55 : 0.8,
-              }}
-              title={GPT_COMPOSER_TEXT.ingestButtonTitle}
-            >
-              {ingestLoading ? GPT_COMPOSER_TEXT.ingesting : GPT_COMPOSER_TEXT.ingest}
-            </div>
-          ) : (
-            <label
-              style={{ ...verticalButtonStyle, cursor: "pointer", opacity: 1 }}
-              title={GPT_COMPOSER_TEXT.selectFileTitle}
-            >
-              {ingestLoading ? GPT_COMPOSER_TEXT.ingesting : GPT_COMPOSER_TEXT.ingest}
-              <input
-                type="file"
-                accept={accept}
-                onChange={handleFileChange}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  opacity: 0,
-                  cursor: "pointer",
-                }}
-              />
-            </label>
-          )}
-        </div>
-      )}
-
       <div style={{ display: "flex", alignItems: "stretch", gap: 8, minHeight: 0 }}>
         <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
           {value.trim().length > 0 && (

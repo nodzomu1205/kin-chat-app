@@ -9,6 +9,7 @@ import type {
   FinalizeSendToGptFlowArgs,
   PreparedRequestFinalizeContext,
 } from "@/lib/app/sendToGptFlowTypes";
+import type { ConversationUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import {
   buildFinalizeAssistantMessageArgs,
@@ -38,6 +39,7 @@ export async function finalizeSendToGptFlow(args: FinalizeSendToGptFlowArgs) {
     data: args.data,
     searchRequestEvent: args.preparedRequest.searchRequestEvent,
     applySearchUsage: args.applySearchUsage,
+    applyChatUsage: args.applyChatUsage,
   });
 
   await applyFinalizeMemoryFollowUp(
@@ -45,7 +47,8 @@ export async function finalizeSendToGptFlow(args: FinalizeSendToGptFlowArgs) {
       updatedRecent,
       previousCommittedTopic: args.memoryContext.previousCommittedTopic,
       handleGptMemory: args.handleGptMemory,
-      applySummaryUsage: args.applySummaryUsage,
+      applyChatUsage: args.applyChatUsage,
+      applyCompressionUsage: args.applyCompressionUsage,
     })
   );
 }
@@ -54,8 +57,18 @@ export function applyExplicitSearchUsageAfterFinalize(args: {
   data: ChatApiSearchLike;
   searchRequestEvent?: PreparedRequestFinalizeContext["searchRequestEvent"];
   applySearchUsage: (usage: ChatApiSearchLike["usage"]) => void;
+  applyChatUsage: (
+    usage: ChatApiSearchLike["usage"],
+    options?: ConversationUsageOptions
+  ) => void;
 }) {
   if (!args.searchRequestEvent) return;
+  if (args.data.promptMetrics) {
+    args.applyChatUsage(null, {
+      promptMetrics: args.data.promptMetrics,
+      usageDetails: args.data.usageDetails,
+    });
+  }
   args.applySearchUsage(args.data.usage);
 }
 
@@ -65,11 +78,40 @@ export async function applyFinalizeMemoryFollowUp(args: {
   handleGptMemory: (
     recent: Message[],
     options?: { previousCommittedTopic?: string }
-  ) => Promise<{ summaryUsage?: ChatApiSearchLike["usage"] }>;
-  applySummaryUsage: (usage: ChatApiSearchLike["usage"]) => void;
+  ) => Promise<{
+    compressionUsage?: ChatApiSearchLike["usage"];
+    fallbackUsage?: ChatApiSearchLike["usage"];
+    fallbackUsageDetails?: Record<string, unknown> | null;
+    fallbackMetrics?: {
+      promptChars: number;
+      rawReplyChars: number;
+    } | null;
+    fallbackDebug?: {
+      prompt: string;
+      rawReply: string;
+      parsed: unknown;
+      usageDetails?: Record<string, unknown> | null;
+    } | null;
+  }>;
+  applyChatUsage: (
+    usage: ChatApiSearchLike["usage"],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyCompressionUsage: (usage: ChatApiSearchLike["usage"]) => void;
 }) {
   const memoryResult = await args.handleGptMemory(args.updatedRecent, {
     previousCommittedTopic: args.previousCommittedTopic,
   });
-  args.applySummaryUsage(memoryResult.summaryUsage);
+  if (memoryResult.fallbackUsage) {
+    args.applyChatUsage(memoryResult.fallbackUsage, {
+      mergeIntoLast: true,
+      followupMetrics: memoryResult.fallbackMetrics,
+      followupUsageDetails: memoryResult.fallbackUsageDetails,
+      followupDebug: memoryResult.fallbackDebug,
+    });
+  }
+  if (memoryResult.compressionUsage) {
+    args.applyCompressionUsage(memoryResult.compressionUsage);
+  }
 }
+

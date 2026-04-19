@@ -207,6 +207,7 @@ describe("memoryInterpreterTopicReducer", () => {
     });
   });
 
+
   it("raises a review candidate when llm keep points to a different topic", () => {
     const result = reduceTopicAdjudication({
       latestUserText: "Tell me more about the Edo period",

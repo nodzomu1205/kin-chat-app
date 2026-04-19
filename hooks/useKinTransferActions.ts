@@ -11,6 +11,7 @@ import {
   createPendingIntentCandidateMerger,
 } from "@/lib/app/taskRuntimeActionBuilders";
 import type { UseKinTransferActionsArgs } from "@/hooks/chatPageActionTypes";
+import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
 
 export function useKinTransferActions(
   args: UseKinTransferActionsArgs,
@@ -54,7 +55,7 @@ export function useKinTransferActions(
   };
 
   const sendLastGptToKinDraft = () => {
-    const last = [...args.gptMessages].reverse().find((m) => m.role === "gpt");
+    const last = findLatestTransferableGptMessage(args.gptMessages);
     if (!last) return;
 
     args.setKinInput(last.text);

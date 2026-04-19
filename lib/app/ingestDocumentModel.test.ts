@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   applyStoredDocumentOverride,
   buildIngestedStoredDocument,
+  buildStoredDocumentDisplayTitle,
   buildKinStoredDocument,
+  buildLibraryFilenameWithCharCount,
   buildReferenceLibraryDocumentItem,
   buildCanonicalDocumentSummary,
   buildTaskPrepEnvelope,
@@ -45,6 +47,25 @@ describe("ingestDocumentModel", () => {
     ).toBe("body. Second sentence.");
   });
 
+  it("replaces any existing char-count suffix with a single normalized filename suffix", () => {
+    expect(
+      buildLibraryFilenameWithCharCount("notes__120chars.txt", "alpha beta")
+    ).toBe("notes [10chars].txt");
+    expect(
+      buildLibraryFilenameWithCharCount("notes [120chars].txt", "alpha")
+    ).toBe("notes [5chars].txt");
+  });
+
+  it("builds an ingested-document display title without path or duplicated extensions", () => {
+    expect(
+      buildStoredDocumentDisplayTitle({
+        title: "folder/sub/notes.txt.txt",
+        filename: "notes [10chars].txt",
+        sourceType: "ingested_file",
+      })
+    ).toBe("notes");
+  });
+
   it("normalizes stored documents through the shared ingest authority", () => {
     expect(
       normalizeStoredDocument({
@@ -59,9 +80,11 @@ describe("ingestDocumentModel", () => {
         updatedAt: "2026-04-18T00:00:00.000Z",
       })
     ).toMatchObject({
+      title: "Transcript",
       text: "alpha beta",
       summary: "alpha",
       charCount: "alpha beta".length,
+      filename: "transcript [10chars].txt",
     });
   });
 
@@ -78,7 +101,7 @@ describe("ingestDocumentModel", () => {
       })
     ).toMatchObject({
       sourceType: "ingested_file",
-      summary: "body. Second sentence.",
+      summary: "",
     });
 
     expect(
@@ -123,7 +146,7 @@ describe("ingestDocumentModel", () => {
     expect(overridden).toMatchObject({
       title: "After",
       text: "After body",
-      summary: "body",
+      summary: "",
       updatedAt: "2026-04-19T00:00:00.000Z",
     });
 
@@ -133,7 +156,7 @@ describe("ingestDocumentModel", () => {
       itemType: "ingested_file",
       title: "After",
       excerptText: "After body",
-      summary: "body",
+      summary: "",
     });
   });
 });

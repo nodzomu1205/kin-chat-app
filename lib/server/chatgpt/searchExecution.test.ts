@@ -46,6 +46,7 @@ describe("searchExecution", () => {
   it("builds normalized executed search result", () => {
     const result = buildExecutedSearchResult({
       summaryText: "summary here",
+      rawText: "raw here",
       continuationToken: "next-token",
       sources: [
         {
@@ -59,7 +60,8 @@ describe("searchExecution", () => {
     });
 
     expect(result).toEqual({
-      searchText: "summary here",
+      searchPromptText: "summary here",
+      searchEvidenceText: "raw here",
       returnedSearchContinuationToken: "next-token",
       sources: [
         {

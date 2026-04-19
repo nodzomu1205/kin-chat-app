@@ -1,21 +1,21 @@
 import {
   SEARCH_PREFIX_RE,
   isClosingReplyText,
+  isSysFormattedText,
   normalizeLine,
   normalizeText,
 } from "@/lib/app/memoryInterpreterText";
 import type { Message } from "@/types/chat";
 
 const FOLLOW_UP_INVITE_RE =
-  /(?:もっと詳しく知りたい|他に知りたいこと|何か他に質問|気軽に声をかけて|いつでも聞いて|お話しできます|教えてくださいね|興味があれば|ありますか)[!！。\s]*$/u;
-const META_FACT_RE =
-  /^(?:概要|要点|特徴|ユーザーへの質問例|次の提案|不足情報|注意|参考|Summary)\s*[:：]/u;
+  /(?:もっと詳しく知りたい|さらに知りたいこと|いつでも聞いて|気軽に質問して|教えてくださいね|ありますか|紹介できます)(?:[!！。.\s])*$/u;
+const META_FACT_RE = /^(?:関連タスク|詳細|ユーザーへの回答次の方針|検索結果|Summary|Library|Detail)\s*[:：・]?/iu;
 
 function sanitizeFact(line: string) {
   return normalizeLine(line)
     .replace(/\[refs?:[^\]]+\]/gi, "")
     .replace(/^Google AI Mode\s*/i, "")
-    .replace(/^[:：]\s*/, "")
+    .replace(/^[:：・\s]+/, "")
     .trim();
 }
 
@@ -31,7 +31,7 @@ function isFactBlockContinuation(rawLine: string) {
   const trimmed = rawLine.trim();
   if (!trimmed) return false;
   if (/^[-*]\s+/.test(trimmed)) return true;
-  if (/^[「『(（]/.test(trimmed)) return true;
+  if (/^[•・]/.test(trimmed)) return true;
   return !isFactBlockHeading(trimmed);
 }
 
@@ -43,7 +43,7 @@ function toFactBlock(items: string[]) {
         .replace(/^[-*]\s*/, "")
         .replace(/\*\*/g, "")
         .trim();
-      return index === 0 ? normalized.replace(/[：:]$/, "") : normalized;
+      return index === 0 ? normalized.replace(/[。.]$/, "") : normalized;
     })
     .filter(Boolean);
 
@@ -111,11 +111,7 @@ function isUsefulFact(line: string) {
   if (isClosingReplyText(normalized)) return false;
   if (FOLLOW_UP_INVITE_RE.test(normalized)) return false;
   if (META_FACT_RE.test(normalized)) return false;
-  if (
-    /^(?:どういたしまして|わかりました|分かりました|また何か|何か他に|気軽に|いつでも|興味があれば|特定の作家や作品)/u.test(
-      normalized
-    )
-  ) {
+  if (/^(?:どれについて|わかりました|確かに|他に|いつでも|気軽に|特定の資料)/u.test(normalized)) {
     return false;
   }
   return true;
@@ -125,7 +121,15 @@ export function extractFacts(messages: Message[]) {
   return Array.from(
     new Set(
       messages
-        .filter((message) => message.role === "gpt")
+        .filter((message) => {
+          if (isSysFormattedText(message.text || "")) return false;
+          if (message.role === "gpt") return true;
+          return (
+            message.role === "user" &&
+            (message.meta?.kind === "task_info" ||
+              normalizeText(message.text || "").startsWith("Library:"))
+          );
+        })
         .flatMap((message) => splitIntoFactCandidates(message.text))
         .filter(isUsefulFact)
     )

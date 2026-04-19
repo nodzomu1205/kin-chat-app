@@ -44,8 +44,8 @@ describe("sendToGptFlow step builders", () => {
         getAskAiModeLinkForQuery: () => "",
         applySearchUsage: () => undefined,
         applyChatUsage: () => undefined,
-        handleGptMemory: async () => ({ summaryUsage: null }),
-        applySummaryUsage: () => undefined,
+        handleGptMemory: async () => ({ compressionUsage: null }),
+        applyCompressionUsage: () => undefined,
         chatRecentLimit: 4,
         gptStateRef: {
           current: {
@@ -135,8 +135,8 @@ describe("sendToGptFlow step builders", () => {
       getAskAiModeLinkForQuery: () => "",
       applySearchUsage: () => undefined,
       applyChatUsage: () => undefined,
-      handleGptMemory: async () => ({ summaryUsage: null }),
-      applySummaryUsage: () => undefined,
+      handleGptMemory: async () => ({ compressionUsage: null }),
+      applyCompressionUsage: () => undefined,
       chatRecentLimit: 4,
       gptStateRef: { current: {} },
       setGptMessages: () => undefined,
@@ -205,8 +205,8 @@ describe("sendToGptFlow step builders", () => {
         getAskAiModeLinkForQuery: () => "",
         applySearchUsage: () => undefined,
         applyChatUsage: () => undefined,
-        handleGptMemory: async () => ({ summaryUsage: null }),
-        applySummaryUsage: () => undefined,
+        handleGptMemory: async () => ({ compressionUsage: null }),
+        applyCompressionUsage: () => undefined,
         chatRecentLimit: 4,
         gptStateRef: {
           current: {},
@@ -288,8 +288,8 @@ describe("sendToGptFlow step builders", () => {
       getAskAiModeLinkForQuery: () => "",
       applySearchUsage: () => undefined,
       applyChatUsage: () => undefined,
-      handleGptMemory: async () => ({ summaryUsage: null }),
-      applySummaryUsage: () => undefined,
+      handleGptMemory: async () => ({ compressionUsage: null }),
+      applyCompressionUsage: () => undefined,
       chatRecentLimit: 4,
       gptStateRef: {
         current: {
@@ -458,3 +458,4 @@ describe("sendToGptFlow step builders", () => {
     });
   });
 });
+

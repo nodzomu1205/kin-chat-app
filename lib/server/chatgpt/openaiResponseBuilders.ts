@@ -1,11 +1,7 @@
 import type { UsageSummary } from "@/lib/server/chatgpt/openaiResponse";
 
 type UsageLike = {
-  usage?: {
-    input_tokens?: number;
-    output_tokens?: number;
-    total_tokens?: number;
-  };
+  usage?: object | null;
 };
 
 type ResponseTextLike = {
@@ -18,15 +14,19 @@ type ResponseTextLike = {
 };
 
 export function buildUsageSummary(data: UsageLike): UsageSummary {
+  const usage =
+    data?.usage && typeof data.usage === "object"
+      ? (data.usage as Record<string, unknown>)
+      : undefined;
   const inputTokens =
-    typeof data?.usage?.input_tokens === "number" ? data.usage.input_tokens : 0;
+    typeof usage?.input_tokens === "number" ? usage.input_tokens : 0;
   const outputTokens =
-    typeof data?.usage?.output_tokens === "number"
-      ? data.usage.output_tokens
+    typeof usage?.output_tokens === "number"
+      ? usage.output_tokens
       : 0;
   const totalTokens =
-    typeof data?.usage?.total_tokens === "number"
-      ? data.usage.total_tokens
+    typeof usage?.total_tokens === "number"
+      ? usage.total_tokens
       : inputTokens + outputTokens;
 
   return {
@@ -34,6 +34,10 @@ export function buildUsageSummary(data: UsageLike): UsageSummary {
     outputTokens,
     totalTokens,
   };
+}
+
+export function buildUsageDetails(data: UsageLike) {
+  return data?.usage && typeof data.usage === "object" ? data.usage : null;
 }
 
 export function buildJsonObjectText(value: string) {

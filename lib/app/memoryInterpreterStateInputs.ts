@@ -5,6 +5,7 @@ import { resolveActiveDocumentFields } from "@/lib/app/memoryInterpreterWorks";
 import {
   isClosingReplyText,
   isSearchDirectiveText,
+  isSysFormattedText,
   normalizeText,
 } from "@/lib/app/memoryInterpreterText";
 import type { Message } from "@/types/chat";
@@ -23,16 +24,23 @@ export function buildMemoryStateAssemblyInputs(args: {
   options?: MemoryInterpreterOptions;
 }) {
   const latestUserMessage =
-    [...args.recentMessages].reverse().find((message) => message.role === "user") || null;
+    [...args.recentMessages].reverse().find(
+      (message) => message.role === "user" && !isSysFormattedText(message.text || "")
+    ) || null;
   const latestAssistantMessage =
-    [...args.recentMessages].reverse().find((message) => message.role === "gpt") || null;
+    [...args.recentMessages].reverse().find(
+      (message) => message.role === "gpt" && !isSysFormattedText(message.text || "")
+    ) || null;
   const latestUserText = normalizeText(latestUserMessage?.text || "");
   const closingOnlyTurn = Boolean(latestUserText) && isClosingReplyText(latestUserText);
   const latestPrompt =
     latestUserText && !isSearchDirectiveText(latestUserText) && !closingOnlyTurn
       ? latestUserText
       : "";
-  const recentSearchQueries = extractRecentSearchQueries(args.recentMessages);
+  const filteredRecentMessages = args.recentMessages.filter(
+    (message) => !isSysFormattedText(message.text || "")
+  );
+  const recentSearchQueries = extractRecentSearchQueries(filteredRecentMessages);
   const { activeDocument, activeDocumentTitle, activeDocumentExcerpt } =
     resolveActiveDocumentFields(args.currentMemory, args.options?.activeDocument);
   const resolvedTopic = resolveTopicFromInputs({
@@ -49,7 +57,9 @@ export function buildMemoryStateAssemblyInputs(args: {
   const topicSwitched = isTopicSwitch(args.currentMemory, resolvedTopic);
   const latestAssistantText = latestAssistantMessage?.text || "";
   const factSourceMessages =
-    topicSwitched && latestAssistantMessage ? [latestAssistantMessage] : args.recentMessages;
+    topicSwitched && latestAssistantMessage
+      ? [latestAssistantMessage]
+      : filteredRecentMessages;
 
   return {
     latestUserText,

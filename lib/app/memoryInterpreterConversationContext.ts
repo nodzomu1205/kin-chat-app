@@ -1,10 +1,15 @@
-import { normalizeText } from "@/lib/app/memoryInterpreterText";
+import {
+  isSysFormattedText,
+  normalizeText,
+} from "@/lib/app/memoryInterpreterText";
 import type { Message } from "@/types/chat";
 
 function isMeaningfulAssistantMessage(message: Message) {
   if (message.role !== "gpt") return false;
+  if (isSysFormattedText(message.text || "")) return false;
   return (
     message.meta?.kind === "normal" ||
+    message.meta?.kind === "task_info" ||
     message.meta?.kind === "task_prep" ||
     message.meta?.kind === "task_deepen" ||
     message.meta?.kind === "task_format"
@@ -12,13 +17,19 @@ function isMeaningfulAssistantMessage(message: Message) {
 }
 
 function isMeaningfulConversationMessage(message: Message) {
-  return message.role === "user" || isMeaningfulAssistantMessage(message);
+  return (
+    (message.role === "user" && !isSysFormattedText(message.text || "")) ||
+    isMeaningfulAssistantMessage(message)
+  );
 }
 
 export function buildMeaningfulConversationContext(recentMessages: Message[]) {
   const latestUserIndex = (() => {
     for (let index = recentMessages.length - 1; index >= 0; index -= 1) {
-      if (recentMessages[index]?.role === "user") return index;
+      const message = recentMessages[index];
+      if (!message || message.role !== "user") continue;
+      if (message.meta?.kind === "task_info") continue;
+      return index;
     }
     return -1;
   })();

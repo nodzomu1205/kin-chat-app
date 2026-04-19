@@ -38,7 +38,7 @@ function createBaseArgs(
       userInstruction: "",
       freeText: "",
     })),
-    applySummaryUsage: vi.fn(),
+    applyCompressionUsage: vi.fn(),
     applyTaskUsage: vi.fn(),
     currentTaskDraft,
     getResolvedTaskTitle: vi.fn(({ fallback }) => fallback || "Task"),
@@ -61,7 +61,7 @@ function createBaseArgs(
       },
       setGptState: vi.fn(),
       persistCurrentGptState: vi.fn(),
-      handleGptMemory: vi.fn(async () => ({ summaryUsage: null })),
+      handleGptMemory: vi.fn(async () => ({ compressionUsage: null })),
       clearTaskScopedMemory: vi.fn(),
       resetGptForCurrentKin: vi.fn(),
     },
@@ -117,3 +117,4 @@ describe("taskDraftFlowArgBuilders", () => {
     expect(built.getTaskBaseText).toBe(args.getTaskBaseText);
   });
 });
+

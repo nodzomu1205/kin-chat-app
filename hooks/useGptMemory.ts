@@ -10,12 +10,9 @@ import {
 import {
   type TokenUsage,
 } from "@/lib/app/gptMemoryStateHelpers";
-import { runGptMemoryUpdateCycle } from "@/lib/app/gptMemoryUpdateCoordinator";
 import {
   clearTaskScopedMemoryState,
   ensureStoredKinMemoryState,
-  loadStoredGptMemorySettings,
-  loadStoredKinMemoryMap,
   normalizeUpdatedMemorySettings,
   persistStoredGptMemorySettings,
   persistStoredKinMemoryMap,
@@ -24,47 +21,24 @@ import {
   upsertStoredKinMemoryState,
 } from "@/lib/app/gptMemoryStoreCoordinator";
 import {
-  runGptMemoryApprovedCandidateReapplyCycle,
-  runGptMemoryApprovedRulesReapplyCycle,
-  runGptMemoryRejectedCandidateReapplyCycle,
-} from "@/lib/app/gptMemoryUpdateCoordinator";
-import type {
-  ApprovedMemoryRule,
-  MemoryInterpreterSettings,
-  PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+  loadInitialGptMemoryRuntimeState,
+  runGptMemoryRuntimeApprovedCandidateReapply,
+  runGptMemoryRuntimeApprovedRulesReapply,
+  runGptMemoryRuntimeRejectedCandidateReapply,
+  runGptMemoryRuntimeUpdate,
+  type GptMemoryRuntimeConfig,
+} from "@/lib/app/gptMemoryRuntime";
+import type { ApprovedMemoryRule, PendingMemoryRuleCandidate } from "@/lib/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { KinMemoryState, Message } from "@/types/chat";
 
 export type { TokenUsage } from "@/lib/app/gptMemoryStateHelpers";
 
-type UseGptMemoryOptions = {
-  memoryInterpreterSettings: MemoryInterpreterSettings;
-  approvedMemoryRules: ApprovedMemoryRule[];
-  rejectedMemoryRuleCandidateSignatures: string[];
-  onAddPendingMemoryRuleCandidates: (
-    candidates: PendingMemoryRuleCandidate[],
-    approvedMemoryRulesOverride?: ApprovedMemoryRule[]
-  ) => void;
-};
-
-function loadInitialGptMemoryState(currentKin: string | null) {
-  const settings = loadStoredGptMemorySettings();
-  const kinMemoryMap = loadStoredKinMemoryMap(settings);
-  const gptState = resolveActiveKinMemoryState(currentKin, kinMemoryMap, settings);
-
-  return {
-    settings,
-    kinMemoryMap,
-    gptState,
-  };
-}
-
 export function useGptMemory(
   currentKin: string | null,
-  config: UseGptMemoryOptions
+  config: GptMemoryRuntimeConfig
 ) {
-  const [initialState] = useState(() => loadInitialGptMemoryState(currentKin));
+  const [initialState] = useState(() => loadInitialGptMemoryRuntimeState(currentKin));
   const [settings, setSettings] = useState<MemorySettings>(initialState.settings);
   const [gptState, setGptState] = useState<KinMemoryState>(initialState.gptState);
   const gptStateRef = useRef<KinMemoryState>(initialState.gptState);
@@ -141,12 +115,47 @@ export function useGptMemory(
 
   const applyUpdateCycleResult = useCallback(
     (
-      result: { nextState: KinMemoryState | null; summaryUsage: TokenUsage | null }
-    ): { summaryUsage: TokenUsage | null } => {
+      result: {
+        nextState: KinMemoryState | null;
+        compressionUsage: TokenUsage | null;
+        fallbackUsage: TokenUsage | null;
+        fallbackUsageDetails: Record<string, unknown> | null;
+        fallbackMetrics: {
+          promptChars: number;
+          rawReplyChars: number;
+        } | null;
+        fallbackDebug: {
+          prompt: string;
+          rawReply: string;
+          parsed: unknown;
+          usageDetails?: Record<string, unknown> | null;
+        } | null;
+      }
+    ): {
+      compressionUsage: TokenUsage | null;
+      fallbackUsage: TokenUsage | null;
+      fallbackUsageDetails: Record<string, unknown> | null;
+      fallbackMetrics: {
+        promptChars: number;
+        rawReplyChars: number;
+      } | null;
+      fallbackDebug: {
+        prompt: string;
+        rawReply: string;
+        parsed: unknown;
+        usageDetails?: Record<string, unknown> | null;
+      } | null;
+    } => {
       if (result.nextState) {
         applyPersistedState(result.nextState);
       }
-      return { summaryUsage: result.summaryUsage };
+      return {
+        compressionUsage: result.compressionUsage,
+        fallbackUsage: result.fallbackUsage,
+        fallbackUsageDetails: result.fallbackUsageDetails,
+        fallbackMetrics: result.fallbackMetrics,
+        fallbackDebug: result.fallbackDebug,
+      };
     },
     [applyPersistedState]
   );
@@ -160,39 +169,53 @@ export function useGptMemory(
         rejectedMemoryRuleCandidateSignatures?: string[];
         currentMemoryOverride?: Memory;
       }
-    ): Promise<{ summaryUsage: TokenUsage | null }> => {
-      const result = await runGptMemoryUpdateCycle({
+    ): Promise<{
+      compressionUsage: TokenUsage | null;
+      fallbackUsage: TokenUsage | null;
+      fallbackUsageDetails: Record<string, unknown> | null;
+      fallbackMetrics: {
+        promptChars: number;
+        rawReplyChars: number;
+      } | null;
+      fallbackDebug: {
+        prompt: string;
+        rawReply: string;
+        parsed: unknown;
+        usageDetails?: Record<string, unknown> | null;
+      } | null;
+    }> => {
+      const result = await runGptMemoryRuntimeUpdate({
         currentState: gptStateRef.current,
         updatedRecent,
         settings,
         options,
-        memoryInterpreterSettings: config.memoryInterpreterSettings,
-        approvedMemoryRules: config.approvedMemoryRules,
-        rejectedMemoryRuleCandidateSignatures:
-          config.rejectedMemoryRuleCandidateSignatures,
-        approvedMemoryRulesOverride: runtimeConfig?.approvedMemoryRules,
-        rejectedMemoryRuleCandidateSignaturesOverride:
-          runtimeConfig?.rejectedMemoryRuleCandidateSignatures,
-        currentMemoryOverride: runtimeConfig?.currentMemoryOverride,
-        onAddPendingMemoryRuleCandidates: config.onAddPendingMemoryRuleCandidates,
+        config,
+        runtimeConfig,
       });
       return applyUpdateCycleResult(result);
     },
-    [
-      applyUpdateCycleResult,
-      config.memoryInterpreterSettings,
-      config.approvedMemoryRules,
-      config.onAddPendingMemoryRuleCandidates,
-      config.rejectedMemoryRuleCandidateSignatures,
-      settings,
-    ]
+    [applyUpdateCycleResult, config, settings]
   );
 
   const handleGptMemory = useCallback(
     async (
       updatedRecent: Message[],
       options?: MemoryUpdateOptions
-    ): Promise<{ summaryUsage: TokenUsage | null }> => {
+    ): Promise<{
+      compressionUsage: TokenUsage | null;
+      fallbackUsage: TokenUsage | null;
+      fallbackUsageDetails: Record<string, unknown> | null;
+      fallbackMetrics: {
+        promptChars: number;
+        rawReplyChars: number;
+      } | null;
+      fallbackDebug: {
+        prompt: string;
+        rawReply: string;
+        parsed: unknown;
+        usageDetails?: Record<string, unknown> | null;
+      } | null;
+    }> => {
       return runMemoryUpdate(updatedRecent, options);
     },
     [runMemoryUpdate]
@@ -201,84 +224,93 @@ export function useGptMemory(
   const reapplyCurrentMemoryWithApprovedRules = useCallback(
     async (
       approvedMemoryRules: ApprovedMemoryRule[]
-    ): Promise<{ summaryUsage: TokenUsage | null }> => {
-      const result = await runGptMemoryApprovedRulesReapplyCycle({
+    ): Promise<{
+      compressionUsage: TokenUsage | null;
+      fallbackUsage: TokenUsage | null;
+      fallbackUsageDetails: Record<string, unknown> | null;
+      fallbackMetrics: {
+        promptChars: number;
+        rawReplyChars: number;
+      } | null;
+      fallbackDebug: {
+        prompt: string;
+        rawReply: string;
+        parsed: unknown;
+        usageDetails?: Record<string, unknown> | null;
+      } | null;
+    }> => {
+      const result = await runGptMemoryRuntimeApprovedRulesReapply({
         currentState: gptStateRef.current,
         settings,
-        memoryInterpreterSettings: config.memoryInterpreterSettings,
-        approvedMemoryRules: config.approvedMemoryRules,
-        rejectedMemoryRuleCandidateSignatures:
-          config.rejectedMemoryRuleCandidateSignatures,
+        config,
         approvedMemoryRulesOverride: approvedMemoryRules,
-        onAddPendingMemoryRuleCandidates: config.onAddPendingMemoryRuleCandidates,
       });
       return applyUpdateCycleResult(result);
     },
-    [
-      applyUpdateCycleResult,
-      config.approvedMemoryRules,
-      config.memoryInterpreterSettings,
-      config.onAddPendingMemoryRuleCandidates,
-      config.rejectedMemoryRuleCandidateSignatures,
-      settings,
-    ]
+    [applyUpdateCycleResult, config, settings]
   );
 
   const reapplyCurrentMemoryWithApprovedCandidate = useCallback(
     async (
       candidate: PendingMemoryRuleCandidate,
       approvedMemoryRules: ApprovedMemoryRule[]
-    ): Promise<{ summaryUsage: TokenUsage | null }> => {
-      const result = await runGptMemoryApprovedCandidateReapplyCycle({
+    ): Promise<{
+      compressionUsage: TokenUsage | null;
+      fallbackUsage: TokenUsage | null;
+      fallbackUsageDetails: Record<string, unknown> | null;
+      fallbackMetrics: {
+        promptChars: number;
+        rawReplyChars: number;
+      } | null;
+      fallbackDebug: {
+        prompt: string;
+        rawReply: string;
+        parsed: unknown;
+        usageDetails?: Record<string, unknown> | null;
+      } | null;
+    }> => {
+      const result = await runGptMemoryRuntimeApprovedCandidateReapply({
         currentState: gptStateRef.current,
         settings,
-        memoryInterpreterSettings: config.memoryInterpreterSettings,
-        approvedMemoryRules: config.approvedMemoryRules,
-        rejectedMemoryRuleCandidateSignatures:
-          config.rejectedMemoryRuleCandidateSignatures,
+        config,
         candidate,
         approvedMemoryRulesOverride: approvedMemoryRules,
-        onAddPendingMemoryRuleCandidates: config.onAddPendingMemoryRuleCandidates,
       });
       return applyUpdateCycleResult(result);
     },
-    [
-      applyUpdateCycleResult,
-      config.approvedMemoryRules,
-      config.memoryInterpreterSettings,
-      config.onAddPendingMemoryRuleCandidates,
-      config.rejectedMemoryRuleCandidateSignatures,
-      settings,
-    ]
+    [applyUpdateCycleResult, config, settings]
   );
 
   const reapplyCurrentMemoryWithRejectedCandidate = useCallback(
     async (
       candidate: PendingMemoryRuleCandidate,
       rejectedMemoryRuleCandidateSignatures: string[]
-    ): Promise<{ summaryUsage: TokenUsage | null }> => {
-      const result = await runGptMemoryRejectedCandidateReapplyCycle({
+    ): Promise<{
+      compressionUsage: TokenUsage | null;
+      fallbackUsage: TokenUsage | null;
+      fallbackUsageDetails: Record<string, unknown> | null;
+      fallbackMetrics: {
+        promptChars: number;
+        rawReplyChars: number;
+      } | null;
+      fallbackDebug: {
+        prompt: string;
+        rawReply: string;
+        parsed: unknown;
+        usageDetails?: Record<string, unknown> | null;
+      } | null;
+    }> => {
+      const result = await runGptMemoryRuntimeRejectedCandidateReapply({
         currentState: gptStateRef.current,
         settings,
-        memoryInterpreterSettings: config.memoryInterpreterSettings,
-        approvedMemoryRules: config.approvedMemoryRules,
-        rejectedMemoryRuleCandidateSignatures:
-          config.rejectedMemoryRuleCandidateSignatures,
+        config,
         candidate,
         rejectedMemoryRuleCandidateSignaturesOverride:
           rejectedMemoryRuleCandidateSignatures,
-        onAddPendingMemoryRuleCandidates: config.onAddPendingMemoryRuleCandidates,
       });
       return applyUpdateCycleResult(result);
     },
-    [
-      applyUpdateCycleResult,
-      config.approvedMemoryRules,
-      config.memoryInterpreterSettings,
-      config.onAddPendingMemoryRuleCandidates,
-      config.rejectedMemoryRuleCandidateSignatures,
-      settings,
-    ]
+    [applyUpdateCycleResult, config, settings]
   );
 
   const resetGptForCurrentKin = useCallback(() => {
@@ -319,3 +351,4 @@ export function useGptMemory(
     defaultMemorySettings: DEFAULT_MEMORY_SETTINGS,
   };
 }
+

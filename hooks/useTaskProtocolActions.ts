@@ -19,7 +19,6 @@ import {
   buildNextApprovedIntentPhrasesOnApprove,
   buildNextApprovedIntentPhrasesOnDelete,
   buildNextApprovedIntentPhrasesOnUpdate,
-  parseIntentCandidateDraftText,
 } from "@/lib/taskIntent";
 import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/currentTaskIntentRefresh";
 import type { UseTaskProtocolActionsArgs } from "@/hooks/chatPageActionTypes";
@@ -143,14 +142,7 @@ export function useTaskProtocolActions(
       approvedIntentPhrases: args.approvedIntentPhrases,
       phraseId,
       patch,
-    }).map((item) =>
-      item.id === phraseId && typeof item.draftText === "string"
-        ? {
-            ...item,
-            ...parseIntentCandidateDraftText(item.draftText, item as PendingIntentCandidate),
-          }
-        : item
-    );
+    });
     args.setApprovedIntentPhrases(nextApprovedIntentPhrases);
     void syncApprovedIntentPhrasesToCurrentTask(nextApprovedIntentPhrases);
   };

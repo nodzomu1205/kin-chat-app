@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+﻿import { generateId } from "@/lib/uuid";
 import {
   buildMergedTaskInput,
   buildTaskInput,
@@ -11,7 +11,6 @@ import {
   buildGptTaskPrepSource,
   buildGptTaskUpdateSource,
   buildLatestGptTaskSource,
-  resolveTaskTitleFromResult,
   resolveUpdateTaskTitle,
 } from "@/lib/app/taskDraftFlowResolvers";
 import {
@@ -20,6 +19,12 @@ import {
   completeTaskFlowSuccess,
   startTaskFlowRequest,
 } from "@/lib/app/taskDraftFlowShared";
+import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
+import {
+  mergeTaskTitleInstructions,
+  resolveGeneratedTaskTitle,
+  resolveTaskDraftUserInstruction,
+} from "@/lib/taskTitleGeneration";
 import type {
   PrepTaskFromInputFlowArgs,
   UpdateTaskFromInputFlowArgs,
@@ -35,16 +40,32 @@ export async function runPrepTaskFromInputFlow(
   const text = args.gptInput.trim();
   const parsedInput = args.applyPrefixedTaskFieldsFromText(text);
   const taskBodySource = parsedInput.freeText || text;
-  const resolvedTitle = args.getResolvedTaskTitle({
+  const fallbackTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
     freeText: taskBodySource,
     searchQuery: parsedInput.searchQuery,
     fallback: "Prepared task",
   });
+  const resolvedTitleResult = await resolveGeneratedTaskTitle({
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title || args.currentTaskDraft.taskName,
+    taskBody: args.currentTaskDraft.body,
+    additionalSource: taskBodySource,
+    userInstruction: mergeTaskTitleInstructions(
+      parsedInput.userInstruction,
+      args.currentTaskDraft.userInstruction
+    ),
+    fallbackTitle,
+    includeCurrentTitle: false,
+  });
+  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const nextUserInstruction = resolveTaskDraftUserInstruction(
+    parsedInput.userInstruction,
+    args.currentTaskDraft.userInstruction
+  );
   const prepInput = buildTaskStructuredInput({
     title: resolvedTitle,
-    userInstruction:
-      parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+    userInstruction: nextUserInstruction,
     body: taskBodySource,
     searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
   });
@@ -89,8 +110,9 @@ export async function runPrepTaskFromInputFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `繧ｿ繧ｹ繧ｯ謨ｴ逅・ ${resolvedTitle}`,
-      applySummaryUsage: args.applySummaryUsage,
+      lastUserIntent: `郢ｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ隰ｨ・ｴ騾・・ ${resolvedTitle}`,
+      applyChatUsage: args.applyChatUsage,
+      applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,
       currentTaskTitleOverride: resolvedTitle,
     });
@@ -99,7 +121,8 @@ export async function runPrepTaskFromInputFlow(
     args.setCurrentTaskDraft((prev) =>
       buildPreparedTaskDraftUpdate(prev, {
         title: resolvedTitle,
-        userInstruction: parsedInput.userInstruction,
+        userInstruction: nextUserInstruction,
+        taskTitleDebug: resolvedTitleResult.debug,
         body: taskText,
         searchContext: args.currentTaskDraft.searchContext ?? prev.searchContext,
         objective: (parsedInput.freeText || text).slice(0, 120),
@@ -108,6 +131,7 @@ export async function runPrepTaskFromInputFlow(
       })
     );
 
+    args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
@@ -133,7 +157,7 @@ export async function runUpdateTaskFromInputFlow(
 
   const additionalText = args.gptInput.trim();
   const parsedInput = args.applyPrefixedTaskFieldsFromText(additionalText);
-  const resolvedTitle = resolveUpdateTaskTitle({
+  const fallbackTitle = resolveUpdateTaskTitle({
     explicitTitle: parsedInput.title,
     currentTitle: args.currentTaskDraft.title,
     currentTaskName: args.currentTaskDraft.taskName,
@@ -142,6 +166,22 @@ export async function runUpdateTaskFromInputFlow(
     fallback: args.currentTaskDraft.title || "Task",
     getResolvedTaskTitle: args.getResolvedTaskTitle,
   });
+  const resolvedTitleResult = await resolveGeneratedTaskTitle({
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title || args.currentTaskDraft.taskName,
+    taskBody: currentTaskText,
+    additionalSource: parsedInput.freeText || additionalText,
+    userInstruction: mergeTaskTitleInstructions(
+      parsedInput.userInstruction,
+      args.currentTaskDraft.userInstruction
+    ),
+    fallbackTitle,
+  });
+  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const nextUserInstruction = resolveTaskDraftUserInstruction(
+    parsedInput.userInstruction,
+    args.currentTaskDraft.userInstruction
+  );
 
   const mergedInput = buildMergedTaskInput(
     currentTaskText,
@@ -149,8 +189,7 @@ export async function runUpdateTaskFromInputFlow(
     parsedInput.freeText || additionalText,
     {
       title: resolvedTitle,
-      userInstruction:
-        parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+      userInstruction: nextUserInstruction,
       searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
     }
   );
@@ -181,15 +220,6 @@ export async function runUpdateTaskFromInputFlow(
   try {
     const data = await runAutoPrepTask(mergedInput, "task-update");
     const taskText = formatTaskResultText(data?.parsed, data?.raw);
-    const finalizedTitle = resolveTaskTitleFromResult({
-      explicitTitle: parsedInput.title,
-      currentTitle: args.currentTaskDraft.title,
-      currentTaskName: args.currentTaskDraft.taskName,
-      resultText: taskText,
-      searchQuery: parsedInput.searchQuery,
-      fallback: resolvedTitle,
-      getResolvedTaskTitle: args.getResolvedTaskTitle,
-    });
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
@@ -208,10 +238,11 @@ export async function runUpdateTaskFromInputFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `繧ｿ繧ｹ繧ｯ譖ｴ譁ｰ: ${finalizedTitle}`,
-      applySummaryUsage: args.applySummaryUsage,
+      lastUserIntent: `郢ｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ隴厄ｽｴ隴・ｽｰ: ${resolvedTitle}`,
+      applyChatUsage: args.applyChatUsage,
+      applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,
-      currentTaskTitleOverride: finalizedTitle,
+      currentTaskTitleOverride: resolvedTitle,
     });
 
     const source = buildGptTaskUpdateSource(
@@ -220,14 +251,16 @@ export async function runUpdateTaskFromInputFlow(
 
     args.setCurrentTaskDraft((prev) =>
       buildPreparedTaskDraftUpdate(prev, {
-        title: finalizedTitle,
-        userInstruction: parsedInput.userInstruction,
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        taskTitleDebug: resolvedTitleResult.debug,
         body: taskText,
         preservePrepText: true,
         sources: [source],
       })
     );
 
+    args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
@@ -242,9 +275,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
 ) {
   if (args.gptLoading) return;
 
-  const lastGptMessage = [...args.gptMessages]
-    .reverse()
-    .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
+  const lastGptMessage = findLatestTransferableGptMessage(args.gptMessages);
 
   if (!lastGptMessage) {
     appendTaskInfoMessage(args.setGptMessages, "No recent GPT message was found.");
@@ -254,7 +285,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
   const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
   const directionInstruction = parsedInput.freeText || args.gptInput.trim();
   const currentTaskText = args.getTaskBaseText();
-  const resolvedTitle = resolveUpdateTaskTitle({
+  const fallbackTitle = resolveUpdateTaskTitle({
     explicitTitle: parsedInput.title,
     currentTitle: args.currentTaskDraft.title,
     currentTaskName: args.currentTaskDraft.taskName,
@@ -263,11 +294,28 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     fallback: args.currentTaskDraft.title || "Task",
     getResolvedTaskTitle: args.getResolvedTaskTitle,
   });
+  const resolvedTitleResult = await resolveGeneratedTaskTitle({
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title || args.currentTaskDraft.taskName,
+    taskBody: currentTaskText,
+    additionalSource: lastGptMessage.text.trim(),
+    userInstruction: mergeTaskTitleInstructions(
+      parsedInput.userInstruction,
+      directionInstruction,
+      args.currentTaskDraft.userInstruction
+    ),
+    fallbackTitle,
+  });
+  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const nextUserInstruction = resolveTaskDraftUserInstruction(
+    parsedInput.userInstruction,
+    directionInstruction,
+    args.currentTaskDraft.userInstruction
+  );
   const taskInput = currentTaskText
     ? buildTaskInput({
         title: resolvedTitle,
-        userInstruction:
-          parsedInput.userInstruction || args.currentTaskDraft.userInstruction,
+        userInstruction: nextUserInstruction,
         actionInstruction:
           directionInstruction ||
           "Review the latest GPT response, refine the task, and return an updated draft.",
@@ -277,8 +325,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     : buildTaskStructuredInput({
         title: resolvedTitle,
         userInstruction:
-          parsedInput.userInstruction ||
-          directionInstruction ||
+          nextUserInstruction ||
           "Review the latest GPT response and generate a clean task draft from it.",
         body: lastGptMessage.text.trim(),
         searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
@@ -298,15 +345,6 @@ export async function runUpdateTaskFromLastGptMessageFlow(
   try {
     const data = await runAutoPrepTask(taskInput, "task-update-last-gpt");
     const taskText = formatTaskResultText(data?.parsed, data?.raw);
-    const finalizedTitle = resolveTaskTitleFromResult({
-      explicitTitle: parsedInput.title,
-      currentTitle: args.currentTaskDraft.title,
-      currentTaskName: args.currentTaskDraft.taskName,
-      resultText: taskText,
-      searchQuery: parsedInput.searchQuery,
-      fallback: resolvedTitle,
-      getResolvedTaskTitle: args.getResolvedTaskTitle,
-    });
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
@@ -325,10 +363,11 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `譛譁ｰGPT繝ｬ繧ｹ縺九ｉ繧ｿ繧ｹ繧ｯ譖ｴ譁ｰ: ${finalizedTitle}`,
-      applySummaryUsage: args.applySummaryUsage,
+      lastUserIntent: `隴崢隴・ｽｰGPT郢晢ｽｬ郢ｧ・ｹ邵ｺ荵晢ｽ臥ｹｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ隴厄ｽｴ隴・ｽｰ: ${resolvedTitle}`,
+      applyChatUsage: args.applyChatUsage,
+      applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,
-      currentTaskTitleOverride: finalizedTitle,
+      currentTaskTitleOverride: resolvedTitle,
     });
 
     const source = buildLatestGptTaskSource({
@@ -338,8 +377,9 @@ export async function runUpdateTaskFromLastGptMessageFlow(
 
     args.setCurrentTaskDraft((prev) =>
       buildPreparedTaskDraftUpdate(prev, {
-        title: finalizedTitle,
-        userInstruction: parsedInput.userInstruction,
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        taskTitleDebug: resolvedTitleResult.debug,
         body: taskText,
         objective: (directionInstruction || lastGptMessage.text.trim()).slice(
           0,
@@ -349,6 +389,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       })
     );
 
+    args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
@@ -360,3 +401,5 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     args.setGptLoading(false);
   }
 }
+
+

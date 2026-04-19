@@ -83,21 +83,20 @@ export function buildTaskStructuredInput({
 
 export async function runFormatTaskForKin(
   inputText: string,
-  label = "task-draft"
+  label = "task-draft",
+  existingTitle?: string | null
 ) {
   return callTaskApi({
     type: "FORMAT_TASK",
     goal: "Convert the prepared task content into an executable Kin task block.",
     inputRef: label,
     inputSummary: inputText,
+    existingTitle,
     constraints: [
-      "Return the meta block in English.",
-      "Start with <<TASK>> and end with <<END_TASK>>.",
+      "Return only one executable <<TASK>> block.",
       "Use English section headers only.",
-      "Do not invent facts not explicitly present in the input.",
-      "If information is missing, put it under IF_MISSING.",
-      "Keep proper nouns, quoted names, and original identifiers as-is.",
-      "Make the task immediately executable by Kin.",
+      "Use TITLE only if an existing title is provided.",
+      "Do not create a new title when none is provided.",
       "Do not add explanation outside the task block.",
     ],
   });

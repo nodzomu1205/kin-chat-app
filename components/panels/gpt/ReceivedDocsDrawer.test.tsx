@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ReceivedDocsDrawer from "@/components/panels/gpt/ReceivedDocsDrawer";
 
 describe("ReceivedDocsDrawer", () => {
-  it("keeps Google Drive actions visible even when the library is empty", () => {
+  it("keeps Google Drive and device import actions visible even when the library is empty", () => {
     const html = renderToStaticMarkup(
       <ReceivedDocsDrawer
         multipartAssemblies={[]}
@@ -31,12 +31,14 @@ describe("ReceivedDocsDrawer", () => {
         onImportGoogleDriveFile={() => Promise.resolve()}
         onIndexGoogleDriveFolder={() => Promise.resolve()}
         onImportGoogleDriveFolder={() => Promise.resolve()}
+        onImportDeviceFile={() => Promise.resolve()}
+        deviceImportAccept=".txt,.md,.pdf,image/*"
       />
     );
 
-    expect(html).toContain('aria-label="Google Drive フォルダーを開く"');
-    expect(html).toContain('aria-label="Google Drive から取り込む"');
-    expect(html).toContain(">Google Drive<");
+    expect(html).toContain("Google Drive");
+    expect(html).toContain('aria-label="デバイスから取り込む"');
+    expect(html).toContain(">デバイス<");
   });
 
   it("uses mobile-safe wrapping styles for expanded content", () => {
@@ -85,6 +87,8 @@ describe("ReceivedDocsDrawer", () => {
         onImportGoogleDriveFile={() => Promise.resolve()}
         onIndexGoogleDriveFolder={() => Promise.resolve()}
         onImportGoogleDriveFolder={() => Promise.resolve()}
+        onImportDeviceFile={() => Promise.resolve()}
+        deviceImportAccept=".txt,.md,.pdf,image/*"
         isMobile
       />
     );

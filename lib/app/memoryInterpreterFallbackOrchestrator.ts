@@ -15,6 +15,7 @@ export type MemoryFallbackOrchestrationResult = {
   adjudication: MemoryTopicAdjudication;
   pendingCandidates: PendingMemoryRuleCandidate[];
   usedFallback: boolean;
+  fallbackUsage?: import("@/lib/app/gptMemoryStateHelpers").TokenUsage | null;
   debug?: {
     prompt: string;
     rawReply: string;
@@ -67,6 +68,7 @@ export async function orchestrateMemoryFallback(args: {
       adjudication: approvedAdjudication,
       pendingCandidates: [],
       usedFallback: false,
+      fallbackUsage: null,
     };
   }
 
@@ -78,7 +80,12 @@ export async function orchestrateMemoryFallback(args: {
       approvedRules: args.approvedRules,
     })
   ) {
-    return { adjudication: {}, pendingCandidates: [], usedFallback: false };
+    return {
+      adjudication: {},
+      pendingCandidates: [],
+      usedFallback: false,
+      fallbackUsage: null,
+    };
   }
 
   return resolveMemoryFallbackFlow({

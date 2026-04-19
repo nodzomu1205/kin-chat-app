@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveMemoryFallbackOptions } from "@/lib/app/memoryInterpreter";
 
 const fetchMock = vi.fn();
@@ -27,27 +27,27 @@ describe("memoryInterpreter", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await resolveMemoryFallbackOptions({
-      latestUserText: "最新ユーザー発話",
+      latestUserText: "latest user question",
       recentMessages: [
         {
           id: "g1",
           role: "gpt",
-          text: "最新のチャット系GPT通常レス",
+          text: "latest normal gpt reply",
           meta: { kind: "normal", sourceType: "gpt_input" },
         },
-        { id: "u0", role: "user", text: "さらに一個前の意味あるユーザー発話" },
-        { id: "u1", role: "user", text: "ひとつ前のユーザー発話" },
-        { id: "u2", role: "user", text: "最新ユーザー発話" },
+        { id: "u0", role: "user", text: "older user question" },
+        { id: "u1", role: "user", text: "earlier user question" },
+        { id: "u2", role: "user", text: "latest user question" },
       ],
       currentMemory: {
         facts: [],
         preferences: [],
         lists: {},
         context: {
-          currentTopic: "現在トピック",
-          currentTask: "現在タスク",
+          currentTopic: "Current Topic",
+          currentTask: "Current Task",
           followUpRule: "follow",
-          lastUserIntent: "直近意図",
+          lastUserIntent: "Last Intent",
         },
       },
       settings: {
@@ -61,12 +61,12 @@ describe("memoryInterpreter", () => {
     const [, request] = fetchMock.mock.calls[0];
     const payload = JSON.parse(String((request as RequestInit).body));
     expect(payload.mode).toBe("memory_interpret");
-    expect(payload.input).toContain("CURRENT_TOPIC: 現在トピック");
-    expect(payload.input).toContain("CURRENT_TASK: 現在タスク");
-    expect(payload.input).toContain("PRIOR_MEANINGFUL_TEXT: 最新のチャット系GPT通常レス");
-    expect(payload.input).toContain("EARLIER_MEANINGFUL_TEXT: ひとつ前のユーザー発話");
-    expect(payload.input).toContain("LATEST_USER_TEXT_START");
-    expect(payload.input).toContain("最新ユーザー発話");
+    expect(payload.input).toContain("TOPIC: Current Topic");
+    expect(payload.input).toContain("TASK: Current Task");
+    expect(payload.input).toContain("PRIOR: latest normal gpt reply");
+    expect(payload.input).toContain("EARLIER: earlier user question");
+    expect(payload.input).toContain("USER:");
+    expect(payload.input).toContain("latest user question");
   });
 
   it("creates a review candidate when keep is returned but a narrower subtopic is present", async () => {
@@ -87,26 +87,26 @@ describe("memoryInterpreter", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await resolveMemoryFallbackOptions({
-      latestUserText: "縄文時代についてもっと詳しく教えて",
+      latestUserText: "tell me more about the Edo period",
       recentMessages: [
         {
           id: "g1",
           role: "gpt",
-          text: "日本の歴史は古代から現代まで続いています。",
+          text: "We are discussing Japanese history.",
           meta: { kind: "normal", sourceType: "gpt_input" },
         },
-        { id: "u1", role: "user", text: "日本の歴史について教えて" },
-        { id: "u2", role: "user", text: "縄文時代についてもっと詳しく教えて" },
+        { id: "u1", role: "user", text: "tell me about Japanese history" },
+        { id: "u2", role: "user", text: "tell me more about the Edo period" },
       ],
       currentMemory: {
         facts: [],
         preferences: [],
         lists: {},
         context: {
-          currentTopic: "日本の歴史",
-          currentTask: "ユーザーは日本の歴史について知りたい",
+          currentTopic: "Japanese history",
+          currentTask: "Answer questions about Japanese history",
           followUpRule: "follow",
-          lastUserIntent: "日本の歴史について教えて",
+          lastUserIntent: "tell me about Japanese history",
         },
       },
       settings: {

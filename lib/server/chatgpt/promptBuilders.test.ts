@@ -41,7 +41,7 @@ describe("promptBuilders", () => {
     );
   });
 
-  it("builds strict base system prompt with long-term memory", () => {
+  it("builds the single unified base system prompt with long-term memory", () => {
     const memory = createEmptyMemory();
     memory.context.currentTopic = "Tokyo move";
     const result = buildBaseSystemPrompt({
@@ -49,21 +49,24 @@ describe("promptBuilders", () => {
       reasoningMode: "strict",
     });
 
-    expect(result).toContain("You are a strict factual assistant.");
-    expect(result).toContain("LONG-TERM MEMORY (JSON)");
+    expect(result).not.toContain("You are a helpful conversational assistant.");
+    expect(result).toContain("Prefer provided evidence over internal knowledge.");
+    expect(result).toContain("Use the long-term memory below only when relevant.");
+    expect(result).toContain("== LONG-TERM MEMORY (JSON) ==");
     expect(result).toContain("Tokyo move");
   });
 
-  it("builds creative search system prompt using search evidence", () => {
+  it("builds the unified search system prompt using search evidence", () => {
     const result = buildSearchSystemPrompt(
       "best schools in tokyo",
       "School A\nSchool B",
       "creative"
     );
 
-    expect(result).toContain("The user requested lookup with this query:");
+    expect(result).toContain("Search query:");
     expect(result).toContain("best schools in tokyo");
-    expect(result).toContain("SEARCH EVIDENCE START");
+    expect(result).toContain("Use only the evidence below for factual claims.");
+    expect(result).toContain("EVIDENCE START");
     expect(result).toContain("School A");
   });
 });

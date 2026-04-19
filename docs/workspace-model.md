@@ -204,7 +204,6 @@ Primary boundaries:
 - `useIngestActions`
 - `fileIngestFlow`
 - `ingestClient`
-- `ingestTaskDraftUpdates`
 
 Role:
 - external content intake
@@ -228,7 +227,6 @@ Current source-of-truth rules:
 - `ingestClient.ts` owns shared `/api/ingest` request/title/error handling.
 
 ### Ingest task-draft projection
-- `ingestTaskDraftUpdates.ts` owns shared attach/prep/deepen draft update shapes.
 
 ## Editing Guide
 

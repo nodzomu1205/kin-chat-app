@@ -17,59 +17,83 @@ import {
   REJECTED_INTENT_CANDIDATES_KEY,
 } from "@/lib/app/chatPageStorageKeys";
 import { loadProtocolIntentSettingsState } from "@/lib/app/protocolIntentSettingsState";
+import {
+  DEFAULT_PROTOCOL_PROMPT,
+  DEFAULT_PROTOCOL_RULEBOOK,
+} from "@/lib/app/kinProtocolDefaults";
 
 export function useProtocolIntentSettings() {
-  const [initialState] = useState(() =>
-    loadProtocolIntentSettingsState(
-      typeof window === "undefined" ? null : window.localStorage
-    )
-  );
   const [pendingIntentCandidates, setPendingIntentCandidates] = useState<
     PendingIntentCandidate[]
-  >(initialState.pendingIntentCandidates);
+  >([]);
   const [approvedIntentPhrases, setApprovedIntentPhrases] = useState<
     ApprovedIntentPhrase[]
-  >(initialState.approvedIntentPhrases);
+  >([]);
   const [rejectedIntentCandidateSignatures, setRejectedIntentCandidateSignatures] =
-    useState<string[]>(initialState.rejectedIntentCandidateSignatures);
-  const [protocolPrompt, setProtocolPrompt] = useState(initialState.protocolPrompt);
-  const [protocolRulebook, setProtocolRulebook] = useState(
-    initialState.protocolRulebook
-  );
+    useState<string[]>([]);
+  const [protocolPrompt, setProtocolPrompt] = useState(DEFAULT_PROTOCOL_PROMPT);
+  const [protocolRulebook, setProtocolRulebook] = useState(DEFAULT_PROTOCOL_RULEBOOK);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    const initialState = loadProtocolIntentSettingsState(
+      typeof window === "undefined" ? null : window.localStorage
+    );
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setPendingIntentCandidates(initialState.pendingIntentCandidates);
+      setApprovedIntentPhrases(initialState.approvedIntentPhrases);
+      setRejectedIntentCandidateSignatures(
+        initialState.rejectedIntentCandidateSignatures
+      );
+      setProtocolPrompt(initialState.protocolPrompt);
+      setProtocolRulebook(initialState.protocolRulebook);
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PROTOCOL_PROMPT_KEY, protocolPrompt);
-  }, [protocolPrompt]);
+  }, [hydrated, protocolPrompt]);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (typeof window === "undefined") return;
     window.localStorage.setItem(PROTOCOL_RULEBOOK_KEY, protocolRulebook);
-  }, [protocolRulebook]);
+  }, [hydrated, protocolRulebook]);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
       PENDING_INTENT_CANDIDATES_KEY,
       JSON.stringify(pendingIntentCandidates.map(normalizePendingIntentCandidate))
     );
-  }, [pendingIntentCandidates]);
+  }, [hydrated, pendingIntentCandidates]);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
       APPROVED_INTENT_PHRASES_KEY,
       JSON.stringify(approvedIntentPhrases.map(normalizeApprovedIntentPhrase))
     );
-  }, [approvedIntentPhrases]);
+  }, [approvedIntentPhrases, hydrated]);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
       REJECTED_INTENT_CANDIDATES_KEY,
       JSON.stringify(rejectedIntentCandidateSignatures)
     );
-  }, [rejectedIntentCandidateSignatures]);
+  }, [hydrated, rejectedIntentCandidateSignatures]);
 
   return {
     pendingIntentCandidates,

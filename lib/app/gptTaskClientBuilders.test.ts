@@ -65,7 +65,39 @@ describe("gptTaskClient builders", () => {
         priority: "HIGH",
         visibility: "INTERNAL",
         responseMode: "STRUCTURED_RESULT",
-        groundingMode: "STRICT",
+      },
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("keeps format-task titles optional and explicit", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-18T12:00:00Z"));
+
+    expect(
+      buildTaskApiRequestBody({
+        type: "FORMAT_TASK",
+        goal: "format",
+        inputRef: "ref",
+        inputSummary: "summary",
+        constraints: ["a"],
+        existingTitle: "Existing title",
+      })
+    ).toEqual({
+      task: {
+        type: "FORMAT_TASK",
+        taskId: "task-1776513600000",
+        dataKind: "document_package",
+        goal: "format",
+        inputRef: "ref",
+        inputSummary: "summary",
+        constraints: ["a"],
+        outputFormat: "sections",
+        priority: "HIGH",
+        visibility: "INTERNAL",
+        responseMode: "STRUCTURED_RESULT",
+        existingTitle: "Existing title",
       },
     });
 

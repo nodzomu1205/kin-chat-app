@@ -101,7 +101,7 @@ export type ChatPageControllerCompositionArgs = {
     setUploadKind: UseChatPageActionsArgs["setUploadKind"];
     applySearchUsage: UseChatPageActionsArgs["applySearchUsage"];
     applyChatUsage: UseChatPageActionsArgs["applyChatUsage"];
-    applySummaryUsage: UseChatPageActionsArgs["applySummaryUsage"];
+    applyCompressionUsage: UseChatPageActionsArgs["applyCompressionUsage"];
     applyTaskUsage: UseChatPageActionsArgs["applyTaskUsage"];
     applyIngestUsage: UseChatPageActionsArgs["applyIngestUsage"];
     buildLibraryReferenceContext: () => string;
@@ -131,3 +131,4 @@ export type ChatPageControllerResetArgs =
   ChatPageControllerCompositionArgs["reset"];
 export type ChatPageControllerAutomationArgs =
   ChatPageControllerCompositionArgs["automation"];
+

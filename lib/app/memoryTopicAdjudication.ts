@@ -106,7 +106,7 @@ export function buildFallbackTopicAdjudication(params: {
     params.parsedDecision === "keep" ||
     params.parsedDecision === "unsure";
 
-  if (canSeedInitialTopic && (params.parsedConfidence ?? 0) >= 0.6) {
+  if (canSeedInitialTopic) {
     return buildCommittedTopicAdjudication({
       topic: proposedTopic,
       trackedEntityOverride: params.trackedEntityOverride || proposedTopic,

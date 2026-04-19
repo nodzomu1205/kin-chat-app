@@ -36,7 +36,7 @@ type Props = Pick<
   | "onShowLibraryItemInChat"
   | "onSendLibraryItemToKin"
   | "onUploadLibraryItemToGoogleDrive"
-> &
+  > &
   Pick<
     GptPanelSettingsProps,
     | "libraryReferenceCount"
@@ -48,6 +48,9 @@ type Props = Pick<
   > & {
   initialTab?: LibraryTab;
   isMobile?: boolean;
+  onImportDeviceFile: (file: File) => void | Promise<void>;
+  deviceImportAccept: string;
+  deviceImportDisabled?: boolean;
 };
 
 function tabButton(active: boolean): React.CSSProperties {
@@ -109,6 +112,9 @@ export default function ReceivedDocsDrawer({
   onImportGoogleDriveFolder,
   initialTab = "all",
   isMobile = false,
+  onImportDeviceFile,
+  deviceImportAccept,
+  deviceImportDisabled = false,
 }: Props) {
   const [activeTab, setActiveTab] = useState<LibraryTab>(initialTab);
   const [driveImportMenuOpen, setDriveImportMenuOpen] = useState(false);
@@ -117,6 +123,7 @@ export default function ReceivedDocsDrawer({
   const [draftTitle, setDraftTitle] = useState("");
   const [draftSummary, setDraftSummary] = useState("");
   const [draftText, setDraftText] = useState("");
+  const deviceInputId = React.useId();
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -217,7 +224,6 @@ export default function ReceivedDocsDrawer({
             >
               <span style={driveLabelStyle}>Google Drive</span>
               <span style={driveClusterStyle}>
-                <span>△</span>
                 <span>📁</span>
               </span>
             </button>
@@ -231,10 +237,47 @@ export default function ReceivedDocsDrawer({
             >
               <span style={driveLabelStyle}>Google Drive</span>
               <span style={driveClusterStyle}>
-                <span>△</span>
                 <span>⤵</span>
               </span>
             </button>
+            <label
+              htmlFor={deviceInputId}
+              style={{
+                ...driveActionButtonStyle,
+                cursor: deviceImportDisabled ? "default" : "pointer",
+                opacity: deviceImportDisabled ? 0.6 : 1,
+              }}
+              title="デバイスから取り込む"
+              aria-label="デバイスから取り込む"
+            >
+              <span style={driveLabelStyle}>デバイス</span>
+              <span style={driveClusterStyle}>
+                <span>⤵</span>
+              </span>
+            </label>
+            <input
+              id={deviceInputId}
+              type="file"
+              accept={deviceImportAccept}
+              disabled={deviceImportDisabled}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = "";
+                if (!file || deviceImportDisabled) return;
+                void onImportDeviceFile(file);
+              }}
+              style={{
+                position: "absolute",
+                width: 1,
+                height: 1,
+                padding: 0,
+                margin: -1,
+                overflow: "hidden",
+                clip: "rect(0, 0, 0, 0)",
+                whiteSpace: "nowrap",
+                border: 0,
+              }}
+            />
           </div>
 
           {driveImportMenuOpen ? (

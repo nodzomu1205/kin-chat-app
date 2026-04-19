@@ -12,6 +12,7 @@ import {
 } from "@/lib/app/memoryInterpreterFallbackOrchestrator";
 import type { Message } from "@/types/chat";
 import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import type { TokenUsage } from "@/lib/app/gptMemoryStateHelpers";
 
 export type MemoryInterpreterOptions = {
   topicAdjudication?: MemoryTopicAdjudication;
@@ -41,10 +42,17 @@ export async function resolveMemoryFallbackOptions(args: {
   adjudication: MemoryTopicAdjudication;
   pendingCandidates: PendingMemoryRuleCandidate[];
   usedFallback: boolean;
+  fallbackUsage?: TokenUsage | null;
+  fallbackUsageDetails?: Record<string, unknown> | null;
+  fallbackMetrics?: {
+    promptChars: number;
+    rawReplyChars: number;
+  } | null;
   debug?: {
     prompt: string;
     rawReply: string;
     parsed: unknown;
+    usageDetails?: Record<string, unknown> | null;
   };
 }> {
   return orchestrateMemoryFallback({

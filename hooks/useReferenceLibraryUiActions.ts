@@ -5,27 +5,40 @@ import {
   buildLibraryItemKinSysInfo,
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/referenceLibraryItemActions";
+import type { GptMemoryRuntime } from "@/lib/app/chatPageGptMemoryControls";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
+import type { ConversationUsageOptions, normalizeUsage } from "@/lib/tokenStats";
 
 type UseReferenceLibraryUiActionsArgs = {
   getLibraryItemById: (itemId: string) => ReferenceLibraryItem | null;
+  gptMessages: Message[];
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   setKinInput: React.Dispatch<React.SetStateAction<string>>;
   focusGptPanel: () => boolean;
   focusKinPanel: () => boolean;
+  gptMemoryRuntime: GptMemoryRuntime;
+  applyChatUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   openGoogleDriveFolder: () => boolean;
   importGoogleDriveFilePicker: () => void | Promise<void>;
   indexGoogleDriveFolderPicker: () => void | Promise<void>;
   importGoogleDriveFolderPicker: () => void | Promise<void>;
   uploadLibraryItemToDrivePicker: (
     item: ReferenceLibraryItem
-  ) => boolean | Promise<boolean>;
+  ) =>
+    | "uploaded"
+    | "unavailable"
+    | "cancelled"
+    | Promise<"uploaded" | "unavailable" | "cancelled">;
 };
 
 function createLibraryUiMessage(text: string): Message {
   return {
     id: `library-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    role: "user",
+    role: "gpt",
     text,
     meta: {
       kind: "task_info",
@@ -47,10 +60,14 @@ function downloadTextFile(fileName: string, text: string) {
 
 export function useReferenceLibraryUiActions({
   getLibraryItemById,
+  gptMessages,
   setGptMessages,
   setKinInput,
   focusGptPanel,
   focusKinPanel,
+  gptMemoryRuntime,
+  applyChatUsage,
+  applyCompressionUsage,
   openGoogleDriveFolder,
   importGoogleDriveFilePicker,
   indexGoogleDriveFolderPicker,
@@ -62,7 +79,6 @@ export function useReferenceLibraryUiActions({
       let changed = false;
       const next = prev.map((message) => {
         if (
-          message.role !== "user" ||
           message.meta?.kind !== "task_info" ||
           message.meta?.sourceType !== "manual"
         ) {
@@ -82,14 +98,28 @@ export function useReferenceLibraryUiActions({
     });
   }, [setGptMessages]);
 
-  const showLibraryItemInChat = (itemId: string) => {
+  const showLibraryItemInChat = async (itemId: string) => {
     const item = getLibraryItemById(itemId);
     if (!item) return;
-    setGptMessages((prev) => [
-      ...prev,
+    const nextMessages = [
+      ...gptMessages,
       createLibraryUiMessage(buildLibraryItemChatDisplayText(item)),
-    ]);
+    ];
+    setGptMessages(nextMessages);
     focusGptPanel();
+    const updatedRecent = nextMessages.slice(-gptMemoryRuntime.chatRecentLimit);
+    const memoryResult = await gptMemoryRuntime.handleGptMemory(updatedRecent, {});
+    if (memoryResult.fallbackUsage) {
+      applyChatUsage(memoryResult.fallbackUsage, {
+        mergeIntoLast: true,
+        followupMetrics: memoryResult.fallbackMetrics,
+        followupUsageDetails: memoryResult.fallbackUsageDetails,
+        followupDebug: memoryResult.fallbackDebug,
+      });
+    }
+    if (memoryResult.compressionUsage) {
+      applyCompressionUsage(memoryResult.compressionUsage);
+    }
   };
 
   const sendLibraryItemToKin = (itemId: string) => {
@@ -104,15 +134,15 @@ export function useReferenceLibraryUiActions({
     if (!item) return;
     const maybeUploaded = uploadLibraryItemToDrivePicker(item);
     if (maybeUploaded instanceof Promise) {
-      void maybeUploaded.then((uploaded) => {
-        if (uploaded) return;
+      void maybeUploaded.then((status) => {
+        if (status === "uploaded" || status === "cancelled") return;
         const artifact = buildLibraryItemDriveExport(item);
         downloadTextFile(artifact.fileName, artifact.text);
         openGoogleDriveFolder();
       });
       return;
     }
-    if (maybeUploaded) return;
+    if (maybeUploaded === "uploaded" || maybeUploaded === "cancelled") return;
     const artifact = buildLibraryItemDriveExport(item);
     downloadTextFile(artifact.fileName, artifact.text);
     openGoogleDriveFolder();
@@ -133,3 +163,4 @@ export function useReferenceLibraryUiActions({
     importGoogleDriveFolder,
   };
 }
+

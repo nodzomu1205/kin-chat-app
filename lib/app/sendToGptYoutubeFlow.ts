@@ -16,10 +16,22 @@ import type { Memory } from "@/lib/memory";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { Message } from "@/types/chat";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
 
 type MemoryResultLike = {
-  summaryUsage?: Parameters<typeof normalizeUsage>[0];
+  compressionUsage?: Parameters<typeof normalizeUsage>[0];
+  fallbackUsage?: Parameters<typeof normalizeUsage>[0];
+  fallbackUsageDetails?: Record<string, unknown> | null;
+  fallbackMetrics?: {
+    promptChars: number;
+    rawReplyChars: number;
+  } | null;
+  fallbackDebug?: {
+    prompt: string;
+    rawReply: string;
+    parsed: unknown;
+    usageDetails?: Record<string, unknown> | null;
+  } | null;
 };
 
 export async function handleYoutubeTranscriptFlow(args: {
@@ -63,7 +75,11 @@ export async function handleYoutubeTranscriptFlow(args: {
     recent: Message[],
     options?: MemoryUpdateOptions
   ) => Promise<MemoryResultLike>;
-  applySummaryUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyChatUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: ConversationUsageOptions
+  ) => void;
+  applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }): Promise<boolean> {
   const transcriptUrl = args.youtubeTranscriptRequestEvent.url?.trim();
   if (!transcriptUrl) return false;
@@ -160,7 +176,17 @@ export async function handleYoutubeTranscriptFlow(args: {
     const memoryResult = await args.handleGptMemory(updatedRecent, {
       previousCommittedTopic: memoryContext.previousCommittedTopic,
     });
-    args.applySummaryUsage(memoryResult.summaryUsage);
+    if (memoryResult.fallbackUsage) {
+      args.applyChatUsage(memoryResult.fallbackUsage, {
+        mergeIntoLast: true,
+        followupMetrics: memoryResult.fallbackMetrics,
+        followupUsageDetails: memoryResult.fallbackUsageDetails,
+        followupDebug: memoryResult.fallbackDebug,
+      });
+    }
+    if (memoryResult.compressionUsage) {
+      args.applyCompressionUsage(memoryResult.compressionUsage);
+    }
   } catch (error) {
     console.error(error);
     const failureState = buildYoutubeTranscriptFailureState({
@@ -181,3 +207,4 @@ export async function handleYoutubeTranscriptFlow(args: {
 
   return true;
 }
+

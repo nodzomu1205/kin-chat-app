@@ -6,19 +6,7 @@ export function shouldSummarizeMemoryUpdate(params: {
   candidateMemory: Memory;
   settings: MemorySettings;
 }) {
-  const { trimmedRecent, candidateMemory, settings } = params;
-  const memoryCapacity =
-    settings.chatRecentLimit + settings.maxFacts + settings.maxPreferences;
-  const recentEligible = trimmedRecent.length >= settings.summarizeThreshold;
-  const recentIsFull = trimmedRecent.length >= settings.chatRecentLimit;
-  const totalPressure =
-    trimmedRecent.length +
-    candidateMemory.facts.length +
-    candidateMemory.preferences.length;
-  const memoryIsOverCapacity = totalPressure > memoryCapacity;
-
-  return (
-    (recentEligible && recentIsFull) ||
-    (recentEligible && memoryIsOverCapacity)
-  );
+  const { trimmedRecent, settings } = params;
+  return trimmedRecent.length >= settings.summarizeThreshold;
 }
+

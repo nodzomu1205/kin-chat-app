@@ -110,7 +110,6 @@ function buildWorkspaceActionsGpt(args: ChatPageWorkspaceActionsGpt) {
     onChangeImageDetail: args.onChangeImageDetail,
     onChangeCompactCharLimit: args.onChangeCompactCharLimit,
     onChangeSimpleImageCharLimit: args.onChangeSimpleImageCharLimit,
-    onChangePostIngestAction: args.onChangePostIngestAction,
     onChangeFileReadPolicy: args.onChangeFileReadPolicy,
     onChangeDriveImportAutoSummary: args.onChangeDriveImportAutoSummary,
   } satisfies ChatPageWorkspaceActionsGpt;
@@ -173,4 +172,3 @@ export function buildChatPageWorkspaceActions(
     reset: buildWorkspaceActionsReset(args.reset),
   } satisfies ChatPageWorkspaceCompositionActions;
 }
-

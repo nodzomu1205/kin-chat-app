@@ -16,6 +16,13 @@ import type {
 } from "@/components/panels/gpt/gptPanelTypes";
 import type { LocalMemorySettingsInput } from "@/components/panels/gpt/gptPanelHelpers";
 
+function getDeviceImportAccept(kind: GptPanelSettingsProps["uploadKind"]) {
+  if (kind === "image" || kind === "pdf" || kind === "mixed") {
+    return ".pdf,image/*";
+  }
+  return ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
+}
+
 type Props = {
   activeDrawer: DrawerMode;
   header: GptPanelHeaderProps;
@@ -63,6 +70,17 @@ export default function GptDrawerRouter({
   setShowMemoryContent,
   toPositiveInt,
 }: Props) {
+  const handleImportDeviceFile = async (file: File) => {
+    await chat.onInjectFile(file, {
+      kind: settings.uploadKind,
+      mode: settings.ingestMode,
+      detail: settings.imageDetail,
+      readPolicy: settings.fileReadPolicy,
+      compactCharLimit: settings.compactCharLimit,
+      simpleImageCharLimit: settings.simpleImageCharLimit,
+    });
+  };
+
   if (activeDrawer === "memory") {
     return (
       <GptMetaDrawer
@@ -169,6 +187,9 @@ export default function GptDrawerRouter({
         onImportGoogleDriveFile={settings.onImportGoogleDriveFile}
         onIndexGoogleDriveFolder={settings.onIndexGoogleDriveFolder}
         onImportGoogleDriveFolder={settings.onImportGoogleDriveFolder}
+        onImportDeviceFile={handleImportDeviceFile}
+        deviceImportAccept={getDeviceImportAccept(settings.uploadKind)}
+        deviceImportDisabled={settings.ingestLoading || !settings.canInjectFile}
         isMobile={header.isMobile}
       />
     );
@@ -219,8 +240,6 @@ export default function GptDrawerRouter({
           });
         }}
         memoryCapacityPreview={memoryCapacityPreview}
-        responseMode={settings.responseMode}
-        onChangeResponseMode={settings.onChangeResponseMode}
         ingestMode={settings.ingestMode}
         onChangeIngestMode={settings.onChangeIngestMode}
         imageDetail={settings.imageDetail}
@@ -291,3 +310,4 @@ export default function GptDrawerRouter({
 
   return null;
 }
+

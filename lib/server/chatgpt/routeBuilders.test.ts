@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { createEmptyMemory } from "@/lib/memory";
 import {
   buildChatCompletionMessages,
+  buildChatPromptMetrics,
   buildChatSearchPayload,
+  buildMemoryCompactionPrompt,
   buildMemoryUpdatePrompt,
   wantsGoogleMapsLink,
 } from "@/lib/server/chatgpt/routeBuilders";
@@ -60,6 +62,57 @@ describe("routeBuilders", () => {
     });
   });
 
+  it("measures the exact chat prompt payload from built messages", () => {
+    const normalizedMemory = createEmptyMemory();
+    const messages = buildChatCompletionMessages({
+      normalizedMemory,
+      reasoningMode: "strict",
+      instructionMode: "reply_only",
+      input: "hello",
+      recentMessages: [
+        { role: "user", text: "older user" },
+        { role: "assistant", text: "older assistant" },
+      ],
+      storedLibraryContext: "library ctx",
+      storedSearchContext: "search ctx",
+      storedDocumentContext: "doc ctx",
+      searchQuery: "farmers 360",
+      searchText: "search evidence",
+    });
+
+    const metrics = buildChatPromptMetrics({
+      messages,
+      normalizedMemory,
+      reasoningMode: "strict",
+      instructionMode: "reply_only",
+      input: "hello",
+      recentMessages: [
+        { role: "user", text: "older user" },
+        { role: "assistant", text: "older assistant" },
+      ],
+      storedLibraryContext: "library ctx",
+      storedSearchContext: "search ctx",
+      storedDocumentContext: "doc ctx",
+      searchQuery: "farmers 360",
+      searchText: "search evidence",
+    });
+
+    expect(metrics.messageCount).toBe(messages.length);
+    expect(metrics.systemMessageCount).toBe(5);
+    expect(metrics.recentMessageCount).toBe(2);
+    expect(metrics.storedLibraryChars).toBe("library ctx".length);
+    expect(metrics.storedSearchChars).toBe("search ctx".length);
+    expect(metrics.storedDocumentChars).toBe("doc ctx".length);
+    expect(metrics.recentChars).toBe(
+      "older user".length + "older assistant".length
+    );
+    expect(metrics.rawInputChars).toBe("hello".length);
+    expect(metrics.wrappedInputChars).toBeGreaterThan(metrics.rawInputChars);
+    expect(metrics.totalChars).toBe(
+      messages.reduce((sum, message) => sum + message.content.length, 0)
+    );
+  });
+
   it("builds the memory update prompt from normalized memory and messages", () => {
     const prompt = buildMemoryUpdatePrompt({
       normalizedMemory: createEmptyMemory(),
@@ -69,5 +122,17 @@ describe("routeBuilders", () => {
     expect(prompt).toContain("You are a memory updater for a chat system.");
     expect(prompt).toContain("Existing memory JSON:");
     expect(prompt).toContain("user: hello");
+  });
+
+  it("builds the memory compaction prompt from normalized memory and messages", () => {
+    const prompt = buildMemoryCompactionPrompt({
+      normalizedMemory: createEmptyMemory(),
+      safeMessages: [{ role: "user", text: "hello" }],
+      recentKeep: 4,
+    });
+
+    expect(prompt).toContain("chat history compactor");
+    expect(prompt).toContain("memory JSON below is already the authoritative state");
+    expect(prompt).toContain("The newest 4 messages will be kept verbatim");
   });
 });

@@ -59,7 +59,7 @@ function buildWorkspaceServicesUsage(args: ChatPageWorkspaceServicesUsage) {
   return {
     applySearchUsage: args.applySearchUsage,
     applyChatUsage: args.applyChatUsage,
-    applySummaryUsage: args.applySummaryUsage,
+    applyCompressionUsage: args.applyCompressionUsage,
     applyTaskUsage: args.applyTaskUsage,
     applyIngestUsage: args.applyIngestUsage,
     recordIngestedDocument: args.recordIngestedDocument,
@@ -78,4 +78,5 @@ export function buildChatPageWorkspaceServices(
     usage: buildWorkspaceServicesUsage(args.usage),
   } satisfies ChatPageWorkspaceCompositionServices;
 }
+
 

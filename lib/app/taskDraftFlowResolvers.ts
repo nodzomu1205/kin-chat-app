@@ -33,46 +33,6 @@ export function resolveUpdateTaskTitle(params: {
   });
 }
 
-export function resolveTaskTitleFromResult(params: {
-  explicitTitle?: string;
-  currentTitle?: string;
-  currentTaskName?: string;
-  resultText: string;
-  searchQuery?: string;
-  fallback?: string;
-  getResolvedTaskTitle: (params: {
-    explicitTitle?: string;
-    freeText?: string;
-    searchQuery?: string;
-    fallback?: string;
-  }) => string;
-}) {
-  if (params.explicitTitle?.trim()) {
-    return params.getResolvedTaskTitle({
-      explicitTitle: params.explicitTitle,
-      freeText: params.resultText,
-      searchQuery: params.searchQuery,
-      fallback: params.fallback,
-    });
-  }
-
-  const inferred = params.getResolvedTaskTitle({
-    freeText: params.resultText,
-    searchQuery: params.searchQuery,
-    fallback: params.fallback,
-  });
-  if (inferred?.trim()) {
-    return inferred;
-  }
-
-  return (
-    params.currentTitle?.trim() ||
-    params.currentTaskName?.trim() ||
-    params.fallback ||
-    "Task"
-  );
-}
-
 export function buildGptTaskPrepSource(text: string) {
   return createTaskSource("gpt_chat", "GPT task prep", text);
 }

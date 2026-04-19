@@ -24,7 +24,19 @@ export async function prepareCandidateMemoryUpdate(params: {
   trimmedRecent: Message[];
   candidateMemory: Memory;
   needsSummary: boolean;
-  summaryUsage: TokenUsage | null;
+  compressionUsage: TokenUsage | null;
+  fallbackUsage: TokenUsage | null;
+  fallbackUsageDetails: Record<string, unknown> | null;
+  fallbackMetrics: {
+    promptChars: number;
+    rawReplyChars: number;
+  } | null;
+  fallbackDebug: {
+    prompt: string;
+    rawReply: string;
+    parsed: unknown;
+    usageDetails?: Record<string, unknown> | null;
+  } | null;
   filteredPendingCandidates: Awaited<
     ReturnType<typeof resolveMemoryFallbackOptions>
   >["pendingCandidates"];
@@ -42,7 +54,15 @@ export async function prepareCandidateMemoryUpdate(params: {
         settings: params.memoryInterpreterSettings,
         approvedRules: params.approvedRules,
       })
-    : { adjudication: {}, pendingCandidates: [], usedFallback: false };
+    : {
+        adjudication: {},
+        pendingCandidates: [],
+        usedFallback: false,
+        fallbackUsage: null,
+        fallbackUsageDetails: null,
+        fallbackMetrics: null,
+        debug: undefined,
+      };
 
   const effectiveFallbackResult = suppressRejectedFallbackOptions({
     fallbackResult,
@@ -64,17 +84,6 @@ export async function prepareCandidateMemoryUpdate(params: {
     settings: params.settings,
     options: memoryUpdateOptions,
   });
-  if (fallbackResult.usedFallback && fallbackResult.debug) {
-    candidateMemory.lists = {
-      ...candidateMemory.lists,
-      memoryInterpretDebug: {
-        latestUserText,
-        prompt: fallbackResult.debug.prompt,
-        rawReply: fallbackResult.debug.rawReply,
-        parsed: fallbackResult.debug.parsed,
-      },
-    };
-  }
   const needsSummary = shouldSummarizeMemoryUpdate({
     trimmedRecent,
     candidateMemory,
@@ -85,7 +94,12 @@ export async function prepareCandidateMemoryUpdate(params: {
     trimmedRecent,
     candidateMemory,
     needsSummary,
-    summaryUsage: null,
+    compressionUsage: null,
+    fallbackUsage: effectiveFallbackResult.fallbackUsage ?? null,
+    fallbackUsageDetails: effectiveFallbackResult.fallbackUsageDetails ?? null,
+    fallbackMetrics: effectiveFallbackResult.fallbackMetrics ?? null,
+    fallbackDebug: effectiveFallbackResult.debug ?? null,
     filteredPendingCandidates,
   };
 }
+

@@ -7,10 +7,12 @@ import {
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
 import { buildKinDirectiveLines } from "@/lib/app/transformIntent";
 import type { TransformIntent } from "@/lib/app/transformIntent";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { addUsage, emptyUsage, normalizeUsage } from "@/lib/tokenStats";
+import type { BucketUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
 import type { TaskIntent } from "@/types/taskProtocol";
+import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
 
 type ResolveTransformIntentResult = {
   intent: TransformIntent;
@@ -21,7 +23,6 @@ type ResolveTaskIntentResult = {
   intent: TaskIntent;
   usage?: Parameters<typeof normalizeUsage>[0];
   pendingCandidates: PendingIntentCandidate[];
-  suggestedTitle?: string | null;
 };
 
 type SendLatestGptContentToKinArgs = {
@@ -54,7 +55,10 @@ type SendLatestGptContentToKinArgs = {
     originalInstruction?: string;
   }) => void;
   responseMode: "strict" | "creative";
-  applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyTaskUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: BucketUsageOptions
+  ) => void;
   shouldTransformContent: (intent: TransformIntent) => boolean;
   transformTextWithIntent: (args: {
     text: string;
@@ -95,9 +99,15 @@ export async function sendLatestGptContentToKinFlow({
   getTaskSlotLabel,
   setActiveTabToKin,
 }: SendLatestGptContentToKinArgs) {
-  const last = [...gptMessages]
-    .reverse()
-    .find((m) => m.role === "gpt" && typeof m.text === "string" && m.text.trim());
+  let accumulatedTaskUsage = emptyUsage();
+  const addTaskUsage = (usage: Parameters<typeof normalizeUsage>[0]) => {
+    accumulatedTaskUsage = addUsage(accumulatedTaskUsage, normalizeUsage(usage));
+  };
+  const flushTaskUsage = () => {
+    applyTaskUsage(accumulatedTaskUsage);
+  };
+
+  const last = findLatestTransferableGptMessage(gptMessages);
 
   if (!last) {
     setGptMessages((prev) => [
@@ -117,7 +127,7 @@ export async function sendLatestGptContentToKinFlow({
     defaultMode: "sys_info",
     responseMode,
   });
-  applyTaskUsage(usage);
+  addTaskUsage(usage);
 
   let content = last.text.trim();
 
@@ -127,7 +137,7 @@ export async function sendLatestGptContentToKinFlow({
       approvedPhrases: approvedIntentPhrases,
       responseMode,
     });
-    applyTaskUsage(resolved.usage);
+    addTaskUsage(resolved.usage);
     if (resolved.pendingCandidates.length > 0) {
       mergePendingIntentCandidates(resolved.pendingCandidates);
     }
@@ -135,7 +145,6 @@ export async function sendLatestGptContentToKinFlow({
     const started = startTask({
       originalInstruction: directiveText || content,
       intent: resolved.intent,
-      title: resolved.suggestedTitle || undefined,
     });
 
     syncTaskDraftFromProtocol({
@@ -168,6 +177,7 @@ export async function sendLatestGptContentToKinFlow({
         },
       },
     ]);
+    flushTaskUsage();
     setActiveTabToKin?.();
     return;
   }
@@ -181,7 +191,7 @@ export async function sendLatestGptContentToKinFlow({
         responseMode,
       });
       content = transformed.text.trim() || content;
-      applyTaskUsage(transformed.usage);
+      addTaskUsage(transformed.usage);
     } catch (error) {
       console.error(error);
       setGptMessages((prev) => [
@@ -219,6 +229,7 @@ export async function sendLatestGptContentToKinFlow({
       },
     },
   ]);
+  flushTaskUsage();
   setActiveTabToKin?.();
 }
 
@@ -255,7 +266,10 @@ type SendCurrentTaskContentToKinArgs = {
     originalInstruction?: string;
   }) => void;
   responseMode: "strict" | "creative";
-  applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyTaskUsage: (
+    usage: Parameters<typeof normalizeUsage>[0],
+    options?: BucketUsageOptions
+  ) => void;
   shouldTransformContent: (intent: TransformIntent) => boolean;
   transformTextWithIntent: (args: {
     text: string;
@@ -317,6 +331,14 @@ export async function sendCurrentTaskContentToKinFlow({
   getTaskSlotLabel,
   setActiveTabToKin,
 }: SendCurrentTaskContentToKinArgs) {
+  let accumulatedTaskUsage = emptyUsage();
+  const addTaskUsage = (usage: Parameters<typeof normalizeUsage>[0]) => {
+    accumulatedTaskUsage = addUsage(accumulatedTaskUsage, normalizeUsage(usage));
+  };
+  const flushTaskUsage = () => {
+    applyTaskUsage(accumulatedTaskUsage);
+  };
+
   const rawDirective = gptInput.trim();
 
   if (rawDirective && looksLikeTaskInstruction(rawDirective)) {
@@ -330,7 +352,7 @@ export async function sendCurrentTaskContentToKinFlow({
     defaultMode: "sys_task",
     responseMode,
   });
-  applyTaskUsage(usage);
+  addTaskUsage(usage);
 
   if (!sourceText && intent.mode === "sys_task" && rawDirective) {
     const resolved = await resolveTaskIntent({
@@ -338,7 +360,7 @@ export async function sendCurrentTaskContentToKinFlow({
       approvedPhrases: approvedIntentPhrases,
       responseMode,
     });
-    applyTaskUsage(resolved.usage);
+    addTaskUsage(resolved.usage);
     if (resolved.pendingCandidates.length > 0) {
       mergePendingIntentCandidates(resolved.pendingCandidates);
     }
@@ -346,7 +368,6 @@ export async function sendCurrentTaskContentToKinFlow({
     const started = startTask({
       originalInstruction: rawDirective,
       intent: resolved.intent,
-      title: resolved.suggestedTitle || undefined,
     });
 
     syncTaskDraftFromProtocol({
@@ -370,6 +391,7 @@ export async function sendCurrentTaskContentToKinFlow({
         ? `Current instruction was converted into a formal Kin task and split into ${injection.partCount} Kin parts. TASK_ID: #${started.taskId}`
         : `Current instruction was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`
     );
+    flushTaskUsage();
     setActiveTabToKin?.();
     return;
   }
@@ -398,7 +420,7 @@ export async function sendCurrentTaskContentToKinFlow({
       approvedPhrases: approvedIntentPhrases,
       responseMode,
     });
-    applyTaskUsage(resolved.usage);
+    addTaskUsage(resolved.usage);
     if (resolved.pendingCandidates.length > 0) {
       mergePendingIntentCandidates(resolved.pendingCandidates);
     }
@@ -406,7 +428,6 @@ export async function sendCurrentTaskContentToKinFlow({
     const started = startTask({
       originalInstruction: taskInstruction,
       intent: resolved.intent,
-      title: resolved.suggestedTitle || undefined,
     });
 
     syncTaskDraftFromProtocol({
@@ -430,6 +451,7 @@ export async function sendCurrentTaskContentToKinFlow({
         ? `Current task content was converted into a formal Kin task and split into ${injection.partCount} Kin parts. TASK_ID: #${started.taskId}`
         : `Current task content was converted into a formal Kin task and set to Kin input. TASK_ID: #${started.taskId}`
     );
+    flushTaskUsage();
     setActiveTabToKin?.();
     return;
   }
@@ -443,7 +465,7 @@ export async function sendCurrentTaskContentToKinFlow({
         responseMode,
       });
       content = transformed.text.trim() || content;
-      applyTaskUsage(transformed.usage);
+      addTaskUsage(transformed.usage);
     } catch (error) {
       console.error(error);
       setGptMessages((prev) => [
@@ -481,5 +503,7 @@ export async function sendCurrentTaskContentToKinFlow({
     setGptMessages,
     `Current task content was set to Kin input as <<SYS_INFO>>. TASK_SLOT: ${getTaskSlotLabel()}`
   );
+  flushTaskUsage();
   setActiveTabToKin?.();
 }
+

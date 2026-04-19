@@ -6,7 +6,6 @@ import {
   trimMemoryState,
 } from "@/lib/app/gptMemoryStateHelpers";
 import { buildCandidateMemoryState } from "@/lib/app/gptMemoryStateCandidate";
-import { mergeSummarizedMemoryState } from "@/lib/app/gptMemoryStateSummaryMerge";
 import { DEFAULT_MEMORY_SETTINGS, type Memory } from "@/lib/memory";
 import type { Message } from "@/types/chat";
 
@@ -112,7 +111,7 @@ describe("gptMemoryStateHelpers", () => {
       normalizeRecentMessagesState(
         [
           buildMessage("m1", "user", "first"),
-          { id: "bad", role: "user" },
+          { id: "bad", role: "user" } as Message,
           buildMessage("m2", "gpt", "second"),
           buildMessage("m3", "user", "third"),
         ],
@@ -199,87 +198,5 @@ describe("gptMemoryStateHelpers", () => {
     expect(result.candidateMemory.context.lastUserIntent).toBe(
       "Continue the same topic"
     );
-  });
-
-  it("preserves candidate context when merging summarized memory", () => {
-    const merged = mergeSummarizedMemoryState({
-      candidateMemory: buildMemory({
-        facts: ["candidate fact"],
-        context: {
-          currentTopic: "Move Preparation",
-          proposedTopic: "Possible Switch",
-          currentTask: "Find a new home",
-          followUpRule: "Carry the move topic",
-          lastUserIntent: "",
-        },
-      }),
-      summarizedCandidate: buildMemory({
-        facts: ["summary fact"],
-        context: {
-          currentTopic: "Wrong Topic",
-          currentTask: "Wrong Task",
-          followUpRule: "Wrong Rule",
-          lastUserIntent: "Wrong Intent",
-        },
-      }),
-      settings: DEFAULT_MEMORY_SETTINGS,
-      recentMessages: [],
-    });
-
-    expect(merged.context).toEqual({
-      currentTopic: "Move Preparation",
-      proposedTopic: "Possible Switch",
-      currentTask: "Find a new home",
-      followUpRule: "Carry the move topic",
-      lastUserIntent: "",
-    });
-    expect(merged.facts).toEqual(["candidate fact", "summary fact"]);
-  });
-
-  it("treats interpreter-defined closing replies as non-meaningful last intent", () => {
-    const merged = mergeSummarizedMemoryState({
-      candidateMemory: buildMemory({
-        context: {
-          currentTopic: "Move Preparation",
-          currentTask: "Find a new home",
-          followUpRule: "Carry the move topic",
-          lastUserIntent: "Previous intent",
-        },
-      }),
-      summarizedCandidate: buildMemory(),
-      settings: DEFAULT_MEMORY_SETTINGS,
-      recentMessages: [buildMessage("m1", "user", "了解です")],
-    });
-
-    expect(merged.context.lastUserIntent).toBe("Previous intent");
-  });
-
-  it("derives a focused entity from clean Japanese intent text", () => {
-    const merged = mergeSummarizedMemoryState({
-      candidateMemory: buildMemory({
-        facts: ["チェーホフは劇作家", "ドストエフスキーは小説家", "桜の園は戯曲"],
-        lists: {
-          trackedEntities: ["チェーホフ", "ドストエフスキー"],
-          worksByEntity: {
-            チェーホフ: ["桜の園"],
-            ドストエフスキー: ["罪と罰"],
-          },
-        },
-        context: {
-          currentTopic: "ロシア文学",
-          lastUserIntent: "では チェーホフについて詳しく教えて",
-        },
-      }),
-      summarizedCandidate: buildMemory({
-        facts: ["罪と罰は長編小説", "桜の園は晩年の代表作"],
-      }),
-      settings: DEFAULT_MEMORY_SETTINGS,
-      recentMessages: [],
-    });
-
-    expect(merged.facts).toContain("チェーホフは劇作家");
-    expect(merged.facts).toContain("桜の園は晩年の代表作");
-    expect(merged.facts).not.toContain("ドストエフスキーは小説家");
-    expect(merged.facts).not.toContain("罪と罰は長編小説");
   });
 });

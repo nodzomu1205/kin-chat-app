@@ -15,7 +15,7 @@ import {
 import { GPT_TOOLBAR_TEXT } from "./gptUiText";
 import { GPT_TOOLBAR_TEXT_OVERRIDES } from "./gptUiTextOverrides";
 
-type GptBottomTab = "chat" | "task_primary" | "task_secondary" | "kin" | "file";
+type GptBottomTab = "chat" | "task_primary" | "task_secondary" | "kin";
 
 type Props = {
   activeTab: GptBottomTab;
@@ -253,14 +253,7 @@ function ActionRow({
       </>
     );
   }
-
-  return (
-    <div
-      style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "0 4px" }}
-    >
-      {GPT_TOOLBAR_TEXT.fileImportHint}
-    </div>
-  );
+  return null;
 }
 
 export default function GptToolbar(props: Props) {
@@ -312,13 +305,6 @@ export default function GptToolbar(props: Props) {
           style={tabButtonStyle(activeTab === "kin", isMobile)}
         >
           {GPT_TOOLBAR_TEXT.kinTab}
-        </button>
-        <button
-          type="button"
-          onClick={() => onChangeTab("file")}
-          style={tabButtonStyle(activeTab === "file", isMobile)}
-        >
-          {GPT_TOOLBAR_TEXT.fileTab}
         </button>
       </div>
 

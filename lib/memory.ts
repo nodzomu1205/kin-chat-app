@@ -1,15 +1,39 @@
+export type MemoryStableLists = Record<string, unknown> & {
+  recentSearchQueries?: string[];
+};
+
+export type MemoryTaskScopedLists = {
+  activeDocument?: unknown;
+  worksByEntity?: Record<string, unknown>;
+  trackedEntities?: string[];
+};
+
+export type MemoryTraceLists = Record<string, unknown>;
+
+export type MemoryLists = MemoryStableLists & MemoryTaskScopedLists & MemoryTraceLists;
+
+export type MemoryStableContext = {
+  proposedTopic?: string;
+};
+
+export type MemoryTaskScopedContext = {
+  currentTopic?: string;
+  currentTask?: string;
+  followUpRule?: string;
+  lastUserIntent?: string;
+};
+
+export type MemoryTraceContext = Record<string, unknown>;
+
+export type MemoryContext = MemoryStableContext &
+  MemoryTaskScopedContext &
+  MemoryTraceContext;
+
 export type Memory = {
   facts: string[];
   preferences: string[];
-  lists: Record<string, unknown>;
-  context: {
-    currentTopic?: string;
-    proposedTopic?: string;
-    currentTask?: string;
-    followUpRule?: string;
-    lastUserIntent?: string;
-    [key: string]: unknown;
-  };
+  lists: MemoryLists;
+  context: MemoryContext;
 };
 
 export type MemorySettings = {
@@ -27,6 +51,25 @@ export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
   summarizeThreshold: 8,
   recentKeep: 4,
 };
+
+export const TASK_SCOPED_MEMORY_LIST_KEYS = [
+  "activeDocument",
+  "worksByEntity",
+  "trackedEntities",
+] as const;
+
+export const DISPLAYED_CONTEXT_MEMORY_LIST_KEYS = ["activeDocument"] as const;
+
+export const STABLE_MEMORY_LIST_KEYS = ["recentSearchQueries"] as const;
+
+export const TASK_SCOPED_MEMORY_CONTEXT_KEYS = [
+  "currentTopic",
+  "currentTask",
+  "followUpRule",
+  "lastUserIntent",
+] as const;
+
+export const STABLE_MEMORY_CONTEXT_KEYS = ["proposedTopic"] as const;
 
 export function createEmptyMemory(): Memory {
   return {
@@ -65,7 +108,7 @@ export function normalizeMemoryShape(input: unknown): Memory {
       ? (obj.context as Record<string, unknown>)
       : {};
 
-  const context: Memory["context"] = {
+  const context: MemoryContext = {
     ...rawContext,
     currentTopic:
       typeof rawContext.currentTopic === "string"
@@ -180,3 +223,24 @@ export function normalizeMemorySettings(input: unknown): MemorySettings {
     recentKeep,
   };
 }
+
+export function clearTaskScopedMemory(memory: Memory): Memory {
+  const currentMemory = normalizeMemoryShape(memory);
+  const nextLists: MemoryLists = { ...currentMemory.lists };
+  const nextContext: MemoryContext = { ...currentMemory.context };
+
+  for (const key of TASK_SCOPED_MEMORY_LIST_KEYS) {
+    delete nextLists[key];
+  }
+
+  for (const key of TASK_SCOPED_MEMORY_CONTEXT_KEYS) {
+    nextContext[key] = undefined;
+  }
+
+  return {
+    ...currentMemory,
+    lists: nextLists,
+    context: nextContext,
+  };
+}
+

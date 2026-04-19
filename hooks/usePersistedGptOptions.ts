@@ -6,7 +6,6 @@ import type {
   UploadKind,
   ImageDetail,
   IngestMode,
-  PostIngestAction,
   ResponseMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
@@ -15,8 +14,6 @@ import {
   FILE_READ_POLICY_KEY,
   IMAGE_DETAIL_KEY,
   INGEST_MODE_KEY,
-  POST_INGEST_ACTION_KEY,
-  RESPONSE_MODE_KEY,
   SIMPLE_IMAGE_CHAR_LIMIT_KEY,
   UPLOAD_KIND_KEY,
   loadPersistedGptOptionsState,
@@ -28,9 +25,8 @@ export function usePersistedGptOptions() {
       typeof window === "undefined" ? null : window.localStorage
     )
   );
-  const [responseMode, setResponseMode] = useState<ResponseMode>(
-    initialState.responseMode
-  );
+  const responseMode: ResponseMode = "strict";
+  const setResponseMode = () => {};
   const [uploadKind, setUploadKind] = useState<UploadKind>(
     initialState.uploadKind
   );
@@ -46,18 +42,11 @@ export function usePersistedGptOptions() {
   const [simpleImageCharLimit, setSimpleImageCharLimit] = useState(
     initialState.simpleImageCharLimit
   );
-  const [postIngestAction, setPostIngestAction] =
-    useState<PostIngestAction>(initialState.postIngestAction);
   const [fileReadPolicy, setFileReadPolicy] =
     useState<FileReadPolicy>(initialState.fileReadPolicy);
   const [driveImportAutoSummary, setDriveImportAutoSummary] = useState(
     initialState.driveImportAutoSummary
   );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(RESPONSE_MODE_KEY, responseMode);
-  }, [responseMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -89,11 +78,6 @@ export function usePersistedGptOptions() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(POST_INGEST_ACTION_KEY, postIngestAction);
-  }, [postIngestAction]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     window.localStorage.setItem(FILE_READ_POLICY_KEY, fileReadPolicy);
   }, [fileReadPolicy]);
 
@@ -118,8 +102,6 @@ export function usePersistedGptOptions() {
     setCompactCharLimit,
     simpleImageCharLimit,
     setSimpleImageCharLimit,
-    postIngestAction,
-    setPostIngestAction,
     fileReadPolicy,
     setFileReadPolicy,
     driveImportAutoSummary,

@@ -10,9 +10,9 @@ import {
   isWeakTopicCandidate,
   looksLikeLongNarrativeText,
   normalizeText,
-  normalizeTopicCandidate,
   shouldPreserveExistingTopic,
 } from "@/lib/app/memoryInterpreterText";
+import { normalizeTopicCandidate } from "@/lib/app/memoryInterpreterTopicExtractor";
 
 export type MemoryUtteranceClassification = {
   normalizedText: string;

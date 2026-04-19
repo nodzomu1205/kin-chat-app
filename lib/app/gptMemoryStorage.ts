@@ -1,6 +1,9 @@
 import { createEmptyKinMemoryState } from "@/lib/app/gptMemoryCore";
 import type { MemorySettings } from "@/lib/memory";
-import { normalizeMemoryShape, normalizeMemorySettings } from "@/lib/memory";
+import {
+  clearTaskScopedMemory,
+  normalizeMemorySettings,
+} from "@/lib/memory";
 import { normalizeKinMemoryStateForSettings } from "@/lib/app/gptMemoryPersistence";
 import type { KinMemoryState } from "@/types/chat";
 
@@ -64,28 +67,8 @@ export function resolveCurrentKinState(
 }
 
 export function clearTaskScopedMemoryState(state: KinMemoryState): KinMemoryState {
-  const currentMemory = normalizeMemoryShape(state.memory);
-  const currentLists =
-    currentMemory.lists && typeof currentMemory.lists === "object"
-      ? { ...currentMemory.lists }
-      : {};
-
-  delete currentLists.activeDocument;
-  delete currentLists.worksByEntity;
-  delete currentLists.trackedEntities;
-
   return {
     ...state,
-    memory: {
-      ...currentMemory,
-      lists: currentLists,
-      context: {
-        ...currentMemory.context,
-        currentTopic: undefined,
-        currentTask: undefined,
-        followUpRule: undefined,
-        lastUserIntent: undefined,
-      },
-    },
+    memory: clearTaskScopedMemory(state.memory),
   };
 }

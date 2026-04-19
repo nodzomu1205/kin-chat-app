@@ -54,13 +54,22 @@ type IngestTaskApiResult = {
   };
 };
 
-export type TaskCallArgs = {
-  type: "PREP_TASK" | "DEEPEN_TASK" | "FORMAT_TASK";
-  goal: string;
-  inputRef: string;
-  inputSummary: string;
-  constraints: string[];
-};
+export type TaskCallArgs =
+  | {
+      type: "PREP_TASK" | "DEEPEN_TASK";
+      goal: string;
+      inputRef: string;
+      inputSummary: string;
+      constraints: string[];
+    }
+  | {
+      type: "FORMAT_TASK";
+      goal: string;
+      inputRef: string;
+      inputSummary: string;
+      constraints: string[];
+      existingTitle?: string | null;
+    };
 
 export function getExtension(filename: string) {
   return filename.split(".").pop()?.toLowerCase() || "";
@@ -136,7 +145,9 @@ export function buildTaskApiRequestBody(args: TaskCallArgs): { task: TaskRequest
       priority: "HIGH",
       visibility: "INTERNAL",
       responseMode: "STRUCTURED_RESULT",
-      groundingMode: "STRICT",
+      ...(args.type === "FORMAT_TASK"
+        ? { existingTitle: args.existingTitle?.trim() || null }
+        : {}),
     },
   };
 }

@@ -43,7 +43,7 @@ import {
 } from "@/components/panels/gpt/gptPanelStyles";
 import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
-import { GPT_PANEL_TEXT } from "@/components/panels/gpt/gptUiText";
+import { GPT_COMPOSER_TEXT, GPT_PANEL_TEXT } from "@/components/panels/gpt/gptUiText";
 
 function headerIconButtonStyle(params: {
   active: boolean;
@@ -177,6 +177,7 @@ export default function GptPanel(props: GptPanelProps) {
 
   const [viewState, setViewState] = useState(createInitialGptPanelViewState);
   const [showMemoryContent, setShowMemoryContent] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [localSettingsState, setLocalSettingsState] =
     useState<LocalMemorySettingsInput>(sourceLocalSettings);
   const [localSettingsSourceKey, setLocalSettingsSourceKey] = useState(
@@ -239,9 +240,18 @@ export default function GptPanel(props: GptPanelProps) {
       : []
   );
   const totalUsage = {
-    inputTokens: settings.tokenStats.cumulativeInput ?? 0,
-    outputTokens: settings.tokenStats.cumulativeOutput ?? 0,
-    totalTokens: settings.tokenStats.cumulativeTotal ?? 0,
+    inputTokens:
+      settings.tokenStats.cumulative?.input ??
+      settings.tokenStats.cumulativeInput ??
+      0,
+    outputTokens:
+      settings.tokenStats.cumulative?.output ??
+      settings.tokenStats.cumulativeOutput ??
+      0,
+    totalTokens:
+      settings.tokenStats.cumulative?.total ??
+      settings.tokenStats.cumulativeTotal ??
+      0,
   };
   const hasPendingMemoryApprovals =
     settings.pendingMemoryRuleCandidates.length > 0;
@@ -253,6 +263,18 @@ export default function GptPanel(props: GptPanelProps) {
 
   const handleDrawerChange = (next: DrawerMode) => {
     setViewState((prev) => changeGptDrawer(prev, next));
+  };
+
+  const handleInjectFile = async (file?: File | null) => {
+    if (!file || settings.ingestLoading || !settings.canInjectFile) return;
+    await chat.onInjectFile(file, {
+      kind: settings.uploadKind,
+      mode: settings.ingestMode,
+      detail: settings.imageDetail,
+      readPolicy: settings.fileReadPolicy,
+      compactCharLimit: settings.compactCharLimit,
+      simpleImageCharLimit: settings.simpleImageCharLimit,
+    });
   };
 
   const toggleSettingsWorkspace = (next: SettingsWorkspaceView) => {
@@ -399,7 +421,57 @@ export default function GptPanel(props: GptPanelProps) {
             display: "flex",
             flexDirection: "column",
           }}
+          onDragEnter={(event) => {
+            if (header.isMobile || settings.ingestLoading || !settings.canInjectFile) {
+              return;
+            }
+            event.preventDefault();
+            setDragActive(true);
+          }}
+          onDragOver={(event) => {
+            if (header.isMobile || settings.ingestLoading || !settings.canInjectFile) {
+              return;
+            }
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+            setDragActive(true);
+          }}
+          onDragLeave={(event) => {
+            if (header.isMobile) return;
+            const related = event.relatedTarget as Node | null;
+            if (related && event.currentTarget.contains(related)) return;
+            setDragActive(false);
+          }}
+          onDrop={async (event) => {
+            if (header.isMobile || settings.ingestLoading || !settings.canInjectFile) {
+              return;
+            }
+            event.preventDefault();
+            setDragActive(false);
+            await handleInjectFile(event.dataTransfer.files?.[0]);
+          }}
         >
+        {dragActive ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: 12,
+              zIndex: 2,
+              pointerEvents: "none",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 16,
+              border: "2px dashed #22c55e",
+              background: "rgba(240,253,244,0.92)",
+              color: "#166534",
+              fontSize: 14,
+              fontWeight: 800,
+            }}
+          >
+            {GPT_COMPOSER_TEXT.dragActive}
+          </div>
+        ) : null}
         <div
           style={{
             minHeight: 30,
@@ -526,23 +598,7 @@ export default function GptPanel(props: GptPanelProps) {
             placeholder={
               getComposerPlaceholder(viewState.bottomTab)
             }
-            onInjectFile={chat.onInjectFile}
             loading={chat.loading}
-            ingestLoading={settings.ingestLoading}
-            canInjectFile={settings.canInjectFile}
-            uploadKind={settings.uploadKind}
-            ingestMode={settings.ingestMode}
-            imageDetail={settings.imageDetail}
-            postIngestAction={settings.postIngestAction}
-            fileReadPolicy={settings.fileReadPolicy}
-            compactCharLimit={settings.compactCharLimit}
-            simpleImageCharLimit={settings.simpleImageCharLimit}
-            onChangeUploadKind={settings.onChangeUploadKind}
-            onChangeIngestMode={settings.onChangeIngestMode}
-            onChangeImageDetail={settings.onChangeImageDetail}
-            onChangePostIngestAction={settings.onChangePostIngestAction}
-            showFileTools={viewState.bottomTab === "file"}
-            isMobile={header.isMobile}
           />
         </div>
       </div>
