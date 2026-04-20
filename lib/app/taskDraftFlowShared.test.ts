@@ -4,6 +4,7 @@ import {
   appendTaskFlowRecentMessage,
   buildTaskFlowRecentContext,
   completeTaskFlowSuccess,
+  formatTaskFlowErrorMessage,
   applyTaskFlowSummaryUsage,
   startTaskFlowRequest,
 } from "@/lib/app/taskDraftFlowShared";
@@ -173,6 +174,19 @@ describe("taskDraftFlowShared", () => {
       outputTokens: 2,
       totalTokens: 7,
     });
+  });
+
+  it("formats task flow errors with the error message when available", () => {
+    expect(
+      formatTaskFlowErrorMessage(
+        "Task preparation failed.",
+        new Error("Something went wrong")
+      )
+    ).toBe("Task preparation failed. (Something went wrong)");
+
+    expect(formatTaskFlowErrorMessage("Task preparation failed.", null)).toBe(
+      "Task preparation failed."
+    );
   });
 });
 

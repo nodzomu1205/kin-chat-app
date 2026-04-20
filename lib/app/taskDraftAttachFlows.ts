@@ -16,6 +16,7 @@ import {
   appendTaskInfoMessage,
   buildTaskFlowRecentContext,
   completeTaskFlowSuccess,
+  formatTaskFlowErrorMessage,
   startTaskFlowRequest,
 } from "@/lib/app/taskDraftFlowShared";
 import type { AttachSearchResultToTaskFlowArgs } from "@/lib/app/taskDraftActionFlowTypes";
@@ -180,7 +181,10 @@ export async function runAttachSearchResultToTaskFlow(
       console.error(error);
       appendTaskInfoMessage(
         args.setGptMessages,
-        "Importing the library item into a new task failed."
+        formatTaskFlowErrorMessage(
+          "Importing the library item into a new task failed.",
+          error
+        )
       );
     } finally {
       args.setGptLoading(false);
@@ -269,7 +273,10 @@ export async function runAttachSearchResultToTaskFlow(
     console.error(error);
     appendTaskInfoMessage(
       args.setGptMessages,
-      "Attaching the library item to the task failed."
+      formatTaskFlowErrorMessage(
+        "Attaching the library item to the task failed.",
+        error
+      )
     );
   } finally {
     args.setGptLoading(false);

@@ -9,6 +9,7 @@ import {
   appendTaskInfoMessage,
   buildTaskFlowRecentContext,
   completeTaskFlowSuccess,
+  formatTaskFlowErrorMessage,
   startTaskFlowRequest,
 } from "@/lib/app/taskDraftFlowShared";
 import type { DeepenTaskFromLastFlowArgs } from "@/lib/app/taskDraftActionFlowTypes";
@@ -130,7 +131,10 @@ export async function runDeepenTaskFromLastFlow(
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
-    appendTaskInfoMessage(args.setGptMessages, "Deepening the task failed.");
+    appendTaskInfoMessage(
+      args.setGptMessages,
+      formatTaskFlowErrorMessage("Deepening the task failed.", error)
+    );
   } finally {
     args.setGptLoading(false);
   }

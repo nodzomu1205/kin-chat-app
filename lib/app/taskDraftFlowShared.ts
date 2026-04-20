@@ -184,6 +184,18 @@ export function appendTaskFlowAssistantResult(args: TaskFlowAssistantResultArgs)
   });
 }
 
+export function formatTaskFlowErrorMessage(prefix: string, error: unknown) {
+  const detail =
+    error instanceof Error
+      ? error.message.trim()
+      : typeof error === "string"
+        ? error.trim()
+        : "";
+
+  if (!detail) return prefix;
+  return `${prefix} (${detail})`;
+}
+
 export async function applyTaskFlowSummaryUsage(args: TaskFlowSummaryArgs) {
   const memoryResult = await args.handleGptMemory(args.recentMessages, {
     currentTaskTitleOverride: args.currentTaskTitleOverride,

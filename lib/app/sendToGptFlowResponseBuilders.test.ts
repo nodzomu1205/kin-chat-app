@@ -175,8 +175,41 @@ describe("sendToGptFlow response builders", () => {
       actionId: "S001",
       query: "popular female YouTubers",
       outputMode: "summary",
+      summaryText: "Search summary here.",
       sources: normalizedSources,
     });
+  });
+
+  it("uses the same fallback summary text for search records and assistant output", () => {
+    const result = buildProtocolSearchRecordArgs({
+      data: {
+        reply: "",
+        searchUsed: true,
+        searchQuery: "example query",
+        searchEvidence: "",
+      },
+      searchRequestEvent: {
+        taskId: "123456",
+        actionId: "S003",
+        query: "example query",
+        searchEngine: "google_search",
+        searchLocation: "Japan",
+        outputMode: "summary",
+      },
+      currentTaskId: "123456",
+      wrappedSearchResponse: null,
+      effectiveSearchMode: "normal",
+      effectiveSearchEngines: ["google_search"],
+      effectiveSearchLocation: "Japan",
+      cleanQuery: "example query",
+      recordSearchContext: () => ({ rawResultId: "RAW-3" }),
+      normalizedSources: [],
+      requestedMode: "summary",
+    });
+
+    expect(result.summaryText).toBe(
+      "Search completed, but no summary text was returned."
+    );
   });
 
   it("builds protocol search message parts through response builders", () => {
@@ -309,4 +342,3 @@ describe("sendToGptFlow response builders", () => {
     expect(result.assistantText).toContain("RAW_RESULT_AVAILABLE: NO");
   });
 });
-

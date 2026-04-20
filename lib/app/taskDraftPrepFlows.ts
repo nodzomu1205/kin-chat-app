@@ -17,6 +17,7 @@ import {
   appendTaskInfoMessage,
   buildTaskFlowRecentContext,
   completeTaskFlowSuccess,
+  formatTaskFlowErrorMessage,
   startTaskFlowRequest,
 } from "@/lib/app/taskDraftFlowShared";
 import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
@@ -135,7 +136,10 @@ export async function runPrepTaskFromInputFlow(
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
-    appendTaskInfoMessage(args.setGptMessages, "Task preparation failed.");
+    appendTaskInfoMessage(
+      args.setGptMessages,
+      formatTaskFlowErrorMessage("Task preparation failed.", error)
+    );
   } finally {
     args.setGptLoading(false);
   }
@@ -264,7 +268,10 @@ export async function runUpdateTaskFromInputFlow(
     args.applyTaskUsage(data?.usage);
   } catch (error) {
     console.error(error);
-    appendTaskInfoMessage(args.setGptMessages, "Task update failed.");
+    appendTaskInfoMessage(
+      args.setGptMessages,
+      formatTaskFlowErrorMessage("Task update failed.", error)
+    );
   } finally {
     args.setGptLoading(false);
   }
@@ -395,7 +402,10 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     console.error(error);
     appendTaskInfoMessage(
       args.setGptMessages,
-      "Updating the task from the latest GPT message failed."
+      formatTaskFlowErrorMessage(
+        "Updating the task from the latest GPT message failed.",
+        error
+      )
     );
   } finally {
     args.setGptLoading(false);

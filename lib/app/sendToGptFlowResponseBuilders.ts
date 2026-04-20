@@ -8,6 +8,17 @@ import type {
 } from "@/lib/app/sendToGptFlowTypes";
 import type { SourceItem } from "@/types/chat";
 
+function resolveProtocolSearchSummaryText(
+  params: Pick<ProtocolSearchResponseArtifactsArgs, "wrappedSearchResponse" | "data">
+) {
+  return (
+    params.wrappedSearchResponse?.summary ||
+    (typeof params.data.reply === "string" && params.data.reply.trim()
+      ? params.data.reply.trim()
+      : "Search completed, but no summary text was returned.")
+  );
+}
+
 export function buildSourceItems(sources?: SearchSource[]): SourceItem[] {
   return Array.isArray(sources)
     ? sources.map((source) => ({
@@ -50,6 +61,7 @@ export function buildProtocolSearchRecordArgs(
     params.requestedMode === "raw" || params.requestedMode === "summary_plus_raw"
       ? "raw_and_summary"
       : "summary";
+  const summaryText = resolveProtocolSearchSummaryText(params);
 
   return {
     mode: params.effectiveSearchMode,
@@ -72,10 +84,7 @@ export function buildProtocolSearchRecordArgs(
       "",
     goal: params.searchRequestEvent.body || params.searchRequestEvent.summary || "",
     outputMode,
-    summaryText:
-      typeof params.data.reply === "string" && params.data.reply.trim()
-        ? params.data.reply.trim()
-        : "",
+    summaryText,
     rawText:
       typeof params.data.searchEvidence === "string" ? params.data.searchEvidence : "",
     metadata:
@@ -102,11 +111,7 @@ export function buildProtocolSearchMessageParts(args: {
   requestedMode: string;
   recordedSearch: { rawResultId: string } | null;
 }) {
-  const summaryText =
-    args.params.wrappedSearchResponse?.summary ||
-    (typeof args.params.data.reply === "string" && args.params.data.reply.trim()
-      ? args.params.data.reply.trim()
-      : "Search completed, but no summary text was returned.");
+  const summaryText = resolveProtocolSearchSummaryText(args.params);
   const rawExcerpt =
     args.params.wrappedSearchResponse?.rawExcerpt ||
     (typeof args.params.data.searchEvidence === "string" &&
