@@ -6,6 +6,8 @@ import {
 } from "@/lib/server/chatgpt/routeHandlers";
 import { resolveChatRouteMode } from "@/lib/server/chatgpt/requestNormalization";
 
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Record<string, unknown>;
