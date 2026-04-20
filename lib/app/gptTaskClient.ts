@@ -4,6 +4,7 @@ import type {
   IngestMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 import type { TaskResult } from "@/types/task";
+import type { UsageSummary } from "@/lib/server/chatgpt/openaiResponse";
 import {
   buildPrepInputFromIngestResult,
   buildTaskApiRequestBody,
@@ -13,6 +14,12 @@ import {
 } from "@/lib/app/gptTaskClientBuilders";
 
 export { buildPrepInputFromIngestResult, getExtension, resolveUploadKindFromFile };
+
+type TaskApiResponse = {
+  raw: string;
+  parsed: TaskResult | null;
+  usage: UsageSummary;
+};
 
 export function formatTaskResultText(parsed: TaskResult | null, raw: string) {
   if (!parsed) {
@@ -102,16 +109,48 @@ export async function runFormatTaskForKin(
   });
 }
 
-async function callTaskApi(args: TaskCallArgs) {
+async function callTaskApi(args: TaskCallArgs): Promise<TaskApiResponse> {
   const res = await fetch("/api/task", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
     },
+    cache: "no-store",
     body: JSON.stringify(buildTaskApiRequestBody(args)),
   });
 
-  return res.json();
+  const rawText = await res.text();
+  const trimmed = rawText.trim();
+
+  if (!trimmed) {
+    throw new Error(
+      `Task API returned an empty response (${res.status} ${res.statusText || "unknown"})`
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    const excerpt = trimmed.slice(0, 180).replace(/\s+/g, " ");
+    throw new Error(
+      `Task API returned a non-JSON response (${res.status} ${res.statusText || "unknown"}): ${excerpt}`
+    );
+  }
+
+  if (!res.ok) {
+    const errorMessage =
+      parsed &&
+      typeof parsed === "object" &&
+      "error" in parsed &&
+      typeof (parsed as { error?: unknown }).error === "string"
+        ? (parsed as { error: string }).error
+        : `Task API request failed (${res.status} ${res.statusText || "unknown"})`;
+    throw new Error(errorMessage);
+  }
+
+  return parsed as TaskApiResponse;
 }
 
 const COMMON_EVIDENCE_RULES = [
