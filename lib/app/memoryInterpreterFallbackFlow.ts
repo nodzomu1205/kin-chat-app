@@ -94,13 +94,44 @@ async function requestMemoryFallbackResponse(args: {
   const res = await fetch("/api/chatgpt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    cache: "no-store",
     body: JSON.stringify({
       mode: "memory_interpret",
       input: prompt,
     }),
   });
 
-  const data = await res.json();
+  const rawText = await res.text();
+  const trimmed = rawText.trim();
+
+  if (!trimmed) {
+    return {
+      prompt,
+      rawReply: "",
+      parsed: null,
+      usage: null,
+      usageDetails: {
+        error: `Empty /api/chatgpt response (${res.status} ${res.statusText || "unknown"})`,
+      },
+    };
+  }
+
+  let data: Record<string, unknown> | null = null;
+  try {
+    data = JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    return {
+      prompt,
+      rawReply: trimmed,
+      parsed: null,
+      usage: null,
+      usageDetails: {
+        error: `Non-JSON /api/chatgpt response (${res.status} ${res.statusText || "unknown"})`,
+        excerpt: trimmed.slice(0, 180),
+      },
+    };
+  }
+
   if (!res.ok || typeof data?.reply !== "string") {
     return {
       prompt,
