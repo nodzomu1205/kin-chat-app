@@ -61,5 +61,17 @@ async function fetchChatApiSearchData(payload: ChatApiRequestPayload) {
     body: JSON.stringify(payload),
   });
 
-  return (await res.json()) as ChatApiSearchLike;
+  const data = (await res.json().catch(() => ({}))) as ChatApiSearchLike & {
+    error?: unknown;
+  };
+
+  if (!res.ok) {
+    const message =
+      typeof data?.error === "string" && data.error.trim()
+        ? data.error.trim()
+        : `Chat API request failed (${res.status} ${res.statusText || "unknown"})`;
+    throw new Error(message);
+  }
+
+  return data;
 }

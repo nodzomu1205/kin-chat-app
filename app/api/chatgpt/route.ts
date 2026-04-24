@@ -28,7 +28,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid mode" }, { status: 400 });
   } catch (e) {
     console.error("chatgpt route error:", e);
-    return NextResponse.json({ error: "ChatGPT error" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: e instanceof Error ? e.message : "ChatGPT error",
+      },
+      { status: 500 }
+    );
   }
 }
 
