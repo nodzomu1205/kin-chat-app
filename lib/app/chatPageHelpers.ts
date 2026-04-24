@@ -1,11 +1,5 @@
 import type { PendingIntentCandidate } from "@/lib/taskIntent";
 
-export const toTransformResponseMode = (
-  mode: "strict" | "creative"
-): "strict" | "creative" => {
-  return mode;
-};
-
 export function getIntentCandidateSignature(candidate: {
   kind: string;
   phrase: string;
@@ -15,7 +9,6 @@ export function getIntentCandidateSignature(candidate: {
 }) {
   return [
     candidate.kind,
-    candidate.phrase.trim(),
     candidate.count ?? "",
     candidate.rule ?? "",
     candidate.charLimit ?? "",
@@ -23,9 +16,12 @@ export function getIntentCandidateSignature(candidate: {
 }
 
 export function buildPendingIntentCandidateKey(
-  candidate: Pick<PendingIntentCandidate, "kind" | "phrase" | "count" | "charLimit">
+  candidate: Pick<
+    PendingIntentCandidate,
+    "kind" | "phrase" | "count" | "rule" | "charLimit"
+  >
 ) {
-  return `${candidate.kind}:${candidate.phrase}:${candidate.count ?? ""}:${candidate.charLimit ?? ""}`;
+  return getIntentCandidateSignature(candidate);
 }
 
 export function extractTaskGoalFromSysTaskBlock(text: string) {
@@ -39,7 +35,7 @@ export function buildTaskRequestAnswerDraft(
   requestId: string,
   requestBody?: string | null
 ) {
-  return `REQ ${requestId} への回答:\n${
-    requestBody ? `対象質問: ${requestBody}\n` : ""
+  return `REQ ${requestId} への回答\n${
+    requestBody ? `対象依頼: ${requestBody}\n` : ""
   }\nここに回答を記入してください。送信すると、GPT が <<SYS_USER_RESPONSE>> 形式へ整えます。`;
 }

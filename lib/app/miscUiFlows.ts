@@ -8,10 +8,10 @@ import type { Message } from "@/types/chat";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import {
   buildNextApprovedIntentPhrasesOnApprove,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 
 export function prepareTaskRequestAckFlow(args: {
   requestId: string;

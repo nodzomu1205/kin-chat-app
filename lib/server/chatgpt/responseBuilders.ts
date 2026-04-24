@@ -21,6 +21,8 @@ type ChatRouteSearchPayload = {
   searchSeriesId: string;
   searchContinuationToken: string;
   searchEvidence: string;
+  searchSummaryText: string;
+  searchSummaryGenerated: boolean;
 };
 
 export function buildMapLinkShortcutResponse(params: {
@@ -37,6 +39,8 @@ export function buildMapLinkShortcutResponse(params: {
     searchSeriesId: params.search.searchSeriesId,
     searchContinuationToken: params.search.searchContinuationToken,
     searchEvidence: params.search.searchEvidence,
+    searchSummaryText: params.search.searchSummaryText,
+    searchSummaryGenerated: params.search.searchSummaryGenerated,
   };
 }
 
@@ -58,5 +62,7 @@ export function buildChatRouteResponse(params: {
     searchSeriesId: params.search.searchSeriesId,
     searchContinuationToken: params.search.searchContinuationToken,
     searchEvidence: params.search.searchEvidence,
+    searchSummaryText: params.search.searchSummaryText,
+    searchSummaryGenerated: params.search.searchSummaryGenerated,
   };
 }

@@ -34,6 +34,7 @@ describe("runSendToGptFlow", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
+        ok: true,
         json: async () => ({
           reply: "検索の結果です。",
           searchUsed: true,

@@ -128,7 +128,9 @@ export default function ChatApp() {
     clearSearchHistory,
     deleteSearchHistoryItem: deleteSearchHistoryItemBase,
     searchHistoryStorageMB,
-  } = useSearchHistory();
+  } = useSearchHistory({
+    applyIngestUsage,
+  });
   const {
     memoryInterpreterSettings,
     pendingMemoryRuleCandidates,

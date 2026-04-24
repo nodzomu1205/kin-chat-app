@@ -14,12 +14,12 @@ import { buildAppendGptMessage, buildTaskProtocolIntentSyncArgs } from "@/lib/ap
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import {
   buildNextApprovedIntentPhrasesOnApprove,
   buildNextApprovedIntentPhrasesOnDelete,
   buildNextApprovedIntentPhrasesOnUpdate,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/currentTaskIntentRefresh";
 import type { UseTaskProtocolActionsArgs } from "@/hooks/chatPageActionTypes";
 

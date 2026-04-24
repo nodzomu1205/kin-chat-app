@@ -16,6 +16,27 @@ const TRANSCRIPT_PROGRESS_LABEL = "文字起こし取得";
 const LIBRARY_PROGRESS_LABEL = "ライブラリ参照";
 const FINALIZE_PROGRESS_LABEL = "最終成果物";
 
+const SEARCH_KEYWORDS = ["search", "検索"];
+const GPT_KEYWORDS = ["gpt", "chatgpt"];
+const USER_KEYWORDS = ["user", "ask user", "ユーザー", "確認"];
+const MATERIAL_KEYWORDS = ["material", "source", "document", "資料", "素材"];
+const TRANSCRIPT_KEYWORDS = [
+  "youtube",
+  "transcript",
+  "文字起こし",
+  "書き起こし",
+];
+const LIBRARY_KEYWORDS = ["library", "ライブラリ"];
+const FINALIZE_KEYWORDS = [
+  "final output",
+  "summarize",
+  "summarise",
+  "characters",
+  "character",
+  "文字",
+  "要約",
+];
+
 const AT_LEAST_KEYWORDS = [
   "at least",
   "minimum",
@@ -33,10 +54,16 @@ const UP_TO_KEYWORDS = [
   "not more than",
   "or less",
   "まで",
-  "以内",
-  "内",
+  "以下",
 ];
-const AROUND_KEYWORDS = ["around", "about", "approximately", "前後", "程度", "約", "くらい"];
+const AROUND_KEYWORDS = [
+  "around",
+  "about",
+  "approximately",
+  "前後",
+  "程度",
+  "くらい",
+];
 const EXACT_KEYWORDS = ["exactly", "ちょうど", "ぴったり", "正確に"];
 
 function buildRequirementProgressItem(params: {
@@ -88,16 +115,17 @@ function detectConstraintRule(
 
 function inferConstraintKind(text: string): ProgressKind | null {
   const normalized = normalizeConstraintText(text).toLowerCase();
-  if (/final output|summari[sz]e|characters?|文字/.test(normalized)) {
+  if (includesAnyKeyword(normalized, FINALIZE_KEYWORDS)) {
     return "finalize";
   }
-  if (/search|検索/.test(normalized)) return "search_request";
-  if (/youtube|transcript|文字起こし/.test(normalized)) {
+  if (includesAnyKeyword(normalized, SEARCH_KEYWORDS)) return "search_request";
+  if (includesAnyKeyword(normalized, TRANSCRIPT_KEYWORDS)) {
     return "youtube_transcript_request";
   }
-  if (/library|ライブラリ/.test(normalized)) return "library_reference";
-  if (/user|ユーザー/.test(normalized)) return "ask_user";
-  if (/gpt|chatgpt/.test(normalized)) return "ask_gpt";
+  if (includesAnyKeyword(normalized, LIBRARY_KEYWORDS)) return "library_reference";
+  if (includesAnyKeyword(normalized, USER_KEYWORDS)) return "ask_user";
+  if (includesAnyKeyword(normalized, GPT_KEYWORDS)) return "ask_gpt";
+  if (includesAnyKeyword(normalized, MATERIAL_KEYWORDS)) return "request_material";
   return null;
 }
 

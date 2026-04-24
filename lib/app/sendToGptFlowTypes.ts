@@ -57,6 +57,8 @@ export type ChatApiSearchLike = {
   searchSeriesId?: string;
   searchContinuationToken?: string;
   searchEvidence?: string;
+  searchSummaryText?: string;
+  searchSummaryGenerated?: boolean;
   sources?: SearchSource[];
 };
 

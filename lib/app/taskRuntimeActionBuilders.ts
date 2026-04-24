@@ -2,11 +2,10 @@ import {
   buildPendingIntentCandidateKey,
   extractTaskGoalFromSysTaskBlock,
   getIntentCandidateSignature,
-  toTransformResponseMode,
 } from "@/lib/app/chatPageHelpers";
+import { looksLikeKinTaskStartInstruction } from "@/lib/app/kinTaskStartDetection";
 import { resolveTaskRecompileSourceInstruction } from "@/lib/taskProtocolTaskState";
 import {
-  looksLikeTaskInstruction,
   resolveTaskIntentWithFallback,
 } from "@/lib/taskIntent";
 import {
@@ -111,6 +110,7 @@ export function buildStartKinTaskFlowArgs(
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
     setKinInput: args.setKinInput,
     setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
     appendGptMessage: buildAppendGptMessage(args.setGptMessages),
     setActiveTabToKin: args.focusKinPanel,
     extractTaskGoalFromSysTaskBlock,
@@ -121,8 +121,6 @@ export function buildSendLatestGptContentToKinFlowArgs(
   args: UseKinTransferActionsArgs,
   mergePendingIntentCandidates: (candidates: PendingIntentCandidate[]) => void
 ): Parameters<typeof sendLatestGptContentToKinFlow>[0] {
-  const responseMode = toTransformResponseMode(args.responseMode);
-
   return {
     gptMessages: args.gptMessages,
     gptInput: args.gptInput,
@@ -138,7 +136,7 @@ export function buildSendLatestGptContentToKinFlowArgs(
     mergePendingIntentCandidates,
     startTask: args.taskProtocol.startTask,
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-    responseMode,
+    responseMode: args.responseMode,
     applyTaskUsage: args.applyTaskUsage,
     shouldTransformContent,
     transformTextWithIntent: ({ text, intent, responseMode }: {
@@ -162,8 +160,6 @@ export function buildSendCurrentTaskContentToKinFlowArgs(
   mergePendingIntentCandidates: (candidates: PendingIntentCandidate[]) => void,
   runStartKinTaskFromInput: () => void | Promise<void>
 ): Parameters<typeof sendCurrentTaskContentToKinFlow>[0] {
-  const responseMode = toTransformResponseMode(args.responseMode);
-
   return {
     gptInput: args.gptInput,
     getTaskBaseText: args.getTaskBaseText,
@@ -171,7 +167,7 @@ export function buildSendCurrentTaskContentToKinFlowArgs(
     currentTaskTitle: args.currentTaskDraft.title,
     currentTaskInstruction: args.currentTaskDraft.userInstruction,
     approvedIntentPhrases: args.approvedIntentPhrases,
-    looksLikeTaskInstruction,
+    looksLikeTaskInstruction: looksLikeKinTaskStartInstruction,
     runStartKinTaskFromInput,
     resolveTransformIntent: ({ input, defaultMode, responseMode }: {
       input: string;
@@ -182,7 +178,7 @@ export function buildSendCurrentTaskContentToKinFlowArgs(
     mergePendingIntentCandidates,
     startTask: args.taskProtocol.startTask,
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-    responseMode,
+    responseMode: args.responseMode,
     applyTaskUsage: args.applyTaskUsage,
     shouldTransformContent,
     transformTextWithIntent: ({ text, intent, responseMode }: {

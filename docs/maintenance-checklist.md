@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-04-18
+Updated: 2026-04-24
 
 ## Purpose
 
@@ -23,18 +23,21 @@ Current state:
 - structural rescue work: mostly complete
 - quality gate recovery: complete
 - major hub splitting: mostly complete
-- remaining work: authority cleanup, regrowth prevention, and narrow regression coverage
+- remaining work: ingest authority cleanup, response-mode carry-through cleanup,
+  regrowth prevention, and narrow regression coverage
 
 Working estimate:
 
 - maintainability program overall: `80-90% complete`
-- still open before we call it complete: `ingest authority finish`, `token accounting cleanup`, `maintenance-watch discipline`
+- still open before we call it complete: `ingest authority finish`,
+  `token accounting cleanup`, `remaining responseMode cleanup`,
+  `maintenance-watch discipline`
 - memory lifecycle now has explicit `stable / task-scoped / displayed-context`
   naming; treat new memory fields as incomplete until that classification is
   explicit too
-- task-constraint behavior is functionally stable, but cleanup is still open
-  around old helper residue (`taskIntent.ts`, `taskCompilerSections.ts`,
-  repo-wide `responseMode` carry-through, mojibake in active parser files)
+- task-constraint behavior is now functionally stable and structurally much
+  cleaner; remaining cleanup is centered on repo-wide `responseMode`
+  carry-through and ingest authority/token-accounting work
 
 ## Exit Checklist
 
@@ -223,6 +226,7 @@ If no higher-priority product bug appears first, the next development item after
 this checklist setup should be:
 
 1. remove task-intent/task-progress/compiler half-migration residue
-2. audit and remove dead repo-wide `strict` / `creative` / `responseMode` carry-through
-3. clean mojibake in active parsing/matching files
-4. then return to ingest authority cleanup and ingest token accounting
+2. audit and remove dead repo-wide `strict` / `creative` / `responseMode`
+   carry-through
+3. continue ingest authority cleanup and ingest token accounting
+4. keep opportunistic mojibake cleanup limited to still-active owner files

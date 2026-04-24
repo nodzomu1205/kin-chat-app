@@ -7,6 +7,13 @@ import {
   resolveSelectedSearchResultId,
   resolveTaskSearchContext,
 } from "@/lib/app/searchHistoryState";
+import {
+  normalizeLibrarySummaryUsage,
+  requestGeneratedLibrarySummary,
+} from "@/lib/app/librarySummaryClient";
+import { cleanImportSummarySource } from "@/lib/app/importSummaryText";
+import { buildCanonicalSummarySource } from "@/lib/app/ingestDocumentModel";
+import { normalizeUsage } from "@/lib/tokenStats";
 import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
 import type { SearchContext, SearchEngine, SearchMode } from "@/types/task";
 
@@ -21,6 +28,36 @@ const SOURCE_DISPLAY_COUNT_KEY = "source_display_count";
 export const DEFAULT_SEARCH_HISTORY_LIMIT = 20;
 export const DEFAULT_SEARCH_MODE: SearchMode = "normal";
 export const DEFAULT_SOURCE_DISPLAY_COUNT = 3;
+
+export function buildSearchContextLibrarySummaryRequest(
+  context: Pick<SearchContext, "query" | "rawText" | "summaryText" | "metadata">
+) {
+  if (context.summaryText?.trim() && context.metadata?.librarySummaryGenerated) {
+    return null;
+  }
+
+  const text = buildCanonicalSummarySource(context.rawText || "");
+  if (!text) return null;
+
+  return {
+    title: context.query.trim() || "search-result",
+    text,
+  };
+}
+
+export function applySearchContextLibrarySummary(
+  context: SearchContext,
+  summaryText: string
+): SearchContext {
+  return {
+    ...context,
+    summaryText,
+    metadata: {
+      ...(context.metadata || {}),
+      librarySummaryGenerated: true,
+    },
+  };
+}
 
 const ALLOWED_SEARCH_ENGINES: SearchEngine[] = [
   "google_search",
@@ -118,7 +155,9 @@ function loadSearchHistoryState() {
   return initialState;
 }
 
-export function useSearchHistory() {
+export function useSearchHistory(params?: {
+  applyIngestUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+}) {
   const [initialState] = useState(loadSearchHistoryState);
   const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(
     initialState.lastSearchContext
@@ -257,6 +296,7 @@ export function useSearchHistory() {
       const deduped = prev.filter((item) => item.rawResultId !== nextContext.rawResultId);
       return [nextContext, ...deduped].slice(0, searchHistoryLimit);
     });
+    void enrichSearchContextSummary(nextContext);
 
     return nextContext;
   };
@@ -287,6 +327,39 @@ export function useSearchHistory() {
     setSearchHistory((prev) => prev.filter((item) => item.rawResultId !== rawResultId));
     setLastSearchContext((prev) => (prev?.rawResultId === rawResultId ? null : prev));
     setSelectedTaskSearchResultId((prev) => (prev === rawResultId ? "" : prev));
+  };
+
+  const replaceSearchContext = (nextContext: SearchContext) => {
+    setLastSearchContext((prev) =>
+      prev?.rawResultId === nextContext.rawResultId ? nextContext : prev
+    );
+    setSearchHistory((prev) =>
+      prev.map((item) =>
+        item.rawResultId === nextContext.rawResultId ? nextContext : item
+      )
+    );
+  };
+
+  const enrichSearchContextSummary = async (context: SearchContext) => {
+    const summaryRequest = buildSearchContextLibrarySummaryRequest(context);
+    if (!summaryRequest) return;
+
+    try {
+      const summaryResult = await requestGeneratedLibrarySummary(summaryRequest);
+      const generatedSummary = cleanImportSummarySource(
+        summaryResult.summary || ""
+      ).trim();
+      if (!generatedSummary) return;
+
+      replaceSearchContext(
+        applySearchContextLibrarySummary(context, generatedSummary)
+      );
+      params?.applyIngestUsage?.(
+        normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+      );
+    } catch (error) {
+      console.warn("Search summary generation failed", error);
+    }
   };
 
   const searchHistoryStorageMB = useMemo(() => {

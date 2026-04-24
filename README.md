@@ -107,7 +107,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `135 files / 562 tests`
+- current test count: `140 files / 602 tests`
 
 Recent regression fixes and maintainability wins include:
 
@@ -139,17 +139,13 @@ Recent regression fixes and maintainability wins include:
 
 Current caution after the latest task/constraint stabilization:
 
-- `lib/taskIntent.ts` still contains mixed old/new logic:
-  - legacy response-mode plumbing
-  - the old `parseIntentCandidateDraftText(...)` parser path
-  - large mojibake keyword tables
-- `lib/taskCompilerSections.ts` still exports old workflow/completion helpers that are no longer emitted by `lib/taskCompiler.ts`
-- repo-wide `strict` / `creative` / `responseMode` remnants still exist far outside the now-simplified normal chat prompt
-- mojibake cleanup is still needed in active files such as:
-  - `lib/taskIntent.ts`
-  - `lib/taskProgress.ts`
-  - `lib/server/chatgpt/routeBuilders.ts`
-  - `lib/app/memoryInterpreterText.ts`
+- the task-intent / task-progress / compiler residue cleanup is substantially complete,
+  but repo-wide `strict` / `creative` / `responseMode` remnants still exist outside the
+  now-simplified normal chat prompt
+- ingest authority and token-accounting cleanup remain the highest-signal maintenance
+  boundary
+- active mojibake cleanup is much smaller than before, but touched text-owner and
+  parser files should still be reviewed carefully when edited
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -206,13 +202,11 @@ npm test
 Before large new features, continue maintainability work in this order:
 
 1. simplify the task-intent path now that the fixed-slot constraint model is stable
-   - remove dead compatibility helpers from `lib/taskIntent.ts`
-   - delete unused workflow/completion builders from `lib/taskCompilerSections.ts`
 2. audit repo-wide `strict` / `creative` / `responseMode` remnants and remove dead carry-through paths
-3. clean mojibake text/constants in still-active files before they cause the next misread or false match
-4. continue shrinking the remaining legacy/current ingest split after the now-shared ingest authority model
-5. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
-6. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
+3. continue shrinking the remaining legacy/current ingest split after the now-shared ingest authority model
+4. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
+5. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
+6. continue opportunistic mojibake cleanup in still-active owner files when those boundaries are touched
 7. continue adding narrow regression tests around the next touched boundary instead of broad rewrites
 
 `hooks/useGptMemory.ts` and `lib/app/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.

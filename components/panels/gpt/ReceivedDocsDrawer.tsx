@@ -670,6 +670,11 @@ export default function ReceivedDocsDrawer({
                     {sectionTitle(GPT_RECEIVED_DOCS_TEXT.previewTitle)}
 
                     <div style={{ display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
+                      {item.filename ? (
+                        <div>
+                          <strong>ファイル名:</strong> {item.filename}
+                        </div>
+                      ) : null}
                       <div>
                         <strong>{GPT_RECEIVED_DOCS_TEXT.fields.type}:</strong> {typeLabel(item.itemType)}
                       </div>

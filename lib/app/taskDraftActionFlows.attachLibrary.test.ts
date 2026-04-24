@@ -82,9 +82,16 @@ describe("runAttachSearchResultToTaskFlow", () => {
         },
       },
       chatRecentLimit: 8,
+      applyChatUsage: vi.fn(),
       applyTaskUsage: vi.fn(),
       applyCompressionUsage: vi.fn(),
-      handleGptMemory: async () => ({ compressionUsage: null }),
+      handleGptMemory: async () => ({
+        compressionUsage: null,
+        fallbackUsage: null,
+        fallbackUsageDetails: null,
+        fallbackMetrics: null,
+        fallbackDebug: null,
+      }),
       gptInput: "",
       lastSearchContext: null,
     });

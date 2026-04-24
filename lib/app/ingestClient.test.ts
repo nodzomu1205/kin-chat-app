@@ -1,9 +1,69 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { requestFileIngest } from "@/lib/app/ingestClient";
 import {
   buildIngestRequestFormData,
   resolveIngestErrorMessage,
   resolveIngestFileTitle,
 } from "@/lib/app/ingestClientBuilders";
+
+describe("requestFileIngest", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("throws a readable error when /api/ingest returns an empty success body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        text: async () => "",
+      })
+    );
+
+    await expect(
+      requestFileIngest({
+        file: new File(["hello"], "hello.txt", { type: "text/plain" }),
+        options: {
+          kind: "auto",
+          mode: "compact",
+          detail: "detailed",
+          readPolicy: "text_first",
+          compactCharLimit: 1200,
+          simpleImageCharLimit: 800,
+        },
+      })
+    ).rejects.toThrow("Empty /api/ingest response.");
+  });
+
+  it("returns a fallback error payload when /api/ingest returns a non-JSON error body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        statusText: "Bad Gateway",
+        text: async () => "<html>bad gateway</html>",
+      })
+    );
+
+    const result = await requestFileIngest({
+      file: new File(["hello"], "hello.txt", { type: "text/plain" }),
+      options: {
+        kind: "auto",
+        mode: "compact",
+        detail: "detailed",
+        readPolicy: "text_first",
+        compactCharLimit: 1200,
+        simpleImageCharLimit: 800,
+      },
+    });
+
+    expect(result.response.ok).toBe(false);
+    expect(result.data.error).toContain("non-JSON response");
+  });
+});
 
 describe("ingestClient", () => {
   it("builds the shared ingest request form data", () => {

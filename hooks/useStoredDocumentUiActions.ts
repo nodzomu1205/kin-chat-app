@@ -25,7 +25,9 @@ export function useStoredDocumentUiActions({
     const url = window.URL.createObjectURL(blob);
     const anchor = window.document.createElement("a");
     anchor.href = url;
-    anchor.download = `${document.filename.replace(/[^\w.-]+/g, "_") || "document"}.txt`;
+    anchor.download =
+      document.filename.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_") ||
+      "document.txt";
     anchor.click();
     window.URL.revokeObjectURL(url);
   };

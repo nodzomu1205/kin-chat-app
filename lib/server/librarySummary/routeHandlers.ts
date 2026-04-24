@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { callOpenAIResponses } from "@/lib/server/chatgpt/openaiClient";
 import {
-  buildLibrarySummaryPrompt,
   buildLibrarySummarySuccessResponse,
   resolveLibrarySummaryRequest,
 } from "@/lib/server/librarySummary/routeBuilders";
+import { generateLibrarySummary } from "@/lib/server/librarySummary/summaryService";
 
 export async function handleLibrarySummaryRoute(body: unknown) {
   const { title, text } = resolveLibrarySummaryRequest(body);
@@ -16,13 +15,7 @@ export async function handleLibrarySummaryRoute(body: unknown) {
     );
   }
 
-  const { text: summary, usage } = await callOpenAIResponses(
-    {
-      model: "gpt-4o-mini",
-      input: buildLibrarySummaryPrompt({ title, text }),
-    },
-    "Summary could not be generated."
-  );
+  const { text: summary, usage } = await generateLibrarySummary({ title, text });
 
   return NextResponse.json(
     buildLibrarySummarySuccessResponse({

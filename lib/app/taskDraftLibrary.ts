@@ -1,5 +1,6 @@
 import type { StoredDocument } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
+import { buildLibraryFilenameWithCharCount } from "@/lib/app/ingestDocumentModel";
 
 function trimLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -19,7 +20,7 @@ export function buildTaskDraftLibraryText(taskDraft: TaskDraft) {
     taskDraft.userInstruction.trim()
       ? ["Instruction", taskDraft.userInstruction.trim()].join("\n")
       : "",
-    taskDraft.body.trim() ? ["Summary", taskDraft.body.trim()].join("\n") : "",
+    taskDraft.body.trim() ? taskDraft.body.trim() : "",
     taskDraft.mergedText.trim() && taskDraft.mergedText.trim() !== taskDraft.body.trim()
       ? ["Full", taskDraft.mergedText.trim()].join("\n")
       : "",
@@ -37,6 +38,19 @@ export function buildTaskDraftLibraryText(taskDraft: TaskDraft) {
   ].filter(Boolean);
 
   return sections.join("\n\n").trim();
+}
+
+export function buildTaskDraftLibrarySummarySource(taskDraft: TaskDraft) {
+  return [
+    taskDraft.userInstruction.trim(),
+    taskDraft.body.trim(),
+    taskDraft.mergedText.trim(),
+    taskDraft.deepenText.trim(),
+    taskDraft.prepText.trim(),
+  ]
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .join("\n\n")
+    .trim();
 }
 
 export function buildTaskDraftLibrarySummary(taskDraft: TaskDraft) {
@@ -64,7 +78,7 @@ export function buildStoredDocumentFromTaskDraft(
   return {
     artifactType: "task_snapshot",
     title,
-    filename: `${title}.txt`,
+    filename: buildLibraryFilenameWithCharCount(`${title}.txt`, text),
     text,
     summary: buildTaskDraftLibrarySummary(taskDraft),
     taskId: taskDraft.taskId || undefined,

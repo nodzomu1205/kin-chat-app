@@ -33,6 +33,94 @@ function stripTrailingExtension(value: string) {
   return value.replace(/(\.[A-Za-z0-9]+)+$/u, "").trim();
 }
 
+function collapseDocumentLabelWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function clipNaturalDocumentTitle(value: string, limit: number) {
+  const normalized = collapseDocumentLabelWhitespace(value);
+  if (!normalized) return "";
+
+  const parentheticalPrefixMatch = normalized.match(
+    /^(.+?[)）])(?:は|が|を|に|で|と|も|へ|から|より|、|,|\s).*/u
+  );
+  if (parentheticalPrefixMatch && parentheticalPrefixMatch[1].trim().length >= 12) {
+    return parentheticalPrefixMatch[1].trim();
+  }
+
+  if (normalized.length <= limit) return normalized;
+
+  const candidate = normalized.slice(0, limit);
+  const naturalCut = Math.max(
+    candidate.lastIndexOf("）"),
+    candidate.lastIndexOf(")"),
+    candidate.lastIndexOf(" - "),
+    candidate.lastIndexOf(" | "),
+    candidate.lastIndexOf("："),
+    candidate.lastIndexOf(":"),
+    candidate.lastIndexOf("、"),
+    candidate.lastIndexOf(","),
+    candidate.lastIndexOf(" ")
+  );
+  const clipped =
+    naturalCut >= Math.floor(limit * 0.55)
+      ? candidate.slice(0, naturalCut).trim()
+      : candidate.trim();
+
+  return `${clipped}...`;
+}
+
+export function normalizeIngestedDocumentTitle(value: string, limit = 46) {
+  return clipNaturalDocumentTitle(value, limit);
+}
+
+export function buildIngestedDocumentFilename(args: {
+  title: string;
+  fallbackFilename: string;
+}) {
+  const fallbackName = args.fallbackFilename.trim() || "imported-document.txt";
+  const extensionMatch = fallbackName.match(/(\.[A-Za-z0-9]+)$/u);
+  const extension = extensionMatch?.[1] || ".txt";
+  const preferredBase = normalizeIngestedDocumentTitle(args.title, 58);
+  const fallbackBase = stripTrailingExtension(
+    stripTrailingCharCount(fallbackName.split(/[\\/]/).pop() || fallbackName)
+  );
+  const baseName = (preferredBase || fallbackBase || "imported-document").trim();
+  return `${baseName}${extension}`;
+}
+
+function normalizeComparableDocumentLabel(value: string) {
+  return stripTrailingCharCount(stripTrailingExtension(value))
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+export function buildCompactLibraryFilenameLabel(args: {
+  filename: string;
+  title?: string;
+}) {
+  const trimmedFilename = args.filename.trim();
+  if (!trimmedFilename) return "";
+
+  const compactMatch = trimmedFilename.match(
+    /(\[\d+\s*chars\])((?:\.[A-Za-z0-9]+)+)$/iu
+  );
+  const normalizedTitle = normalizeComparableDocumentLabel(args.title || "");
+  const normalizedFilename = normalizeComparableDocumentLabel(trimmedFilename);
+
+  if (
+    compactMatch &&
+    normalizedTitle &&
+    normalizedFilename &&
+    normalizedTitle === normalizedFilename
+  ) {
+    return `${compactMatch[1]}${compactMatch[2]}`;
+  }
+
+  return trimmedFilename;
+}
+
 export function stripTaskPrepEnvelopeMetadata(text: string) {
   return text
     .replace(/^File:\s.*(?:\r?\n)+/u, "")
@@ -129,7 +217,10 @@ export function buildStoredDocumentDisplayTitle(args: {
   const tailSegment = preferred.split(/[\\/]/).pop() || preferred;
   const withoutCount = stripTrailingCharCount(tailSegment);
   const withoutExtension = stripTrailingExtension(withoutCount);
-  return withoutExtension || withoutCount || tailSegment || "Untitled";
+  const normalizedTitle = normalizeIngestedDocumentTitle(
+    withoutExtension || withoutCount || tailSegment
+  );
+  return normalizedTitle || withoutExtension || withoutCount || tailSegment || "Untitled";
 }
 
 export function normalizeStoredDocument(item: StoredDocument): StoredDocument {
@@ -227,27 +318,16 @@ export function buildReferenceLibraryDocumentItem(
     return "取込文書";
   })();
 
-  const subtitleParts = [
-    detailPrefix,
-    normalizedItem.taskTitle || normalizedItem.filename,
-    normalizedItem.kinName || "",
-    normalizedItem.completedAt
-      ? new Date(normalizedItem.completedAt).toLocaleString("ja-JP", {
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "",
-  ].filter(Boolean);
-
   return {
     id: `doc:${normalizedItem.id}`,
     sourceId: normalizedItem.id,
     itemType: normalizedItem.sourceType,
     artifactType: normalizedItem.artifactType,
     title: normalizedItem.title,
-    subtitle: subtitleParts.join(" / "),
+    subtitle: buildCompactLibraryFilenameLabel({
+      filename: normalizedItem.filename,
+      title: normalizedItem.title,
+    }),
     summary: normalizedItem.summary || "",
     excerptText: normalizedItem.text,
     createdAt: normalizedItem.createdAt,
@@ -257,5 +337,45 @@ export function buildReferenceLibraryDocumentItem(
     taskTitle: normalizedItem.taskTitle,
     kinName: normalizedItem.kinName,
     completedAt: normalizedItem.completedAt,
+  };
+}
+
+export function buildReferenceLibrarySearchItem(args: {
+  rawResultId: string;
+  query: string;
+  summary: string;
+  rawText: string;
+  createdAt: string;
+  taskId?: string;
+  sources?: ReferenceLibraryItem["sources"];
+  askAiModeItems?: ReferenceLibraryItem["askAiModeItems"];
+}): ReferenceLibraryItem {
+  const cleanedRawText = cleanImportedDocumentText(args.rawText || "");
+  const cleanedSummary = args.summary
+    ? cleanImportSummarySource(args.summary).trim()
+    : "";
+  const filename = buildLibraryFilenameWithCharCount(
+    `${args.query || "search-result"}.txt`,
+    cleanedRawText
+  );
+
+  return {
+    id: `search:${args.rawResultId}`,
+    sourceId: args.rawResultId,
+    itemType: "search",
+    title: args.query,
+    subtitle: buildCompactLibraryFilenameLabel({
+      filename,
+      title: args.query,
+    }),
+    summary: cleanedSummary || buildCanonicalDocumentSummary(cleanedRawText, args.query),
+    excerptText: cleanedRawText,
+    createdAt: args.createdAt,
+    updatedAt: args.createdAt,
+    rawResultId: args.rawResultId,
+    taskId: args.taskId,
+    sources: args.sources,
+    askAiModeItems: args.askAiModeItems,
+    filename,
   };
 }

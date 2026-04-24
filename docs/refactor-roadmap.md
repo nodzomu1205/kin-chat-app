@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-19
+Updated: 2026-04-24
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `135 files / 562 tests`
+- test status: `140 files / 602 tests`
 
 This roadmap should now be read together with:
 
@@ -36,14 +36,13 @@ Primary review points:
 - `lib/app/kinMultipart.ts`
 
 Current cleanup priority:
-1. task-intent / task-progress / compiler residue cleanup around the now-stable `CONSTRAINTS` path
-2. repo-wide `strict` / `creative` / `responseMode` cleanup
-3. mojibake cleanup in active parsing/matching files
-4. remaining ingest authority / token-accounting cleanup
-5. `lib/app/sendToGptFlow.ts` maintenance-watch boundaries
-6. `app/page.tsx` / page composition regrow prevention
-7. responsive / panel-mode authority guardrails
-8. user-facing text drift outside owner files
+1. repo-wide `strict` / `creative` / `responseMode` cleanup
+2. remaining ingest authority / token-accounting cleanup
+3. mojibake cleanup in still-active parsing/matching owner files
+4. `lib/app/sendToGptFlow.ts` maintenance-watch boundaries
+5. `app/page.tsx` / page composition regrow prevention
+6. responsive / panel-mode authority guardrails
+7. user-facing text drift outside owner files
 
 ## Maintenance Checkpoint
 
@@ -75,7 +74,8 @@ high-signal review points before and after changes.
   library, GPT chat, and Kin protocol surfaces
 - remaining builder reshaping across controller/panel composition
 - future user-facing copy drift outside the text-owner files
-- task-intent/task-progress/compiler boundaries while old helper residue is still present
+- task-intent/task-progress/compiler boundaries after the residue cleanup, until the
+  remaining response-mode carry-through is fully audited
 - repo-wide `strict` / `creative` / `responseMode` carry-through after the UI simplifications
 
 ### Deletion Principle

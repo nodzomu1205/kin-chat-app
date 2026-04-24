@@ -54,8 +54,11 @@ export function buildImplicitSearchRecordArgs(
       params.effectiveParsedSearchQuery ||
       params.finalRequestText,
     summaryText:
-      typeof params.data.reply === "string" && params.data.reply.trim()
-        ? params.data.reply
+      typeof params.data.searchSummaryText === "string" &&
+      params.data.searchSummaryText.trim()
+        ? params.data.searchSummaryText
+        : typeof params.data.reply === "string" && params.data.reply.trim()
+          ? params.data.reply
         : "",
     rawText:
       typeof params.data.searchEvidence === "string"
@@ -63,7 +66,8 @@ export function buildImplicitSearchRecordArgs(
         : "",
     metadata:
       typeof params.data.searchSeriesId === "string" ||
-      typeof params.data.searchContinuationToken === "string"
+      typeof params.data.searchContinuationToken === "string" ||
+      params.data.searchSummaryGenerated
         ? {
             seriesId:
               typeof params.data.searchSeriesId === "string"
@@ -73,6 +77,9 @@ export function buildImplicitSearchRecordArgs(
               typeof params.data.searchContinuationToken === "string"
                 ? params.data.searchContinuationToken
                 : undefined,
+            ...(params.data.searchSummaryGenerated
+              ? { librarySummaryGenerated: true }
+              : {}),
           }
         : undefined,
     sources:

@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createEmptyTaskDraft } from "@/types/task";
+import type { TaskIntent } from "@/types/taskProtocol";
 
 const { syncApprovedIntentPhrasesToCurrentTaskFlowMock } = vi.hoisted(() => ({
   syncApprovedIntentPhrasesToCurrentTaskFlowMock: vi.fn(),
@@ -21,6 +23,21 @@ vi.mock("@/lib/app/currentTaskIntentRefresh", () => ({
 
 import { useTaskProtocolActions } from "@/hooks/useTaskProtocolActions";
 
+function createTaskIntent(goal: string): TaskIntent {
+  return {
+    mode: "task",
+    goal,
+    output: {
+      type: "essay",
+      language: "ja",
+      length: "medium",
+    },
+    workflow: {},
+    constraints: [],
+    entities: [],
+  };
+}
+
 function createArgs(
   overrides: Partial<Parameters<typeof useTaskProtocolActions>[0]> = {}
 ): Parameters<typeof useTaskProtocolActions>[0] {
@@ -28,6 +45,7 @@ function createArgs(
     applyTaskUsage: vi.fn(),
     approvedIntentPhrases: [],
     currentTaskDraft: {
+      ...createEmptyTaskDraft(),
       title: "Draft title",
       userInstruction: "Draft instruction",
     },
@@ -52,16 +70,14 @@ function createArgs(
       runtime: {
         currentTaskId: "task-1",
         currentTaskTitle: "Runtime title",
-        currentTaskIntent: {
-          goal: "Runtime goal",
-        },
+        currentTaskIntent: createTaskIntent("Runtime goal"),
         originalInstruction: "Runtime original instruction",
       },
       replaceCurrentTaskIntent: vi.fn(),
       prepareWaitingAckMessage: vi.fn(),
       prepareTaskSyncMessage: vi.fn(),
       prepareTaskSuspendMessage: vi.fn(),
-    },
+    } as unknown as Parameters<typeof useTaskProtocolActions>[0]["taskProtocol"],
     ...overrides,
   };
 }
@@ -114,6 +130,7 @@ describe("useTaskProtocolActions", () => {
         },
       ],
       currentTaskDraft: {
+        ...createEmptyTaskDraft(),
         title: "Draft title",
         userInstruction: "Draft instruction only",
       },
@@ -121,16 +138,14 @@ describe("useTaskProtocolActions", () => {
         runtime: {
           currentTaskId: "task-1",
           currentTaskTitle: "Runtime title",
-          currentTaskIntent: {
-            goal: "Runtime goal",
-          },
+          currentTaskIntent: createTaskIntent("Runtime goal"),
           originalInstruction: "",
         },
         replaceCurrentTaskIntent: vi.fn(),
         prepareWaitingAckMessage: vi.fn(),
         prepareTaskSyncMessage: vi.fn(),
         prepareTaskSuspendMessage: vi.fn(),
-      },
+      } as unknown as Parameters<typeof useTaskProtocolActions>[0]["taskProtocol"],
     });
 
     const actions = useTaskProtocolActions(args, {
@@ -169,6 +184,7 @@ describe("useTaskProtocolActions", () => {
         },
       ],
       currentTaskDraft: {
+        ...createEmptyTaskDraft(),
         title: "Draft title",
         userInstruction: "",
       },
@@ -176,16 +192,14 @@ describe("useTaskProtocolActions", () => {
         runtime: {
           currentTaskId: "task-1",
           currentTaskTitle: "Runtime title",
-          currentTaskIntent: {
-            goal: "Runtime goal fallback",
-          },
+          currentTaskIntent: createTaskIntent("Runtime goal fallback"),
           originalInstruction: "",
         },
         replaceCurrentTaskIntent: vi.fn(),
         prepareWaitingAckMessage: vi.fn(),
         prepareTaskSyncMessage: vi.fn(),
         prepareTaskSuspendMessage: vi.fn(),
-      },
+      } as unknown as Parameters<typeof useTaskProtocolActions>[0]["taskProtocol"],
     });
 
     const actions = useTaskProtocolActions(args, {

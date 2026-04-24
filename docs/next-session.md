@@ -1,6 +1,6 @@
 # Next Session Handover
 
-Updated: 2026-04-18
+Updated: 2026-04-24
 
 ## Stop Rule
 
@@ -51,12 +51,14 @@ The current task/constraint path is functionally in a good stopping state:
 
 Do not destabilize that visible behavior.
 
-Instead, the next session should remove the residue around it:
+The residue cleanup around that path is now substantially complete.
 
-1. simplify `lib/taskIntent.ts` so the fixed-slot path is not mixed with old rewrite-era helpers
-2. delete unused workflow/completion helpers still living in `lib/taskCompilerSections.ts`
-3. audit repo-wide `strict` / `creative` / `responseMode` remnants
-4. clean mojibake in active parsing/matching files
+Instead, the next session should default to:
+
+1. auditing the remaining repo-wide `strict` / `creative` / `responseMode` remnants
+2. continuing ingest authority and ingest token-accounting cleanup
+3. keeping mojibake cleanup opportunistic in still-active owner files
+4. maintaining `sendToGpt` / page-composition boundaries without regrowth
 
 This is now a better default next step than touching broader UI or feature work.
 
@@ -68,7 +70,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `135 files / 562 tests`
+- current test count: `140 files / 602 tests`
 
 Use `docs/maintenance-checklist.md` as the authoritative completion/status
 checklist before calling maintenance "done" or before downgrading a boundary
@@ -379,12 +381,12 @@ This is exactly the pattern that wasted time in this session.
 
 ## Recommended Next-Session Order
 
-1. clean the task-intent/task-progress/compiler residue around the new `CONSTRAINTS` path
-2. audit and remove dead repo-wide `strict` / `creative` / `responseMode` carry-through
-3. clean mojibake in active parsing/matching files
-4. finish the remaining ingest authority work before adding more ingest-adjacent features
-5. fix file-ingest token accounting so usage lands in the correct ingest/task bucket
-6. continue shrinking the remaining legacy/current ingest post-processing split
+1. audit and remove dead repo-wide `strict` / `creative` / `responseMode` carry-through
+2. finish the remaining ingest authority work before adding more ingest-adjacent features
+3. fix file-ingest token accounting so usage lands in the correct ingest/task bucket
+4. continue shrinking the remaining legacy/current ingest post-processing split
+5. keep opportunistic mojibake cleanup limited to active owner files that are being touched
+6. keep `sendToGptFlow` and page/controller composition in maintenance-watch mode
 7. move device-file ingest UI into the library drawer/settings surfaces
 
 ## Maintenance Update Cadence

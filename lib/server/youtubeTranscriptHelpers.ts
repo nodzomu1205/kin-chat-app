@@ -53,21 +53,26 @@ export function buildTranscriptSummary(params: {
   duration?: string;
   transcriptText: string;
 }) {
-  const firstSentence = params.transcriptText
+  const normalizedTranscript = params.transcriptText
+    .replace(/\[[^\]]+\]\s*/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .split(/(?<=[。.!?])/)
+    .trim();
+  const sentenceParts = normalizedTranscript
+    .split(/(?<=[。．.!?！？])/u)
     .map((part) => part.trim())
-    .filter(Boolean)
-    .slice(0, 2)
-    .join(" ");
+    .filter(Boolean);
+  const previewSource = (sentenceParts.slice(0, 2).join(" ") || normalizedTranscript).trim();
+  const preview =
+    previewSource.length > 220
+      ? `${previewSource.slice(0, 220).trimEnd()}...`
+      : previewSource;
 
   const meta = [params.channelName, params.duration].filter(Boolean).join(" / ");
   const titleLine = meta
     ? `YouTube transcript for ${params.title} (${meta}).`
     : `YouTube transcript for ${params.title}.`;
 
-  return [titleLine, firstSentence].filter(Boolean).join(" ").trim();
+  return [titleLine, preview].filter(Boolean).join(" ").trim();
 }
 
 export function sanitizeTranscriptFilename(title: string, videoId: string) {

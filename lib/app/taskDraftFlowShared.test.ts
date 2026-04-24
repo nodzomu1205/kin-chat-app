@@ -75,16 +75,22 @@ describe("taskDraftFlowShared", () => {
 
   it("applies summary usage after GPT memory handling resolves", async () => {
     const applyCompressionUsage = vi.fn();
+    const applyChatUsage = vi.fn();
     const handleGptMemory = vi.fn(async () => ({
       compressionUsage: {
         inputTokens: 10,
         outputTokens: 3,
         totalTokens: 13,
       },
+      fallbackUsage: null,
+      fallbackUsageDetails: null,
+      fallbackMetrics: null,
+      fallbackDebug: null,
     }));
 
     await applyTaskFlowSummaryUsage({
       recentMessages: [{ id: "g1", role: "gpt", text: "prepared" }],
+      applyChatUsage,
       applyCompressionUsage,
       handleGptMemory,
       currentTaskTitleOverride: "Prepared task",
@@ -130,12 +136,17 @@ describe("taskDraftFlowShared", () => {
     const setGptState = vi.fn();
     const persistCurrentGptState = vi.fn();
     const applyCompressionUsage = vi.fn();
+    const applyChatUsage = vi.fn();
     const handleGptMemory = vi.fn(async () => ({
       compressionUsage: {
         inputTokens: 5,
         outputTokens: 2,
         totalTokens: 7,
       },
+      fallbackUsage: null,
+      fallbackUsageDetails: null,
+      fallbackMetrics: null,
+      fallbackDebug: null,
     }));
 
     const updatedRecentMessages = await completeTaskFlowSuccess({
@@ -157,6 +168,7 @@ describe("taskDraftFlowShared", () => {
       requestRecentMessages: [{ id: "u1", role: "user", text: "prep" }],
       chatRecentLimit: 4,
       lastUserIntent: "Task prep",
+      applyChatUsage,
       applyCompressionUsage,
       handleGptMemory,
       currentTaskTitleOverride: "Prepared task",

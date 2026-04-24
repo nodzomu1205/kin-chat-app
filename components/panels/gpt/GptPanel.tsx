@@ -17,6 +17,7 @@ import {
   applyLocalSettingsUpdate,
   buildLocalSettingsSourceKey,
   getComposerPlaceholder,
+  isGptPanelBusy,
   type FloatingLabel,
   type LocalMemorySettingsInput,
   resolveLocalSettingsState,
@@ -256,6 +257,10 @@ export default function GptPanel(props: GptPanelProps) {
   const hasPendingMemoryApprovals =
     settings.pendingMemoryRuleCandidates.length > 0;
   const hasPendingSysApprovals = protocol.pendingIntentCandidates.length > 0;
+  const busy = isGptPanelBusy({
+    gptLoading: chat.loading,
+    ingestLoading: settings.ingestLoading,
+  });
 
   const handleToolbarAction = (mode: GptInstructionMode) => {
     void chat.sendToGpt(mode);
@@ -539,10 +544,10 @@ export default function GptPanel(props: GptPanelProps) {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <ChatMessages
-            messages={chat.gptMessages}
-            bottomRef={chat.gptBottomRef}
-            loadingText={chat.loading ? GPT_PANEL_TEXT.loading : null}
+            <ChatMessages
+              messages={chat.gptMessages}
+              bottomRef={chat.gptBottomRef}
+            loadingText={busy ? GPT_PANEL_TEXT.loading : null}
             sourceDisplayCount={settings.sourceDisplayCount}
             onImportYouTubeTranscript={references.onImportYouTubeTranscript}
             onSendYouTubeTranscriptToKin={references.onSendYouTubeTranscriptToKin}
@@ -598,7 +603,7 @@ export default function GptPanel(props: GptPanelProps) {
             placeholder={
               getComposerPlaceholder(viewState.bottomTab)
             }
-            loading={chat.loading}
+            loading={busy}
           />
         </div>
       </div>

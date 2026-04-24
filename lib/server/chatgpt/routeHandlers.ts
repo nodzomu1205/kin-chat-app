@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { callOpenAIResponses } from "@/lib/server/chatgpt/openaiClient";
+import { cleanImportSummarySource } from "@/lib/app/importSummaryText";
+import { parseTaskInput } from "@/lib/taskInputParser";
+import { generateLibrarySummary } from "@/lib/server/librarySummary/summaryService";
 import {
   buildChatRouteResponse,
   buildMapLinkShortcutResponse,
@@ -19,6 +22,16 @@ import {
 } from "@/lib/server/chatgpt/routeBuilders";
 import { executeSearchRequest } from "@/lib/server/chatgpt/searchExecution";
 import { resolveSearchRequest } from "@/lib/server/chatgpt/searchRequest";
+
+export function isPlainSearchOnlyInput(input: string) {
+  const parsed = parseTaskInput(input);
+  return !!(
+    parsed.searchQuery.trim() &&
+    !parsed.freeText.trim() &&
+    !parsed.title.trim() &&
+    !parsed.userInstruction.trim()
+  );
+}
 
 export async function handleChatRoute(body: Record<string, unknown>) {
   const {
@@ -73,6 +86,11 @@ export async function handleChatRoute(body: Record<string, unknown>) {
     videoId?: string;
   }[] = [];
   let returnedSearchContinuationToken = "";
+  let generatedSearchSummary = "";
+  let searchSummaryGenerated = false;
+  let searchContextText = "";
+  let searchSummaryUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
+  let searchSummaryUsageDetails: Record<string, unknown> | null = null;
 
   const buildSearchPayload = () =>
     buildChatSearchPayload({
@@ -82,6 +100,8 @@ export async function handleChatRoute(body: Record<string, unknown>) {
       searchSeriesId: resolvedSearch.effectiveSeriesId,
       searchContinuationToken: returnedSearchContinuationToken,
       searchEvidence: searchEvidenceText,
+      searchSummaryText: generatedSearchSummary || searchPromptText,
+      searchSummaryGenerated,
     });
 
   if (useSearch && searchQuery) {
@@ -104,9 +124,37 @@ export async function handleChatRoute(body: Record<string, unknown>) {
 
     searchPromptText = executedSearch.searchPromptText;
     searchEvidenceText = executedSearch.searchEvidenceText;
+    searchContextText = searchEvidenceText || searchPromptText;
     returnedSearchContinuationToken =
       executedSearch.returnedSearchContinuationToken;
     sources = executedSearch.sources;
+
+    if (searchEvidenceText.trim()) {
+      try {
+        const {
+          text: summaryReply,
+          usage: summaryUsage,
+          usageDetails: summaryUsageDetails,
+        } = await generateLibrarySummary({
+          title: parsedContinuation.cleanQuery || searchQuery,
+          text: searchEvidenceText,
+        });
+        generatedSearchSummary = cleanImportSummarySource(summaryReply).trim();
+        if (summaryUsage) {
+          searchSummaryUsage = summaryUsage;
+        }
+        searchSummaryUsageDetails =
+          summaryUsageDetails && typeof summaryUsageDetails === "object"
+            ? summaryUsageDetails
+            : null;
+        if (generatedSearchSummary) {
+          searchPromptText = generatedSearchSummary;
+          searchSummaryGenerated = true;
+        }
+      } catch (error) {
+        console.warn("Search summary generation failed", error);
+      }
+    }
 
     if (wantsGoogleMapsLink(input)) {
       const mapLikeSource =
@@ -130,6 +178,35 @@ export async function handleChatRoute(body: Record<string, unknown>) {
         );
       }
     }
+
+    if (isPlainSearchOnlyInput(input) && searchPromptText.trim()) {
+      return NextResponse.json(
+        buildChatRouteResponse({
+          reply: searchPromptText,
+          usage: searchSummaryUsage,
+          usageDetails: searchSummaryUsageDetails,
+          search: buildSearchPayload(),
+          promptMetrics: {
+            messageCount: 0,
+            systemMessageCount: 0,
+            recentMessageCount: 0,
+            totalChars: 0,
+            systemChars: 0,
+            baseSystemChars: 0,
+            memoryChars: 0,
+            storedLibraryChars: 0,
+            storedSearchChars: 0,
+            storedDocumentChars: 0,
+            searchPromptChars: 0,
+            recentChars: 0,
+            recentUserChars: 0,
+            recentAssistantChars: 0,
+            rawInputChars: input.length,
+            wrappedInputChars: input.length,
+          },
+        })
+      );
+    }
   }
 
   const messages = buildChatCompletionMessages({
@@ -143,7 +220,7 @@ export async function handleChatRoute(body: Record<string, unknown>) {
     storedDocumentContext,
       searchQuery:
         useSearch && searchQuery ? parsedContinuation.cleanQuery || searchQuery : "",
-    searchText: searchPromptText,
+    searchText: searchContextText,
   });
   const promptMetrics = buildChatPromptMetrics({
     messages,
@@ -157,7 +234,7 @@ export async function handleChatRoute(body: Record<string, unknown>) {
     storedDocumentContext,
       searchQuery:
         useSearch && searchQuery ? parsedContinuation.cleanQuery || searchQuery : "",
-    searchText: searchPromptText,
+    searchText: searchContextText,
   });
 
   const { text: reply, usage, usageDetails } = await callOpenAIResponses(

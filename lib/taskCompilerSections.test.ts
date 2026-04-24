@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildCompletionCriteria,
   buildConstraints,
   buildDeliveryLimits,
   buildRuleLines,
@@ -41,9 +40,6 @@ describe("taskCompilerSections", () => {
       },
     };
 
-    expect(buildCompletionCriteria(intent)[0]).toContain(
-      "presentation-style piece"
-    );
     expect(buildDeliveryLimits(intent)).toContain(
       "- Prefer a compact, high-impact presentation style before using multi-part output."
     );

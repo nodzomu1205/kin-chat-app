@@ -3,9 +3,11 @@ const LEADING_TIMECODE =
 const INLINE_TIMECODE =
   /(?:^|\s)(?:\[\s*)?\d{1,2}:\d{2}(?::\d{2})?(?:\s*\])(?=\s|$)/gu;
 const NOISE_BRACKETS =
-  /\[(?:BGM|Music|Applause|Laughter|諡肴焔|隨代＞|豁灘｣ｰ|辟｡髻ｳ)\]/giu;
+  /\[(?:BGM|Music|Applause|Laughter|歓声|拍手|笑い|笑い声)\]/giu;
 const TIMECODE_LINE =
   /^(?:\[\s*)?\d{1,2}:\d{2}(?::\d{2})?(?:\s*\])?\s+\S/u;
+const PUNCTUATION_WITHOUT_LEADING_SPACE_RE =
+  /\s+([、。,.!?;:])/gu;
 
 function cleanSummaryLine(line: string) {
   return line
@@ -52,7 +54,7 @@ export function cleanImportedDocumentText(input: string) {
 
   return cleanedLines
     .join(" ")
-    .replace(/\s+([縲√ゑｼ鯉ｼ趣ｼ・ｼ歉])/gu, "$1")
+    .replace(PUNCTUATION_WITHOUT_LEADING_SPACE_RE, "$1")
     .replace(/\s{2,}/g, " ")
     .trim();
 }

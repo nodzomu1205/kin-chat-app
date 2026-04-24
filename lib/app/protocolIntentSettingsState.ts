@@ -1,11 +1,11 @@
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import {
   normalizeApprovedIntentPhrase,
   normalizePendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import {
   DEFAULT_PROTOCOL_PROMPT,
   DEFAULT_PROTOCOL_RULEBOOK,

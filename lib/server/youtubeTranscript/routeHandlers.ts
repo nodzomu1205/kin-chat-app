@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requestSerpApi } from "@/lib/search-domain/serpApiClient";
-import { toTranscriptText } from "@/lib/server/youtubeTranscriptHelpers";
+import {
+  buildCleanTranscriptText,
+  toTranscriptText,
+} from "@/lib/server/youtubeTranscriptHelpers";
+import { generateLibrarySummary } from "@/lib/server/librarySummary/summaryService";
 import {
   buildTranscriptCandidateLinks,
   buildYouTubeTranscriptSuccessResponse,
@@ -58,6 +62,19 @@ export async function handleYouTubeTranscriptRoute(body: unknown) {
     return NextResponse.json({ error: "transcript not found" }, { status: 404 });
   }
 
+  const cleanTranscriptText = buildCleanTranscriptText(raw.transcript);
+  let summary = "";
+
+  try {
+    const result = await generateLibrarySummary({
+      title: title || `YouTube Transcript ${videoId}`,
+      text: cleanTranscriptText || transcriptText,
+    });
+    summary = result.text;
+  } catch (error) {
+    console.warn("youtube transcript summary generation failed", error);
+  }
+
   return NextResponse.json(
     buildYouTubeTranscriptSuccessResponse({
       videoId,
@@ -66,6 +83,7 @@ export async function handleYouTubeTranscriptRoute(body: unknown) {
       duration,
       raw,
       transcript: raw.transcript,
+      summary,
     })
   );
 }

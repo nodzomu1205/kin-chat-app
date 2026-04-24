@@ -124,17 +124,18 @@ describe("memoryInterpreterFallbackOrchestrator", () => {
   it("delegates to fallback flow when approved rules do not match", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        reply: JSON.stringify({
-          decision: "keep",
-          confidence: 0.9,
-          intent: "question",
-          proposedTopic: null,
-          topic: null,
-          isClosingReply: false,
-          trackedEntity: null,
+      text: async () =>
+        JSON.stringify({
+          reply: JSON.stringify({
+            decision: "keep",
+            confidence: 0.9,
+            intent: "question",
+            proposedTopic: null,
+            topic: null,
+            isClosingReply: false,
+            trackedEntity: null,
+          }),
         }),
-      }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -168,17 +169,18 @@ describe("memoryInterpreterFallbackOrchestrator", () => {
   it("does not bypass approval for an unapproved mid-conversation switch", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        reply: JSON.stringify({
-          decision: "switch",
-          confidence: 0.95,
-          intent: "question",
-          proposedTopic: "Edo period",
-          topic: "Edo period",
-          isClosingReply: false,
-          trackedEntity: null,
+      text: async () =>
+        JSON.stringify({
+          reply: JSON.stringify({
+            decision: "switch",
+            confidence: 0.95,
+            intent: "question",
+            proposedTopic: "Edo period",
+            topic: "Edo period",
+            isClosingReply: false,
+            trackedEntity: null,
+          }),
         }),
-      }),
     });
     vi.stubGlobal("fetch", fetchMock);
 

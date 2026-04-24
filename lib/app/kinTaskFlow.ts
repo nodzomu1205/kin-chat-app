@@ -49,6 +49,7 @@ type StartKinTaskArgs = {
   setPendingKinInjectionIndex: (value: number) => void;
   setKinInput: (value: string) => void;
   setGptInput: (value: string) => void;
+  setGptLoading: (value: boolean) => void;
   appendGptMessage: (message: Message) => void;
   setActiveTabToKin?: () => void;
   extractTaskGoalFromSysTaskBlock: (text: string) => string;
@@ -67,6 +68,7 @@ export async function runStartKinTaskFlow({
   setPendingKinInjectionIndex,
   setKinInput,
   setGptInput,
+  setGptLoading,
   appendGptMessage,
   setActiveTabToKin,
   extractTaskGoalFromSysTaskBlock,
@@ -80,51 +82,57 @@ export async function runStartKinTaskFlow({
     : raw;
   const effectiveInput = normalizedInput.trim() || raw;
 
-  const resolved = await resolveIntent({
-    input: effectiveInput,
-    approvedPhrases: approvedIntentPhrases,
-    responseMode,
-  });
-  applyTaskUsage(resolved.usage);
+  setGptLoading(true);
 
-  if (resolved.pendingCandidates.length > 0) {
-    mergePendingIntentCandidates(resolved.pendingCandidates);
+  try {
+    const resolved = await resolveIntent({
+      input: effectiveInput,
+      approvedPhrases: approvedIntentPhrases,
+      responseMode,
+    });
+    applyTaskUsage(resolved.usage);
+
+    if (resolved.pendingCandidates.length > 0) {
+      mergePendingIntentCandidates(resolved.pendingCandidates);
+    }
+
+    const started = startTask({
+      originalInstruction: effectiveInput,
+      intent: resolved.intent,
+    });
+
+    syncTaskDraftFromProtocol({
+      taskId: started.taskId,
+      title: started.title,
+      goal: resolved.intent.goal,
+      compiledTaskPrompt: started.compiledTaskPrompt,
+      originalInstruction: effectiveInput,
+    });
+
+    const injection = applyCompiledTaskPromptToKinInput({
+      compiledTaskPrompt: started.compiledTaskPrompt,
+      setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex,
+      setKinInput,
+    });
+    setGptInput("");
+    appendGptMessage({
+      id: generateId(),
+      role: "gpt",
+      text:
+        injection.partCount > 1
+          ? `New Kin task generated and split into ${injection.partCount} Kin parts. TASK_ID: #${started.taskId}`
+          : `New Kin task generated and set to Kin input. TASK_ID: #${started.taskId}`,
+      meta: {
+        kind: "task_info",
+        sourceType: "manual",
+      },
+    });
+
+    setActiveTabToKin?.();
+  } finally {
+    setGptLoading(false);
   }
-
-  const started = startTask({
-    originalInstruction: effectiveInput,
-    intent: resolved.intent,
-  });
-
-  syncTaskDraftFromProtocol({
-    taskId: started.taskId,
-    title: started.title,
-    goal: resolved.intent.goal,
-    compiledTaskPrompt: started.compiledTaskPrompt,
-    originalInstruction: effectiveInput,
-  });
-
-  const injection = applyCompiledTaskPromptToKinInput({
-    compiledTaskPrompt: started.compiledTaskPrompt,
-    setPendingKinInjectionBlocks,
-    setPendingKinInjectionIndex,
-    setKinInput,
-  });
-  setGptInput("");
-  appendGptMessage({
-    id: generateId(),
-    role: "gpt",
-    text:
-      injection.partCount > 1
-        ? `New Kin task generated and split into ${injection.partCount} Kin parts. TASK_ID: #${started.taskId}`
-        : `New Kin task generated and set to Kin input. TASK_ID: #${started.taskId}`,
-    meta: {
-      kind: "task_info",
-      sourceType: "manual",
-    },
-  });
-
-  setActiveTabToKin?.();
 }
 
 type ReceiveLastKinResponseArgs = {

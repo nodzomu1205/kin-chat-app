@@ -5,6 +5,14 @@ import type {
   ChatPageWorkspaceViewArgs,
 } from "@/hooks/chatPagePanelCompositionTypes";
 import { buildStoredDocumentFromTaskDraft } from "@/lib/app/taskDraftLibrary";
+import {
+  normalizeLibrarySummaryUsage,
+  requestGeneratedLibrarySummary,
+} from "@/lib/app/librarySummaryClient";
+import { cleanImportSummarySource } from "@/lib/app/importSummaryText";
+import { buildCanonicalSummarySource } from "@/lib/app/ingestDocumentModel";
+import { normalizeUsage } from "@/lib/tokenStats";
+import { buildTaskDraftLibrarySummarySource } from "@/lib/app/taskDraftLibrary";
 
 type BuildChatPageWorkspaceGptPanelArgsOptions = {
   controller: ChatPageControllerGroups;
@@ -259,11 +267,37 @@ export function buildChatPageTaskSnapshotDocument(
   return buildStoredDocumentFromTaskDraft(args.task.currentTaskDraft);
 }
 
-export function saveChatPageTaskSnapshot(
+export async function saveChatPageTaskSnapshot(
   args: Pick<ChatPageWorkspaceViewArgs, "task" | "usage">
 ) {
   const nextDocument = buildChatPageTaskSnapshotDocument(args);
   if (!nextDocument) return false;
-  args.usage.recordIngestedDocument(nextDocument);
+
+  const summarySource = buildCanonicalSummarySource(
+    buildTaskDraftLibrarySummarySource(args.task.currentTaskDraft)
+  );
+  let generatedSummary = nextDocument.summary || "";
+
+  if (summarySource.trim()) {
+    try {
+      const summaryResult = await requestGeneratedLibrarySummary({
+        title: nextDocument.title,
+        text: summarySource,
+      });
+      if (summaryResult.summary?.trim()) {
+        generatedSummary = cleanImportSummarySource(summaryResult.summary).trim();
+      }
+      args.usage.applyIngestUsage(
+        normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+      );
+    } catch (error) {
+      console.warn("Task snapshot summary generation failed", error);
+    }
+  }
+
+  args.usage.recordIngestedDocument({
+    ...nextDocument,
+    summary: generatedSummary,
+  });
   return true;
 }

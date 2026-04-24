@@ -122,7 +122,8 @@ function buildSlotSchemaLines(kind: TaskIntentFallbackSlotKind) {
   ];
 }
 
-export function buildTaskIntentFallbackPrompt(input: string, baseline: TaskIntent) {
+export function buildTaskIntentFallbackPrompt(input: string, _baseline: TaskIntent) {
+  void _baseline;
   const schemaLines = SLOT_KINDS.flatMap((kind, index) => {
     const lines = buildSlotSchemaLines(kind);
     if (index < SLOT_KINDS.length - 1) {
@@ -143,10 +144,6 @@ export function buildTaskIntentFallbackPrompt(input: string, baseline: TaskInten
     "- Always return every slot above.",
     "- Set matched=true only when USER_TEXT explicitly contains that requirement.",
     "- Write phrase as a snippet around the number including the subject, but not necessarily the whole sentence.",
-    "",
-    `BASELINE_ALLOW_SEARCH_REQUEST: ${baseline.workflow?.allowSearchRequest ? "YES" : "NO"}`,
-    `BASELINE_ALLOW_YOUTUBE_TRANSCRIPT_REQUEST: ${baseline.workflow?.allowYoutubeTranscriptRequest ? "YES" : "NO"}`,
-    `BASELINE_ALLOW_LIBRARY_REFERENCE: ${baseline.workflow?.allowLibraryReference ? "YES" : "NO"}`,
     "",
     "USER_TEXT_START",
     input,

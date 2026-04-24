@@ -60,6 +60,7 @@ export function buildYouTubeTranscriptSuccessResponse(args: {
   duration?: string;
   raw: unknown;
   transcript: unknown;
+  summary?: string;
 }) {
   const transcriptText = toTranscriptText(args.transcript);
   const resolvedTitle = args.title?.trim() || `YouTube Transcript ${args.videoId}`;
@@ -69,12 +70,14 @@ export function buildYouTubeTranscriptSuccessResponse(args: {
     filename: sanitizeTranscriptFilename(resolvedTitle, args.videoId),
     text: transcriptText,
     cleanText: buildCleanTranscriptText(args.transcript),
-    summary: buildTranscriptSummary({
-      title: resolvedTitle,
-      channelName: args.channelName,
-      duration: args.duration,
-      transcriptText,
-    }),
+    summary:
+      args.summary?.trim() ||
+      buildTranscriptSummary({
+        title: resolvedTitle,
+        channelName: args.channelName,
+        duration: args.duration,
+        transcriptText,
+      }),
     raw: args.raw,
   };
 }

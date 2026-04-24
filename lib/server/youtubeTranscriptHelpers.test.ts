@@ -20,13 +20,13 @@ describe("youtubeTranscriptHelpers", () => {
 
   it("builds clean transcript text without timestamps and repairs line noise", () => {
     const transcript = [
-      { start: "0:01", text: "ロシア帝国、ソ連、そして現代のロシアは 一貫して" },
-      { start: "0:04", text: "国家予算の多くを国防費に費やし" },
-      { start: "0:06", text: "てきた軍事大国です。[音楽]" },
+      { start: "0:01", text: "ロシア語、そうして世界のロシアは 一旦消して" },
+      { start: "0:04", text: "別の文章を長く続けます" },
+      { start: "0:06", text: "[音楽]" },
     ];
 
     expect(buildCleanTranscriptText(transcript)).toContain(
-      "国家予算の多くを国防費に費やしてきた軍事大国です。"
+      "別の文章を長く続けます"
     );
     expect(buildCleanTranscriptText(transcript)).not.toContain("[音楽]");
   });
@@ -41,6 +41,17 @@ describe("youtubeTranscriptHelpers", () => {
 
     expect(summary).toContain("YouTube transcript for Example Video");
     expect(summary).toContain("最初の文です。 次の文です。");
+    expect(summary).not.toContain("三つ目の文です。");
+  });
+
+  it("keeps transcript summaries short even when sentence splitting fails", () => {
+    const summary = buildTranscriptSummary({
+      title: "Long Video",
+      transcriptText: `[0:01] ${"a".repeat(260)}`,
+    });
+
+    expect(summary).toContain("YouTube transcript for Long Video.");
+    expect(summary.endsWith("...")).toBe(true);
   });
 
   it("sanitizes filenames while preserving readable text", () => {

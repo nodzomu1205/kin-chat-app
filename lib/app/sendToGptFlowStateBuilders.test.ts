@@ -24,6 +24,7 @@ import {
   buildFinalizeMemoryFollowUpArgs,
   buildFinalizeProtocolSideEffectArgs,
 } from "@/lib/app/sendToGptFlowFinalizeBuilders";
+import type { FinalizeSendToGptFlowArgs } from "@/lib/app/sendToGptFlowTypes";
 import type { Message } from "@/types/chat";
 
 describe("sendToGptFlow state builders", () => {
@@ -36,6 +37,8 @@ describe("sendToGptFlow state builders", () => {
         searchUsed: true,
         searchQuery: "tokyo housing",
         searchEvidence: "raw evidence",
+        searchSummaryText: "Generated search summary",
+        searchSummaryGenerated: true,
         searchSeriesId: "SERIES1",
         searchContinuationToken: "NEXT1",
         sources: [{ title: "Source A", link: "https://example.com" }],
@@ -66,6 +69,8 @@ describe("sendToGptFlow state builders", () => {
           searchUsed: true,
           searchQuery: "tokyo housing",
           searchEvidence: "raw evidence",
+          searchSummaryText: "Generated search summary",
+          searchSummaryGenerated: true,
           searchSeriesId: "SERIES1",
           searchContinuationToken: "NEXT1",
           sources: [{ title: "Source A", link: "https://example.com" }],
@@ -88,9 +93,14 @@ describe("sendToGptFlow state builders", () => {
       seriesId: "SERIES1",
       continuationToken: "NEXT1",
       query: "tokyo housing",
-      summaryText: "Implicit search summary",
+      summaryText: "Generated search summary",
       rawText: "raw evidence",
       sources: [{ title: "Source A", link: "https://example.com" }],
+      metadata: {
+        seriesId: "SERIES1",
+        subsequentRequestToken: "NEXT1",
+        librarySummaryGenerated: true,
+      },
     });
   });
 
@@ -344,6 +354,7 @@ describe("sendToGptFlow state builders", () => {
       },
       searchRequestEvent: { query: "farmers 360" },
       applySearchUsage: () => calls.push("search"),
+      applyChatUsage: () => calls.push("chat"),
     });
 
     applyExplicitSearchUsageAfterFinalize({
@@ -352,13 +363,14 @@ describe("sendToGptFlow state builders", () => {
       },
       searchRequestEvent: undefined,
       applySearchUsage: () => calls.push("skip"),
+      applyChatUsage: () => calls.push("skip-chat"),
     });
 
     expect(calls).toEqual(["search"]);
   });
 
   it("builds finalize helper args from the finalized flow input", () => {
-    const finalizeArgs = {
+    const finalizeArgs: FinalizeSendToGptFlowArgs = {
       data: {
         searchUsed: true,
         usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
@@ -393,10 +405,14 @@ describe("sendToGptFlow state builders", () => {
       applySearchUsage: () => undefined,
       applyChatUsage: () => undefined,
       recordSearchContext: () => ({ rawResultId: "RAW-1" }),
-      handleGptMemory: async () => ({ compressionUsage: null, fallbackUsage: null }),
-      applyChatUsage: () => undefined,
+      handleGptMemory: async () => ({
+        compressionUsage: null,
+        fallbackUsage: null,
+        fallbackUsageDetails: null,
+        fallbackMetrics: null,
+      }),
       applyCompressionUsage: () => undefined,
-    } as never;
+    };
 
     expect(buildFinalizeAssistantMessageArgs(finalizeArgs)).toMatchObject({
       assistantText: "Wrapped protocol response",

@@ -76,7 +76,10 @@ describe("gptPanelViewState", () => {
 
   it("updates the bottom tab independently", () => {
     expect(
-      changeGptBottomTab(createInitialGptPanelViewState(), "file").bottomTab
-    ).toBe("file");
+      changeGptBottomTab(
+        createInitialGptPanelViewState(),
+        "task_primary"
+      ).bottomTab
+    ).toBe("task_primary");
   });
 });

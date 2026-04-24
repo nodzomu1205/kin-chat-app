@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import {
   normalizeApprovedIntentPhrase,
   normalizePendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import {
   APPROVED_INTENT_PHRASES_KEY,
   PENDING_INTENT_CANDIDATES_KEY,

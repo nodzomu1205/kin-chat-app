@@ -62,4 +62,18 @@ describe("ingestClient builders", () => {
       })
     ).toBe("failed");
   });
+
+  it("normalizes sentence-like ingest titles before storing them", () => {
+    expect(
+      resolveIngestFileTitle({
+        data: {
+          result: {
+            title:
+              "ヨハネスブルグの最新の治安状況（2026年4月現在）は、依然として極めて厳しい状況です",
+          },
+        },
+        fallback: "fallback.txt",
+      })
+    ).toBe("ヨハネスブルグの最新の治安状況（2026年4月現在）");
+  });
 });

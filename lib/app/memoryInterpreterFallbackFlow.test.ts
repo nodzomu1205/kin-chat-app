@@ -60,7 +60,7 @@ describe("memoryInterpreterFallbackFlow", () => {
   it("falls back to preserving the current topic when response parsing fails", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ reply: "not json" }),
+      text: async () => JSON.stringify({ reply: "not json" }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -100,17 +100,18 @@ describe("memoryInterpreterFallbackFlow", () => {
   it("disables raw input-topic inference when fallback returns no usable topic on an initial turn", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        reply: JSON.stringify({
-          decision: "unsure",
-          confidence: 0.4,
-          intent: "statement",
-          proposedTopic: null,
-          topic: null,
-          isClosingReply: false,
-          trackedEntity: null,
+      text: async () =>
+        JSON.stringify({
+          reply: JSON.stringify({
+            decision: "unsure",
+            confidence: 0.4,
+            intent: "statement",
+            proposedTopic: null,
+            topic: null,
+            isClosingReply: false,
+            trackedEntity: null,
+          }),
         }),
-      }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -144,17 +145,18 @@ describe("memoryInterpreterFallbackFlow", () => {
   it("keeps the current topic and emits only a proposal during an active conversation", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        reply: JSON.stringify({
-          decision: "switch",
-          confidence: 0.97,
-          intent: "question",
-          proposedTopic: "Edo period",
-          topic: "Edo period",
-          isClosingReply: false,
-          trackedEntity: null,
+      text: async () =>
+        JSON.stringify({
+          reply: JSON.stringify({
+            decision: "switch",
+            confidence: 0.97,
+            intent: "question",
+            proposedTopic: "Edo period",
+            topic: "Edo period",
+            isClosingReply: false,
+            trackedEntity: null,
+          }),
         }),
-      }),
     });
     vi.stubGlobal("fetch", fetchMock);
 

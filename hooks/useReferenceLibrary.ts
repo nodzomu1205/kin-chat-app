@@ -14,13 +14,9 @@ import {
   resolveSelectedLibraryItemId,
 } from "@/lib/app/referenceLibraryState";
 import {
-  buildCanonicalDocumentSummary,
   buildReferenceLibraryDocumentItem,
+  buildReferenceLibrarySearchItem,
 } from "@/lib/app/ingestDocumentModel";
-import {
-  cleanImportedDocumentText,
-  cleanImportSummarySource,
-} from "@/lib/app/importSummaryText";
 
 const LIBRARY_ORDER_KEY = "reference_library_order";
 const LIBRARY_AUTO_REFERENCE_ENABLED_KEY = "library_auto_reference_enabled";
@@ -115,38 +111,25 @@ function loadInitialReferenceLibraryState() {
   return initialState;
 }
 
-function buildFallbackSummary(text: string, fallbackTitle: string) {
-  return buildCanonicalDocumentSummary(text, fallbackTitle);
-}
-
 function toDocumentLibraryItem(item: StoredDocument): ReferenceLibraryItem {
   return buildReferenceLibraryDocumentItem(item);
 }
 
 function toSearchLibraryItem(item: SearchContext): ReferenceLibraryItem {
-  const cleanedRawText = cleanImportedDocumentText(item.rawText || "");
-  const cleanedSummary = item.summaryText
-    ? cleanImportSummarySource(item.summaryText).trim()
-    : "";
   const askAiModeItems = Array.isArray(item.metadata?.askAiModeItems)
     ? (item.metadata.askAiModeItems as ReferenceLibraryItem["askAiModeItems"])
     : undefined;
 
-  return {
-    id: `search:${item.rawResultId}`,
-    sourceId: item.rawResultId,
-    itemType: "search",
-    title: item.query,
-    subtitle: item.rawResultId,
-    summary: cleanedSummary || buildFallbackSummary(cleanedRawText, item.query),
-    excerptText: cleanedRawText,
-    createdAt: item.createdAt,
-    updatedAt: item.createdAt,
+  return buildReferenceLibrarySearchItem({
     rawResultId: item.rawResultId,
+    query: item.query,
+    summary: item.summaryText || "",
+    rawText: item.rawText || "",
+    createdAt: item.createdAt,
     taskId: item.taskId,
     sources: item.sources,
     askAiModeItems,
-  };
+  });
 }
 
 export function useReferenceLibrary(params: {

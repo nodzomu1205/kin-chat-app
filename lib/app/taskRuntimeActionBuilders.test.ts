@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { getIntentCandidateSignature } from "@/lib/app/chatPageHelpers";
+import type {
+  UseKinTransferActionsArgs,
+  UseTaskProtocolActionsArgs,
+} from "@/hooks/chatPageActionTypes";
 import {
   buildSendCurrentTaskContentToKinFlowArgs,
   buildSendLatestGptContentToKinFlowArgs,
@@ -7,12 +11,43 @@ import {
   buildTaskProtocolIntentSyncArgs,
   createPendingIntentCandidateMerger,
 } from "@/lib/app/taskRuntimeActionBuilders";
+import { createEmptyTaskDraft } from "@/types/task";
+import type { TaskIntent } from "@/types/taskProtocol";
 
-function createTaskProtocolArgs() {
+function createTaskIntent(goal: string): TaskIntent {
+  return {
+    mode: "task",
+    goal,
+    output: {
+      type: "essay",
+      language: "ja",
+      length: "medium",
+    },
+    workflow: {},
+    constraints: [],
+    entities: [],
+  };
+}
+
+function createTaskProtocolArgs(): UseTaskProtocolActionsArgs {
+  const taskProtocol = {
+    runtime: {
+      currentTaskId: "task-1",
+      currentTaskTitle: "Runtime title",
+      currentTaskIntent: createTaskIntent("Runtime goal"),
+      originalInstruction: "Runtime original instruction",
+    },
+    replaceCurrentTaskIntent: vi.fn(),
+    prepareWaitingAckMessage: vi.fn(),
+    prepareTaskSyncMessage: vi.fn(),
+    prepareTaskSuspendMessage: vi.fn(),
+  } as unknown as UseTaskProtocolActionsArgs["taskProtocol"];
+
   return {
     applyTaskUsage: vi.fn(),
     approvedIntentPhrases: [],
     currentTaskDraft: {
+      ...createEmptyTaskDraft(),
       title: "Draft title",
       userInstruction: "Draft instruction",
       slot: 2,
@@ -34,33 +69,20 @@ function createTaskProtocolArgs() {
     setProtocolRulebook: vi.fn(),
     setRejectedIntentCandidateSignatures: vi.fn(),
     syncTaskDraftFromProtocol: vi.fn(),
-    taskProtocol: {
-      runtime: {
-        currentTaskId: "task-1",
-        currentTaskTitle: "Runtime title",
-        currentTaskIntent: {
-          goal: "Runtime goal",
-        },
-        originalInstruction: "Runtime original instruction",
-      },
-      replaceCurrentTaskIntent: vi.fn(),
-      prepareWaitingAckMessage: vi.fn(),
-      prepareTaskSyncMessage: vi.fn(),
-      prepareTaskSuspendMessage: vi.fn(),
-      startTask: vi.fn(),
-    },
-  } as never;
+    taskProtocol,
+  };
 }
 
-function createKinTransferArgs() {
+function createKinTransferArgs(): UseKinTransferActionsArgs {
+  const setPendingIntentCandidates = vi.fn();
   const rejectedCandidate = {
     id: "rejected",
     phrase: "Rejected",
-    kind: "ask_gpt",
+    kind: "ask_gpt" as const,
     count: 1,
-    rule: "up_to",
+    rule: "up_to" as const,
     createdAt: "2026-04-18T00:00:00.000Z",
-  } as const;
+  };
 
   return {
     ...createTaskProtocolArgs(),
@@ -80,6 +102,7 @@ function createKinTransferArgs() {
         kind: "search_request",
         count: 3,
         rule: "up_to",
+        sourceText: "search up to 3 times",
         createdAt: "2026-04-18T00:00:00.000Z",
       },
     ],
@@ -92,8 +115,9 @@ function createKinTransferArgs() {
     setKinConnectionState: vi.fn(),
     setKinLoading: vi.fn(),
     setKinMessages: vi.fn(),
-    setPendingIntentCandidates: vi.fn(),
+    setPendingIntentCandidates,
     currentTaskDraft: {
+      ...createEmptyTaskDraft(),
       title: "Draft title",
       userInstruction: "Draft instruction",
       slot: 2,
@@ -109,10 +133,10 @@ function createKinTransferArgs() {
       },
     ],
     taskProtocol: {
-      ...createTaskProtocolArgs().taskProtocol,
+      ...(createTaskProtocolArgs().taskProtocol as unknown as object),
       startTask: vi.fn(),
-    },
-  } as never;
+    } as unknown as UseKinTransferActionsArgs["taskProtocol"],
+  };
 }
 
 describe("taskRuntimeActionBuilders", () => {
@@ -150,14 +174,16 @@ describe("taskRuntimeActionBuilders", () => {
         kind: "ask_gpt",
         count: 2,
         rule: "up_to",
+        sourceText: "Fresh",
         createdAt: "2026-04-18T00:00:00.000Z",
       },
       {
         id: "dup-approved",
-        phrase: "Approved",
+        phrase: "search the web at most 3 times",
         kind: "search_request",
         count: 3,
         rule: "up_to",
+        sourceText: "search the web at most 3 times",
         createdAt: "2026-04-18T00:00:00.000Z",
       },
       {
@@ -166,19 +192,21 @@ describe("taskRuntimeActionBuilders", () => {
         kind: "search_request",
         count: 3,
         rule: "up_to",
+        sourceText: "search up to 3 times",
         createdAt: "2026-04-18T00:00:00.000Z",
       },
       {
         id: "rejected",
-        phrase: "Rejected",
+        phrase: "ask ChatGPT at most 1 time",
         kind: "ask_gpt",
         count: 1,
         rule: "up_to",
+        sourceText: "ask ChatGPT at most 1 time",
         createdAt: "2026-04-18T00:00:00.000Z",
       },
-    ] as never);
+    ]);
 
-    const updater = args.setPendingIntentCandidates.mock.calls[0][0];
+    const updater = (args.setPendingIntentCandidates as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(
       updater([
         {
@@ -187,6 +215,7 @@ describe("taskRuntimeActionBuilders", () => {
           kind: "search_request",
           count: 3,
           rule: "up_to",
+          sourceText: "search up to 3 times",
           createdAt: "2026-04-18T00:00:00.000Z",
         },
       ])

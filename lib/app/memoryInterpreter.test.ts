@@ -12,17 +12,18 @@ describe("memoryInterpreter", () => {
   it("passes current topic and meaningful GPT context to memory_interpret", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        reply: JSON.stringify({
-          decision: "keep",
-          confidence: 0.9,
-          intent: "question",
-          proposedTopic: null,
-          topic: null,
-          isClosingReply: false,
-          trackedEntity: null,
+      text: async () =>
+        JSON.stringify({
+          reply: JSON.stringify({
+            decision: "keep",
+            confidence: 0.9,
+            intent: "question",
+            proposedTopic: null,
+            topic: null,
+            isClosingReply: false,
+            trackedEntity: null,
+          }),
         }),
-      }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -72,17 +73,18 @@ describe("memoryInterpreter", () => {
   it("creates a review candidate when keep is returned but a narrower subtopic is present", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
-        reply: JSON.stringify({
-          decision: "keep",
-          confidence: 0.93,
-          intent: "question",
-          proposedTopic: null,
-          topic: null,
-          isClosingReply: false,
-          trackedEntity: null,
+      text: async () =>
+        JSON.stringify({
+          reply: JSON.stringify({
+            decision: "keep",
+            confidence: 0.93,
+            intent: "question",
+            proposedTopic: null,
+            topic: null,
+            isClosingReply: false,
+            trackedEntity: null,
+          }),
         }),
-      }),
     });
     vi.stubGlobal("fetch", fetchMock);
 

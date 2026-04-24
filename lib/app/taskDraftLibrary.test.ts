@@ -20,11 +20,11 @@ describe("taskDraftLibrary", () => {
 
     expect(document).toMatchObject({
       title: "Task Snapshot - Market scan",
-      filename: "Task Snapshot - Market scan.txt",
+      filename: "Task Snapshot - Market scan [127chars].txt",
       taskId: "T-001",
     });
     expect(document?.text).toContain("Instruction");
-    expect(document?.text).toContain("Summary");
+    expect(document?.text).not.toContain("\nSummary\n");
     expect(document?.text).toContain("Full");
     expect(document?.summary).toBe("Short summary of the task.");
   });

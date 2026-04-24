@@ -22,6 +22,7 @@ import {
 } from "@/lib/app/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/importSummaryText";
 import {
+  buildIngestedDocumentFilename,
   buildCanonicalSummarySource,
 } from "@/lib/app/ingestDocumentModel";
 import {
@@ -164,6 +165,10 @@ export async function runFileIngestFlow({
       data,
       fallback: file.name,
     });
+    const storedFilename = buildIngestedDocumentFilename({
+      title: fileTitle,
+      fallbackFilename: file.name,
+    });
     let totalIngestUsage = normalizeUsage(data?.usage);
 
     const {
@@ -233,7 +238,7 @@ export async function runFileIngestFlow({
     const storedDocumentText = canonicalDocumentText.trim();
     recordIngestedDocument({
       title: fileTitle,
-      filename: file.name,
+      filename: storedFilename,
       text: storedDocumentText,
       summary: documentSummary,
       taskId: currentTaskDraft.id || undefined,

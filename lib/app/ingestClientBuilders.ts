@@ -5,6 +5,7 @@ import type {
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
 import type { SharedIngestOptions, SharedIngestResult } from "@/lib/app/ingestClient";
+import { normalizeIngestedDocumentTitle } from "@/lib/app/ingestDocumentModel";
 
 export function buildIngestRequestFormData(params: {
   file: File;
@@ -30,9 +31,10 @@ export function resolveIngestFileTitle(params: {
   fallback: string;
 }) {
   const title = params.data?.result?.title;
-  return typeof title === "string" && title.trim()
+  const resolved = typeof title === "string" && title.trim()
     ? title.trim()
     : params.fallback;
+  return normalizeIngestedDocumentTitle(resolved, 58) || params.fallback;
 }
 
 export function resolveIngestErrorMessage(params: {

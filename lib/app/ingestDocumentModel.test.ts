@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   applyStoredDocumentOverride,
+  buildCanonicalDocumentSummary,
+  buildCompactLibraryFilenameLabel,
+  buildIngestedDocumentFilename,
   buildIngestedStoredDocument,
-  buildStoredDocumentDisplayTitle,
   buildKinStoredDocument,
   buildLibraryFilenameWithCharCount,
   buildReferenceLibraryDocumentItem,
-  buildCanonicalDocumentSummary,
+  buildReferenceLibrarySearchItem,
+  buildStoredDocumentDisplayTitle,
   buildTaskPrepEnvelope,
   normalizeStoredDocument,
   resolveCanonicalDocumentText,
@@ -66,6 +69,27 @@ describe("ingestDocumentModel", () => {
     ).toBe("notes");
   });
 
+  it("builds a clean stored filename for ingested documents from the normalized title", () => {
+    expect(
+      buildIngestedDocumentFilename({
+        title:
+          "ヨハネスブルグの最新の治安状況（2026年4月現在）は、依然として極めて厳しい状況です",
+        fallbackFilename: "report.txt",
+      })
+    ).toBe("ヨハネスブルグの最新の治安状況（2026年4月現在）.txt");
+  });
+
+  it("clips long sentence-like ingested titles at a natural boundary", () => {
+    expect(
+      buildStoredDocumentDisplayTitle({
+        title:
+          "ヨハネスブルグの最新の治安状況（2026年4月現在）は、依然として極めて厳しい状況です",
+        filename: "security-report.txt",
+        sourceType: "ingested_file",
+      })
+    ).toBe("ヨハネスブルグの最新の治安状況（2026年4月現在）");
+  });
+
   it("normalizes stored documents through the shared ingest authority", () => {
     expect(
       normalizeStoredDocument({
@@ -121,7 +145,7 @@ describe("ingestDocumentModel", () => {
     });
   });
 
-  it("applies overrides and builds reference-library document items from the same model", () => {
+  it("applies overrides and builds compact document-library items", () => {
     const overridden = applyStoredDocumentOverride(
       {
         id: "doc-1",
@@ -155,8 +179,45 @@ describe("ingestDocumentModel", () => {
       sourceId: "doc-1",
       itemType: "ingested_file",
       title: "After",
+      subtitle: "before [10chars].txt",
       excerptText: "After body",
       summary: "",
+    });
+  });
+
+  it("compacts duplicated filename labels for cleaner library cards", () => {
+    expect(
+      buildCompactLibraryFilenameLabel({
+        title: "Task Snapshot - farmers 360° link",
+        filename: "Task Snapshot - farmers 360° link [1254chars].txt",
+      })
+    ).toBe("[1254chars].txt");
+
+    expect(
+      buildCompactLibraryFilenameLabel({
+        title: "Custom title",
+        filename: "different-source-name [88chars].txt",
+      })
+    ).toBe("different-source-name [88chars].txt");
+  });
+
+  it("builds reference-library search items with char-count filenames", () => {
+    expect(
+      buildReferenceLibrarySearchItem({
+        rawResultId: "RAW-1",
+        query: "Tokyo housing",
+        summary: "Short summary",
+        rawText: "alpha beta gamma",
+        createdAt: "2026-04-18T00:00:00.000Z",
+      })
+    ).toMatchObject({
+      id: "search:RAW-1",
+      sourceId: "RAW-1",
+      itemType: "search",
+      filename: "Tokyo housing [16chars].txt",
+      subtitle: "[16chars].txt",
+      summary: "Short summary",
+      excerptText: "alpha beta gamma",
     });
   });
 });

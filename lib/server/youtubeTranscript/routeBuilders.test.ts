@@ -53,4 +53,16 @@ describe("youtubeTranscript routeBuilders", () => {
       })
     );
   });
+
+  it("prefers a shared generated summary when provided", () => {
+    expect(
+      buildYouTubeTranscriptSuccessResponse({
+        videoId: "abc123",
+        title: "Example Video",
+        raw: { transcript: [] },
+        transcript: [{ start: "0:01", text: "first line" }],
+        summary: "Shared summary",
+      }).summary
+    ).toBe("Shared summary");
+  });
 });

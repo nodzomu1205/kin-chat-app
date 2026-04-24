@@ -1,4 +1,4 @@
-﻿import {
+import {
   extractQuestionSubject as extractQuestionSubjectFromTopicExtractor,
   isWeakTopicCandidate as isWeakTopicCandidateFromTopicExtractor,
   normalizeTopicCandidate as normalizeTopicCandidateFromTopicExtractor,
@@ -14,7 +14,7 @@ export const SEARCH_PREFIX_RE = /^(?:検索|search)\s*[:：]/i;
 const SYS_FORMAT_RE = /<<(?:END_)?SYS_[A-Z_]+>>/i;
 
 const QUESTIONISH_RE =
-  /(?:\?|・毫謨吶∴縺ｦ|遏･縺｣縺ｦ縺・∪縺吶°|遏･縺｣縺ｦ縺ｾ縺吶°|隱ｰ縺ｧ縺吶°|菴輔〒縺吶°|縺ゅｊ縺ｾ縺吶°|縺・∪縺吶°|縺ｪ縺忿縺ｩ縺・＠縺ｦ)/u;
+  /(?:\?|？|教えて|知っていますか|知ってますか|何ですか|なんですか|ありますか|でしょうか)/u;
 const ACK_LEAD_IN_RE = MEMORY_ACK_LEAD_IN_RE;
 const CLAUSE_SEPARATOR_RE = MEMORY_CLAUSE_SEPARATOR_RE;
 
@@ -30,7 +30,7 @@ export function normalizeLine(text: string) {
   return normalizeText(text)
     .replace(/^#{1,6}\s*/, "")
     .replace(/^\d+[.)]\s*/, "")
-    .replace(/^[-*窶｢]\s*/, "")
+    .replace(/^[-*•]\s*/, "")
     .replace(/\*\*/g, "")
     .trim();
 }

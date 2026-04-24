@@ -3,6 +3,7 @@ import {
   applyLocalSettingsUpdate,
   buildLocalSettingsSourceKey,
   getComposerPlaceholder,
+  isGptPanelBusy,
   resolveFloatingLabel,
   resolveLocalSettingsState,
   toLocalSettings,
@@ -50,6 +51,20 @@ describe("composer placeholder", () => {
   it("returns stable placeholder text for each tab", () => {
     expect(getComposerPlaceholder("chat")).toBe("メッセージを入力");
     expect(getComposerPlaceholder("kin")).toContain("Kin");
+  });
+});
+
+describe("busy state", () => {
+  it("treats either GPT or ingest loading as a busy panel state", () => {
+    expect(isGptPanelBusy({ gptLoading: false, ingestLoading: false })).toBe(
+      false
+    );
+    expect(isGptPanelBusy({ gptLoading: true, ingestLoading: false })).toBe(
+      true
+    );
+    expect(isGptPanelBusy({ gptLoading: false, ingestLoading: true })).toBe(
+      true
+    );
   });
 });
 

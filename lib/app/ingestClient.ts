@@ -55,7 +55,27 @@ export async function requestFileIngest(params: {
     method: "POST",
     body: form,
   });
-  const data = (await response.json()) as SharedIngestResult;
+  const rawText = await response.text();
+  let data: SharedIngestResult = {};
+
+  if (rawText.trim()) {
+    try {
+      data = JSON.parse(rawText) as SharedIngestResult;
+    } catch {
+      if (response.ok) {
+        throw new Error("Invalid /api/ingest JSON response.");
+      }
+      data = {
+        error: `Ingest request failed with a non-JSON response (${response.status} ${response.statusText || "unknown"}).`,
+      };
+    }
+  } else if (response.ok) {
+    throw new Error("Empty /api/ingest response.");
+  } else {
+    data = {
+      error: `Ingest request failed with an empty response (${response.status} ${response.statusText || "unknown"}).`,
+    };
+  }
 
   return {
     response,

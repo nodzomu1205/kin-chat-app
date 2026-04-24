@@ -201,4 +201,11 @@ export function getComposerPlaceholder(bottomTab: BottomTabKey) {
   return CHAT_TEXTAREA_TEXT.placeholder;
 }
 
+export function isGptPanelBusy(args: {
+  gptLoading: boolean;
+  ingestLoading: boolean;
+}) {
+  return args.gptLoading || args.ingestLoading;
+}
+
 

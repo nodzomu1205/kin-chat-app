@@ -24,6 +24,8 @@ describe("routeBuilders", () => {
         searchSeriesId: "SERIES-1",
         searchContinuationToken: "TOKEN-1",
         searchEvidence: "evidence",
+        searchSummaryText: "summary",
+        searchSummaryGenerated: true,
       })
     ).toEqual({
       sources: [{ title: "A", link: "https://example.com" }],
@@ -32,6 +34,8 @@ describe("routeBuilders", () => {
       searchSeriesId: "SERIES-1",
       searchContinuationToken: "TOKEN-1",
       searchEvidence: "evidence",
+      searchSummaryText: "summary",
+      searchSummaryGenerated: true,
     });
   });
 

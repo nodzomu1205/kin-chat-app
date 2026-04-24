@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
+import type { ApprovedIntentPhrase } from "@/lib/taskIntent";
+import type { PendingIntentCandidate } from "@/lib/taskIntentPhraseState";
+import {
+  parseTaskIntentFromText,
+  resolveTaskIntentWithFallback,
+} from "@/lib/taskIntent";
 import {
   formatIntentCandidateDraftText,
   normalizeApprovedIntentPhraseFromCandidate,
   parseIntentCandidateDraftText,
-  parseTaskIntentFromText,
-  resolveTaskIntentWithFallback,
-} from "@/lib/taskIntent";
+} from "@/lib/taskIntentPhraseState";
 import {
   buildTaskIntentFallbackPrompt,
   extractTaskIntentFallbackPayload,
@@ -16,11 +19,19 @@ const CLEAN_INPUT =
   "Analyze the YouTube transcript and use Google search to prepare an analysis.";
 
 describe("parseTaskIntentFromText", () => {
-  it("keeps workflow counts empty until phrases are approved", () => {
+  it("keeps workflow permissions and counts empty until phrases are approved", () => {
     const intent = parseTaskIntentFromText(CLEAN_INPUT);
 
-    expect(intent.workflow?.allowSearchRequest).toBe(true);
-    expect(intent.workflow?.allowYoutubeTranscriptRequest).toBe(true);
+    expect(intent.output).toEqual(
+      expect.objectContaining({
+        type: "essay",
+        language: "ja",
+        length: "medium",
+      })
+    );
+    expect(intent.workflow?.allowSearchRequest).toBeUndefined();
+    expect(intent.workflow?.allowYoutubeTranscriptRequest).toBeUndefined();
+    expect(intent.workflow?.finalizationPolicy).toBeUndefined();
     expect(intent.workflow?.searchRequestCount).toBeUndefined();
     expect(intent.workflow?.youtubeTranscriptRequestCount).toBeUndefined();
   });
@@ -56,8 +67,45 @@ describe("parseTaskIntentFromText", () => {
       "Perform up to 3 searches.",
       "Make up to 2 requests to GPT.",
     ]);
+    expect(intent.workflow?.allowSearchRequest).toBe(true);
     expect(intent.workflow?.searchRequestCount).toBe(3);
     expect(intent.workflow?.askGptCount).toBe(2);
+  });
+
+  it("applies approved Japanese constraint lines through the same constraint path", () => {
+    const approved: ApprovedIntentPhrase[] = [
+      {
+        id: "approved-search-ja",
+        phrase: "検索を3回まで",
+        kind: "search_request",
+        count: 3,
+        rule: "up_to",
+        draftText: "Perform up to 3 searches.",
+        createdAt: "2026-04-19T00:00:00.000Z",
+      },
+      {
+        id: "approved-user-ja",
+        phrase: "ユーザーに1回確認",
+        kind: "ask_user",
+        count: 1,
+        rule: "exact",
+        draftText: "Ask exactly 1 question to the user.",
+        createdAt: "2026-04-19T00:00:00.000Z",
+      },
+    ];
+
+    const intent = parseTaskIntentFromText(
+      "この件は検索を3回まで。必要ならユーザーに1回確認してください。",
+      approved
+    );
+
+    expect(intent.constraints).toEqual([
+      "Perform up to 3 searches.",
+      "Ask exactly 1 question to the user.",
+    ]);
+    expect(intent.workflow?.allowSearchRequest).toBe(true);
+    expect(intent.workflow?.searchRequestCount).toBe(3);
+    expect(intent.workflow?.askUserCount).toBe(1);
   });
 });
 
@@ -172,6 +220,156 @@ describe("resolveTaskIntentWithFallback", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(result.usedFallback).toBe(false);
     expect(result.intent.workflow?.searchRequestCount).toBe(3);
+    expect(result.pendingCandidates).toEqual([]);
+  });
+
+  it("still runs fallback when unmatched wording remains after a strong approved phrase", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        reply: JSON.stringify({
+          output_limit: {
+            matched: false,
+            phrase: "",
+            charLimit: null,
+            rule: null,
+          },
+          gpt_request: {
+            matched: true,
+            phrase: "GPT request up to 2 times",
+            count: 2,
+            rule: "up_to",
+          },
+          search_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          youtube_transcript_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          library_index_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          library_item_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          ask_user: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+        }),
+        usage: null,
+      }),
+    } as Response);
+
+    const result = await resolveTaskIntentWithFallback({
+      input: "search up to 3 times and GPT request up to 2 times",
+      approvedPhrases: [
+        {
+          id: "approved-1",
+          phrase: "search up to 3 times",
+          kind: "search_request",
+          count: 3,
+          rule: "up_to",
+          draftText: "Perform up to 3 searches.",
+          createdAt: "2026-04-19T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(result.usedFallback).toBe(true);
+    expect(result.pendingCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "ask_gpt",
+          count: 2,
+          rule: "up_to",
+        }),
+      ])
+    );
+  });
+
+  it("drops fallback candidates that are already approved by constraint signature", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        reply: JSON.stringify({
+          output_limit: {
+            matched: false,
+            phrase: "",
+            charLimit: null,
+            rule: null,
+          },
+          gpt_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          search_request: {
+            matched: true,
+            phrase: "search the web at most 3 times",
+            count: 3,
+            rule: "up_to",
+          },
+          youtube_transcript_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          library_index_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          library_item_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          ask_user: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+        }),
+        usage: null,
+      }),
+    } as Response);
+
+    const result = await resolveTaskIntentWithFallback({
+      input: "search up to 3 times and keep going",
+      approvedPhrases: [
+        {
+          id: "approved-1",
+          phrase: "search up to 3 times",
+          kind: "search_request",
+          count: 3,
+          rule: "up_to",
+          draftText: "Perform up to 3 searches.",
+          createdAt: "2026-04-19T00:00:00.000Z",
+        },
+      ],
+    });
+
     expect(result.pendingCandidates).toEqual([]);
   });
 });

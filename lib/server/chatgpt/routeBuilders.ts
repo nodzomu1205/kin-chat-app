@@ -35,6 +35,8 @@ export type ChatRouteSearchPayload = {
   searchSeriesId: string;
   searchContinuationToken: string;
   searchEvidence: string;
+  searchSummaryText: string;
+  searchSummaryGenerated: boolean;
 };
 
 export function wantsGoogleMapsLink(text: string) {
@@ -44,8 +46,8 @@ export function wantsGoogleMapsLink(text: string) {
     normalized.includes("google maps") ||
     normalized.includes("maps link") ||
     normalized.includes("map link") ||
-    (normalized.includes("蝨ｰ蝗ｳ") && normalized.includes("繝ｪ繝ｳ繧ｯ")) ||
-    (normalized.includes("繝槭ャ繝・") && normalized.includes("繝ｪ繝ｳ繧ｯ"))
+    (normalized.includes("地図") && normalized.includes("リンク")) ||
+    (normalized.includes("マップ") && normalized.includes("リンク"))
   );
 }
 
@@ -215,7 +217,7 @@ Hard requirements:
 - Track how follow-up questions should be interpreted in context.followUpRule.
 - Track the user's most recent intent in context.lastUserIntent.
 - If the conversation is currently about weather in different places, store that clearly.
-- If a short follow-up like "譚ｱ莠ｬ縺ｯ?" or "繝ｨ繝上ロ繧ｹ繝悶Ν繧ｰ縺ｯ?" should inherit the previous topic, write that rule explicitly in followUpRule.
+- If a short follow-up like "本当は?" or "ヨハネスブルグは?" should inherit the previous topic, write that rule explicitly in followUpRule.
 - Do not over-compress away important context.
 - Avoid duplicates.
 - Keep schema stable.
@@ -234,10 +236,10 @@ Schema:
 }
 
 Good examples for context:
-- currentTopic: "譌･譛ｬ蜷・慍縺ｮ螟ｩ豌・
-- currentTask: "繝ｦ繝ｼ繧ｶ繝ｼ縺ｯ蝨ｰ蝓溘ｒ鬆・分縺ｫ謖吶￡縲√◎縺ｮ蝨ｰ蝓溘・螟ｩ豌励ｒ閨槭＞縺ｦ縺・ｋ"
-- followUpRule: "蝨ｰ蜷阪□縺代・遏ｭ縺・ｿｽ雉ｪ蝠上・縲∫峩蜑阪・螟ｩ豌励ヨ繝斐ャ繧ｯ繧貞ｼ輔″邯吶＞縺ｧ隗｣驥医☆繧・
-- lastUserIntent: "谺｡縺ｮ蝨ｰ蝓溘・螟ｩ豌励ｒ遏･繧翫◆縺・
+- currentTopic: "日本各地の天気"
+- currentTask: "ユーザーは地域を順番に尋ね、その地域の天気を続けている"
+- followUpRule: "地域名だけの短い追質問は、直前の天気トピックを引き継いで解釈する"
+- lastUserIntent: "次の地域の天気を知りたい"
 
 Existing memory JSON:
 ${JSON.stringify(args.normalizedMemory, null, 2)}

@@ -101,10 +101,7 @@ describe("taskProgress", () => {
   it("keeps unknown request rules optional instead of forcing up_to", () => {
     const progress = buildInitialRequirementProgress(
       createIntent({
-        constraints: [
-          "Restrict to 2 searches.",
-          "Limit to 3 requests to GPT.",
-        ],
+        constraints: ["Restrict to 2 searches.", "Limit to 3 requests to GPT."],
         workflow: {},
       })
     );
@@ -120,6 +117,40 @@ describe("taskProgress", () => {
     );
     expect(progress.find((item) => item.kind === "ask_gpt")?.rule).toBe(
       "unknown"
+    );
+  });
+
+  it("parses Japanese constraint wording through the same constraints path", () => {
+    const progress = buildInitialRequirementProgress(
+      createIntent({
+        constraints: [
+          "検索は3回までにしてください。",
+          "ユーザー確認は1回ちょうど行ってください。",
+          "最終成果物は1000文字前後で要約してください。",
+        ],
+        workflow: {},
+      })
+    );
+
+    expect(progress.find((item) => item.kind === "search_request")).toEqual(
+      expect.objectContaining({
+        label: "検索",
+        targetCount: 3,
+        rule: "up_to",
+      })
+    );
+    expect(progress.find((item) => item.kind === "ask_user")).toEqual(
+      expect.objectContaining({
+        label: "ユーザー確認",
+        targetCount: 1,
+        rule: "exact",
+      })
+    );
+    expect(progress.find((item) => item.kind === "finalize")).toEqual(
+      expect.objectContaining({
+        label: "最終成果物",
+        rule: "around",
+      })
     );
   });
 

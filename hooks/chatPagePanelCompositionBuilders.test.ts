@@ -7,6 +7,15 @@ import {
 } from "@/hooks/chatPagePanelCompositionBuilders";
 import { createEmptyTaskDraft } from "@/types/task";
 
+const { requestGeneratedLibrarySummary } = vi.hoisted(() => ({
+  requestGeneratedLibrarySummary: vi.fn(),
+}));
+
+vi.mock("@/lib/app/librarySummaryClient", () => ({
+  requestGeneratedLibrarySummary,
+  normalizeLibrarySummaryUsage: vi.fn((usage) => usage),
+}));
+
 describe("chatPagePanelCompositionBuilders", () => {
   it("builds a task snapshot document only when the task draft has content", () => {
     expect(
@@ -40,10 +49,15 @@ describe("chatPagePanelCompositionBuilders", () => {
     ).toBeNull();
   });
 
-  it("saves a task snapshot only when a document can be built", () => {
+  it("saves a task snapshot only when a document can be built", async () => {
     const recordIngestedDocument = vi.fn();
+    const applyIngestUsage = vi.fn();
+    requestGeneratedLibrarySummary.mockResolvedValue({
+      summary: "Generated snapshot summary",
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+    });
 
-    expect(
+    await expect(
       saveChatPageTaskSnapshot({
         task: {
           currentTaskDraft: {
@@ -56,14 +70,24 @@ describe("chatPagePanelCompositionBuilders", () => {
         } as never,
         usage: {
           recordIngestedDocument,
+          applyIngestUsage,
         } as never,
       })
-    ).toBe(true);
+    ).resolves.toBe(true);
     expect(recordIngestedDocument).toHaveBeenCalledOnce();
+    expect(requestGeneratedLibrarySummary).toHaveBeenCalledOnce();
+    expect(applyIngestUsage).toHaveBeenCalledOnce();
+    expect(recordIngestedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: "Generated snapshot summary",
+      })
+    );
 
     recordIngestedDocument.mockClear();
+    applyIngestUsage.mockClear();
+    requestGeneratedLibrarySummary.mockClear();
 
-    expect(
+    await expect(
       saveChatPageTaskSnapshot({
         task: {
           currentTaskDraft: {
@@ -74,10 +98,12 @@ describe("chatPagePanelCompositionBuilders", () => {
         } as never,
         usage: {
           recordIngestedDocument,
+          applyIngestUsage,
         } as never,
       })
-    ).toBe(false);
+    ).resolves.toBe(false);
     expect(recordIngestedDocument).not.toHaveBeenCalled();
+    expect(requestGeneratedLibrarySummary).not.toHaveBeenCalled();
   });
 
   it("routes mobile panel switching through shared focus handlers", () => {
