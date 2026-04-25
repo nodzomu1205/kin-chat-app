@@ -1,6 +1,6 @@
 # Next Session Handover
 
-Updated: 2026-04-24
+Updated: 2026-04-25
 
 ## Stop Rule
 
@@ -70,7 +70,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `140 files / 602 tests`
+- current test count: `140 files / 619 tests`
 
 Use `docs/maintenance-checklist.md` as the authoritative completion/status
 checklist before calling maintenance "done" or before downgrading a boundary
@@ -102,6 +102,10 @@ boundaries:
 - `useGptMemory.ts` now reads/writes runtime handoff through `lib/app/gptMemoryRuntime.ts`, so initial load plus update/reapply orchestration no longer lives inline inside the hook
 - `docs/memory-lifecycle.md` now names `stable / task-scoped / displayed-context` memory explicitly, so new memory fields should not be added without choosing one of those lifecycle buckets
 - token accounting now has one restored total-token source, conversation recent windows include memory compaction usage, the user-facing memory line is `圧縮`, and ingest-time summary generation usage now lands in the ingest bucket instead of the conversation compaction bucket
+
+- library ingest now has explicit `compact / detailed / max` output authority so one import request does not ask the model for multiple alternate versions
+- file import, Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
+- file and Drive imports now post visible GPT chat completion messages
 
 The practical implication for the next session is:
 
@@ -195,12 +199,12 @@ The Google Drive feature is usable, but not finished.
    - Drive import already handles text/PDF/CSV/Sheets better than before
    - next step: decide whether Word/Excel/ZIP deserve first-class support or should remain outside scope for now
 
-### Known mismatches to fix next
+### Known mismatches to watch next
 
-1. file-ingest token accounting is currently wrong
-   - historically, file ingest token usage was counted under the task/file-ingest side
-   - current behavior is counting it under conversation-side summary usage
-   - this should be corrected so ingest-related token use is attributed back to the task/file-ingest bucket
+1. ingest token accounting is improved but should stay under watch
+   - file/Drive/YouTube summary-generation usage now lands in the ingest bucket
+   - the latest PDF regressions were caused by duplicate output authority and post-selection clipping, not by a display-only meter error
+   - next review should verify new ingest-adjacent flows keep this bucket ownership
 
 2. device-file ingest UI should be consolidated into the library surfaces
    - current device-file ingest entry still lives in the GPT panel bottom `file` tab
@@ -228,7 +232,7 @@ Only Drive-specific concerns should stay local, such as:
 
 ## Outstanding Maintainability Work
 
-### Priority A: finish the remaining ingest authority unification
+### Priority A: keep the now-fixed library ingest authority from regrowing
 
 Why:
 
@@ -237,17 +241,20 @@ Why:
 
 Focus:
 
-- remove remaining legacy naming and mixed roles in ingest flows
-- finish aligning `useIngestActions.ts` with the newer canonical ingest model
+- keep `compact / detailed / max` mapped to one output authority instead of multiple alternate model fields
 - keep reducing cases where summary/library/chat/Kin can diverge
-- fix ingest token accounting so summary usage and ingest/task usage are not mixed
+- keep ingest summary usage in the ingest bucket
+- extract shared post-request helpers only when device import and Drive import genuinely duplicate behavior
 - use the ingest cleanup as the foundation for the device-file ingest UI move into the library surfaces
 
 Primary files:
 
 - `lib/app/fileIngestFlow.ts`
-- `hooks/useIngestActions.ts`
+- `hooks/useFileIngestActions.ts`
+- `hooks/useGoogleDrivePicker.ts`
 - `lib/app/ingestDocumentModel.ts`
+- `lib/server/ingest/promptBuilder.ts`
+- `lib/server/ingest/resultSelection.ts`
 - `docs/ingest-pipeline.md`
 
 ### Priority B: keep the remaining legacy/current ingest split shrinking
@@ -259,15 +266,15 @@ Why:
 
 Focus:
 
-- move duplicated ingest post-processing into shared helpers
+- move duplicated ingest post-processing into shared helpers where it is actually duplicated
 - avoid a permanent split between device ingest and Drive ingest behavior
 
 Primary files:
 
-- `hooks/useIngestActions.ts`
+- `hooks/useFileIngestActions.ts`
+- `hooks/useGoogleDrivePicker.ts`
 - `lib/app/fileIngestFlow.ts`
-- `lib/app/legacyIngestHelpers.ts`
-- `lib/app/legacyIngestFlowHelpers.ts`
+- `lib/app/ingestDocumentModel.ts`
 
 ### Priority C: maintain the now-stabilized boundaries without regrowth
 
@@ -382,12 +389,11 @@ This is exactly the pattern that wasted time in this session.
 ## Recommended Next-Session Order
 
 1. audit and remove dead repo-wide `strict` / `creative` / `responseMode` carry-through
-2. finish the remaining ingest authority work before adding more ingest-adjacent features
-3. fix file-ingest token accounting so usage lands in the correct ingest/task bucket
-4. continue shrinking the remaining legacy/current ingest post-processing split
+2. keep the fixed library-ingest authority under watch while moving any obvious shared post-request behavior into helpers
+3. continue shrinking device-file vs Drive post-processing divergence
+4. move device-file ingest UI into the library drawer/settings surfaces when product timing allows
 5. keep opportunistic mojibake cleanup limited to active owner files that are being touched
 6. keep `sendToGptFlow` and page/controller composition in maintenance-watch mode
-7. move device-file ingest UI into the library drawer/settings surfaces
 
 ## Maintenance Update Cadence
 
@@ -407,13 +413,14 @@ Reference:
 1. `lib/app/ingestDocumentModel.ts`
 2. `lib/app/fileIngestFlow.ts`
 3. `hooks/useFileIngestActions.ts`
-4. `lib/app/sendToGptFlow.ts`
-5. `app/page.tsx`
-6. `hooks/useResponsive.ts`
-7. `docs/refactor-roadmap.md`
-8. `docs/ingest-pipeline.md`
-9. `docs/architecture-guidelines.md`
-10. `docs/HANDOFF-2026-04-18.md`
+4. `hooks/useGoogleDrivePicker.ts`
+5. `lib/server/ingest/promptBuilder.ts`
+6. `lib/server/ingest/resultSelection.ts`
+7. `lib/app/sendToGptFlow.ts`
+8. `app/page.tsx`
+9. `docs/refactor-roadmap.md`
+10. `docs/ingest-pipeline.md`
+11. `docs/HANDOFF-2026-04-25.md`
 
 ## Verification Commands
 

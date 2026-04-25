@@ -215,7 +215,7 @@ Based on the current repository state, the best remaining cleanup order is:
 4. [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
    - large UI composition file with many field variants
    - likely needs section-level information architecture redesign, not only component splitting
-5. [`app/api/ingest/route.ts`](../app/api/ingest/route.ts) / [`hooks/useIngestActions.ts`](../hooks/useIngestActions.ts)
+5. [`app/api/ingest/route.ts`](../app/api/ingest/route.ts) / [`hooks/useFileIngestActions.ts`](../hooks/useFileIngestActions.ts) / [`hooks/useGoogleDrivePicker.ts`](../hooks/useGoogleDrivePicker.ts)
    - likely next ingest-side integration point once page / GPT flow cleanup settles
 
 ## Current Working Rule

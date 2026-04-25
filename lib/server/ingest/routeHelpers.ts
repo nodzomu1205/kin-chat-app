@@ -255,69 +255,6 @@ export function chooseLinesWithinBudget(
   return clampLinesToCharLimit(fallbacks.filter(Boolean), limit);
 }
 
-export function chooseWholeLinesWithinBudget(lines: string[], limit: number) {
-  const normalized = lines.map((line) => line.trim()).filter(Boolean);
-  if (normalized.length === 0) return [];
-
-  const result: string[] = [];
-  let used = 0;
-
-  for (const line of normalized) {
-    const separator = result.length > 0 ? 1 : 0;
-    const nextLen = used + separator + line.length;
-    if (nextLen > limit) break;
-    result.push(line);
-    used = nextLen;
-  }
-
-  return result;
-}
-
-export function chooseDetailedLinesWithinBudget(
-  lines: string[],
-  fallbacks: string[],
-  limit: number
-) {
-  const primary = lines.filter(Boolean);
-  if (primary.length === 0) {
-    return chooseWholeLinesWithinBudget(fallbacks.filter(Boolean), limit);
-  }
-  return chooseWholeLinesWithinBudget(primary, limit);
-}
-
-export function estimateIntermediateBudget(
-  lines: string[],
-  fallbacks: string[],
-  options: {
-    ratio: number;
-    min: number;
-    max: number;
-  }
-) {
-  const primary = lines.filter(Boolean);
-  const source = primary.length > 0 ? primary : fallbacks.filter(Boolean);
-  const joined = source.join("\n").trim();
-  if (!joined) return options.min;
-  if (joined.length <= options.min) return joined.length;
-  return Math.max(
-    options.min,
-    Math.min(options.max, Math.floor(joined.length * options.ratio))
-  );
-}
-
-export function chooseIntermediateLines(
-  lines: string[],
-  fallbacks: string[],
-  options: {
-    ratio: number;
-    min: number;
-    max: number;
-  }
-) {
-  const budget = estimateIntermediateBudget(lines, fallbacks, options);
-  return chooseDetailedLinesWithinBudget(lines, fallbacks, budget);
-}
-
 export function normalizeUploadKind(value: unknown): FileUploadKind {
   return value === "visual" ? "visual" : "text";
 }

@@ -107,7 +107,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `140 files / 602 tests`
+- current test count: `140 files / 619 tests`
 
 Recent regression fixes and maintainability wins include:
 
@@ -122,6 +122,9 @@ Recent regression fixes and maintainability wins include:
   - task progress entries can now be cleared directly from the task-progress view if the user decides not to proceed
 - `sendToGptFlow` now routes phase handoff, request shaping, finalize shaping, and protocol block assembly through focused builders instead of regrowing those decisions inline
 - ingest authority is now much closer to one shared model across device ingest, Drive import, stored documents, and reference-library projection
+- library ingest now has explicit `compact / detailed / max` output authority, avoids duplicate model output fields, and no longer clips the final compact/detailed item after generation
+- file import, Google Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
+- file and Drive imports now post visible GPT chat completion messages
 - task runtime / draft sync / Kin transfer handoff now routes through shared builder boundaries instead of inline hook-local flow arg assembly
 - responsive single-panel mode now routes through shared viewport/device helpers with direct tests for mobile UA, touch capability, and narrow-width selection
 - GPT settings workspace sections are now split by approval authority and library/ingest authority, so the old section hub is less likely to regrow mixed UI/policy wiring
@@ -142,8 +145,7 @@ Current caution after the latest task/constraint stabilization:
 - the task-intent / task-progress / compiler residue cleanup is substantially complete,
   but repo-wide `strict` / `creative` / `responseMode` remnants still exist outside the
   now-simplified normal chat prompt
-- ingest authority and token-accounting cleanup remain the highest-signal maintenance
-  boundary
+- library-ingest authority should stay under watch, especially when adding new ingest-adjacent flows or token accounting paths
 - active mojibake cleanup is much smaller than before, but touched text-owner and
   parser files should still be reviewed carefully when edited
 
@@ -157,6 +159,7 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Maintenance Checklist](./docs/maintenance-checklist.md)
 - [Memory Lifecycle](./docs/memory-lifecycle.md)
 - [Next Session Handover](./docs/next-session.md)
+- [Handoff 2026-04-25](./docs/HANDOFF-2026-04-25.md)
 - [Handoff 2026-04-18](./docs/HANDOFF-2026-04-18.md)
 - [Handoff 2026-04-16](./docs/HANDOFF-2026-04-16.md)
 - [Handoff 2026-04-15](./docs/HANDOFF-2026-04-15.md)
@@ -201,9 +204,9 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. simplify the task-intent path now that the fixed-slot constraint model is stable
-2. audit repo-wide `strict` / `creative` / `responseMode` remnants and remove dead carry-through paths
-3. continue shrinking the remaining legacy/current ingest split after the now-shared ingest authority model
+1. audit repo-wide `strict` / `creative` / `responseMode` remnants and remove dead carry-through paths
+2. keep the fixed library-ingest authority under watch while extracting any proven shared device/Drive post-request helpers
+3. continue shrinking remaining device-file vs Drive ingest post-request divergence after the now-shared ingest authority model
 4. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
 5. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
 6. continue opportunistic mojibake cleanup in still-active owner files when those boundaries are touched

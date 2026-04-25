@@ -1,10 +1,10 @@
 # Ingest Pipeline
 
-Updated: 2026-04-17
+Updated: 2026-04-25
 
 ## Purpose
 This document explains the current ingest pipeline and its authority boundaries.
-The goal is to keep file ingest behavior stable while we gradually align the older legacy hook and the newer shared flow.
+The goal is to keep file ingest behavior stable while device-file import and Google Drive import converge on the same canonical document authority.
 
 ## Non-Negotiable Ingest Rule
 
@@ -34,12 +34,12 @@ authority chain before editing.
 
 ## Current Paths
 
-There are currently two user-facing ingest paths:
+There are currently two user-facing ingest entry paths:
 
-1. `hooks/useFileIngestActions.ts`
-2. `hooks/useIngestActions.ts`
+1. device-file import through `hooks/useFileIngestActions.ts` and `lib/app/fileIngestFlow.ts`
+2. Google Drive import through `hooks/useGoogleDrivePicker.ts`
 
-They intentionally do not have identical UX, but they should share the same low-level ingest boundary wherever possible.
+They do not have identical picker/auth UX, but they should share canonical text, summary, stored-document, usage, and completion-message rules wherever possible.
 
 ## Shared Boundary
 
@@ -77,26 +77,30 @@ Prompt text, result normalization, and budget/selection rules should live in hel
 
 ## Client Flow Split
 
-### Shared flow
+### Device-file flow
 
 - `lib/app/fileIngestFlow.ts`
 
-This is the newer app-flow boundary. It owns:
+This is the main device-file app-flow boundary. It owns:
 - ingest result extraction
-- transform application
 - canonical document text resolution
 - Kin SYS block preparation
 - stored-document bridge updates
 - GPT memory `activeDocument` bridge updates
-- task draft updates for inject/prep/deepen/attach flows
+- file-import completion messages
 
-### Legacy flow
+### Google Drive flow
 
-- `hooks/useIngestActions.ts`
-- `lib/app/legacyIngestHelpers.ts`
-- `lib/app/legacyIngestFlowHelpers.ts`
+- `hooks/useGoogleDrivePicker.ts`
 
-This path still exists for compatibility. It should keep delegating low-level helper work outward and should not regrow private parsing, prompt, or request helpers.
+This path owns Drive-specific concerns:
+
+- picker auth
+- file/blob download
+- folder traversal
+- Drive upload routing
+
+It should not become a separate ingest authority. It should keep using the shared `/api/ingest` request boundary and shared canonical document helpers where practical.
 
 ## Working Rules
 
@@ -118,8 +122,8 @@ Before any ingest fix, answer explicitly:
 ## Near-Term Direction
 
 Next cleanup targets:
-- reduce the remaining behavioral gap between `useIngestActions.ts` and `fileIngestFlow.ts`
-- move any newly duplicated task-update projections into shared helpers
+- reduce remaining post-request duplication between device import and Drive import
+- move any newly duplicated stored-document, summary, usage, or completion-message shaping into shared helpers
 - keep `app/api/ingest/route.ts` orchestration-only
 - add regression tests whenever ingest output or post-action behavior changes
 
@@ -148,7 +152,7 @@ UI direction to keep:
 - import-related settings belong in the library settings workspace
 - the GPT bottom `file` tab should not remain a permanent parallel ingest entry point if the same workflow is being consolidated elsewhere
 
-Known accounting issue:
+Accounting rule:
 
-- file-ingest token usage currently needs review because some ingest work is being counted under conversation-summary usage
-- next cleanup should restore ingest/task-side accounting as the primary owner for ingest-token consumption
+- ingest extraction and library-card summary generation should both be counted in the ingest bucket
+- if future token numbers look high, inspect the prompt/output authority before assuming the meter is wrong

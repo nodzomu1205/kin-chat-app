@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-24
+Updated: 2026-04-25
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `140 files / 602 tests`
+- test status: `140 files / 619 tests`
 
 This roadmap should now be read together with:
 
@@ -37,7 +37,7 @@ Primary review points:
 
 Current cleanup priority:
 1. repo-wide `strict` / `creative` / `responseMode` cleanup
-2. remaining ingest authority / token-accounting cleanup
+2. library-ingest authority watch and remaining device/Drive post-request convergence
 3. mojibake cleanup in still-active parsing/matching owner files
 4. `lib/app/sendToGptFlow.ts` maintenance-watch boundaries
 5. `app/page.tsx` / page composition regrow prevention
@@ -131,7 +131,7 @@ Required discipline:
 We can treat the current maintainability program as complete when all of the
 following are true:
 
-1. legacy/current ingest paths share one practical post-request authority path
+1. device-file and Drive ingest paths share one practical post-request authority path
 2. `sendToGpt` no longer regrows mixed policy inside the top-level coordinator
 3. page/controller/panel composition stops regrowing no-op pass-through layers
 4. text / settings labels continue to change through owner files only
@@ -148,39 +148,36 @@ Reference:
 This is the practical maintainability plan to follow next.
 It is intentionally ordered by regression risk, not by which files are easiest to split.
 
-### Priority 1: Finish the new task-constraint boundary by removing old residue
+### Priority 1: Audit repo-wide response-mode carry-through
 
 Why first:
-- the visible `SYS_TASK` / `CONSTRAINTS` behavior is now stable
-- but the implementation still mixes the new fixed-slot path with old rewrite-era helpers
-- this is exactly the kind of half-migration that creates the next false diagnosis
+- the visible task-constraint path is now stable enough to leave alone unless a
+  concrete regression appears
+- stale `strict` / `creative` / `responseMode` plumbing is now the next most
+  likely source of false reasoning and half-removed behavior
 
 Primary authority:
-- `lib/taskIntent.ts`
-- `lib/taskIntentFallback.ts`
-- `lib/taskProgress.ts`
-- `lib/taskCompiler.ts`
-- `lib/taskCompilerSections.ts`
+- GPT request preparation and route payload shaping
+- settings state/persistence builders
+- any UI surface that still exposes or passes response-mode state
 
 Boundary rules to keep:
-- the front LLM path uses fixed slots, not open-ended free-form candidate lists
-- approved wording is the visible source of truth in `CONSTRAINTS`
-- progress derives from `CONSTRAINTS`
-- do not reintroduce rewrite-heavy English text parsing as the primary authority
+- do not remove a mode value from one surface until all live callers have been
+  traced
+- delete dead persistence / builder pass-through at the root when practical
+- add a narrow regression test for each removed or reclassified branch
 
 Mini phases:
-1. remove or isolate dead compatibility-era helpers from `lib/taskIntent.ts`
-2. remove old `buildCompletionCriteria(...)`, `buildRequiredWorkflow(...)`, and `buildOptionalWorkflow(...)` from `lib/taskCompilerSections.ts`
-3. keep the deterministic English constraint formatter but pin it with narrow tests only
-4. document the new authority split:
-   - fixed-slot LLM JSON
-   - approved `CONSTRAINTS`
-   - rule-based progress derivation
+1. inventory all live `strict`, `creative`, and `responseMode` references
+2. classify each reference as active behavior, compatibility read, or dead
+   carry-through
+3. remove dead pass-through in small slices
+4. update docs when a boundary moves from maintenance-watch to stabilized
 
 Done when:
-- `lib/taskIntent.ts` no longer mixes the new path with old rewrite residue
-- `lib/taskCompilerSections.ts` no longer exports dead workflow/completion sections
-- the next session cannot plausibly misread an old path as still authoritative
+- response-mode state has one clear owner
+- no deleted UI option still travels through persistence or request builders
+- the next session cannot misread a stale response-mode branch as active policy
 
 ### Priority 2: Untangle task runtime, draft sync, and Kin injection
 
@@ -258,11 +255,19 @@ Recent progress:
   not just in docs
 - Drive import summary fallback now uses the same canonical summary helper as
   file ingest instead of a separate local fallback path
+- `/api/ingest` prompts now use one output authority per mode:
+  - `compact` -> `kinCompact`
+  - `detailed` -> `kinDetailed`
+  - text-first PDF/image `max` -> `rawText`
+- compact/detailed result selection no longer applies a second clipping pass to generated lines
+- file, Drive, YouTube, search, and task snapshot library summaries now respect the shared library-card summary toggle
+- file and Drive imports now emit visible GPT chat completion messages
+- obsolete intermediate-budget ingest helpers were removed from `routeHelpers.ts`
 
 Next ingest-specific work:
-1. continue aligning `useIngestActions.ts` with the canonical ingest model
-2. reduce remaining device-import vs Drive-import post-processing divergence
-3. fix file-ingest token accounting so ingest/task usage is not miscounted as conversation-summary usage
+1. reduce remaining device-import vs Drive-import post-processing divergence
+2. extract shared post-request helpers only where duplication is proven live
+3. keep ingest summary usage in the ingest bucket as new ingest-adjacent flows are added
 4. consolidate device-file ingest UI into the library drawer/settings surfaces
 5. implement Google Drive upload subfolder selection without creating a second ingest authority path
 6. decide ZIP import scope only after the canonical ingest authority is stable
@@ -671,15 +676,12 @@ Done:
 - task-draft title resolution and GPT/manual source builders now live in `taskDraftFlowResolvers.ts`, so `taskDraftActionFlows.ts` no longer owns those task-domain decisions inline
 - `/api/ingest` now reads request/result normalization and line-budget helpers through shared `lib/server/ingest/routeHelpers.ts`, with direct tests covering output extraction, parsed-result normalization, and budget fallback behavior
 - `/api/ingest` prompt assembly now lives in `lib/server/ingest/promptBuilder.ts`, with direct tests covering visual/text-mode prompt guidance
-- `useIngestActions.ts` now routes legacy label/block/planner-transform helpers through `lib/app/legacyIngestHelpers.ts`, so the hook is less responsible for low-level ingest helper text assembly
 - `/api/ingest` selected-line / summary-level branching now also lives in `lib/server/ingest/resultSelection.ts`, so the route no longer owns the full result-budget decision tree inline
-- `useIngestActions.ts` now routes post-ingest auto prep/deepen resolution and ingest summary-message assembly through `lib/app/legacyIngestFlowHelpers.ts`, with direct tests covering both helper outputs
 - `app/api/ingest/route.ts` itself is now aligned to helper-backed orchestration, with local parsing/budget/prompt duplication removed in favor of server helper modules
-- `useIngestActions.ts` was rewritten around helper-backed orchestration as well, so the legacy hook no longer carries private low-level helper implementations inline
 - legacy local helper block removed from `route.ts`
-- `lib/app/ingestClient.ts` now owns shared `/api/ingest` request assembly, fetch, title resolution, and error resolution for both `useIngestActions.ts` and `fileIngestFlow.ts`
+- `lib/app/ingestClient.ts` now owns shared `/api/ingest` request assembly, fetch, title resolution, and error resolution for file ingest and Drive import callers
 - obsolete post-ingest task-update branches have now been removed from the active device-ingest path instead of being kept dormant behind hidden settings
-- `docs/ingest-pipeline.md` now documents the current ingest boundaries so the legacy hook and newer flow do not drift back into separate private helper stacks
+- `docs/ingest-pipeline.md` now documents the current ingest boundaries so device import and Drive import do not drift into separate private helper stacks
 - approved-candidate reapply now uses the same formal memory recomputation path as approved-rule reapply
 - fallback debug payload is no longer persisted inside memory state, and the obsolete summary-merge branch `gptMemoryStateSummaryMerge.ts` has been removed so recent-message compaction now has one authoritative path
 - `lib/memory.ts` now declares task-scoped memory keys explicitly and `gptMemoryStorage` clears task-scoped state through that shared lifecycle helper instead of a private local cleanup path
@@ -698,7 +700,7 @@ Next:
 - keep thinning `sendToGptFlowRequestPreparation.ts`, `sendToGptFlowState.ts`, and `sendToGptFlow.ts` so the remaining coordinator path stays easy to audit
 - consider the next `sendToGptFlow` slice around request-text normalization or transcript request handling
 - continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
-- review `app/api/ingest/route.ts` and `hooks/useIngestActions.ts` as the next ingest-side integration point
+- review `app/api/ingest/route.ts`, `hooks/useFileIngestActions.ts`, `hooks/useGoogleDrivePicker.ts`, and `lib/app/fileIngestFlow.ts` as the next ingest-side integration points
 - periodically audit topic write authority and remove any newly regrown hidden mutation paths instead of layering blockers over them
 
 ### 4. Test Readiness
@@ -774,7 +776,7 @@ Next:
 - `fileIngestFlow` helper regression tests now target `fileIngestFlowBuilders` directly, reducing the remaining coupling that needs to be unwound before the duplicate helper bodies in `fileIngestFlow.ts` can be removed safely
 - `fileIngestFlow.ts` now re-exports its public helper surface from `fileIngestFlowBuilders`, so external consumers already see the builder-backed boundary while the remaining legacy helper bodies stay temporarily parked for deletion in a follow-up cleanup
 - `fileIngestFlow.ts` has now dropped those parked legacy helper bodies and unused helper imports entirely, leaving the runtime flow and public helper surface anchored directly on `fileIngestFlowBuilders`
-- `ingestDocumentModel.ts` now owns shared stored-document normalization, override application, ingested/Kin document record shaping, and reference-library document item shaping; `useStoredDocuments.ts` now consumes that shared authority directly, and legacy `useIngestActions.ts` now sources its prep envelope through the same ingest extraction builder instead of a separate fallback path
+- `ingestDocumentModel.ts` now owns shared stored-document normalization, override application, ingested/Kin document record shaping, and reference-library document item shaping; `useStoredDocuments.ts`, file ingest, and Drive import now consume shared extraction/document helpers instead of separate fallback paths
 - `useReferenceLibrary.ts` now builds document-backed library items through the shared ingest document model, and `useGoogleDrivePicker.ts` now derives stored import text from the same ingest extraction builder used by file ingest, reducing the remaining summary/text authority split between device imports, Drive imports, and library projection
 - `librarySummaryClient` now routes request-body assembly, response parsing, error-message resolution, and usage normalization through dedicated client builders, while `app/api/library-summary/route.ts` now delegates prompt/request normalization and success shaping to focused server-side library summary handlers/builders
 - `app/api/link-preview`, `app/api/url-card`, and `app/api/youtube-transcript` now follow the same thin-route pattern, with shared HTML metadata parsing plus dedicated route builders/handlers owning URL validation, source shaping, transcript candidate selection, and success/fallback payload assembly

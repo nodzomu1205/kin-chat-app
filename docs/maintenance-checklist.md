@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-04-24
+Updated: 2026-04-25
 
 ## Purpose
 
@@ -23,14 +23,14 @@ Current state:
 - structural rescue work: mostly complete
 - quality gate recovery: complete
 - major hub splitting: mostly complete
-- remaining work: ingest authority cleanup, response-mode carry-through cleanup,
-  regrowth prevention, and narrow regression coverage
+- remaining work: library-ingest authority watch, response-mode carry-through
+  cleanup, regrowth prevention, and narrow regression coverage
 
 Working estimate:
 
 - maintainability program overall: `80-90% complete`
-- still open before we call it complete: `ingest authority finish`,
-  `token accounting cleanup`, `remaining responseMode cleanup`,
+- still open before we call it complete: `device/Drive ingest convergence`,
+  `token accounting watch`, `remaining responseMode cleanup`,
   `maintenance-watch discipline`
 - memory lifecycle now has explicit `stable / task-scoped / displayed-context`
   naming; treat new memory fields as incomplete until that classification is
@@ -61,7 +61,7 @@ Treat the maintainability program as complete only when every item below is
 - device ingest and Drive ingest share one practical post-request authority path
 - canonical document text, summary text, and task/system envelope text have distinct owners
 - library / GPT chat / Kin protocol no longer derive from competing upstream text variants
-- ingest token accounting lands in the correct bucket instead of leaking into conversation-summary accounting
+- ingest token accounting lands in the correct bucket and stays there as new ingest-adjacent flows are added
 
 ### C. Coordinator Discipline
 
@@ -228,5 +228,5 @@ this checklist setup should be:
 1. remove task-intent/task-progress/compiler half-migration residue
 2. audit and remove dead repo-wide `strict` / `creative` / `responseMode`
    carry-through
-3. continue ingest authority cleanup and ingest token accounting
+3. keep library-ingest authority and ingest token accounting under watch
 4. keep opportunistic mojibake cleanup limited to still-active owner files
