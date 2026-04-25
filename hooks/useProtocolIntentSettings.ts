@@ -16,11 +16,11 @@ import {
   PROTOCOL_RULEBOOK_KEY,
   REJECTED_INTENT_CANDIDATES_KEY,
 } from "@/lib/app/chatPageStorageKeys";
-import { loadProtocolIntentSettingsState } from "@/lib/app/protocolIntentSettingsState";
+import { loadProtocolIntentSettingsState } from "@/lib/app/kin-protocol/protocolIntentSettingsState";
 import {
   DEFAULT_PROTOCOL_PROMPT,
   DEFAULT_PROTOCOL_RULEBOOK,
-} from "@/lib/app/kinProtocolDefaults";
+} from "@/lib/app/kin-protocol/kinProtocolDefaults";
 
 export function useProtocolIntentSettings() {
   const [pendingIntentCandidates, setPendingIntentCandidates] = useState<

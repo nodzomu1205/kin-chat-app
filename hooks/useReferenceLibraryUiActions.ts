@@ -4,7 +4,7 @@ import {
   buildLibraryItemDriveExport,
   buildLibraryItemKinSysInfo,
   normalizeLibraryChatDisplayText,
-} from "@/lib/app/referenceLibraryItemActions";
+} from "@/lib/app/reference-library/referenceLibraryItemActions";
 import type { GptMemoryRuntime } from "@/lib/app/chatPageGptMemoryControls";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 import type { ConversationUsageOptions, normalizeUsage } from "@/lib/tokenStats";

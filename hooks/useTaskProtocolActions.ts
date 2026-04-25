@@ -10,7 +10,7 @@ import {
   setProtocolRulebookToKinDraftFlow,
 } from "@/lib/app/miscUiFlows";
 import { getIntentCandidateSignature } from "@/lib/app/chatPageHelpers";
-import { buildAppendGptMessage, buildTaskProtocolIntentSyncArgs } from "@/lib/app/taskRuntimeActionBuilders";
+import { buildAppendGptMessage, buildTaskProtocolIntentSyncArgs } from "@/lib/app/task-runtime/taskRuntimeActionBuilders";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
@@ -20,7 +20,7 @@ import {
   buildNextApprovedIntentPhrasesOnDelete,
   buildNextApprovedIntentPhrasesOnUpdate,
 } from "@/lib/taskIntentPhraseState";
-import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/currentTaskIntentRefresh";
+import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/task-runtime/currentTaskIntentRefresh";
 import type { UseTaskProtocolActionsArgs } from "@/hooks/chatPageActionTypes";
 
 export function useTaskProtocolActions(

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildNextApprovedIntentPhrasesOnApprove } from "@/lib/taskIntent";
-import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/currentTaskIntentRefresh";
+import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/task-runtime/currentTaskIntentRefresh";
 
 describe("miscUiFlows", () => {
   it("increments approval counts when the same candidate is approved again", () => {

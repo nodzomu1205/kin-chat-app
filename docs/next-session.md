@@ -81,7 +81,7 @@ Latest maintenance movement:
   `usePersistedGptOptions`, `persistedGptOptionsState`, page/workspace builders,
   and GPT panel settings props
 - moved the current fixed `strict` runtime value to the app-side
-  `reasoningMode` service boundary, with `lib/app/reasoningMode.ts` owning the
+  `reasoningMode` service boundary, with `lib/app/task-runtime/reasoningMode.ts` owning the
   runtime strict/creative type instead of GPT panel UI types
 - task-intent fallback, current-task intent refresh, Kin task start, Kin
   transfer, transform-intent, and send-to-GPT request internals now use
@@ -121,6 +121,8 @@ boundaries:
 - token accounting now has one restored total-token source, conversation recent windows include memory compaction usage, the user-facing memory line is `圧縮`, and ingest-time summary generation usage now lands in the ingest bucket instead of the conversation compaction bucket
 
 - library ingest now has explicit `compact / detailed / max` output authority so one import request does not ask the model for multiple alternate versions
+- reference-library app-side state, item actions, and summary client helpers now live under `lib/app/reference-library/`
+- search-history app-side state now lives under `lib/app/search-history/`
 - file import, Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
 - file and Drive imports now post visible GPT chat completion messages
 - file and Drive imports now share generated-summary resolution and ingest usage
@@ -132,6 +134,9 @@ boundaries:
 - memory-interpreter app-side modules now live under
   `lib/app/memory-interpreter/`
 - GPT-memory app-side modules now live under `lib/app/gpt-memory/`
+- task-draft app-side modules now live under `lib/app/task-draft/`
+- task-runtime app-side modules now live under `lib/app/task-runtime/`
+- Kin protocol core and sidecar modules now live under `lib/app/kin-protocol/`
 
 The practical implication for the next session is:
 
@@ -313,7 +318,7 @@ Still under watch:
 - search-domain enrichment / extraction boundaries
 - user-facing text drift outside owner files
 - `components/panels/gpt/GptSettingsApprovalSections.tsx` / `GptSettingsLibrarySections.tsx` as the next likely UI hubs
-- `lib/app/taskDraftPrepFlows.ts` / `taskDraftAttachFlows.ts` / `taskDraftDeepenFlows.ts` as the next likely workflow hubs
+- `lib/app/task-draft/taskDraftPrepFlows.ts` / `taskDraftAttachFlows.ts` / `taskDraftDeepenFlows.ts` as the next likely workflow hubs
 - `hooks/chatPageWorkspaceStateBuilders.ts` / `chatPageWorkspaceActionBuilders.ts` / `chatPageWorkspaceServiceBuilders.ts` as the next likely page-side builder hubs
 
 ### Priority D: remove task-intent/task-progress half-migration residue
@@ -421,6 +426,7 @@ This is exactly the pattern that wasted time in this session.
 4. move device-file ingest UI into the library drawer/settings surfaces when product timing allows
 5. keep opportunistic mojibake cleanup limited to active owner files that are being touched
 6. keep `sendToGptFlow` and page/controller composition in maintenance-watch mode
+7. continue folder-organization passes with remaining panel/UI state app modules after verifying each narrow move
 
 ## Maintenance Update Cadence
 

@@ -6,7 +6,7 @@ import {
   createTaskDraftSlot,
   normalizeTaskDraftSlots,
   updateTaskDraftAtIndex,
-} from "@/lib/app/taskDraftCollection";
+} from "@/lib/app/task-draft/taskDraftCollection";
 
 export function useTaskDraftWorkspace() {
   const [taskDrafts, setTaskDrafts] = useState<TaskDraft[]>([createTaskDraftSlot(1)]);

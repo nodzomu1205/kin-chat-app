@@ -4,7 +4,7 @@ import {
   runPrepTaskFromInputFlow,
   runUpdateTaskFromInputFlow,
   runUpdateTaskFromLastGptMessageFlow,
-} from "@/lib/app/taskDraftActionFlows";
+} from "@/lib/app/task-draft/taskDraftActionFlows";
 import type { UseTaskDraftActionsArgs } from "@/hooks/chatPageActionTypes";
 import {
   buildAttachSearchResultToTaskFlowArgs,
@@ -13,7 +13,7 @@ import {
   buildTaskDraftSearchContextResolver,
   buildUpdateTaskFromInputFlowArgs,
   buildUpdateTaskFromLastGptMessageFlowArgs,
-} from "@/lib/app/taskDraftFlowArgBuilders";
+} from "@/lib/app/task-draft/taskDraftFlowArgBuilders";
 
 export function useTaskDraftActions(args: UseTaskDraftActionsArgs) {
   const getDraftSearchContext = buildTaskDraftSearchContextResolver(args);

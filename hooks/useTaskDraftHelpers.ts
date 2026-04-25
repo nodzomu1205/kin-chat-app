@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { formatTaskSlot } from "@/lib/app/kinStructuredProtocol";
-import { resetTaskDraft } from "@/lib/app/taskDraftHelpers";
+import { formatTaskSlot } from "@/lib/app/kin-protocol/kinStructuredProtocol";
+import { resetTaskDraft } from "@/lib/app/task-draft/taskDraftHelpers";
 import {
   buildRemovedSearchContextDraft,
   buildTaskDraftFromPrefixedText,
@@ -9,7 +9,7 @@ import {
   resolveTaskBaseText,
   resolveTaskTitle,
   type TaskCharConstraint,
-} from "@/lib/app/taskDraftActionBuilders";
+} from "@/lib/app/task-draft/taskDraftActionBuilders";
 import {
   buildTaskDraftProjectionFromProtocol,
   type TaskDraftProtocolProjectionParams,

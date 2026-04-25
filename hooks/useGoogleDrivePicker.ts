@@ -5,7 +5,7 @@ import {
   resolveGoogleDriveFolderId,
   sanitizeGoogleDriveFolderLink,
 } from "@/lib/app/googleDriveLink";
-import { buildLibraryItemDriveExport } from "@/lib/app/referenceLibraryItemActions";
+import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import {
   requestFileIngest,
   resolveIngestErrorMessage,

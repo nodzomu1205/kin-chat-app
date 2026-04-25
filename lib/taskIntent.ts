@@ -3,7 +3,7 @@ import {
   buildPendingTaskIntentCandidates,
   requestTaskIntentFallback,
 } from "@/lib/taskIntentFallbackRuntime";
-import type { ReasoningMode } from "@/lib/app/reasoningMode";
+import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import {
   STRONG_APPROVED_INTENT_MATCH_SCORE,
   filterPendingIntentCandidatesAgainstApproved,

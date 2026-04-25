@@ -48,7 +48,7 @@ Current risk:
 - `chatPageControllerCompositionTypes.ts` and `chatPagePanelCompositionTypes.ts` now split the old page-composition type hub into controller-facing and panel-facing contracts
 - `chatPageControllerCompositionBuilders.ts` and `chatPagePanelCompositionBuilders.ts` now split workspace reshaping by authority boundary, making controller wiring and panel wiring easier to audit independently
 - client-side persisted settings hooks now prefer lazy storage initialization over mount-time `setState`, reducing React 19 `set-state-in-effect` pressure on the page path
-- protocol prompt text now flows from a single shared source in `lib/app/kinProtocolText.ts`, and migration now auto-repairs stale legacy / mojibake protocol defaults before they are shown again
+- protocol prompt text now flows from a single shared source in `lib/app/kin-protocol/kinProtocolText.ts`, and migration now auto-repairs stale legacy / mojibake protocol defaults before they are shown again
 - `useChatPageControllerArgs`, `useChatPageKinPanelProps`, and `useChatPageGptPanelArgs` now own the controller/panel argument assembly that used to live inline in `app/page.tsx`
 - `useChatPageControllerArgs` now passes `identity / uiState / task / protocol / search / services` as grouped controller args, and the controller-side domain hooks now consume those grouped sources directly instead of flattening back to one broad action bag
 - panel prop wiring is thinner than before, and GPT panel consumers are now mostly section-only
@@ -64,8 +64,8 @@ Primary files:
 
 - [`lib/app/send-to-gpt/sendToGptFlow.ts`](../lib/app/send-to-gpt/sendToGptFlow.ts)
 - [`lib/app/ingest/fileIngestFlow.ts`](../lib/app/ingest/fileIngestFlow.ts)
-- [`lib/app/taskDraftActionFlows.ts`](../lib/app/taskDraftActionFlows.ts)
-- [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
+- [`lib/app/task-draft/taskDraftActionFlows.ts`](../lib/app/task-draft/taskDraftActionFlows.ts)
+- [`lib/app/kin-protocol/kinMultipart.ts`](../lib/app/kin-protocol/kinMultipart.ts)
 
 Current role:
 
@@ -187,7 +187,7 @@ Important current source-of-truth locations:
 - task progress and protocol runtime:
   - [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
 - multipart protocol delivery:
-  - [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
+  - [`lib/app/kin-protocol/kinMultipart.ts`](../lib/app/kin-protocol/kinMultipart.ts)
 
 ## Maintainability Strategy
 

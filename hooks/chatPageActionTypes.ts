@@ -17,7 +17,7 @@ import type {
   GptPanelChatProps,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { ReasoningMode } from "@/lib/app/reasoningMode";
+import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,

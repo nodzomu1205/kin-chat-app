@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
-import { requestGeneratedLibrarySummary } from "@/lib/app/librarySummaryClient";
+import { requestGeneratedLibrarySummary } from "@/lib/app/reference-library/librarySummaryClient";
 import { normalizeUsage } from "@/lib/tokenStats";
 
-vi.mock("@/lib/app/librarySummaryClient", () => ({
+vi.mock("@/lib/app/reference-library/librarySummaryClient", () => ({
   normalizeLibrarySummaryUsage: vi.fn((usage) => usage),
   requestGeneratedLibrarySummary: vi.fn(),
 }));

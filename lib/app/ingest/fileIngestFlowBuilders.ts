@@ -3,8 +3,8 @@ import { buildPrepInputFromIngestResult } from "@/lib/app/gptTaskClient";
 import {
   buildKinSysInfoBlock,
   buildKinSysTaskBlock,
-} from "@/lib/app/kinStructuredProtocol";
-import { splitTextIntoKinChunks } from "@/lib/app/transformIntent";
+} from "@/lib/app/kin-protocol/kinStructuredProtocol";
+import { splitTextIntoKinChunks } from "@/lib/app/task-runtime/transformIntent";
 import {
   cleanImportedDocumentText,
   cleanImportSummarySource,

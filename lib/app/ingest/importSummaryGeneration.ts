@@ -1,7 +1,7 @@
 import {
   normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
-} from "@/lib/app/librarySummaryClient";
+} from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
 import { addUsage, normalizeUsage } from "@/lib/tokenStats";

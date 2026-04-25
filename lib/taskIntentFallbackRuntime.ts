@@ -10,7 +10,7 @@ import {
   type IntentPhraseKind,
   type PendingIntentCandidate,
 } from "@/lib/taskIntentPhraseState";
-import type { ReasoningMode } from "@/lib/app/reasoningMode";
+import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 
 type UsageSummary = {
   inputTokens: number;

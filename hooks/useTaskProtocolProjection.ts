@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
-import { createProtocolEventIngestor } from "@/lib/app/protocolEventIngest";
+import { createProtocolEventIngestor } from "@/lib/app/kin-protocol/protocolEventIngest";
 
 type TaskProtocolController = ReturnType<typeof useKinTaskProtocol>;
 

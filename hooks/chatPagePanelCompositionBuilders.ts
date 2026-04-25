@@ -4,15 +4,15 @@ import type {
   ChatPageKinPanelCompositionArgs,
   ChatPageWorkspaceViewArgs,
 } from "@/hooks/chatPagePanelCompositionTypes";
-import { buildStoredDocumentFromTaskDraft } from "@/lib/app/taskDraftLibrary";
+import { buildStoredDocumentFromTaskDraft } from "@/lib/app/task-draft/taskDraftLibrary";
 import {
   normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
-} from "@/lib/app/librarySummaryClient";
+} from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
 import { normalizeUsage } from "@/lib/tokenStats";
-import { buildTaskDraftLibrarySummarySource } from "@/lib/app/taskDraftLibrary";
+import { buildTaskDraftLibrarySummarySource } from "@/lib/app/task-draft/taskDraftLibrary";
 
 type BuildChatPageWorkspaceGptPanelArgsOptions = {
   controller: ChatPageControllerGroups;

@@ -6,11 +6,11 @@ import {
   moveSearchHistoryEntry,
   resolveSelectedSearchResultId,
   resolveTaskSearchContext,
-} from "@/lib/app/searchHistoryState";
+} from "@/lib/app/search-history/searchHistoryState";
 import {
   normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
-} from "@/lib/app/librarySummaryClient";
+} from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
 import { normalizeUsage } from "@/lib/tokenStats";

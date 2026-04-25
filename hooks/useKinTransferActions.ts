@@ -1,15 +1,15 @@
 import {
   sendCurrentTaskContentToKinFlow,
   sendLatestGptContentToKinFlow,
-} from "@/lib/app/kinTransferFlows";
-import { runSendKinMessageFlow } from "@/lib/app/sendToKinFlow";
-import { runStartKinTaskFlow } from "@/lib/app/kinTaskFlow";
+} from "@/lib/app/task-runtime/kinTransferFlows";
+import { runSendKinMessageFlow } from "@/lib/app/kin-protocol/sendToKinFlow";
+import { runStartKinTaskFlow } from "@/lib/app/task-runtime/kinTaskFlow";
 import {
   buildSendCurrentTaskContentToKinFlowArgs,
   buildSendLatestGptContentToKinFlowArgs,
   buildStartKinTaskFlowArgs,
   createPendingIntentCandidateMerger,
-} from "@/lib/app/taskRuntimeActionBuilders";
+} from "@/lib/app/task-runtime/taskRuntimeActionBuilders";
 import type { UseKinTransferActionsArgs } from "@/hooks/chatPageActionTypes";
 import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
 

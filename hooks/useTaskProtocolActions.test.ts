@@ -16,7 +16,7 @@ vi.mock("@/lib/app/miscUiFlows", async () => {
   };
 });
 
-vi.mock("@/lib/app/currentTaskIntentRefresh", () => ({
+vi.mock("@/lib/app/task-runtime/currentTaskIntentRefresh", () => ({
   syncApprovedIntentPhrasesToCurrentTaskFlow:
     syncApprovedIntentPhrasesToCurrentTaskFlowMock,
 }));

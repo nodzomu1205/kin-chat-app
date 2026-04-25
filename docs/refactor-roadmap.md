@@ -33,7 +33,7 @@ Primary review points:
 - `hooks/useGptMemory.ts`
 - `lib/app/memory-interpreter/memoryInterpreter.ts`
 - `hooks/useKinTaskProtocol.ts`
-- `lib/app/kinMultipart.ts`
+- `lib/app/kin-protocol/kinMultipart.ts`
 
 Current cleanup priority:
 1. repo-wide `strict` / `creative` / `responseMode` cleanup
@@ -163,7 +163,7 @@ Why first:
 Primary authority:
 - GPT request preparation and route payload shaping
 - task / Kin transfer runtime builders that still pass the fixed reasoning mode
-- `lib/app/reasoningMode.ts` as the app-side owner of the runtime reasoning type
+- `lib/app/task-runtime/reasoningMode.ts` as the app-side owner of the runtime reasoning type
 - any future UI surface that tries to reintroduce response-mode state
 
 Boundary rules to keep:
@@ -187,7 +187,7 @@ Recent progress:
 - controller services now supply the current fixed `strict` runtime value as
   `reasoningMode` instead of reading it from page settings state
 - `components/panels/gpt/gptPanelTypes.ts` no longer owns the runtime
-  strict/creative type; `lib/app/reasoningMode.ts` does
+  strict/creative type; `lib/app/task-runtime/reasoningMode.ts` does
 - task-intent fallback, current-task intent refresh, Kin task start, Kin
   transfer, transform-intent, and send-to-GPT request internals now use
   `reasoningMode` at their flow/request boundaries
@@ -213,8 +213,8 @@ Primary authority:
 - `hooks/useTaskProtocolActions.ts`
 - `hooks/useTaskDraftHelpers.ts`
 - `lib/taskProtocolTaskState.ts`
-- `lib/app/kinTaskFlow.ts`
-- `lib/app/kinTransferFlows.ts`
+- `lib/app/task-runtime/kinTaskFlow.ts`
+- `lib/app/task-runtime/kinTransferFlows.ts`
 - `lib/app/miscUiFlows.ts`
 
 Target responsibility split:
@@ -285,6 +285,11 @@ Recent progress:
 - memory-interpreter app-side modules now live under
   `lib/app/memory-interpreter/`
 - GPT-memory app-side modules now live under `lib/app/gpt-memory/`
+- task-draft app-side modules now live under `lib/app/task-draft/`
+- task-runtime app-side modules now live under `lib/app/task-runtime/`
+- Kin protocol core and sidecar modules now live under `lib/app/kin-protocol/`
+- reference-library app-side modules now live under `lib/app/reference-library/`
+- search-history app-side modules now live under `lib/app/search-history/`
 - `/api/ingest` prompts now use one output authority per mode:
   - `compact` -> `kinCompact`
   - `detailed` -> `kinDetailed`
@@ -395,7 +400,7 @@ Use this table before editing. If a change would cross multiple rows, pause and 
 | Task intent discovery | `lib/taskIntent.ts`, `lib/taskIntentFallback.ts` | candidate extraction and approval-aware interpretation | transport assembly, UI field sync |
 | Task runtime state | `lib/taskProtocolTaskState.ts`, `hooks/useKinTaskProtocol.ts` | task lifecycle state and protocol transitions | panel rendering or ad-hoc string formatting |
 | Task draft sync | `hooks/useTaskDraftHelpers.ts` | editable page draft projection | intent classification or Kin send policy |
-| Kin task transport | `lib/app/kinTaskFlow.ts`, `lib/app/kinTransferFlows.ts` | compiled SYS block delivery and injection | deciding what the task means |
+| Kin task transport | `lib/app/task-runtime/kinTaskFlow.ts`, `lib/app/task-runtime/kinTransferFlows.ts` | compiled SYS block delivery and injection | deciding what the task means |
 | Topic fallback | `lib/app/memory-interpreter/memoryInterpreterFallbackOrchestrator.ts` | approved-fragment shortcut and LLM fallback orchestration | broad entry-side pre-classification |
 | Page composition | `app/page.tsx`, `hooks/useChatPagePanelsComposition.tsx` | state roots and final composition | hidden business policy |
 | Controller composition | `hooks/useChatPageController.ts` | grouped domain action composition | page render concerns or raw panel formatting |
@@ -755,7 +760,7 @@ Done:
 - [`lib/server/chatgpt/searchExecution.test.ts`](../lib/server/chatgpt/searchExecution.test.ts)
 - [`lib/server/chatgpt/promptBuilders.test.ts`](../lib/server/chatgpt/promptBuilders.test.ts)
 - [`lib/server/chatgpt/openaiResponse.test.ts`](../lib/server/chatgpt/openaiResponse.test.ts)
-- [`lib/app/kinMultipart.test.ts`](../lib/app/kinMultipart.test.ts)
+- [`lib/app/kin-protocol/kinMultipart.test.ts`](../lib/app/kin-protocol/kinMultipart.test.ts)
 - [`lib/taskIntent.test.ts`](../lib/taskIntent.test.ts)
 - [`lib/taskProgress.test.ts`](../lib/taskProgress.test.ts)
 - [`lib/taskProgressPolicy.test.ts`](../lib/taskProgressPolicy.test.ts)
@@ -808,7 +813,7 @@ Next:
 - `fileIngestFlow.ts` has now dropped those parked legacy helper bodies and unused helper imports entirely, leaving the runtime flow and public helper surface anchored directly on `fileIngestFlowBuilders`
 - `ingestDocumentModel.ts` now owns shared stored-document normalization, override application, ingested/Kin document record shaping, and reference-library document item shaping; `useStoredDocuments.ts`, file ingest, and Drive import now consume shared extraction/document helpers instead of separate fallback paths
 - `useReferenceLibrary.ts` now builds document-backed library items through the shared ingest document model, and `useGoogleDrivePicker.ts` now derives stored import text from the same ingest extraction builder used by file ingest, reducing the remaining summary/text authority split between device imports, Drive imports, and library projection
-- `librarySummaryClient` now routes request-body assembly, response parsing, error-message resolution, and usage normalization through dedicated client builders, while `app/api/library-summary/route.ts` now delegates prompt/request normalization and success shaping to focused server-side library summary handlers/builders
+- `librarySummaryClient` now lives under `lib/app/reference-library/` and routes request-body assembly, response parsing, error-message resolution, and usage normalization through dedicated client builders, while `app/api/library-summary/route.ts` now delegates prompt/request normalization and success shaping to focused server-side library summary handlers/builders
 - `app/api/link-preview`, `app/api/url-card`, and `app/api/youtube-transcript` now follow the same thin-route pattern, with shared HTML metadata parsing plus dedicated route builders/handlers owning URL validation, source shaping, transcript candidate selection, and success/fallback payload assembly
 - `serpApiClient` now routes SerpAPI URL construction and error-message shaping through dedicated builders, and the YouTube transcript app helpers now share a single `youtubeTranscriptBuilders` boundary for transcript cleaning, excerpting, Kin block creation, and success/failure artifact shaping
 - `searchService` now routes engine-plan selection, continuation-token extraction, and final merged payload shaping through dedicated builders, while `sendToGptTranscriptHelpers` now delegates YouTube URL parsing and transcript success/failure artifact shaping to focused helper builders instead of carrying that logic inline

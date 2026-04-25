@@ -12,7 +12,7 @@ import {
   moveReferenceLibraryOrderItem,
   reconcileReferenceLibraryOrder,
   resolveSelectedLibraryItemId,
-} from "@/lib/app/referenceLibraryState";
+} from "@/lib/app/reference-library/referenceLibraryState";
 import {
   buildReferenceLibraryDocumentItem,
   buildReferenceLibrarySearchItem,

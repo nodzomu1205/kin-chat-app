@@ -1,7 +1,7 @@
 import {
   buildPendingKinInjectionBlocks,
   DEFAULT_KIN_TASK_MULTIPART_NOTICE_LINES,
-} from "@/lib/app/kinMultipart";
+} from "@/lib/app/kin-protocol/kinMultipart";
 
 export function applyCompiledTaskPromptToKinInput(args: {
   compiledTaskPrompt: string;

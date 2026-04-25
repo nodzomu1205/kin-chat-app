@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Message } from "@/types/chat";
-import { containsSysProtocolBlock } from "@/lib/app/protocolAutomation";
-import { extractPreferredKinTransferText } from "@/lib/app/kinStructuredProtocol";
+import { containsSysProtocolBlock } from "@/lib/app/kin-protocol/protocolAutomation";
+import { extractPreferredKinTransferText } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 
 type AutoBridgeSettings = {
   autoSendKinSysInput: boolean;

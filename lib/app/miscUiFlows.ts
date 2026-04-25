@@ -1,9 +1,9 @@
-﻿import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { generateId } from "@/lib/uuid";
 import {
   getSavedProtocolDefaults,
   normalizeProtocolRulebook,
-} from "@/lib/app/kinProtocolDefaults";
+} from "@/lib/app/kin-protocol/kinProtocolDefaults";
 import type { Message } from "@/types/chat";
 import type {
   ApprovedIntentPhrase,

@@ -147,6 +147,11 @@ Recent regression fixes and maintainability wins include:
 - send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`, making the second folder-organization pass concrete without changing runtime behavior
 - memory-interpreter app-side modules now live under `lib/app/memory-interpreter/`, making the third folder-organization pass concrete without changing runtime behavior
 - GPT-memory app-side modules now live under `lib/app/gpt-memory/`, making the fourth folder-organization pass concrete without changing runtime behavior
+- task-draft app-side modules now live under `lib/app/task-draft/`, making the fifth folder-organization pass concrete without changing runtime behavior
+- task-runtime app-side modules now live under `lib/app/task-runtime/`, making the sixth folder-organization pass concrete without changing runtime behavior
+- Kin protocol core and sidecar modules now live under `lib/app/kin-protocol/`, making the seventh folder-organization pass concrete without changing runtime behavior
+- reference-library app-side modules now live under `lib/app/reference-library/`, making the eighth folder-organization pass concrete without changing runtime behavior
+- search-history app-side modules now live under `lib/app/search-history/`, making the ninth folder-organization pass concrete without changing runtime behavior
 
 Current caution after the latest task/constraint stabilization:
 

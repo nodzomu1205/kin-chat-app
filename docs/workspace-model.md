@@ -147,9 +147,9 @@ This is where real behavior lives.
 Main examples:
 - `lib/app/send-to-gpt/sendToGptFlow.ts`
 - `lib/app/ingest/fileIngestFlow.ts`
-- `lib/app/taskDraftActionFlows.ts`
+- `lib/app/task-draft/taskDraftActionFlows.ts`
 - `hooks/useKinTaskProtocol.ts`
-- `lib/app/currentTaskIntentRefresh.ts`
+- `lib/app/task-runtime/currentTaskIntentRefresh.ts`
 
 Owns:
 - GPT request execution

@@ -1,6 +1,6 @@
-import { buildKinSysInfoBlock } from "@/lib/app/kinStructuredProtocol";
+import { buildKinSysInfoBlock } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import { buildYouTubeTranscriptResponseBlock } from "@/lib/app/send-to-gpt/sendToGptProtocolBuilders";
-import { splitTextIntoKinChunks } from "@/lib/app/transformIntent";
+import { splitTextIntoKinChunks } from "@/lib/app/task-runtime/transformIntent";
 
 const CJK_CHAR = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}繝ｼ]/u;
 const SENTENCE_END = /[縲ゑｼ・ｼ・?縲阪擾ｼ・]$/u;

@@ -103,8 +103,8 @@ Current protocol blocks:
 Current main files:
 
 - [`lib/taskRuntimeProtocol.ts`](../lib/taskRuntimeProtocol.ts)
-- [`lib/app/kinProtocolDefaults.ts`](../lib/app/kinProtocolDefaults.ts)
-- [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
+- [`lib/app/kin-protocol/kinProtocolDefaults.ts`](../lib/app/kin-protocol/kinProtocolDefaults.ts)
+- [`lib/app/kin-protocol/kinMultipart.ts`](../lib/app/kin-protocol/kinMultipart.ts)
 
 ### Search
 
@@ -167,7 +167,7 @@ The current most important source-of-truth locations are:
 - task progress counting:
   - [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
 - multipart structured delivery:
-  - [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
+  - [`lib/app/kin-protocol/kinMultipart.ts`](../lib/app/kin-protocol/kinMultipart.ts)
 
 ## Progress Counting Principle
 

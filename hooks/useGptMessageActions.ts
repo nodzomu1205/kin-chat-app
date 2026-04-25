@@ -1,13 +1,13 @@
 import { generateId } from "@/lib/uuid";
 import { useState } from "react";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
-import { receiveLastKinResponseFlow } from "@/lib/app/kinTaskFlow";
+import { receiveLastKinResponseFlow } from "@/lib/app/task-runtime/kinTaskFlow";
 import {
   buildYoutubeTranscriptRetryBlock,
 } from "@/lib/taskRuntimeProtocol";
 import {
   extractPreferredKinTransferText,
-} from "@/lib/app/kinStructuredProtocol";
+} from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import {
   cleanYouTubeTranscriptText,
 } from "@/lib/app/youtubeTranscriptText";

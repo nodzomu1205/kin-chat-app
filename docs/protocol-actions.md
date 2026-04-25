@@ -24,12 +24,12 @@ Main runtime boundary:
 - `hooks/useKinTaskProtocol.ts`
 
 Current-task refresh boundary:
-- `lib/app/currentTaskIntentRefresh.ts`
+- `lib/app/task-runtime/currentTaskIntentRefresh.ts`
 
 Kin input / multipart boundary:
 - `lib/app/kinTaskInjection.ts`
-- `lib/app/kinTransferFlows.ts`
-- `lib/app/kinTaskFlow.ts`
+- `lib/app/task-runtime/kinTransferFlows.ts`
+- `lib/app/task-runtime/kinTaskFlow.ts`
 
 ## Action Categories
 

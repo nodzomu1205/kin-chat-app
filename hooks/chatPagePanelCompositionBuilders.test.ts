@@ -11,7 +11,7 @@ const { requestGeneratedLibrarySummary } = vi.hoisted(() => ({
   requestGeneratedLibrarySummary: vi.fn(),
 }));
 
-vi.mock("@/lib/app/librarySummaryClient", () => ({
+vi.mock("@/lib/app/reference-library/librarySummaryClient", () => ({
   requestGeneratedLibrarySummary,
   normalizeLibrarySummaryUsage: vi.fn((usage) => usage),
 }));

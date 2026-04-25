@@ -4,7 +4,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Memory } from "@/lib/memory";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
-import type { ReasoningMode } from "@/lib/app/reasoningMode";
+import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { ReferenceLibraryItem } from "@/types/chat";
 import type { TaskProtocolEvent, TaskRuntimeState } from "@/types/taskProtocol";
 import type { ConversationUsageOptions } from "@/lib/tokenStats";
