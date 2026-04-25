@@ -23,6 +23,7 @@ This roadmap should now be read together with:
 
 - `docs/maintenance-checklist.md`
 - `docs/memory-lifecycle.md`
+- `docs/repository-review-2026-04-25.md`
 
 ## Current Assessment
 The repository is already functionally strong, but a few integration points remain riskier than the rest.
@@ -36,12 +37,15 @@ Primary review points:
 - `lib/app/kin-protocol/kinMultipart.ts`
 
 Current cleanup priority:
-1. repo-wide `strict` / `creative` / `responseMode` cleanup
-2. library-ingest authority watch and remaining device/Drive post-request convergence
-3. mojibake cleanup in still-active parsing/matching owner files
-4. `lib/app/send-to-gpt/sendToGptFlow.ts` maintenance-watch boundaries
-5. `app/page.tsx` / page composition regrow prevention
-6. responsive / panel-mode authority guardrails
+1. large UI-surface decomposition, starting with `ReceivedDocsDrawer.tsx` or
+   `messageSourcePreview.tsx`
+2. library-ingest authority watch and remaining device/Drive post-request
+   convergence
+3. `lib/app/task-runtime/transformIntent.ts` decomposition after focused task
+   behavior coverage is preserved
+4. repo-wide `strict` / `creative` / `responseMode` maintenance-watch
+5. `lib/app/send-to-gpt/sendToGptFlow.ts` and page composition regrow prevention
+6. mojibake cleanup in still-active owner files
 7. user-facing text drift outside owner files
 
 ## Maintenance Checkpoint
@@ -297,6 +301,8 @@ Recent progress:
 - task-domain modules now live under `lib/task/`
 - memory-domain modules now live under `lib/memory-domain/`
 - shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
+- component root files now live under `components/layout/`,
+  `components/message/`, `components/ui/`, and `components/pwa/`
 - `/api/ingest` prompts now use one output authority per mode:
   - `compact` -> `kinCompact`
   - `detailed` -> `kinDetailed`
@@ -842,9 +848,12 @@ Next:
 ## Next Review Points
 At the start of each new refactor step, review these files first:
 
-1. `app/api/chatgpt/route.ts`
-2. `app/page.tsx`
-3. `lib/app/send-to-gpt/sendToGptFlowRequestPreparation.ts` / `lib/app/send-to-gpt/sendToGptFlowState.ts` / `lib/app/send-to-gpt/sendToGptFlow.ts`
+1. `docs/repository-review-2026-04-25.md`
+2. `components/panels/gpt/ReceivedDocsDrawer.tsx`
+3. `hooks/useGoogleDrivePicker.ts`
+4. `lib/app/task-runtime/transformIntent.ts`
+5. `app/page.tsx`
+6. `lib/app/send-to-gpt/sendToGptFlow.ts`
 
 ## Working Agreement
 For each refactor step:

@@ -157,6 +157,7 @@ Recent regression fixes and maintainability wins include:
 - task-domain modules now live under `lib/task/`, reducing the number of files directly under `lib/`
 - memory-domain modules now live under `lib/memory-domain/`, continuing the `lib` root organization pass
 - shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
+- component root files now live under `components/layout/`, `components/message/`, `components/ui/`, and `components/pwa/`
 
 Current caution after the latest task/constraint stabilization:
 
@@ -177,6 +178,7 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Refactor Roadmap](./docs/refactor-roadmap.md)
 - [Maintenance Checklist](./docs/maintenance-checklist.md)
 - [Memory Lifecycle](./docs/memory-lifecycle.md)
+- [Repository Review 2026-04-25](./docs/repository-review-2026-04-25.md)
 - [Next Session Handover](./docs/next-session.md)
 - [Handoff 2026-04-25](./docs/HANDOFF-2026-04-25.md)
 - [Handoff 2026-04-18](./docs/HANDOFF-2026-04-18.md)

@@ -128,6 +128,10 @@ boundaries:
 - task-domain modules now live under `lib/task/`
 - memory-domain modules now live under `lib/memory-domain/`
 - shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
+- component root files now live under `components/layout/`,
+  `components/message/`, `components/ui/`, and `components/pwa/`
+- post-organization repository review now lives in
+  `docs/repository-review-2026-04-25.md`
 - file import, Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
 - file and Drive imports now post visible GPT chat completion messages
 - file and Drive imports now share generated-summary resolution and ingest usage
@@ -425,13 +429,19 @@ This is exactly the pattern that wasted time in this session.
 
 ## Recommended Next-Session Order
 
-1. keep remaining protocol/task-payload `responseMode` naming under maintenance-watch
-2. keep the fixed library-ingest authority under watch while moving any obvious shared post-request behavior into helpers
-3. continue shrinking device-file vs Drive post-processing divergence
-4. move device-file ingest UI into the library drawer/settings surfaces when product timing allows
-5. keep opportunistic mojibake cleanup limited to active owner files that are being touched
-6. keep `sendToGptFlow` and page/controller composition in maintenance-watch mode
-7. keep the new app-side folders stable; add new helpers to the nearest existing domain folder instead of returning to `lib/app` root
+1. read `docs/repository-review-2026-04-25.md`
+2. run verification before editing
+3. start with either `components/panels/gpt/ReceivedDocsDrawer.tsx` or
+   `hooks/useGoogleDrivePicker.ts`, depending on whether the next goal is UI
+   readability or Drive/ingest convergence
+4. keep the fixed library-ingest authority under watch while moving only proven
+   shared post-request behavior into helpers
+5. split `lib/app/task-runtime/transformIntent.ts` only after preserving current
+   task-constraint behavior with focused tests
+6. keep remaining protocol/task-payload `responseMode` naming under
+   maintenance-watch
+7. keep the new domain folders stable; add new helpers to the nearest existing
+   folder instead of returning files to root directories
 
 ## Maintenance Update Cadence
 
@@ -448,17 +458,18 @@ Reference:
 
 ## Files To Review First Next Time
 
-1. `lib/app/ingest/ingestDocumentModel.ts`
-2. `lib/app/ingest/fileIngestFlow.ts`
-3. `hooks/useFileIngestActions.ts`
+1. `docs/repository-review-2026-04-25.md`
+2. `components/panels/gpt/ReceivedDocsDrawer.tsx`
+3. `components/message/messageSourcePreview.tsx`
 4. `hooks/useGoogleDrivePicker.ts`
-5. `lib/server/ingest/promptBuilder.ts`
-6. `lib/server/ingest/resultSelection.ts`
-7. `lib/app/send-to-gpt/sendToGptFlow.ts`
-8. `app/page.tsx`
-9. `docs/refactor-roadmap.md`
-10. `docs/ingest-pipeline.md`
-11. `docs/HANDOFF-2026-04-25.md`
+5. `hooks/googleDrivePickerBuilders.ts`
+6. `lib/app/ingest/ingestDocumentModel.ts`
+7. `lib/app/ingest/fileIngestFlow.ts`
+8. `lib/app/task-runtime/transformIntent.ts`
+9. `lib/app/send-to-gpt/sendToGptFlow.ts`
+10. `app/page.tsx`
+11. `docs/refactor-roadmap.md`
+12. `docs/HANDOFF-2026-04-25.md`
 
 ## Verification Commands
 
