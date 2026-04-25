@@ -6,7 +6,7 @@ import {
   INGEST_MODE_KEY,
   SIMPLE_IMAGE_CHAR_LIMIT_KEY,
   loadPersistedGptOptionsState,
-} from "@/lib/app/persistedGptOptionsState";
+} from "@/lib/app/ui-state/persistedGptOptionsState";
 
 function createStorage(values: Record<string, string | null>) {
   return {

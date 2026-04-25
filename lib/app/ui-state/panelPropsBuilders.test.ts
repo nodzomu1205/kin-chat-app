@@ -3,7 +3,7 @@ import {
   buildGptPanelProps,
   clampPanelCount,
   resolvePendingInjectionProgress,
-} from "@/lib/app/panelPropsBuilders";
+} from "@/lib/app/ui-state/panelPropsBuilders";
 import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
 import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
 import { createEmptyTaskDraft } from "@/types/task";

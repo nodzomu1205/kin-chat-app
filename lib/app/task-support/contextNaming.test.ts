@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveDraftTitle, suggestTaskTitle } from "@/lib/app/contextNaming";
+import { resolveDraftTitle, suggestTaskTitle } from "@/lib/app/task-support/contextNaming";
 import { createEmptyTaskDraft } from "@/types/task";
 
 describe("contextNaming", () => {

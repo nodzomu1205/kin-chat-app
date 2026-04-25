@@ -11,7 +11,7 @@ import {
   createPendingIntentCandidateMerger,
 } from "@/lib/app/task-runtime/taskRuntimeActionBuilders";
 import type { UseKinTransferActionsArgs } from "@/hooks/chatPageActionTypes";
-import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
+import { findLatestTransferableGptMessage } from "@/lib/app/task-support/latestGptMessage";
 
 export function useKinTransferActions(
   args: UseKinTransferActionsArgs,

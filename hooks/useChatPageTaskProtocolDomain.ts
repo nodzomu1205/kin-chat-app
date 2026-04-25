@@ -9,7 +9,7 @@ import { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
 import {
   buildChatPageGptMemoryRuntime,
   buildChatPageGptMemorySettingsControls,
-} from "@/lib/app/chatPageGptMemoryControls";
+} from "@/lib/app/ui-state/chatPageGptMemoryControls";
 import type { Message } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 

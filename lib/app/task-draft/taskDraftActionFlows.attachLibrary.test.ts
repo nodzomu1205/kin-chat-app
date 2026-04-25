@@ -4,7 +4,7 @@ import { runAttachSearchResultToTaskFlow } from "@/lib/app/task-draft/taskDraftA
 const runAutoPrepTaskMock = vi.fn();
 const formatTaskResultTextMock = vi.fn();
 
-vi.mock("@/lib/app/gptTaskClient", () => ({
+vi.mock("@/lib/app/gpt-task/gptTaskClient", () => ({
   buildMergedTaskInput: vi.fn(),
   buildTaskInput: vi.fn(),
   buildTaskStructuredInput: vi.fn((value) => value),

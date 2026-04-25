@@ -3,7 +3,7 @@ import {
   buildPrepInputFromIngestResult,
   buildTaskApiRequestBody,
   resolveUploadKindFromFile,
-} from "@/lib/app/gptTaskClientBuilders";
+} from "@/lib/app/gpt-task/gptTaskClientBuilders";
 
 describe("gptTaskClient builders", () => {
   it("resolves upload kind from file metadata", () => {

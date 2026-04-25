@@ -4,7 +4,7 @@ import {
   buildFallbackTopicAdjudication,
   buildPreserveTopicAdjudication,
   buildRuleTopicAdjudication,
-} from "@/lib/app/memoryTopicAdjudication";
+} from "@/lib/app/memory-rules/memoryTopicAdjudication";
 
 describe("memoryTopicAdjudication", () => {
   it("builds a committed topic adjudication", () => {

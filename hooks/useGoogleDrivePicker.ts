@@ -4,7 +4,7 @@ import {
   DEFAULT_GOOGLE_DRIVE_FOLDER_LINK,
   resolveGoogleDriveFolderId,
   sanitizeGoogleDriveFolderLink,
-} from "@/lib/app/googleDriveLink";
+} from "@/lib/app/google-drive/googleDriveLink";
 import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import {
   requestFileIngest,

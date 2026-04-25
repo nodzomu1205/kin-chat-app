@@ -22,11 +22,11 @@ import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
 } from "@/lib/taskIntent";
-import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
+import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import type {
   ChatPanelFocusHandler,
   ChatPanelTab,
-} from "@/lib/app/panelLayout";
+} from "@/lib/app/ui-state/panelLayout";
 import {
   normalizeUsage,
   type BucketUsageOptions,
@@ -37,8 +37,8 @@ import type { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
 import type {
   GptMemoryRuntime,
   GptMemorySettingsControls,
-} from "@/lib/app/chatPageGptMemoryControls";
-import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+} from "@/lib/app/ui-state/chatPageGptMemoryControls";
+import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 import type { ParsedTaskInput } from "@/lib/taskInputParser";
 import type { MemorySettings } from "@/lib/memory";
 

@@ -10,7 +10,7 @@ import {
   shouldShowKinManagementDrawer,
   toggleKinPanelConnectVisibility,
   toggleKinPanelListVisibility,
-} from "@/lib/app/kinPanelVisibility";
+} from "@/lib/app/ui-state/kinPanelVisibility";
 import type { KinPanelProps } from "./kinPanelTypes";
 import KinHeader from "./KinHeader";
 import KinManagementDrawer from "./KinManagementDrawer";

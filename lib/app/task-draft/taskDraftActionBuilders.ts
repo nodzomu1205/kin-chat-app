@@ -1,5 +1,5 @@
 import { parseTaskInput } from "@/lib/taskInputParser";
-import { resolveDraftTitle } from "@/lib/app/contextNaming";
+import { resolveDraftTitle } from "@/lib/app/task-support/contextNaming";
 import type { TaskDraft } from "@/types/task";
 
 export type TaskCharConstraint = {

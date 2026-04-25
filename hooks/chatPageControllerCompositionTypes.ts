@@ -4,11 +4,11 @@ import type { useTaskProtocolProjection } from "@/hooks/useTaskProtocolProjectio
 import type {
   GptMemoryRuntime,
   GptMemorySettingsControls,
-} from "@/lib/app/chatPageGptMemoryControls";
+} from "@/lib/app/ui-state/chatPageGptMemoryControls";
 import type {
   ChatPanelFocusHandler,
   ChatPanelTab,
-} from "@/lib/app/panelLayout";
+} from "@/lib/app/ui-state/panelLayout";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,

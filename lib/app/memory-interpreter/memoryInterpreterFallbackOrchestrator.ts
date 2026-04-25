@@ -9,7 +9,7 @@ import { applyApprovedMemoryRule } from "@/lib/app/memory-interpreter/memoryInte
 import { isSearchDirectiveText, normalizeText } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 import { resolveMemoryFallbackFlow } from "@/lib/app/memory-interpreter/memoryInterpreterFallbackFlow";
 import type { Message } from "@/types/chat";
-import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 
 export type MemoryFallbackOrchestrationResult = {
   adjudication: MemoryTopicAdjudication;

@@ -2,7 +2,7 @@
 
 import type { KinPanelProps } from "@/components/panels/kin/kinPanelTypes";
 import type { ChatPageKinPanelCompositionArgs } from "@/hooks/chatPagePanelCompositionTypes";
-import { resolvePendingInjectionProgress } from "@/lib/app/panelPropsBuilders";
+import { resolvePendingInjectionProgress } from "@/lib/app/ui-state/panelPropsBuilders";
 
 export function useChatPageKinPanelProps(
   args: ChatPageKinPanelCompositionArgs

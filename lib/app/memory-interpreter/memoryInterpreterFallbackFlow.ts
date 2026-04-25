@@ -14,7 +14,7 @@ import { classifyMemoryUtterance } from "@/lib/app/memory-interpreter/memoryInte
 import { normalizeText } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 import { normalizeTopicCandidate } from "@/lib/app/memory-interpreter/memoryInterpreterTopicExtractor";
 import type { Message } from "@/types/chat";
-import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 import { normalizeTokenUsage, type TokenUsage } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 
 export type MemoryFallbackResolution = {

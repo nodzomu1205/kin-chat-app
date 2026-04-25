@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { mergePendingMemoryRuleCandidates } from "@/lib/app/memoryRuleCandidateQueue";
+import { mergePendingMemoryRuleCandidates } from "@/lib/app/memory-rules/memoryRuleCandidateQueue";
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,

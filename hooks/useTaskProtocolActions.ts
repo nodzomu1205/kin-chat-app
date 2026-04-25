@@ -8,8 +8,8 @@ import {
   saveProtocolDefaultsFlow,
   sendProtocolRulebookToKinFlow,
   setProtocolRulebookToKinDraftFlow,
-} from "@/lib/app/miscUiFlows";
-import { getIntentCandidateSignature } from "@/lib/app/chatPageHelpers";
+} from "@/lib/app/ui-state/miscUiFlows";
+import { getIntentCandidateSignature } from "@/lib/app/ui-state/chatPageHelpers";
 import { buildAppendGptMessage, buildTaskProtocolIntentSyncArgs } from "@/lib/app/task-runtime/taskRuntimeActionBuilders";
 import type {
   ApprovedIntentPhrase,

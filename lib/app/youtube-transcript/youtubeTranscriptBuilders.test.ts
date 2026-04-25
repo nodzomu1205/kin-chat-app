@@ -5,7 +5,7 @@ import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,
   cleanYouTubeTranscriptText,
-} from "@/lib/app/youtubeTranscriptBuilders";
+} from "@/lib/app/youtube-transcript/youtubeTranscriptBuilders";
 
 describe("youtubeTranscriptBuilders", () => {
   it("cleans transcript text and builds excerpts", () => {

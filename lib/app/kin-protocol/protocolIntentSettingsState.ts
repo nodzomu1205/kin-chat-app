@@ -19,7 +19,7 @@ import {
   PROTOCOL_RULEBOOK_DEFAULT_KEY,
   PROTOCOL_RULEBOOK_KEY,
   REJECTED_INTENT_CANDIDATES_KEY,
-} from "@/lib/app/chatPageStorageKeys";
+} from "@/lib/app/ui-state/chatPageStorageKeys";
 
 type StorageLike = Pick<Storage, "getItem"> | null;
 

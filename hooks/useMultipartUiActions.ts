@@ -3,7 +3,7 @@ import { generateId } from "@/lib/uuid";
 import {
   processMultipartTaskDoneText as processMultipartTaskDoneTextBase,
   type TaskCharConstraint,
-} from "@/lib/app/multipartAssemblyFlow";
+} from "@/lib/app/multipart/multipartAssemblyFlow";
 import type { Message, MultipartAssembly } from "@/types/chat";
 
 export type MultipartUiActionArgs = {

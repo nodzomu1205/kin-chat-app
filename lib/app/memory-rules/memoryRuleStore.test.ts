@@ -3,11 +3,11 @@ import {
   loadMemoryRuleStoreState,
   normalizeMemoryInterpreterSettingsState,
   savePendingMemoryRuleCandidatesState,
-} from "@/lib/app/memoryRuleStore";
+} from "@/lib/app/memory-rules/memoryRuleStore";
 import {
   MEMORY_INTERPRETER_SETTINGS_KEY,
   PENDING_MEMORY_RULE_CANDIDATES_KEY,
-} from "@/lib/app/chatPageStorageKeys";
+} from "@/lib/app/ui-state/chatPageStorageKeys";
 
 describe("memoryRuleStore", () => {
   const localStorageMock = (() => {

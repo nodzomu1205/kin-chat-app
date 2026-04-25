@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { looksLikeKinTaskStartInstruction } from "@/lib/app/kinTaskStartDetection";
+import { looksLikeKinTaskStartInstruction } from "@/lib/app/task-support/kinTaskStartDetection";
 
 describe("kinTaskStartDetection", () => {
   it("detects explicit TASK prefixes", () => {

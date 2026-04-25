@@ -1,4 +1,4 @@
-import { normalizePromptTopic } from "@/lib/app/gptContextResolver";
+import { normalizePromptTopic } from "@/lib/app/gpt-context/gptContextResolver";
 import {
   countMemorySentenceMarkers,
   MEMORY_ACK_LEAD_IN_RE,

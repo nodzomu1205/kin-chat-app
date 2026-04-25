@@ -17,7 +17,7 @@ import { useChatPageReferenceDomain } from "@/hooks/useChatPageReferenceDomain";
 import { useChatPageTaskProtocolDomain } from "@/hooks/useChatPageTaskProtocolDomain";
 import { useChatPageUiState } from "@/hooks/useChatPageUiState";
 import { useChatPageWorkspaceInputs } from "@/hooks/useChatPageWorkspaceInputs";
-import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
+import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 
 const MOBILE_BREAKPOINT = 1180;

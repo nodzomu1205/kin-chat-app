@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   mergePendingMemoryRuleCandidates,
   trimPendingMemoryRuleCandidates,
-} from "@/lib/app/memoryRuleCandidateQueue";
+} from "@/lib/app/memory-rules/memoryRuleCandidateQueue";
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,

@@ -11,7 +11,7 @@ import {
   getExtension,
   resolveUploadKindFromFile,
   type TaskCallArgs,
-} from "@/lib/app/gptTaskClientBuilders";
+} from "@/lib/app/gpt-task/gptTaskClientBuilders";
 
 export { buildPrepInputFromIngestResult, getExtension, resolveUploadKindFromFile };
 

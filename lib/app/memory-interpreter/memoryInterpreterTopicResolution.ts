@@ -3,7 +3,7 @@ import {
   shouldPreserveExistingTopic,
 } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 import { normalizeTopicCandidate } from "@/lib/app/memory-interpreter/memoryInterpreterTopicExtractor";
-import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 
 export function resolveTopicFromInputs(params: {
   inputText?: string;

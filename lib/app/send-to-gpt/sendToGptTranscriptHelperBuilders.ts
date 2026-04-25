@@ -1,7 +1,7 @@
 import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,
-} from "@/lib/app/youtubeTranscriptBuilders";
+} from "@/lib/app/youtube-transcript/youtubeTranscriptBuilders";
 
 export type YouTubeTranscriptApiResponse = {
   title?: string;

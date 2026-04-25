@@ -15,7 +15,7 @@ import {
   PROTOCOL_PROMPT_KEY,
   PROTOCOL_RULEBOOK_KEY,
   REJECTED_INTENT_CANDIDATES_KEY,
-} from "@/lib/app/chatPageStorageKeys";
+} from "@/lib/app/ui-state/chatPageStorageKeys";
 import { loadProtocolIntentSettingsState } from "@/lib/app/kin-protocol/protocolIntentSettingsState";
 import {
   DEFAULT_PROTOCOL_PROMPT,

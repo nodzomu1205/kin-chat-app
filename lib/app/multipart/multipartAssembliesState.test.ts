@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeMultipartAssemblies } from "@/lib/app/multipartAssembliesState";
+import { normalizeMultipartAssemblies } from "@/lib/app/multipart/multipartAssembliesState";
 
 describe("multipartAssembliesState", () => {
   it("keeps only structurally valid multipart assemblies", () => {

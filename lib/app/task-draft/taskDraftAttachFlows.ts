@@ -4,7 +4,7 @@ import {
   buildTaskStructuredInput,
   formatTaskResultText,
   runAutoPrepTask,
-} from "@/lib/app/gptTaskClient";
+} from "@/lib/app/gpt-task/gptTaskClient";
 import {
   buildLibraryTaskSource,
   buildPreparedTaskDraftUpdate,

@@ -13,7 +13,7 @@ import {
   saveMemoryInterpreterSettingsState,
   savePendingMemoryRuleCandidatesState,
   saveRejectedMemoryRuleCandidateSignaturesState,
-} from "@/lib/app/memoryRuleStore";
+} from "@/lib/app/memory-rules/memoryRuleStore";
 
 export function useMemoryInterpreterSettings() {
   const [memoryInterpreterSettings, setMemoryInterpreterSettings] =

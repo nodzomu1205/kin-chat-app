@@ -27,7 +27,7 @@ Current-task refresh boundary:
 - `lib/app/task-runtime/currentTaskIntentRefresh.ts`
 
 Kin input / multipart boundary:
-- `lib/app/kinTaskInjection.ts`
+- `lib/app/task-support/kinTaskInjection.ts`
 - `lib/app/task-runtime/kinTransferFlows.ts`
 - `lib/app/task-runtime/kinTaskFlow.ts`
 
@@ -158,6 +158,6 @@ When you need to change a protocol action:
 1. If the change is about candidate approval/rejection, start in `useTaskProtocolActions.ts`.
 2. If the change is about task runtime state shape, start in `useKinTaskProtocol.ts`.
 3. If the change is about recompile/re-sync behavior, start in `currentTaskIntentRefresh.ts`.
-4. If the change is about Kin input / multipart delivery, start in `kinTaskInjection.ts` or Kin transfer flows.
+4. If the change is about Kin input / multipart delivery, start in `task-support/kinTaskInjection.ts` or Kin transfer flows.
 
 If a change seems to require editing all of them at once, stop and split the work by boundary.

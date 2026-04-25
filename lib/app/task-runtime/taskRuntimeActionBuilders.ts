@@ -2,8 +2,8 @@ import {
   buildPendingIntentCandidateKey,
   extractTaskGoalFromSysTaskBlock,
   getIntentCandidateSignature,
-} from "@/lib/app/chatPageHelpers";
-import { looksLikeKinTaskStartInstruction } from "@/lib/app/kinTaskStartDetection";
+} from "@/lib/app/ui-state/chatPageHelpers";
+import { looksLikeKinTaskStartInstruction } from "@/lib/app/task-support/kinTaskStartDetection";
 import { resolveTaskRecompileSourceInstruction } from "@/lib/taskProtocolTaskState";
 import {
   resolveTaskIntentWithFallback,

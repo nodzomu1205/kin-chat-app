@@ -14,7 +14,7 @@ import { useChatPageGptPanelArgs } from "@/hooks/useChatPageGptPanelArgs";
 import { useChatPageKinPanelProps } from "@/hooks/useChatPageKinPanelProps";
 import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelCompositionTypes";
 import type { ChatPageWorkspaceCompositionInput } from "@/hooks/chatPageWorkspaceCompositionTypes";
-import { buildGptPanelProps } from "@/lib/app/panelPropsBuilders";
+import { buildGptPanelProps } from "@/lib/app/ui-state/panelPropsBuilders";
 
 export function useChatPagePanelsComposition(
   args: {

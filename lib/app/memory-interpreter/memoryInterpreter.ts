@@ -11,7 +11,7 @@ import {
   orchestrateMemoryFallback,
 } from "@/lib/app/memory-interpreter/memoryInterpreterFallbackOrchestrator";
 import type { Message } from "@/types/chat";
-import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 import type { TokenUsage } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 
 export type MemoryInterpreterOptions = {

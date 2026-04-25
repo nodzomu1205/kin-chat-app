@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getIntentCandidateSignature } from "@/lib/app/chatPageHelpers";
+import { getIntentCandidateSignature } from "@/lib/app/ui-state/chatPageHelpers";
 import type {
   UseKinTransferActionsArgs,
   UseTaskProtocolActionsArgs,

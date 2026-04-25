@@ -4,9 +4,9 @@ import {
   loadAutoBridgeSettings,
   mergeAutoBridgeSettings,
   type AutoBridgeSettings,
-} from "@/lib/app/autoBridgeSettingsState";
+} from "@/lib/app/auto-bridge/autoBridgeSettingsState";
 
-export type { AutoBridgeSettings } from "@/lib/app/autoBridgeSettingsState";
+export type { AutoBridgeSettings } from "@/lib/app/auto-bridge/autoBridgeSettingsState";
 
 export function useAutoBridgeSettings() {
   const [autoBridgeSettings, setAutoBridgeSettings] =

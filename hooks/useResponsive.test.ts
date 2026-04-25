@@ -4,7 +4,7 @@ import {
   detectSinglePanelLayoutHeuristic,
   detectTouchCapability,
   resolveEffectiveWidth,
-} from "@/lib/app/responsiveLayout";
+} from "@/lib/app/ui-state/responsiveLayout";
 
 describe("useResponsive helpers", () => {
   it("detects mobile user agents without treating desktop strings as mobile", () => {

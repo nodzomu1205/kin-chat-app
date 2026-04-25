@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   findLatestTransferableGptMessage,
   isLatestGptStatusMessage,
-} from "@/lib/app/latestGptMessage";
+} from "@/lib/app/task-support/latestGptMessage";
 import type { Message } from "@/types/chat";
 
 describe("latestGptMessage", () => {

@@ -7,7 +7,7 @@ import { normalizeTopicCandidate } from "@/lib/app/memory-interpreter/memoryInte
 import {
   buildFallbackTopicAdjudication,
   type MemoryTopicAdjudication,
-} from "@/lib/app/memoryTopicAdjudication";
+} from "@/lib/app/memory-rules/memoryTopicAdjudication";
 
 export type ReducedTopicAdjudication = {
   adjudication: MemoryTopicAdjudication;

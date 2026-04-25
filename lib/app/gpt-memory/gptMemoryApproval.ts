@@ -7,7 +7,7 @@ import type {
 } from "@/lib/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { KinMemoryState } from "@/types/chat";
-import { buildRuleTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import { buildRuleTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 
 export type ApprovedCandidateAdjudication = Partial<MemoryUpdateOptions> & {
   topicAdjudication?: ReturnType<typeof buildRuleTopicAdjudication>;

@@ -8,7 +8,7 @@ import {
   shouldShowGptDrawer,
   shouldShowGptSettingsWorkspace,
   toggleGptSettingsWorkspace,
-} from "@/lib/app/gptPanelViewState";
+} from "@/lib/app/ui-state/gptPanelViewState";
 
 describe("gptPanelViewState", () => {
   it("starts on the chat tab with drawer and settings workspace closed", () => {

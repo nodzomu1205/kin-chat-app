@@ -3,7 +3,7 @@ import {
   buildTaskInput,
   formatTaskResultText,
   runAutoDeepenTask,
-} from "@/lib/app/gptTaskClient";
+} from "@/lib/app/gpt-task/gptTaskClient";
 import { buildDeepenedTaskDraftUpdate } from "@/lib/app/task-draft/taskDraftFlowProjection";
 import {
   appendTaskInfoMessage,

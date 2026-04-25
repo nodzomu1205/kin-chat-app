@@ -7,7 +7,7 @@ import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
 import { useGptMemory } from "@/hooks/useGptMemory";
 import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
-import { buildGptPanelProps } from "@/lib/app/panelPropsBuilders";
+import { buildGptPanelProps } from "@/lib/app/ui-state/panelPropsBuilders";
 import { createEmptyTaskDraft } from "@/types/task";
 import type { Message } from "@/types/chat";
 

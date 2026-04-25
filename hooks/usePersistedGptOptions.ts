@@ -16,7 +16,7 @@ import {
   SIMPLE_IMAGE_CHAR_LIMIT_KEY,
   UPLOAD_KIND_KEY,
   loadPersistedGptOptionsState,
-} from "@/lib/app/persistedGptOptionsState";
+} from "@/lib/app/ui-state/persistedGptOptionsState";
 
 export function usePersistedGptOptions() {
   const [initialState] = useState(() =>

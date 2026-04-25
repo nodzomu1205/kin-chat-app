@@ -1,4 +1,4 @@
-import { cleanYouTubeTranscriptText } from "@/lib/app/youtubeTranscriptText";
+import { cleanYouTubeTranscriptText } from "@/lib/app/youtube-transcript/youtubeTranscriptText";
 
 type TranscriptRow = Record<string, unknown>;
 

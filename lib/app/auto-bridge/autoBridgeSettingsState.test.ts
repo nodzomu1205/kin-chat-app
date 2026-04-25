@@ -3,7 +3,7 @@ import {
   DEFAULT_AUTO_BRIDGE_SETTINGS,
   loadAutoBridgeSettings,
   mergeAutoBridgeSettings,
-} from "@/lib/app/autoBridgeSettingsState";
+} from "@/lib/app/auto-bridge/autoBridgeSettingsState";
 
 function createStorage(values: Record<string, string | null>) {
   return {

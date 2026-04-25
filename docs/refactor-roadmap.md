@@ -215,7 +215,7 @@ Primary authority:
 - `lib/taskProtocolTaskState.ts`
 - `lib/app/task-runtime/kinTaskFlow.ts`
 - `lib/app/task-runtime/kinTransferFlows.ts`
-- `lib/app/miscUiFlows.ts`
+- `lib/app/ui-state/miscUiFlows.ts`
 
 Target responsibility split:
 - `task intent + approval`
@@ -246,7 +246,7 @@ Why now:
 
 Primary authority:
 - `lib/app/ingest/fileIngestFlow.ts`
-- `lib/app/gptTaskClient.ts`
+- `lib/app/gpt-task/gptTaskClient.ts`
 - `hooks/useStoredDocuments.ts`
 - `hooks/useReferenceLibrary.ts`
 - `docs/ingest-pipeline.md`
@@ -290,6 +290,10 @@ Recent progress:
 - Kin protocol core and sidecar modules now live under `lib/app/kin-protocol/`
 - reference-library app-side modules now live under `lib/app/reference-library/`
 - search-history app-side modules now live under `lib/app/search-history/`
+- panel/UI state app-side modules now live under `lib/app/ui-state/`
+- remaining app-side utility clusters now live under dedicated folders:
+  `gpt-task/`, `youtube-transcript/`, `memory-rules/`, `multipart/`,
+  `task-support/`, `google-drive/`, `auto-bridge/`, and `gpt-context/`
 - `/api/ingest` prompts now use one output authority per mode:
   - `compact` -> `kinCompact`
   - `detailed` -> `kinDetailed`
@@ -564,7 +568,7 @@ Done:
 - archive fallback selection now has a pure helper in `taskRuntimeCollection.ts`, with tests covering active-task and non-active-task archive behavior
 - page composition now attaches panel scroll refs through a workspace-composition builder helper instead of doing a final inline `ui` spread in `app/page.tsx`
 - `useChatPagePanelsComposition.tsx` no longer returns an unused controller object, and task-snapshot save glue now lives behind panel-composition builders with regression tests
-- single-panel layout authority now routes through `usePanelLayout.ts` and `lib/app/panelLayout.ts`, so page-level active-panel normalization and action-side panel focusing no longer each own their own mobile checks
+- single-panel layout authority now routes through `usePanelLayout.ts` and `lib/app/ui-state/panelLayout.ts`, so page-level active-panel normalization and action-side panel focusing no longer each own their own mobile checks
 - protocol automation, stored-document loading, multipart restore, file-ingest Kin focus, and GPT/Kin transfer flows now depend on shared `focusKinPanel` / `focusGptPanel` callbacks instead of scattering `if (isMobile) setActiveTab(...)`
 - task/protocol flows and `sendToGpt` arg builders now use the same shared panel-focus callbacks, and responsive tests now pin wide desktop, narrow desktop, and touch-desktop layout expectations
 - page/composition contracts now name panel visibility state as `activePanelTab` / `setActivePanelTab`, so panel-level navigation is easier to distinguish from local drawer/settings tabs
@@ -720,7 +724,7 @@ Done:
 - approved-candidate reapply now uses the same formal memory recomputation path as approved-rule reapply
 - fallback debug payload is no longer persisted inside memory state, and the obsolete summary-merge branch `gptMemoryStateSummaryMerge.ts` has been removed so recent-message compaction now has one authoritative path
 - `lib/memory.ts` now declares task-scoped memory keys explicitly and `gptMemoryStorage` clears task-scoped state through that shared lifecycle helper instead of a private local cleanup path
-- `useMemoryInterpreterSettings.ts` now delegates rule-store persistence to `lib/app/memoryRuleStore.ts`, so interpreter settings, pending candidates, approved rules, and rejected signatures share one persistence boundary
+- `useMemoryInterpreterSettings.ts` now delegates rule-store persistence to `lib/app/memory-rules/memoryRuleStore.ts`, so interpreter settings, pending candidates, approved rules, and rejected signatures share one persistence boundary
 - `useGptMemory.ts` now delegates runtime load/update/reapply orchestration to `lib/app/gpt-memory/gptMemoryRuntime.ts`, shrinking the hook toward a lifecycle facade and giving memory runtime handoff its own tested boundary
 - `docs/memory-lifecycle.md` now fixes the intended split between stable memory, task-scoped memory, and displayed-context memory, and `lib/memory.ts` exposes matching lifecycle key lists
 - token accounting now restores total-token aggregation, counts memory compaction inside conversation recent/cumulative usage, relabels the old summary line as compaction, and routes ingest-time summary generation usage into the ingest bucket
@@ -754,7 +758,7 @@ Priority targets:
 Done:
 - `Vitest` foundation
 - [`vitest.config.ts`](../vitest.config.ts)
-- [`lib/app/panelPropsBuilders.test.ts`](../lib/app/panelPropsBuilders.test.ts)
+- [`lib/app/ui-state/panelPropsBuilders.test.ts`](../lib/app/ui-state/panelPropsBuilders.test.ts)
 - [`lib/server/chatgpt/requestNormalization.test.ts`](../lib/server/chatgpt/requestNormalization.test.ts)
 - [`lib/server/chatgpt/searchRequest.test.ts`](../lib/server/chatgpt/searchRequest.test.ts)
 - [`lib/server/chatgpt/searchExecution.test.ts`](../lib/server/chatgpt/searchExecution.test.ts)
@@ -822,7 +826,7 @@ Next:
 - `search-domain/extractors.ts` now delegates HTML stripping / line scoring / snippet selection to dedicated extractor builders, and Google / News engine enrichment now shares focused enrichment builders instead of duplicating raw-result slicing and snippet-seed shaping inline
 - `useTaskProtocolActions.ts` and `useKinTransferActions.ts` now build task-intent sync and Kin transfer handoff through shared `taskRuntimeActionBuilders.ts`, with narrow tests pinning source-instruction resolution, pending-intent merge policy, and the shared flow-arg bundles so task runtime / Kin injection transport stays out of the page-side hooks
 - `useTaskDraftHelpers.ts` now routes draft mutation, prefixed-field parsing, character-constraint resolution, and base-text selection through shared `taskDraftActionBuilders.ts`, while `currentTaskIntentRefresh.ts` now delegates refresh gating and draft/Kin apply shaping to dedicated builders so the remaining task runtime refresh path reads as orchestration rather than mixed projection logic
-- `useResponsive.ts` now routes mobile-user-agent detection, touch-capability detection, and effective-width selection through shared `responsiveLayout.ts` helpers, with direct tests pinning mobile UA, touch desktop, and narrow-width single-panel behavior
+- `useResponsive.ts` now routes mobile-user-agent detection, touch-capability detection, and effective-width selection through shared `lib/app/ui-state/responsiveLayout.ts` helpers, with direct tests pinning mobile UA, touch desktop, and narrow-width single-panel behavior
 - `GptSettingsWorkspace.tsx` now delegates its large approval, ingest, and Google Drive sections to `GptSettingsWorkspaceSections.tsx`, reducing the chance that the workspace root regrows into another mixed UI/policy hub
 - `taskDraftActionFlows.ts` now acts as a thin export surface while prep/update/latest-GPT, attach-library, and deepen flows live in dedicated `taskDraft*Flows.ts` modules backed by shared `taskDraftActionFlowTypes.ts`
 - `chatPageWorkspaceInputBuilders.ts` now acts as a thin export surface while state/actions/services assembly lives in dedicated workspace builder modules, reducing the chance that one file silently becomes the next page-side policy hub

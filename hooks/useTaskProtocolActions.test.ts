@@ -6,9 +6,9 @@ const { syncApprovedIntentPhrasesToCurrentTaskFlowMock } = vi.hoisted(() => ({
   syncApprovedIntentPhrasesToCurrentTaskFlowMock: vi.fn(),
 }));
 
-vi.mock("@/lib/app/miscUiFlows", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/app/miscUiFlows")>(
-    "@/lib/app/miscUiFlows"
+vi.mock("@/lib/app/ui-state/miscUiFlows", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/app/ui-state/miscUiFlows")>(
+    "@/lib/app/ui-state/miscUiFlows"
   );
 
   return {

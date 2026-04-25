@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
+import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
 
 describe("kinTaskInjection", () => {
   it("sets the first block and clears pending blocks for a single-part prompt", () => {

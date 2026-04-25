@@ -4,7 +4,7 @@ import {
   buildKinSysTaskBlock,
   summarizeTaskContentForKinInfo,
 } from "@/lib/app/kin-protocol/kinStructuredProtocol";
-import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
+import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
 import { buildKinDirectiveLines } from "@/lib/app/task-runtime/transformIntent";
 import type { TransformIntent } from "@/lib/app/task-runtime/transformIntent";
 import { addUsage, emptyUsage, normalizeUsage } from "@/lib/tokenStats";
@@ -13,7 +13,7 @@ import type { Message } from "@/types/chat";
 import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { TaskIntent } from "@/types/taskProtocol";
-import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
+import { findLatestTransferableGptMessage } from "@/lib/app/task-support/latestGptMessage";
 
 type ResolveTransformIntentResult = {
   intent: TransformIntent;

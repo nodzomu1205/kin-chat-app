@@ -10,8 +10,8 @@ import {
 } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import {
   cleanYouTubeTranscriptText,
-} from "@/lib/app/youtubeTranscriptText";
-import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtubeTranscriptKinBlocks";
+} from "@/lib/app/youtube-transcript/youtubeTranscriptText";
+import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtube-transcript/youtubeTranscriptKinBlocks";
 import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,

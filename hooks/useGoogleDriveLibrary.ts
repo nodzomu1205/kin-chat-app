@@ -3,7 +3,7 @@ import {
   DEFAULT_GOOGLE_DRIVE_FOLDER_LINK,
   resolveGoogleDriveFolderId,
   sanitizeGoogleDriveFolderLink,
-} from "@/lib/app/googleDriveLink";
+} from "@/lib/app/google-drive/googleDriveLink";
 
 const GOOGLE_DRIVE_FOLDER_LINK_KEY = "google_drive_library_folder_link";
 

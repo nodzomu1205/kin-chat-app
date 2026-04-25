@@ -5,7 +5,7 @@ import {
   buildTaskStructuredInput,
   formatTaskResultText,
   runAutoPrepTask,
-} from "@/lib/app/gptTaskClient";
+} from "@/lib/app/gpt-task/gptTaskClient";
 import { buildPreparedTaskDraftUpdate } from "@/lib/app/task-draft/taskDraftFlowProjection";
 import {
   buildGptTaskPrepSource,
@@ -20,7 +20,7 @@ import {
   formatTaskFlowErrorMessage,
   startTaskFlowRequest,
 } from "@/lib/app/task-draft/taskDraftFlowShared";
-import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
+import { findLatestTransferableGptMessage } from "@/lib/app/task-support/latestGptMessage";
 import {
   mergeTaskTitleInstructions,
   resolveGeneratedTaskTitle,

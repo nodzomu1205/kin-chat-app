@@ -1,4 +1,4 @@
 export {
   buildYouTubeTranscriptExcerpt,
   cleanYouTubeTranscriptText,
-} from "@/lib/app/youtubeTranscriptBuilders";
+} from "@/lib/app/youtube-transcript/youtubeTranscriptBuilders";

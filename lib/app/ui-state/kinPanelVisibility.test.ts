@@ -7,7 +7,7 @@ import {
   shouldShowKinManagementDrawer,
   toggleKinPanelConnectVisibility,
   toggleKinPanelListVisibility,
-} from "@/lib/app/kinPanelVisibility";
+} from "@/lib/app/ui-state/kinPanelVisibility";
 
 describe("kinPanelVisibility", () => {
   it("opens both drawers by default on desktop", () => {

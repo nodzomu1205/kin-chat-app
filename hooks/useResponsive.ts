@@ -4,7 +4,7 @@ import {
   detectSinglePanelLayoutHeuristic,
   detectTouchCapability,
   resolveEffectiveWidth,
-} from "@/lib/app/responsiveLayout";
+} from "@/lib/app/ui-state/responsiveLayout";
 
 // This module decides only whether the workspace should use the single-panel
 // layout. It must not choose which panel is focused.

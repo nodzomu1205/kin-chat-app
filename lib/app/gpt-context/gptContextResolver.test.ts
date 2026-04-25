@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePromptTopic } from "@/lib/app/gptContextResolver";
+import { normalizePromptTopic } from "@/lib/app/gpt-context/gptContextResolver";
 
 describe("gptContextResolver", () => {
   it("does not truncate greeting text", () => {

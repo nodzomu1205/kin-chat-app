@@ -4,13 +4,13 @@ import type {
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
 import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
-import { trimPendingMemoryRuleCandidates } from "@/lib/app/memoryRuleCandidateQueue";
+import { trimPendingMemoryRuleCandidates } from "@/lib/app/memory-rules/memoryRuleCandidateQueue";
 import {
   APPROVED_MEMORY_RULES_KEY,
   MEMORY_INTERPRETER_SETTINGS_KEY,
   PENDING_MEMORY_RULE_CANDIDATES_KEY,
   REJECTED_MEMORY_RULE_CANDIDATES_KEY,
-} from "@/lib/app/chatPageStorageKeys";
+} from "@/lib/app/ui-state/chatPageStorageKeys";
 
 export type MemoryRuleStoreState = {
   memoryInterpreterSettings: MemoryInterpreterSettings;

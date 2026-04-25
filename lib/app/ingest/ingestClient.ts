@@ -1,6 +1,6 @@
 import {
   resolveUploadKindFromFile,
-} from "@/lib/app/gptTaskClient";
+} from "@/lib/app/gpt-task/gptTaskClient";
 import {
   buildSharedIngestOptions,
   buildIngestRequestFormData,

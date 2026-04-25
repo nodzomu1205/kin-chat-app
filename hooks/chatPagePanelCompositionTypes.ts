@@ -10,7 +10,7 @@ import type {
   TaskProtocolView,
 } from "@/hooks/chatPageControllerCompositionTypes";
 import type { ChatPageControllerGroups } from "@/hooks/useChatPageController";
-import type { BuildGptPanelArgs } from "@/lib/app/panelPropsBuilders";
+import type { BuildGptPanelArgs } from "@/lib/app/ui-state/panelPropsBuilders";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,

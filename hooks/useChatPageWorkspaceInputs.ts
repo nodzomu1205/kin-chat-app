@@ -32,11 +32,11 @@ import type {
   ChatPageWorkspaceStateTask,
   ChatPageWorkspaceStateUi,
 } from "@/hooks/chatPageWorkspaceCompositionTypes";
-import { buildTaskRequestAnswerDraft } from "@/lib/app/chatPageHelpers";
+import { buildTaskRequestAnswerDraft } from "@/lib/app/ui-state/chatPageHelpers";
 import {
   PROTOCOL_PROMPT_DEFAULT_KEY,
   PROTOCOL_RULEBOOK_DEFAULT_KEY,
-} from "@/lib/app/chatPageStorageKeys";
+} from "@/lib/app/ui-state/chatPageStorageKeys";
 
 type WorkspaceAppInput = ChatPageWorkspaceStateApp & ChatPageWorkspaceActionsApp;
 type WorkspaceUiInput = ChatPageWorkspaceStateUi & ChatPageWorkspaceActionsUi;

@@ -7,7 +7,7 @@ import {
   isSearchDirectiveText,
   normalizeText,
 } from "@/lib/app/memory-interpreter/memoryInterpreterText";
-import { buildRuleTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import { buildRuleTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 
 export type MemoryInterpreterFallbackResponse = {
   decision?: "keep" | "switch" | "unsure" | null;

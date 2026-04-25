@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   loadMultipartAssembliesFromStorage,
   MULTIPART_ASSEMBLIES_KEY,
-} from "@/lib/app/multipartAssembliesState";
+} from "@/lib/app/multipart/multipartAssembliesState";
 import type { MultipartAssembly } from "@/types/chat";
 
 export function useMultipartAssemblies() {

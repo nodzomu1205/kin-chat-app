@@ -7,7 +7,7 @@ import {
   PENDING_INTENT_CANDIDATES_KEY,
   PROTOCOL_PROMPT_DEFAULT_KEY,
   REJECTED_INTENT_CANDIDATES_KEY,
-} from "@/lib/app/chatPageStorageKeys";
+} from "@/lib/app/ui-state/chatPageStorageKeys";
 
 function createStorage(values: Record<string, string | null>) {
   return {

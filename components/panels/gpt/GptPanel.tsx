@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo, useState } from "react";
 import ChatMessages from "@/components/ChatMessages";
@@ -34,7 +34,7 @@ import {
   shouldShowGptDrawer,
   shouldShowGptSettingsWorkspace,
   toggleGptSettingsWorkspace,
-} from "@/lib/app/gptPanelViewState";
+} from "@/lib/app/ui-state/gptPanelViewState";
 import {
   chatBodyStyle,
   drawerWrapStyle,

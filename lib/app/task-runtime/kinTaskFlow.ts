@@ -1,6 +1,6 @@
 import { generateId } from "@/lib/uuid";
 import { extractPreferredKinTransferText } from "@/lib/app/kin-protocol/kinStructuredProtocol";
-import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
+import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
 import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { BucketUsageOptions } from "@/lib/tokenStats";

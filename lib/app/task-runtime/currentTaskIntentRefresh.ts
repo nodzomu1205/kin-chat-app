@@ -1,5 +1,5 @@
 import { resolveTaskIntentWithFallback, type ApprovedIntentPhrase } from "@/lib/taskIntent";
-import { applyCompiledTaskPromptToKinInput } from "@/lib/app/kinTaskInjection";
+import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
 import type { BucketUsageOptions } from "@/lib/tokenStats";
 import {
   buildCurrentTaskIntentRefreshApplyArgs,

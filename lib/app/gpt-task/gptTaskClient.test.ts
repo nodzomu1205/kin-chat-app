@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildPrepInputFromIngestResult } from "@/lib/app/gptTaskClient";
+import { buildPrepInputFromIngestResult } from "@/lib/app/gpt-task/gptTaskClient";
 
 describe("buildPrepInputFromIngestResult", () => {
   it("builds a single content block without legacy points/detail sections", () => {

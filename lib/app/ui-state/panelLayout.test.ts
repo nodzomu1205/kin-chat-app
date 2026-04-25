@@ -3,7 +3,7 @@ import {
   buildSinglePanelFocusHandler,
   focusPanelIfSingleLayout,
   normalizeSinglePanelActiveTab,
-} from "@/lib/app/panelLayout";
+} from "@/lib/app/ui-state/panelLayout";
 
 describe("panelLayout", () => {
   it("keeps desktop tabs untouched", () => {

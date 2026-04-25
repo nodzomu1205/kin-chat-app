@@ -115,7 +115,7 @@ boundaries:
 - fallback debug payload is no longer persisted into memory state, and the obsolete `gptMemoryStateSummaryMerge.ts` branch has been removed so memory compaction now follows one authoritative path
 - `chatPageWorkspaceInputBuilders.ts` now delegates state/actions/services assembly to dedicated builder files, and `sendToGptFlow` helper tests are now split again so guard failures are isolated from step/request builder failures
 - `lib/memory.ts` now declares the task-scoped memory lifecycle explicitly, and `gptMemoryStorage` now clears task-scoped state through that shared helper instead of a separate local cleanup rule
-- `useMemoryInterpreterSettings.ts` now reads/writes through `lib/app/memoryRuleStore.ts`, so the memory rule system has one persistence boundary for settings, pending candidates, approved rules, and rejected signatures
+- `useMemoryInterpreterSettings.ts` now reads/writes through `lib/app/memory-rules/memoryRuleStore.ts`, so the memory rule system has one persistence boundary for settings, pending candidates, approved rules, and rejected signatures
 - `useGptMemory.ts` now reads/writes runtime handoff through `lib/app/gpt-memory/gptMemoryRuntime.ts`, so initial load plus update/reapply orchestration no longer lives inline inside the hook
 - `docs/memory-lifecycle.md` now names `stable / task-scoped / displayed-context` memory explicitly, so new memory fields should not be added without choosing one of those lifecycle buckets
 - token accounting now has one restored total-token source, conversation recent windows include memory compaction usage, the user-facing memory line is `圧縮`, and ingest-time summary generation usage now lands in the ingest bucket instead of the conversation compaction bucket
@@ -123,6 +123,8 @@ boundaries:
 - library ingest now has explicit `compact / detailed / max` output authority so one import request does not ask the model for multiple alternate versions
 - reference-library app-side state, item actions, and summary client helpers now live under `lib/app/reference-library/`
 - search-history app-side state now lives under `lib/app/search-history/`
+- panel/UI state helpers now live under `lib/app/ui-state/`
+- remaining app-side utility clusters now live under dedicated folders such as `gpt-task/`, `youtube-transcript/`, `memory-rules/`, `multipart/`, `task-support/`, `google-drive/`, `auto-bridge/`, and `gpt-context/`
 - file import, Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
 - file and Drive imports now post visible GPT chat completion messages
 - file and Drive imports now share generated-summary resolution and ingest usage
@@ -186,7 +188,7 @@ Main files:
 
 - `lib/app/ingest/ingestDocumentModel.ts`
 - `lib/app/ingest/fileIngestFlow.ts`
-- `lib/app/gptTaskClient.ts`
+- `lib/app/gpt-task/gptTaskClient.ts`
 - `hooks/useGoogleDrivePicker.ts`
 - `docs/ingest-pipeline.md`
 
@@ -426,7 +428,7 @@ This is exactly the pattern that wasted time in this session.
 4. move device-file ingest UI into the library drawer/settings surfaces when product timing allows
 5. keep opportunistic mojibake cleanup limited to active owner files that are being touched
 6. keep `sendToGptFlow` and page/controller composition in maintenance-watch mode
-7. continue folder-organization passes with remaining panel/UI state app modules after verifying each narrow move
+7. keep the new app-side folders stable; add new helpers to the nearest existing domain folder instead of returning to `lib/app` root
 
 ## Maintenance Update Cadence
 

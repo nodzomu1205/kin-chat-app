@@ -105,7 +105,7 @@ Should not do:
 Primary files:
 - `hooks/useChatPageKinPanelProps.ts`
 - `hooks/useChatPageGptPanelArgs.ts`
-- `lib/app/panelPropsBuilders.ts`
+- `lib/app/ui-state/panelPropsBuilders.ts`
 
 Owns:
 - render-facing prop shaping

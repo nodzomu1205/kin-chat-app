@@ -4,7 +4,7 @@ import {
   focusPanelIfSingleLayout,
   type ChatPanelTab,
   normalizeSinglePanelActiveTab,
-} from "@/lib/app/panelLayout";
+} from "@/lib/app/ui-state/panelLayout";
 
 export function usePanelLayout(breakpoint = 1180) {
   const isSinglePanelLayout = useResponsive(breakpoint);

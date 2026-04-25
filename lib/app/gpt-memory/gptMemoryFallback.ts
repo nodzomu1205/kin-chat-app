@@ -7,7 +7,7 @@ import type {
   PendingMemoryRuleCandidate,
 } from "@/lib/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
-import type { MemoryTopicAdjudication } from "@/lib/app/memoryTopicAdjudication";
+import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 import { normalizeText } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 import type { TokenUsage } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 
