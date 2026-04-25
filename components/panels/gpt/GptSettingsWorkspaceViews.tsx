@@ -6,26 +6,20 @@ import type {
   GptPanelSettingsProps,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
-  buttonPrimary,
-  buttonSecondaryWide,
-  helpTextStyle,
-  inputStyle,
-  labelStyle,
-} from "@/components/panels/gpt/gptPanelStyles";
-import {
   LibrarySettingsSection,
   ProtocolSettingsSection,
   SearchSettingsSection,
 } from "@/components/panels/gpt/GptSettingsSections";
-import {
-  GPT_SETTINGS_DRAWER_TEXT,
-  GPT_SETTINGS_WORKSPACE_TEXT,
-} from "@/components/panels/gpt/gptSettingsText";
-import { NumberField } from "@/components/panels/gpt/GptSettingsShared";
+import { GPT_SETTINGS_WORKSPACE_TEXT } from "@/components/panels/gpt/gptSettingsText";
 import {
   MemoryApprovalSection,
   SysRuleApprovalSection,
 } from "@/components/panels/gpt/GptSettingsApprovalSections";
+import { MemorySettingsSection } from "@/components/panels/gpt/GptSettingsDrawerSections";
+import {
+  buildLocalSettingsResetInput,
+  buildMemorySettingsSaveInput,
+} from "@/components/panels/gpt/GptDrawerRouterHelpers";
 import {
   GoogleDriveLibrarySection,
   IngestSettingsSection,
@@ -68,42 +62,19 @@ export function ChatSettingsWorkspaceView(props: {
 
   const handleResetMemorySettings = () => {
     props.settings.onResetMemorySettings();
-    props.setLocalSettings({
-      maxFacts: String(props.settings.defaultMemorySettings.maxFacts ?? 0),
-      maxPreferences: String(props.settings.defaultMemorySettings.maxPreferences ?? 0),
-      chatRecentLimit: String(
-        props.settings.defaultMemorySettings.chatRecentLimit ?? 0
-      ),
-      summarizeThreshold: String(
-        props.settings.defaultMemorySettings.summarizeThreshold ?? 0
-      ),
-      recentKeep: String(props.settings.defaultMemorySettings.recentKeep ?? 0),
-    });
+    props.setLocalSettings(
+      buildLocalSettingsResetInput(props.settings.defaultMemorySettings)
+    );
   };
 
   const handleSaveMemorySettings = () => {
-    props.settings.onSaveMemorySettings({
-      maxFacts: props.toPositiveInt(
-        props.localSettings.maxFacts,
-        props.settings.memorySettings.maxFacts ?? 0
-      ),
-      maxPreferences: props.toPositiveInt(
-        props.localSettings.maxPreferences,
-        props.settings.memorySettings.maxPreferences ?? 0
-      ),
-      chatRecentLimit: props.toPositiveInt(
-        props.localSettings.chatRecentLimit,
-        props.settings.memorySettings.chatRecentLimit ?? 0
-      ),
-      summarizeThreshold: props.toPositiveInt(
-        props.localSettings.summarizeThreshold,
-        props.settings.memorySettings.summarizeThreshold ?? 0
-      ),
-      recentKeep: props.toPositiveInt(
-        props.localSettings.recentKeep,
-        props.settings.memorySettings.recentKeep ?? 0
-      ),
-    });
+    props.settings.onSaveMemorySettings(
+      buildMemorySettingsSaveInput({
+        localSettings: props.localSettings,
+        memorySettings: props.settings.memorySettings,
+        toPositiveInt: props.toPositiveInt,
+      })
+    );
   };
 
   return (
@@ -123,113 +94,25 @@ export function ChatSettingsWorkspaceView(props: {
         onDelete={props.settings.onDeleteApprovedMemoryRule}
       />
 
-      <div
-        style={{
+      <MemorySettingsSection
+        isMobile={props.isMobile}
+        localSettings={props.localSettings}
+        memoryCapacityPreview={props.memoryCapacityPreview}
+        onFieldChange={(key, value) =>
+          props.setLocalSettings((prev) => ({ ...prev, [key]: value }))
+        }
+        onReset={handleResetMemorySettings}
+        onSave={handleSaveMemorySettings}
+        text={GPT_SETTINGS_WORKSPACE_TEXT}
+        cardStyle={{
           borderRadius: 18,
           border: "1px solid #dbe4f0",
           background: "rgba(255,255,255,0.96)",
           boxShadow: "0 16px 40px rgba(15,23,42,0.08)",
           padding: props.isMobile ? 14 : 16,
         }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: props.isMobile
-              ? "1fr"
-              : "repeat(3, minmax(0, 1fr))",
-            gap: 10,
-          }}
-        >
-          <NumberField
-            label="MAX_FACTS"
-            value={props.localSettings.maxFacts}
-            onChange={(v) =>
-              props.setLocalSettings((prev) => ({ ...prev, maxFacts: v }))
-            }
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxFacts}
-          />
-          <NumberField
-            label="MAX_PREFERENCES"
-            value={props.localSettings.maxPreferences}
-            onChange={(v) =>
-              props.setLocalSettings((prev) => ({ ...prev, maxPreferences: v }))
-            }
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxPreferences}
-          />
-          <NumberField
-            label="CHAT_RECENT_LIMIT"
-            value={props.localSettings.chatRecentLimit}
-            onChange={(v) =>
-              props.setLocalSettings((prev) => ({ ...prev, chatRecentLimit: v }))
-            }
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.chatRecentLimit}
-          />
-          <NumberField
-            label="SUMMARIZE_THRESHOLD"
-            value={props.localSettings.summarizeThreshold}
-            onChange={(v) =>
-              props.setLocalSettings((prev) => ({
-                ...prev,
-                summarizeThreshold: v,
-              }))
-            }
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.summarizeThreshold}
-          />
-          <NumberField
-            label="RECENT_KEEP"
-            value={props.localSettings.recentKeep}
-            onChange={(v) =>
-              props.setLocalSettings((prev) => ({ ...prev, recentKeep: v }))
-            }
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.recentKeep}
-          />
-          <div>
-            <div style={labelStyle}>
-              {GPT_SETTINGS_WORKSPACE_TEXT.memoryCapacityPreviewLabel}
-            </div>
-            <div
-              style={{
-                ...inputStyle,
-                display: "flex",
-                alignItems: "center",
-                background: "#f8fafc",
-                fontWeight: 800,
-              }}
-            >
-              {GPT_SETTINGS_WORKSPACE_TEXT.memoryCapacityPreviewPrefix}
-              {props.memoryCapacityPreview}
-            </div>
-            <div style={helpTextStyle}>
-              {GPT_SETTINGS_WORKSPACE_TEXT.memoryCapacityPreviewHelp}
-            </div>
-          </div>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            justifyContent: "flex-end",
-            flexWrap: "wrap",
-            marginTop: 12,
-          }}
-        >
-          <button
-            type="button"
-            style={buttonSecondaryWide}
-            onClick={handleResetMemorySettings}
-          >
-            {GPT_SETTINGS_WORKSPACE_TEXT.reset}
-          </button>
-          <button
-            type="button"
-            style={buttonPrimary}
-            onClick={handleSaveMemorySettings}
-          >
-            {GPT_SETTINGS_WORKSPACE_TEXT.save}
-          </button>
-        </div>
-      </div>
+        actionTopMargin={12}
+      />
 
     </>
   );

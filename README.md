@@ -107,7 +107,16 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `141 files / 621 tests`
+- current test count: `151 files / 659 tests`
+
+Current maintenance status:
+
+- the repository is in late-stage maintenance-watch, roughly `85-90%` complete
+- send-to-GPT hub splitting is no longer the default next target; keep it in
+  regrowth-watch mode
+- the next default maintenance slice is `hooks/useGoogleDrivePicker.ts`, after
+  checking unused Drive/import residue and preserving the existing
+  `googleDriveApi.ts` / `googleDrivePickerBuilders.ts` ownership split
 
 Recent regression fixes and maintainability wins include:
 
@@ -158,6 +167,39 @@ Recent regression fixes and maintainability wins include:
 - memory-domain modules now live under `lib/memory-domain/`, continuing the `lib` root organization pass
 - shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
 - component root files now live under `components/layout/`, `components/message/`, `components/ui/`, and `components/pwa/`
+- `ReceivedDocsDrawer.tsx` was renamed to `LibraryDrawer.tsx`; it now owns drawer state and filtering only, while import controls, tab controls, library item cards, item header/actions/metadata, search preview, and stored-document editing live in focused local components
+- the unused `SearchRawDrawer.tsx` wrapper was removed after confirming it had no live imports, and the existing library drawer render test is now included in the Vitest baseline
+- `messageSourcePreview.tsx` now delegates preview helpers, source banners, and YouTube transcript actions to focused local modules, and its dormant render/helper test is back in the Vitest baseline
+- Drive picker maintenance now keeps picker/auth and UI feedback in `useGoogleDrivePicker.ts`, Drive HTTP operations in `lib/app/google-drive/googleDriveApi.ts`, and importability/summary/stored-text shaping in `googleDrivePickerBuilders.ts`
+- `transformIntent.ts` is now a small public facade plus Kin directive assembly; rule-based directive parsing, API intent resolving, type definitions, text transformation runtime, and Kin chunk splitting live in focused task-runtime modules with a facade regression test
+- `kinTransferFlows.ts` now delegates task-usage accumulation and Kin transfer status-message shaping to `kinTransferFlowBuilders.ts`, keeping the flow closer to orchestration-only
+- Kin transfer flow argument/result contracts now live in `kinTransferFlowTypes.ts`, keeping `kinTransferFlows.ts` focused on the two transfer orchestrations
+- `kinTransferFlows.ts` now stays as the public transfer facade while latest-GPT and current-task transfer orchestration live in `kinTransferLatestFlow.ts` and `kinTransferCurrentTaskFlow.ts`
+- `GptDrawerRouter.tsx` now delegates device-import option shaping, meta/task/library/settings drawer prop bundles, and memory-settings reset/save shaping to `GptDrawerRouterHelpers.ts`, with direct helper coverage in the Vitest baseline
+- `GptSettingsDrawer.tsx` and `GptSettingsWorkspace.tsx` now share search preset, engine-toggle, and source-count normalization through `GptSettingsSearchState.ts`; drawer numeric inputs use the existing shared settings primitive instead of a duplicate local field
+- `GptSettingsDrawer.tsx` now delegates its memory and ingest tab bodies to `GptSettingsDrawerSections.tsx`, keeping the drawer closer to tab orchestration
+- `GptSettingsWorkspaceViews.tsx` now reuses the shared memory settings section and memory reset/save builders, reducing duplicate settings UI and value-shaping logic
+- the unused `GptSettingsWorkspaceSections.tsx` re-export layer and its orphaned generic approval section were removed after a live-reference check
+- `GptSettingsApprovalSections.tsx` and `GptSettingsRulesSection.tsx` now share memory review option sets and topic-decision value shaping through `GptSettingsApprovalState.ts`, with focused helper coverage
+- `GptSettingsApprovalSections.tsx` now delegates memory/sys approval item cards to `GptSettingsApprovalCards.tsx`, leaving the section file closer to section state and list composition
+- `GptSettingsRulesSection.tsx` now delegates pending/approved memory and SYS rule cards to `GptSettingsRuleCards.tsx`, keeping rule sections closer to headings and visibility state
+- `TaskProgressPanel.tsx` now delegates `SYS_TASK_CONFIRM` output normalization/building to `TaskProgressPanelHelpers.ts`, with focused helper coverage
+- `TaskProgressPanel.tsx` now delegates requirement progress cards, user-facing request cards, and sync/suspend action sections to `TaskProgressPanelParts.tsx`, keeping the panel closer to local state and section composition
+- `normalizerBuilders.ts` now keeps the public search normalizer builder facade while AI Mode block/table shaping, local-result shaping, YouTube shaping, and shared raw-text block formatting live in focused search-domain builder modules
+- `sendToGptFlowGuards.ts` now delegates pure gate-context builders to `sendToGptFlowGateContextBuilders.ts`, keeping the guard file closer to side-effecting gate handlers
+- `sendToGptPreparedRequestGates.ts` now owns prepared-request gates such as task-directive-only, protocol-limit, and YouTube transcript handling, leaving `sendToGptFlowGuards.ts` focused on pre-preparation gates plus public re-exports
+- `sendToGptApiTypes.ts` now owns ChatGPT API request/response/search-source contracts, so `sendToGptFlowTypes.ts` is less of a catch-all type hub
+- `sendToGptPreparedRequestTypes.ts` now owns prepared-request and gate context contracts, further narrowing `sendToGptFlowTypes.ts`
+- `sendToGptFlowArgTypes.ts`, `sendToGptFlowArtifactTypes.ts`, and `sendToGptFlowBaseTypes.ts` now own the former flow type groups directly, so the unused `sendToGptFlowTypes.ts` facade was removed
+- `sendToGptFlowContextResolvers.ts` now owns inline-search extraction, AI continuation artifacts, protocol limit priority, and protocol search-engine overrides, keeping `sendToGptFlowContext.ts` closer to public context composition
+- `sendToGptPreparedGateHandlers.ts` now owns prepared-request gate side effects, leaving `sendToGptPreparedRequestGates.ts` focused on gate context assembly and decision dispatch
+- `app/page.tsx` now delegates the root viewport shell and panel layout wrapper to `ChatAppShell.tsx`, keeping the page entry closer to domain hook wiring and workspace composition
+- chat-page defaults now live in `chatPageDefaults.ts`, so the mobile breakpoint, default bridge settings, and current-Kin label derivation are shared instead of being parked in `app/page.tsx`
+- `app/page.tsx` now passes named page-domain bundles into `useChatPageWorkspaceDomainInputs.ts`, so the large workspace state/action/service projection no longer lives inline in the page entry
+- `app/page.tsx` now keeps chat UI state, GPT options, token usage, bridge settings, Kin manager state, task-draft workspace state, search history, task/protocol state, and reference-library state as named domain bundles instead of destructuring every field before reassembling workspace inputs
+- `chatPagePanelCompositionBuilders.ts` now stays as the public panel-composition facade while section-level panel arg shaping lives in `chatPagePanelSectionBuilders.ts` and task snapshot persistence lives in `chatPageTaskSnapshot.ts`
+- `chatPagePanelCompositionTypes.ts` now stays as a public type facade while panel arg contracts live in `chatPagePanelArgsTypes.ts` and workspace-view section contracts live in `chatPageWorkspaceViewTypes.ts`
+- workspace reference/Drive view contracts now live in `chatPageWorkspaceReferenceTypes.ts`, keeping `chatPageWorkspaceViewTypes.ts` focused on the remaining page-view sections
 
 Current caution after the latest task/constraint stabilization:
 

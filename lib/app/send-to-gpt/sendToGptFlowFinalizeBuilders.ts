@@ -1,4 +1,4 @@
-import type { FinalizeSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+import type { FinalizeSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 
 export function buildFinalizeAssistantMessageArgs(args: FinalizeSendToGptFlowArgs) {
   return {

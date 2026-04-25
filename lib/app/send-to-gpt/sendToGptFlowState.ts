@@ -2,9 +2,11 @@ import type { Memory } from "@/lib/memory-domain/memory";
 import type {
   GptStateSnapshotLike,
   PendingRequestLike,
+} from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
+import type {
   SendToGptImplicitSearchArtifactsArgs,
   SendToGptMemoryPreparation,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 import type { Message } from "@/types/chat";
 import type { SourceItem } from "@/types/chat";
 import { generateId } from "@/lib/shared/uuid";

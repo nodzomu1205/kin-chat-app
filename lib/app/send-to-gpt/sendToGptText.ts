@@ -1,4 +1,4 @@
-import type { ParsedInputLike } from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+import type { ParsedInputLike } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
 
 export function shouldRespondToTaskDirectiveOnlyInput(params: {
   parsedInput: ParsedInputLike;

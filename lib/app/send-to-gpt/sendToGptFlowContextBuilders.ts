@@ -1,11 +1,13 @@
 import { parseSearchContinuation } from "@/lib/search-domain/continuations";
 import { extractTaskProtocolEvents } from "@/lib/task/taskRuntimeProtocol";
 import type {
-  DerivedSearchContext,
   ParsedInputLike,
   PendingRequestLike,
+} from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
+import type {
+  DerivedSearchContext,
   ProtocolInteractionContext,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
 export function buildProtocolInteractionContext(params: {

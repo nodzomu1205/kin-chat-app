@@ -1,12 +1,12 @@
 import { buildTaskChatBridgeContext } from "@/lib/task/taskChatBridge";
 import { buildFinalRequestText } from "@/lib/app/send-to-gpt/sendToGptFlowRequestText";
+import type { PendingRequestLike } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
 import type {
-  PendingRequestLike,
   PreparedRequestContextSource,
   PreparedRequestExecutionContext,
   PreparedRequestFinalizeContext,
   PreparedRequestGateContext,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptPreparedRequestTypes";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchEngine } from "@/types/task";
 import type { TaskRuntimeState } from "@/types/taskProtocol";

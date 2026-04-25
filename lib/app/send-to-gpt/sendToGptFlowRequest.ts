@@ -2,9 +2,11 @@ import { buildAssistantResponseArtifacts } from "@/lib/app/send-to-gpt/sendToGpt
 import type {
   ChatApiRequestPayload,
   ChatApiSearchLike,
+} from "@/lib/app/send-to-gpt/sendToGptApiTypes";
+import type {
   GptAssistantRequestPayloadArgs,
   RequestGptAssistantArtifactsArgs,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 import type { SourceItem } from "@/types/chat";
 import {
   buildChatApiSearchRequestPayload,

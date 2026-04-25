@@ -1,0 +1,76 @@
+import type { ChatPageControllerServicesSectionArgs } from "@/hooks/chatPageControllerCompositionTypes";
+import type { ChatPageGptPanelCompositionArgs } from "@/hooks/chatPagePanelArgsTypes";
+
+export type ChatPageWorkspaceViewReferencesArgs = {
+  multipartAssemblies: ChatPageGptPanelCompositionArgs["references"]["multipartAssemblies"];
+  storedDocuments: ChatPageGptPanelCompositionArgs["references"]["storedDocuments"];
+  referenceLibraryItems:
+    ChatPageGptPanelCompositionArgs["references"]["referenceLibraryItems"];
+  selectedTaskLibraryItemId:
+    ChatPageGptPanelCompositionArgs["references"]["selectedTaskLibraryItemId"];
+  onDeleteMultipartAssembly:
+    ChatPageGptPanelCompositionArgs["references"]["onDeleteMultipartAssembly"];
+  onLoadMultipartAssemblyToGptInput:
+    ChatPageGptPanelCompositionArgs["references"]["onLoadMultipartAssemblyToGptInput"];
+  onDownloadMultipartAssembly:
+    ChatPageGptPanelCompositionArgs["references"]["onDownloadMultipartAssembly"];
+  onLoadStoredDocumentToGptInput:
+    ChatPageGptPanelCompositionArgs["references"]["onLoadStoredDocumentToGptInput"];
+  onDownloadStoredDocument:
+    ChatPageGptPanelCompositionArgs["references"]["onDownloadStoredDocument"];
+  onDeleteStoredDocument:
+    ChatPageGptPanelCompositionArgs["references"]["onDeleteStoredDocument"];
+  onMoveStoredDocument:
+    ChatPageGptPanelCompositionArgs["references"]["onMoveStoredDocument"];
+  onMoveLibraryItem:
+    ChatPageGptPanelCompositionArgs["references"]["onMoveLibraryItem"];
+  onSelectTaskLibraryItem:
+    ChatPageGptPanelCompositionArgs["references"]["onSelectTaskLibraryItem"];
+  onChangeLibraryItemMode:
+    ChatPageGptPanelCompositionArgs["references"]["onChangeLibraryItemMode"];
+  onSaveStoredDocument:
+    ChatPageGptPanelCompositionArgs["references"]["onSaveStoredDocument"];
+  buildLibraryReferenceContext:
+    ChatPageControllerServicesSectionArgs["buildLibraryReferenceContext"];
+  autoLibraryReferenceEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["autoLibraryReferenceEnabled"];
+  onChangeAutoLibraryReferenceEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoLibraryReferenceEnabled"];
+  libraryReferenceMode:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceMode"];
+  onChangeLibraryReferenceMode:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryReferenceMode"];
+  libraryIndexResponseCount:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryIndexResponseCount"];
+  onChangeLibraryIndexResponseCount:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryIndexResponseCount"];
+  libraryReferenceCount:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceCount"];
+  onChangeLibraryReferenceCount:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryReferenceCount"];
+  libraryStorageMB: ChatPageGptPanelCompositionArgs["settings"]["libraryStorageMB"];
+  libraryReferenceEstimatedTokens:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceEstimatedTokens"];
+  googleDriveFolderLink:
+    ChatPageGptPanelCompositionArgs["settings"]["googleDriveFolderLink"];
+  googleDriveFolderId:
+    ChatPageGptPanelCompositionArgs["settings"]["googleDriveFolderId"];
+  googleDriveIntegrationMode:
+    ChatPageGptPanelCompositionArgs["settings"]["googleDriveIntegrationMode"];
+  onChangeGoogleDriveFolderLink:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeGoogleDriveFolderLink"];
+  onOpenGoogleDriveFolder:
+    ChatPageGptPanelCompositionArgs["settings"]["onOpenGoogleDriveFolder"];
+  onImportGoogleDriveFile:
+    ChatPageGptPanelCompositionArgs["settings"]["onImportGoogleDriveFile"];
+  onIndexGoogleDriveFolder:
+    ChatPageGptPanelCompositionArgs["settings"]["onIndexGoogleDriveFolder"];
+  onImportGoogleDriveFolder:
+    ChatPageGptPanelCompositionArgs["settings"]["onImportGoogleDriveFolder"];
+  onShowLibraryItemInChat:
+    ChatPageGptPanelCompositionArgs["references"]["onShowLibraryItemInChat"];
+  onSendLibraryItemToKin:
+    ChatPageGptPanelCompositionArgs["references"]["onSendLibraryItemToKin"];
+  onUploadLibraryItemToGoogleDrive:
+    ChatPageGptPanelCompositionArgs["references"]["onUploadLibraryItemToGoogleDrive"];
+};

@@ -14,25 +14,10 @@ import {
 } from "@/lib/app/send-to-gpt/sendToGptYoutubeFlowBuilders";
 import type { Memory } from "@/lib/memory-domain/memory";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
+import type { MemoryResultLike } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import type { Message } from "@/types/chat";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
-
-type MemoryResultLike = {
-  compressionUsage?: Parameters<typeof normalizeUsage>[0];
-  fallbackUsage?: Parameters<typeof normalizeUsage>[0];
-  fallbackUsageDetails?: Record<string, unknown> | null;
-  fallbackMetrics?: {
-    promptChars: number;
-    rawReplyChars: number;
-  } | null;
-  fallbackDebug?: {
-    prompt: string;
-    rawReply: string;
-    parsed: unknown;
-    usageDetails?: Record<string, unknown> | null;
-  } | null;
-};
 
 export async function handleYoutubeTranscriptFlow(args: {
   userMsg: Message;

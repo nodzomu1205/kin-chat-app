@@ -4,226 +4,21 @@ import type {
   ChatPageKinPanelCompositionArgs,
   ChatPageWorkspaceViewArgs,
 } from "@/hooks/chatPagePanelCompositionTypes";
-import { buildStoredDocumentFromTaskDraft } from "@/lib/app/task-draft/taskDraftLibrary";
 import {
-  normalizeLibrarySummaryUsage,
-  requestGeneratedLibrarySummary,
-} from "@/lib/app/reference-library/librarySummaryClient";
-import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
-import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
-import { normalizeUsage } from "@/lib/shared/tokenStats";
-import { buildTaskDraftLibrarySummarySource } from "@/lib/app/task-draft/taskDraftLibrary";
+  buildChatPagePanelBaseArgs,
+  buildChatPageWorkspaceGptReferences,
+  buildChatPageWorkspaceGptSettings,
+  buildChatPageWorkspaceGptState,
+  buildChatPageWorkspaceGptTask,
+  buildChatPageWorkspaceKinState,
+  buildChatPageWorkspaceMemoryState,
+  buildChatPageWorkspaceProtocolState,
+} from "@/hooks/chatPagePanelSectionBuilders";
 
 type BuildChatPageWorkspaceGptPanelArgsOptions = {
   controller: ChatPageControllerGroups;
   onSaveTaskSnapshot: () => void;
 };
-
-function buildChatPagePanelBaseArgs(
-  args: ChatPageWorkspaceViewArgs,
-  controller: ChatPageControllerGroups
-) {
-  return {
-    app: {
-      currentKin: args.app.currentKin,
-      currentKinLabel: args.app.currentKinLabel,
-      kinStatus: args.app.kinStatus,
-      kinList: args.app.kinList,
-      isMobile: args.app.isMobile,
-    },
-    taskProtocolView: args.task.taskProtocolView,
-    controller,
-  };
-}
-
-function buildChatPageWorkspaceGptReferences(
-  args: ChatPageWorkspaceViewArgs
-): ChatPageGptPanelCompositionArgs["references"] {
-  return {
-    lastSearchContext: args.search.lastSearchContext,
-    searchHistory: args.search.searchHistory,
-    selectedTaskSearchResultId: args.search.selectedTaskSearchResultId,
-    multipartAssemblies: args.references.multipartAssemblies,
-    storedDocuments: args.references.storedDocuments,
-    referenceLibraryItems: args.references.referenceLibraryItems,
-    selectedTaskLibraryItemId: args.references.selectedTaskLibraryItemId,
-    onSelectTaskSearchResult: args.search.onSelectTaskSearchResult,
-    onMoveSearchHistoryItem: args.search.onMoveSearchHistoryItem,
-    onDeleteSearchHistoryItem: args.search.onDeleteSearchHistoryItem,
-    onLoadMultipartAssemblyToGptInput:
-      args.references.onLoadMultipartAssemblyToGptInput,
-    onDownloadMultipartAssembly: args.references.onDownloadMultipartAssembly,
-    onDeleteMultipartAssembly: args.references.onDeleteMultipartAssembly,
-    onLoadStoredDocumentToGptInput:
-      args.references.onLoadStoredDocumentToGptInput,
-    onDownloadStoredDocument: args.references.onDownloadStoredDocument,
-    onDeleteStoredDocument: args.references.onDeleteStoredDocument,
-    onMoveStoredDocument: args.references.onMoveStoredDocument,
-    onMoveLibraryItem: args.references.onMoveLibraryItem,
-    onSelectTaskLibraryItem: args.references.onSelectTaskLibraryItem,
-    onChangeLibraryItemMode: args.references.onChangeLibraryItemMode,
-    onSaveStoredDocument: args.references.onSaveStoredDocument,
-    onShowLibraryItemInChat: args.references.onShowLibraryItemInChat,
-    onSendLibraryItemToKin: args.references.onSendLibraryItemToKin,
-    onUploadLibraryItemToGoogleDrive:
-      args.references.onUploadLibraryItemToGoogleDrive,
-  };
-}
-
-function buildChatPageWorkspaceKinState(
-  args: ChatPageWorkspaceViewArgs
-): ChatPageKinPanelCompositionArgs["kinState"] {
-  return {
-    kinIdInput: args.kin.kinIdInput,
-    setKinIdInput: args.kin.setKinIdInput,
-    kinNameInput: args.kin.kinNameInput,
-    setKinNameInput: args.kin.setKinNameInput,
-    currentKin: args.app.currentKin,
-    kinMessages: args.ui.kinMessages,
-    kinInput: args.ui.kinInput,
-    setKinInput: args.ui.setKinInput,
-    renameKin: args.kin.renameKin,
-    kinBottomRef: args.ui.kinBottomRef,
-    loading: args.ui.kinLoading,
-    pendingInjectionBlocks: args.ui.pendingKinInjectionBlocks,
-    pendingInjectionIndex: args.ui.pendingKinInjectionIndex,
-  };
-}
-
-function buildChatPageWorkspaceGptState(
-  args: ChatPageWorkspaceViewArgs
-): ChatPageGptPanelCompositionArgs["gptState"] {
-  return {
-    gptState: args.gpt.gptState,
-    gptMessages: args.ui.gptMessages,
-    gptInput: args.ui.gptInput,
-    setGptInput: args.ui.setGptInput,
-    gptBottomRef: args.ui.gptBottomRef,
-    loading: args.ui.gptLoading,
-    ingestLoading: args.ui.ingestLoading,
-  };
-}
-
-function buildChatPageWorkspaceGptTask(args: {
-  workspace: ChatPageWorkspaceViewArgs;
-  onSaveTaskSnapshot: () => void;
-}): ChatPageGptPanelCompositionArgs["task"] {
-  return {
-    currentTaskDraft: args.workspace.task.currentTaskDraft,
-    taskDraftCount: args.workspace.task.taskDraftCount,
-    activeTaskDraftIndex: args.workspace.task.activeTaskDraftIndex,
-    resetCurrentTaskDraft: args.workspace.task.resetCurrentTaskDraft,
-    updateTaskDraftFields: args.workspace.task.updateTaskDraftFields,
-    pendingRequests: args.workspace.task.taskProtocolView.pendingRequests,
-    buildTaskRequestAnswerDraft: args.workspace.task.buildTaskRequestAnswerDraft,
-    onSaveTaskSnapshot: args.onSaveTaskSnapshot,
-    onSelectPreviousTaskDraft: args.workspace.task.onSelectPreviousTaskDraft,
-    onSelectNextTaskDraft: args.workspace.task.onSelectNextTaskDraft,
-  };
-}
-
-function buildChatPageWorkspaceGptSettings(
-  args: ChatPageWorkspaceViewArgs
-): ChatPageGptPanelCompositionArgs["settings"] {
-  return {
-    memorySettings: args.memory.memorySettings,
-    defaultMemorySettings: args.gpt.defaultMemorySettings,
-    tokenStats: args.memory.tokenStats,
-    uploadKind: args.gpt.uploadKind,
-    ingestMode: args.gpt.ingestMode,
-    imageDetail: args.gpt.imageDetail,
-    fileReadPolicy: args.gpt.fileReadPolicy,
-    driveImportAutoSummary: args.gpt.driveImportAutoSummary,
-    compactCharLimit: args.gpt.compactCharLimit,
-    simpleImageCharLimit: args.gpt.simpleImageCharLimit,
-    ingestLoading: args.ui.ingestLoading,
-    canInjectFile: !args.ui.gptLoading && !args.ui.ingestLoading,
-    searchMode: args.search.searchMode,
-    searchEngines: args.search.searchEngines,
-    searchLocation: args.search.searchLocation,
-    sourceDisplayCount: args.search.sourceDisplayCount,
-    autoLibraryReferenceEnabled: args.references.autoLibraryReferenceEnabled,
-    libraryReferenceMode: args.references.libraryReferenceMode,
-    libraryIndexResponseCount: args.references.libraryIndexResponseCount,
-    libraryReferenceCount: args.references.libraryReferenceCount,
-    libraryStorageMB: args.references.libraryStorageMB,
-    libraryReferenceEstimatedTokens:
-      args.references.libraryReferenceEstimatedTokens,
-    autoSendKinSysInput: args.bridge.autoBridgeSettings.autoSendKinSysInput,
-    autoCopyKinSysResponseToGpt:
-      args.bridge.autoBridgeSettings.autoCopyKinSysResponseToGpt,
-    autoSendGptSysInput: args.bridge.autoBridgeSettings.autoSendGptSysInput,
-    autoCopyGptSysResponseToKin:
-      args.bridge.autoBridgeSettings.autoCopyGptSysResponseToKin,
-    autoCopyFileIngestSysInfoToKin:
-      args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
-    googleDriveFolderLink: args.references.googleDriveFolderLink,
-    googleDriveFolderId: args.references.googleDriveFolderId,
-    googleDriveIntegrationMode: args.references.googleDriveIntegrationMode,
-    onChangeUploadKind: args.gpt.onChangeUploadKind,
-    onChangeIngestMode: args.gpt.onChangeIngestMode,
-    onChangeImageDetail: args.gpt.onChangeImageDetail,
-    onChangeCompactCharLimit: args.gpt.onChangeCompactCharLimit,
-    onChangeSimpleImageCharLimit: args.gpt.onChangeSimpleImageCharLimit,
-    onChangeFileReadPolicy: args.gpt.onChangeFileReadPolicy,
-    onChangeDriveImportAutoSummary: args.gpt.onChangeDriveImportAutoSummary,
-    onChangeSearchMode: args.search.onChangeSearchMode,
-    onChangeSearchEngines: args.search.onChangeSearchEngines,
-    onChangeSearchLocation: args.search.onChangeSearchLocation,
-    onChangeSourceDisplayCount: args.search.onChangeSourceDisplayCount,
-    onChangeAutoLibraryReferenceEnabled:
-      args.references.onChangeAutoLibraryReferenceEnabled,
-    onChangeLibraryReferenceMode:
-      args.references.onChangeLibraryReferenceMode,
-    onChangeLibraryIndexResponseCount:
-      args.references.onChangeLibraryIndexResponseCount,
-    onChangeLibraryReferenceCount:
-      args.references.onChangeLibraryReferenceCount,
-    onChangeAutoSendKinSysInput: args.bridge.onChangeAutoSendKinSysInput,
-    onChangeAutoCopyKinSysResponseToGpt:
-      args.bridge.onChangeAutoCopyKinSysResponseToGpt,
-    onChangeAutoSendGptSysInput: args.bridge.onChangeAutoSendGptSysInput,
-    onChangeAutoCopyGptSysResponseToKin:
-      args.bridge.onChangeAutoCopyGptSysResponseToKin,
-    onChangeAutoCopyFileIngestSysInfoToKin:
-      args.bridge.onChangeAutoCopyFileIngestSysInfoToKin,
-    onChangeGoogleDriveFolderLink:
-      args.references.onChangeGoogleDriveFolderLink,
-    onOpenGoogleDriveFolder: args.references.onOpenGoogleDriveFolder,
-    onImportGoogleDriveFile: args.references.onImportGoogleDriveFile,
-    onIndexGoogleDriveFolder: args.references.onIndexGoogleDriveFolder,
-    onImportGoogleDriveFolder: args.references.onImportGoogleDriveFolder,
-    onChangeMemoryInterpreterSettings:
-      args.memory.onChangeMemoryInterpreterSettings,
-  };
-}
-
-function buildChatPageWorkspaceProtocolState(
-  args: ChatPageWorkspaceViewArgs
-): ChatPageGptPanelCompositionArgs["protocolState"] {
-  return {
-    protocolPrompt: args.protocol.protocolPrompt,
-    protocolRulebook: args.protocol.protocolRulebook,
-    pendingIntentCandidates: args.protocol.pendingIntentCandidates,
-    approvedIntentPhrases: args.protocol.approvedIntentPhrases,
-    onChangeProtocolPrompt: args.protocol.onChangeProtocolPrompt,
-    onChangeProtocolRulebook: args.protocol.onChangeProtocolRulebook,
-  };
-}
-
-function buildChatPageWorkspaceMemoryState(
-  args: ChatPageWorkspaceViewArgs
-): ChatPageGptPanelCompositionArgs["memoryState"] {
-  return {
-    memoryInterpreterSettings: args.memory.memoryInterpreterSettings,
-    pendingMemoryRuleCandidates: args.memory.pendingMemoryRuleCandidates,
-    approvedMemoryRules: args.memory.approvedMemoryRules,
-    onApproveMemoryRuleCandidate: args.memory.onApproveMemoryRuleCandidate,
-    onRejectMemoryRuleCandidate: args.memory.onRejectMemoryRuleCandidate,
-    onUpdateMemoryRuleCandidate: args.memory.onUpdateMemoryRuleCandidate,
-    onDeleteApprovedMemoryRule: args.memory.onDeleteApprovedMemoryRule,
-  };
-}
 
 export function buildChatPageWorkspaceKinPanelArgs(
   args: ChatPageWorkspaceViewArgs,
@@ -259,44 +54,7 @@ export function buildChatPageWorkspaceGptPanelArgs(
   };
 }
 
-export function buildChatPageTaskSnapshotDocument(
-  args: Pick<ChatPageWorkspaceViewArgs, "task">
-) {
-  return buildStoredDocumentFromTaskDraft(args.task.currentTaskDraft);
-}
-
-export async function saveChatPageTaskSnapshot(
-  args: Pick<ChatPageWorkspaceViewArgs, "task" | "usage"> &
-    Partial<Pick<ChatPageWorkspaceViewArgs, "gpt">>
-) {
-  const nextDocument = buildChatPageTaskSnapshotDocument(args);
-  if (!nextDocument) return false;
-
-  const summarySource = buildCanonicalSummarySource(
-    buildTaskDraftLibrarySummarySource(args.task.currentTaskDraft)
-  );
-  let generatedSummary = nextDocument.summary || "";
-
-  if (args.gpt?.driveImportAutoSummary !== false && summarySource.trim()) {
-    try {
-      const summaryResult = await requestGeneratedLibrarySummary({
-        title: nextDocument.title,
-        text: summarySource,
-      });
-      if (summaryResult.summary?.trim()) {
-        generatedSummary = cleanImportSummarySource(summaryResult.summary).trim();
-      }
-      args.usage.applyIngestUsage(
-        normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
-      );
-    } catch (error) {
-      console.warn("Task snapshot summary generation failed", error);
-    }
-  }
-
-  args.usage.recordIngestedDocument({
-    ...nextDocument,
-    summary: generatedSummary,
-  });
-  return true;
-}
+export {
+  buildChatPageTaskSnapshotDocument,
+  saveChatPageTaskSnapshot,
+} from "@/hooks/chatPageTaskSnapshot";

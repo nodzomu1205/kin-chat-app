@@ -4,11 +4,10 @@ import {
   createGptAssistantMessage,
   handleImplicitSearchArtifacts,
 } from "@/lib/app/send-to-gpt/sendToGptFlowState";
-import type {
-  ChatApiSearchLike,
-  FinalizeSendToGptFlowArgs,
-  PreparedRequestFinalizeContext,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+import type { ChatApiSearchLike } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
+import type { PreparedRequestFinalizeContext } from "@/lib/app/send-to-gpt/sendToGptPreparedRequestTypes";
+import type { FinalizeSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
+import type { MemoryResultLike } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import type { ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import {
@@ -78,21 +77,7 @@ export async function applyFinalizeMemoryFollowUp(args: {
   handleGptMemory: (
     recent: Message[],
     options?: { previousCommittedTopic?: string }
-  ) => Promise<{
-    compressionUsage?: ChatApiSearchLike["usage"];
-    fallbackUsage?: ChatApiSearchLike["usage"];
-    fallbackUsageDetails?: Record<string, unknown> | null;
-    fallbackMetrics?: {
-      promptChars: number;
-      rawReplyChars: number;
-    } | null;
-    fallbackDebug?: {
-      prompt: string;
-      rawReply: string;
-      parsed: unknown;
-      usageDetails?: Record<string, unknown> | null;
-    } | null;
-  }>;
+  ) => Promise<MemoryResultLike>;
   applyChatUsage: (
     usage: ChatApiSearchLike["usage"],
     options?: ConversationUsageOptions

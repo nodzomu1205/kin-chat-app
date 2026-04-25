@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDriveImportStoredText,
+  buildDriveImportSummary,
   buildDriveFolderIndexMessage,
   buildDriveUploadDestinationPrompt,
+  canImportDriveMimeType,
   resolveDriveUploadDestinationIndex,
   type DriveFolderNode,
 } from "@/hooks/googleDrivePickerBuilders";
@@ -70,5 +73,32 @@ describe("googleDrivePickerBuilders", () => {
         childFolderCount: 3,
       })
     ).toBeNull();
+  });
+
+  it("keeps Drive importable MIME type rules in the shared builder", () => {
+    expect(canImportDriveMimeType("text/plain")).toBe(true);
+    expect(canImportDriveMimeType("application/pdf")).toBe(true);
+    expect(canImportDriveMimeType("application/vnd.google-apps.document")).toBe(true);
+    expect(canImportDriveMimeType("image/png")).toBe(false);
+  });
+
+  it("builds Drive import stored text and prefers compact summaries", () => {
+    expect(
+      buildDriveImportStoredText({
+        selectedLines: ["alpha", "beta"],
+        rawText: "raw fallback",
+      })
+    ).toBe("alpha\nbeta");
+
+    expect(
+      buildDriveImportSummary({
+        result: {
+          structuredSummary: ["long fallback summary"],
+          kinCompact: ["short compact summary"],
+        },
+        fallbackText: "A much longer imported document body.",
+        fallbackTitle: "Drive doc",
+      })
+    ).toBe("short compact summary");
   });
 });

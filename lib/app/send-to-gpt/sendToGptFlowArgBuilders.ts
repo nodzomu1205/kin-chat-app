@@ -8,7 +8,7 @@ import type {
   SendToGptFlowRequestArgs,
   SendToGptFlowSearchArgs,
   SendToGptFlowUiArgs,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 
 export function parseWrappedSearchResponseText(text: string) {
   const event = extractTaskProtocolEvents(text).find(

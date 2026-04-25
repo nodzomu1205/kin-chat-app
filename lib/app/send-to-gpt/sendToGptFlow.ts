@@ -8,7 +8,7 @@ import {
 } from "@/lib/app/send-to-gpt/sendToGptText";
 import type {
   RunSendToGptFlowArgs,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import { extractInlineUrlTarget } from "@/lib/app/send-to-gpt/sendToGptShortcutFlows";
 import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlowRequest";
 import { finalizeSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlowFinalize";

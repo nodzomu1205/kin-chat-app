@@ -4,12 +4,10 @@ import {
   prepareSendToGptRequest,
 } from "@/lib/app/send-to-gpt/sendToGptFlowRequestPreparation";
 import { prepareSendToGptMemoryContext } from "@/lib/app/send-to-gpt/sendToGptFlowState";
-import type {
-  ChatApiSearchLike,
-  ParsedInputLike,
-  PreparedRequestFinalizeContext,
-  RunSendToGptFlowArgs,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+import type { ChatApiSearchLike } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
+import type { PreparedRequestFinalizeContext } from "@/lib/app/send-to-gpt/sendToGptPreparedRequestTypes";
+import type { ParsedInputLike } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
+import type { RunSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import type { Message, SourceItem } from "@/types/chat";
 
 export type SendToGptFlowStepArgs = RunSendToGptFlowArgs & {

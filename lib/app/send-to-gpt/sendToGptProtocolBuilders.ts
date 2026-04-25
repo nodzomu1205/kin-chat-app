@@ -1,5 +1,5 @@
 import type { ReferenceLibraryItem, SourceItem } from "@/types/chat";
-import type { SearchRecord } from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+import type { SearchRecord } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
 import {
   buildProtocolBlock,
   buildProtocolLine,

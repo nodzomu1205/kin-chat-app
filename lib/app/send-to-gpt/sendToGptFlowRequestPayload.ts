@@ -1,4 +1,4 @@
-import type { ChatApiRequestPayload } from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+import type { ChatApiRequestPayload } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
 import type { Message } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 

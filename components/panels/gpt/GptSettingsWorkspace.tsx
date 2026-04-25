@@ -10,10 +10,16 @@ import {
   buttonSecondaryWide,
 } from "@/components/panels/gpt/gptPanelStyles";
 import {
-  SEARCH_MODE_PRESETS,
   sectionCard,
   tabButton,
 } from "@/components/panels/gpt/GptSettingsSections";
+import {
+  buildSearchPresetSelection,
+  buildToggledSearchEngineSelection,
+  normalizeSourceDisplayCountInput,
+  resolveActiveSearchMode,
+  type PrimarySearchMode,
+} from "@/components/panels/gpt/GptSettingsSearchState";
 import { GPT_SETTINGS_WORKSPACE_TEXT } from "@/components/panels/gpt/gptSettingsText";
 import { WorkspaceSectionTitle } from "@/components/panels/gpt/GptSettingsLibrarySections";
 import {
@@ -21,13 +27,7 @@ import {
   LibrarySettingsWorkspaceView,
   TaskSettingsWorkspaceView,
 } from "@/components/panels/gpt/GptSettingsWorkspaceViews";
-import {
-  inferPrimarySearchModeFromEngines,
-  isPrimarySearchMode,
-  normalizeStoredSearchMode,
-  type PrimarySearchMode,
-} from "@/lib/search-domain/presets";
-import type { SearchEngine, SearchMode } from "@/types/task";
+import type { SearchEngine } from "@/types/task";
 
 export type SettingsWorkspaceView = "chat" | "task" | "library";
 
@@ -64,34 +64,34 @@ export default function GptSettingsWorkspace({
     setSourceDisplayCountInput(String(settings.sourceDisplayCount));
   }, [settings.sourceDisplayCount]);
 
-  const normalizedSearchMode = normalizeStoredSearchMode(settings.searchMode);
   const activeSearchMode: PrimarySearchMode | undefined =
-    settings.searchEngines.length > 0
-      ? inferPrimarySearchModeFromEngines(settings.searchEngines) ?? undefined
-      : isPrimarySearchMode(normalizedSearchMode)
-        ? normalizedSearchMode
-        : "normal";
+    resolveActiveSearchMode({
+      searchMode: settings.searchMode,
+      searchEngines: settings.searchEngines,
+    });
 
   const setSearchPreset = (mode: PrimarySearchMode) => {
-    settings.onChangeSearchMode(mode as SearchMode);
-    settings.onChangeSearchEngines([...SEARCH_MODE_PRESETS[mode].engines]);
+    const next = buildSearchPresetSelection(mode);
+    settings.onChangeSearchMode(next.searchMode);
+    settings.onChangeSearchEngines(next.searchEngines);
   };
 
   const toggleSearchEngine = (engine: SearchEngine) => {
-    const next = settings.searchEngines.includes(engine)
-      ? settings.searchEngines.filter((item) => item !== engine)
-      : [...settings.searchEngines, engine];
-    settings.onChangeSearchEngines(next);
-    const inferred = inferPrimarySearchModeFromEngines(next);
-    if (inferred) settings.onChangeSearchMode(inferred as SearchMode);
+    const next = buildToggledSearchEngineSelection({
+      searchEngines: settings.searchEngines,
+      engine,
+    });
+    settings.onChangeSearchEngines(next.searchEngines);
+    if (next.inferredSearchMode) {
+      settings.onChangeSearchMode(next.inferredSearchMode);
+    }
   };
 
   const commitSourceDisplayCount = () => {
-    const normalized = sourceDisplayCountInput.replace(/[^\d]/g, "").trim();
-    const nextValue = Math.max(
-      1,
-      Math.min(20, Number(normalized || settings.sourceDisplayCount || 1))
-    );
+    const nextValue = normalizeSourceDisplayCountInput({
+      input: sourceDisplayCountInput,
+      currentValue: settings.sourceDisplayCount,
+    });
     setSourceDisplayCountInput(String(nextValue));
     if (nextValue !== settings.sourceDisplayCount) {
       settings.onChangeSourceDisplayCount(nextValue);

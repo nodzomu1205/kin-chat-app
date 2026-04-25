@@ -1,9 +1,11 @@
 import { createEmptyMemory, type Memory } from "@/lib/memory-domain/memory";
 import type {
   GptStateSnapshotLike,
+} from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
+import type {
   SendToGptImplicitSearchArtifactsArgs,
   SendToGptMemoryPreparation,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 import type { Message } from "@/types/chat";
 
 export function buildMemoryUpdateContext(params: {

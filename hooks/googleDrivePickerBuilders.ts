@@ -1,11 +1,8 @@
-export type DriveFolderNode = {
-  id: string;
-  name: string;
-  mimeType: string;
-  path: string;
-  modifiedTime?: string;
-  sizeBytes?: number | null;
-};
+import { resolveIngestExtractionArtifacts } from "@/lib/app/ingest/fileIngestFlowBuilders";
+import { buildCanonicalDocumentSummary } from "@/lib/app/ingest/ingestDocumentModel";
+import type { DriveFolderNode } from "@/lib/app/google-drive/googleDriveApi";
+
+export type { DriveFolderNode } from "@/lib/app/google-drive/googleDriveApi";
 
 function formatDriveTimestamp(value?: string) {
   if (!value) return "";
@@ -33,8 +30,7 @@ function isDriveFolder(entry: Pick<DriveFolderNode, "mimeType">) {
   return entry.mimeType === "application/vnd.google-apps.folder";
 }
 
-function isImportableDriveEntry(entry: Pick<DriveFolderNode, "mimeType">) {
-  const mimeType = entry.mimeType;
+export function canImportDriveMimeType(mimeType?: string) {
   if (!mimeType) return false;
   if (mimeType.startsWith("text/")) return true;
   if (mimeType === "application/pdf") return true;
@@ -43,6 +39,10 @@ function isImportableDriveEntry(entry: Pick<DriveFolderNode, "mimeType">) {
   if (mimeType === "application/vnd.google-apps.document") return true;
   if (mimeType === "application/vnd.google-apps.spreadsheet") return true;
   return false;
+}
+
+function isImportableDriveEntry(entry: Pick<DriveFolderNode, "mimeType">) {
+  return canImportDriveMimeType(entry.mimeType);
 }
 
 export function buildDriveFolderIndexMessage(args: {
@@ -104,4 +104,62 @@ export function resolveDriveUploadDestinationIndex(args: {
   const index = Number(normalized) - 1;
   if (index < 0 || index >= args.childFolderCount) return null;
   return index;
+}
+
+function isSummaryCandidateTooClose(args: {
+  candidate: string;
+  fullText: string;
+}) {
+  const normalizedCandidate = args.candidate.replace(/\s+/g, " ").trim();
+  const normalizedFullText = args.fullText.replace(/\s+/g, " ").trim();
+  if (!normalizedCandidate || !normalizedFullText) return false;
+  if (normalizedCandidate === normalizedFullText) return true;
+  if (normalizedCandidate.length >= Math.floor(normalizedFullText.length * 0.8)) {
+    return true;
+  }
+  return false;
+}
+
+export function buildDriveImportSummary(args: {
+  result?: {
+    structuredSummary?: unknown[];
+    kinCompact?: unknown[];
+  };
+  fallbackText: string;
+  fallbackTitle: string;
+}) {
+  const summaryLines = Array.isArray(args.result?.structuredSummary)
+    ? args.result.structuredSummary.filter(
+        (line): line is string => typeof line === "string" && line.trim().length > 0
+      )
+    : [];
+  const compactLines = Array.isArray(args.result?.kinCompact)
+    ? args.result.kinCompact.filter(
+        (line): line is string => typeof line === "string" && line.trim().length > 0
+      )
+    : [];
+  const preferredCandidate = compactLines.join(" ").trim() || summaryLines.join(" ").trim();
+  if (
+    preferredCandidate &&
+    !isSummaryCandidateTooClose({
+      candidate: preferredCandidate,
+      fullText: args.fallbackText,
+    })
+  ) {
+    return preferredCandidate;
+  }
+  return buildCanonicalDocumentSummary(args.fallbackText, args.fallbackTitle);
+}
+
+export function buildDriveImportStoredText(result: {
+  selectedLines?: unknown[];
+  rawText?: string;
+  summaryText?: string;
+  detailText?: string;
+}) {
+  return resolveIngestExtractionArtifacts({
+    data: { result } as never,
+    fileName: "",
+    fileTitle: "",
+  }).canonicalDocumentText;
 }

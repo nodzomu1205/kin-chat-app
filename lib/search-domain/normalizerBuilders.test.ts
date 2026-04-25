@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAiModePayload,
+  buildLocalSearchPayload,
   buildGoogleSearchPayload,
   buildMergedNormalizedPayload,
+  collectLocalLikeItems,
+  extractAiModeTables,
+  normalizeLocalResults,
   normalizeYoutubeSources,
 } from "@/lib/search-domain/normalizerBuilders";
 
@@ -40,6 +45,34 @@ describe("normalizerBuilders", () => {
     );
   });
 
+  it("builds local payloads from local-like result containers through the facade", () => {
+    const localItems = collectLocalLikeItems({
+      place_result: {
+        title: "Cafe Example",
+        address: "Tokyo",
+        rating: 4.5,
+      },
+    });
+    const localResults = normalizeLocalResults(localItems);
+
+    const payload = buildLocalSearchPayload({
+      request: { query: "tokyo cafe" },
+      engine: "google_local",
+      localItems,
+      localResults,
+      sources: [],
+    });
+
+    expect(localResults[0]).toEqual(
+      expect.objectContaining({
+        title: "Cafe Example",
+        link: expect.stringContaining("google.com/maps/search"),
+      })
+    );
+    expect(payload.rawText).toContain("Google Local");
+    expect(payload.localResults).toHaveLength(1);
+  });
+
   it("merges payload sections", () => {
     const merged = buildMergedNormalizedPayload([
       {
@@ -57,5 +90,36 @@ describe("normalizerBuilders", () => {
     expect(merged.summaryText).toBe("summary 1\nsummary 2");
     expect(merged.rawText).toBe("raw 1\n\nraw 2");
     expect(merged.sources).toHaveLength(2);
+  });
+
+  it("builds an AI mode payload with table sections through the facade", () => {
+    const aiTables = extractAiModeTables({
+      answer: {
+        result_table: [
+          { name: "Alpha", score: 10 },
+          { name: "Beta", score: 8 },
+        ],
+      },
+    });
+
+    const payload = buildAiModePayload({
+      request: { query: "compare tools" },
+      aiSummary: "Tool comparison summary",
+      textBlocks: [{ type: "heading", snippet: "Top options" }],
+      fullText: "",
+      fallbackSources: [
+        {
+          title: "Reference",
+          link: "https://example.com/reference",
+          sourceType: "ai_mode",
+        },
+      ],
+      aiTables,
+      engine: "google_ai_mode",
+    });
+
+    expect(payload.rawText).toContain("Google AI Mode");
+    expect(payload.rawText).toContain("Result Table");
+    expect(payload.rawText).toContain("Supporting links");
   });
 });

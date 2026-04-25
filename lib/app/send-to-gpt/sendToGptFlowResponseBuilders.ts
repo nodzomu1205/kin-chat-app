@@ -3,9 +3,9 @@ import {
   buildSearchResponseBlock,
 } from "@/lib/app/send-to-gpt/sendToGptProtocolBuilders";
 import type {
-  ProtocolSearchResponseArtifactsArgs,
   SearchSource,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptApiTypes";
+import type { ProtocolSearchResponseArtifactsArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 import type { SourceItem } from "@/types/chat";
 
 function resolveProtocolSearchSummaryText(

@@ -1,40 +1,27 @@
 "use client";
 
 import React from "react";
-import type {
-  ApprovedIntentPhrase,
-  PendingIntentCandidate,
-} from "@/lib/task/taskIntent";
+import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/task/taskIntent";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-  TopicDecision,
-  UserUtteranceIntent,
 } from "@/lib/memory-domain/memoryInterpreterRules";
-import {
-  buttonPrimary,
-  buttonSecondaryWide,
-  helpTextStyle,
-  inputStyle,
-  labelStyle,
-} from "./gptPanelStyles";
+import { helpTextStyle, labelStyle } from "./gptPanelStyles";
 import {
   sectionCard,
-  selectStyle,
-  subtleCard,
   tabButton,
   ToggleButtons,
 } from "./GptSettingsShared";
 import {
-  formatIntentLabel,
-  formatIntentPhraseKindLabel,
-  formatMemoryRuleKind,
-  formatTopicDecisionLabel,
-  getCandidateIntentValue,
-  getCandidateTopicDecisionValue,
   GPT_SETTINGS_RULES_TEXT,
 } from "./gptSettingsText";
+import {
+  ApprovedIntentRuleCard,
+  ApprovedMemoryRuleCard,
+  PendingIntentRuleCard,
+  PendingMemoryRuleCandidateCard,
+} from "./GptSettingsRuleCards";
 
 const RULES_TEXT = GPT_SETTINGS_RULES_TEXT;
 
@@ -85,18 +72,6 @@ function PendingMemoryRuleCandidatesSection(props: {
     patch: Partial<PendingMemoryRuleCandidate>
   ) => void;
 }) {
-  const intentOptions: UserUtteranceIntent[] = [
-    "agreement",
-    "disagreement",
-    "question",
-    "request",
-    "statement",
-    "suggestion",
-    "acknowledgement",
-    "unknown",
-  ];
-  const topicDecisionOptions: TopicDecision[] = ["keep", "switch", "unclear"];
-
   return (
     <div style={sectionCard}>
       <div style={{ ...labelStyle, marginBottom: 8 }}>
@@ -109,109 +84,14 @@ function PendingMemoryRuleCandidatesSection(props: {
         <div style={helpTextStyle}>{RULES_TEXT.pendingMemoryEmpty}</div>
       ) : (
         props.pendingMemoryRuleCandidates.map((candidate) => (
-          <div key={candidate.id} style={{ ...subtleCard, marginTop: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 800 }}>
-              {formatMemoryRuleKind(candidate.kind)}
-            </div>
-            <div style={{ ...helpTextStyle, marginTop: 6 }}>
-              {RULES_TEXT.sourcePhrase}: {candidate.phrase}
-            </div>
-            <div
-              style={{
-                ...helpTextStyle,
-                marginTop: 6,
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {candidate.sourceText}
-            </div>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: props.isMobile
-                  ? "1fr"
-                  : "repeat(2, minmax(0, 1fr))",
-                gap: 10,
-                marginTop: 10,
-              }}
-            >
-              <div>
-                <div style={labelStyle}>{RULES_TEXT.userIntent}</div>
-                <select
-                  value={getCandidateIntentValue(candidate)}
-                  onChange={(event) =>
-                    props.onUpdateMemoryRuleCandidate(candidate.id, {
-                      kind: "utterance_review",
-                      intent: event.target.value as UserUtteranceIntent,
-                    })
-                  }
-                  style={selectStyle}
-                >
-                  {intentOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {formatIntentLabel(option)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <div style={labelStyle}>{RULES_TEXT.topicDecision}</div>
-                <select
-                  value={getCandidateTopicDecisionValue(candidate)}
-                  onChange={(event) =>
-                    props.onUpdateMemoryRuleCandidate(candidate.id, {
-                      kind: "utterance_review",
-                      topicDecision: event.target.value as TopicDecision,
-                    })
-                  }
-                  style={selectStyle}
-                >
-                  {topicDecisionOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {formatTopicDecisionLabel(option)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ gridColumn: props.isMobile ? undefined : "1 / -1" }}>
-                <div style={labelStyle}>{RULES_TEXT.topic}</div>
-                <input
-                  value={candidate.normalizedValue || ""}
-                  onChange={(event) =>
-                    props.onUpdateMemoryRuleCandidate(candidate.id, {
-                      kind: "utterance_review",
-                      normalizedValue: event.target.value,
-                    })
-                  }
-                  placeholder={RULES_TEXT.topicPlaceholder}
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                marginTop: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                type="button"
-                style={buttonPrimary}
-                onClick={() => props.onApproveMemoryRuleCandidate(candidate.id)}
-              >
-                {RULES_TEXT.approve}
-              </button>
-              <button
-                type="button"
-                style={buttonSecondaryWide}
-                onClick={() => props.onRejectMemoryRuleCandidate(candidate.id)}
-              >
-                {RULES_TEXT.reject}
-              </button>
-            </div>
-          </div>
+          <PendingMemoryRuleCandidateCard
+            key={candidate.id}
+            candidate={candidate}
+            isMobile={props.isMobile}
+            onApprove={props.onApproveMemoryRuleCandidate}
+            onReject={props.onRejectMemoryRuleCandidate}
+            onUpdate={props.onUpdateMemoryRuleCandidate}
+          />
         ))
       )}
     </div>
@@ -241,49 +121,11 @@ function ApprovedMemoryRulesSection(props: {
       {props.showApprovedMemoryRules ? (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
           {props.approvedMemoryRules.map((rule) => (
-            <div key={rule.id} style={subtleCard}>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {formatMemoryRuleKind(rule.kind)}
-              </div>
-              <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                {RULES_TEXT.sourcePhrase}: {rule.phrase}
-              </div>
-              {rule.intent ? (
-                <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  {RULES_TEXT.userIntent}: {formatIntentLabel(rule.intent)}
-                </div>
-              ) : null}
-              {rule.topicDecision ? (
-                <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  {RULES_TEXT.topicDecision}: {formatTopicDecisionLabel(rule.topicDecision)}
-                </div>
-              ) : null}
-              {rule.normalizedValue ? (
-                <div style={{ ...helpTextStyle, marginTop: 6 }}>
-                  {RULES_TEXT.topic}: {rule.normalizedValue}
-                </div>
-              ) : null}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 10,
-                }}
-              >
-                <div style={helpTextStyle}>
-                  {RULES_TEXT.createdAt}: {rule.createdAt.slice(0, 10)}
-                </div>
-                <button
-                  type="button"
-                  style={buttonSecondaryWide}
-                  onClick={() => props.onDeleteApprovedMemoryRule(rule.id)}
-                >
-                  {RULES_TEXT.delete}
-                </button>
-              </div>
-            </div>
+            <ApprovedMemoryRuleCard
+              key={rule.id}
+              rule={rule}
+              onDelete={props.onDeleteApprovedMemoryRule}
+            />
           ))}
         </div>
       ) : null}
@@ -308,43 +150,12 @@ function PendingIntentRulesSection(props: {
         <div style={helpTextStyle}>{RULES_TEXT.pendingSysEmpty}</div>
       ) : (
         props.pendingIntentCandidates.map((candidate) => (
-          <div key={candidate.id} style={{ ...subtleCard, marginTop: 8 }}>
-            <div style={{ fontSize: 12, fontWeight: 800 }}>
-              {formatIntentPhraseKindLabel(candidate.kind)} / {candidate.phrase}
-            </div>
-            <div
-              style={{
-                ...helpTextStyle,
-                marginTop: 6,
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              {candidate.sourceText}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                marginTop: 10,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                type="button"
-                style={buttonPrimary}
-                onClick={() => props.onApproveIntentCandidate(candidate.id)}
-              >
-                {RULES_TEXT.approve}
-              </button>
-              <button
-                type="button"
-                style={buttonSecondaryWide}
-                onClick={() => props.onRejectIntentCandidate(candidate.id)}
-              >
-                {RULES_TEXT.reject}
-              </button>
-            </div>
-          </div>
+          <PendingIntentRuleCard
+            key={candidate.id}
+            candidate={candidate}
+            onApprove={props.onApproveIntentCandidate}
+            onReject={props.onRejectIntentCandidate}
+          />
         ))
       )}
     </div>
@@ -371,31 +182,11 @@ function ApprovedIntentRulesSection(props: {
       {props.showApprovedIntentRules ? (
         <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
           {props.approvedIntentPhrases.map((phrase) => (
-            <div key={phrase.id} style={subtleCard}>
-              <div style={{ fontSize: 12, fontWeight: 800 }}>
-                {formatIntentPhraseKindLabel(phrase.kind)} / {phrase.phrase}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 10,
-                }}
-              >
-                <div style={helpTextStyle}>
-                  {RULES_TEXT.createdAt}: {phrase.createdAt.slice(0, 10)}
-                </div>
-                <button
-                  type="button"
-                  style={buttonSecondaryWide}
-                  onClick={() => props.onDeleteApprovedIntentPhrase(phrase.id)}
-                >
-                  {RULES_TEXT.delete}
-                </button>
-              </div>
-            </div>
+            <ApprovedIntentRuleCard
+              key={phrase.id}
+              phrase={phrase}
+              onDelete={props.onDeleteApprovedIntentPhrase}
+            />
           ))}
         </div>
       ) : null}

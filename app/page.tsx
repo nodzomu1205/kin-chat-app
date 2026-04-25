@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import ChatPanelsLayout from "@/components/layout/ChatPanelsLayout";
+import ChatAppShell from "@/components/layout/ChatAppShell";
 import { useKinManager } from "@/hooks/useKinManager";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useAutoBridgeSettings } from "@/hooks/useAutoBridgeSettings";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
-import {
-  useSearchHistory,
-} from "@/hooks/useSearchHistory";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useChatPageLifecycle } from "@/hooks/useChatPageLifecycle";
 import { useTaskDraftWorkspace } from "@/hooks/useTaskDraftWorkspace";
 import { useArchiveCompletedTaskResults } from "@/hooks/useArchiveCompletedTaskResults";
@@ -16,444 +13,94 @@ import { useChatPagePanelsComposition } from "@/hooks/useChatPagePanelsCompositi
 import { useChatPageReferenceDomain } from "@/hooks/useChatPageReferenceDomain";
 import { useChatPageTaskProtocolDomain } from "@/hooks/useChatPageTaskProtocolDomain";
 import { useChatPageUiState } from "@/hooks/useChatPageUiState";
-import { useChatPageWorkspaceInputs } from "@/hooks/useChatPageWorkspaceInputs";
+import { useChatPageWorkspaceDomainInputs } from "@/hooks/useChatPageWorkspaceDomainInputs";
+import {
+  CHAT_PAGE_MOBILE_BREAKPOINT,
+  resolveCurrentKinDisplayLabel,
+} from "@/lib/app/ui-state/chatPageDefaults";
 import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
-import type { ChatBridgeSettings } from "@/types/taskProtocol";
-
-const MOBILE_BREAKPOINT = 1180;
 
 export default function ChatApp() {
-  const {
-    kinMessages,
-    setKinMessages,
-    gptMessages,
-    setGptMessages,
-    kinInput,
-    setKinInput,
-    gptInput,
-    setGptInput,
-    kinLoading,
-    setKinLoading,
-    gptLoading,
-    setGptLoading,
-    ingestLoading,
-    setIngestLoading,
-    pendingKinInjectionBlocks,
-    setPendingKinInjectionBlocks,
-    pendingKinInjectionIndex,
-    setPendingKinInjectionIndex,
-    setCurrentSessionId,
-    isSinglePanelLayout,
-    activePanelTab,
-    setActivePanelTab,
-    focusKinPanel,
-    focusGptPanel,
-    kinBottomRef,
-    gptBottomRef,
-  } = useChatPageUiState(MOBILE_BREAKPOINT);
-  const {
-    taskDrafts,
-    activeTaskDraftIndex,
-    currentTaskDraft,
-    setCurrentTaskDraft,
-    selectPreviousTaskDraft,
-    selectNextTaskDraft,
-  } = useTaskDraftWorkspace();
+  const chatUi = useChatPageUiState(CHAT_PAGE_MOBILE_BREAKPOINT);
+  const taskDraftWorkspace = useTaskDraftWorkspace();
 
-  const {
-    uploadKind,
-    setUploadKind,
-    ingestMode,
-    setIngestMode,
-    imageDetail,
-    setImageDetail,
-    compactCharLimit,
-    setCompactCharLimit,
-    simpleImageCharLimit,
-    setSimpleImageCharLimit,
-    fileReadPolicy,
-    setFileReadPolicy,
-    driveImportAutoSummary,
-    setDriveImportAutoSummary,
-  } = usePersistedGptOptions();
-  const { autoBridgeSettings, updateAutoBridgeSettings } = useAutoBridgeSettings();
+  const gptOptions = usePersistedGptOptions();
+  const autoBridge = useAutoBridgeSettings();
 
-  const {
-    tokenStats,
-    applyChatUsage,
-    applyCompressionUsage,
-    applySearchUsage,
-    applyTaskUsage,
-    applyIngestUsage,
-    resetTokenStats,
-  } = useTokenTracking();
+  const tokenUsage = useTokenTracking();
 
-  const {
-    kinIdInput,
-    setKinIdInput,
-    kinNameInput,
-    setKinNameInput,
-    kinList,
-    currentKin,
-    kinStatus,
-    setKinConnectionState,
-    connectKin,
-    switchKin,
-    disconnectKin,
-    removeKin,
-    renameKin,
-  } = useKinManager();
-  const currentKinDisplayLabel =
-    kinList.find((kin) => kin.id === currentKin)?.label ?? null;
-
-  const {
-    lastSearchContext,
-    searchHistory,
-    selectedTaskSearchResultId,
-    setSelectedTaskSearchResultId,
-    searchMode,
-    setSearchMode,
-    searchEngines,
-    setSearchEngines,
-    searchLocation,
-    setSearchLocation,
-    sourceDisplayCount,
-    setSourceDisplayCount,
-    moveSearchHistoryItem,
-    recordSearchContext,
-    getContinuationTokenForSeries,
-    getAskAiModeLinkForQuery,
-    clearSearchHistory,
-    deleteSearchHistoryItem: deleteSearchHistoryItemBase,
-    searchHistoryStorageMB,
-  } = useSearchHistory({
-    applyIngestUsage,
-    autoGenerateLibrarySummaries: driveImportAutoSummary,
-  });
-  const {
-    memoryInterpreterSettings,
-    pendingMemoryRuleCandidates,
-    approvedMemoryRules,
-    gptState,
-    resetGptForCurrentKin,
-    ensureKinState,
-    removeKinState,
-    memorySettings,
-    defaultMemorySettings,
-    pendingIntentCandidates,
-    setPendingIntentCandidates,
-    approvedIntentPhrases,
-    setApprovedIntentPhrases,
-    rejectedIntentCandidateSignatures,
-    setRejectedIntentCandidateSignatures,
-    protocolPrompt,
-    setProtocolPrompt,
-    protocolRulebook,
-    setProtocolRulebook,
-    taskProtocol,
-    taskProtocolView,
-    updateMemoryInterpreterSettings,
-    updateMemoryRuleCandidate,
-    approveMemoryRuleCandidate,
-    rejectMemoryRuleCandidate,
-    deleteApprovedMemoryRule,
-    deleteSearchHistoryItem,
-    resetCurrentTaskDraft,
-    getCurrentTaskCharConstraint,
-    updateTaskDraftFields,
-    applyPrefixedTaskFieldsFromText,
-    getTaskSlotLabel,
-    getResolvedTaskTitle,
-    resolveTaskTitleFromDraft,
-    getTaskBaseText,
-    syncTaskDraftFromProtocol,
-    gptMemoryRuntime,
-    gptMemorySettingsControls,
-  } = useChatPageTaskProtocolDomain({
-    currentKin,
-    currentTaskDraft,
-    gptMessages,
-    setCurrentTaskDraft,
-    deleteSearchHistoryItemBase,
+  const kinManager = useKinManager();
+  const currentKinDisplayLabel = resolveCurrentKinDisplayLabel({
+    kinList: kinManager.kinList,
+    currentKin: kinManager.currentKin,
   });
 
-  const [chatBridgeSettings] = useState<ChatBridgeSettings>({
-    injectTaskContextOnReference: true,
-    alwaysShowCurrentTaskInChatContext: false,
+  const searchDomain = useSearchHistory({
+    applyIngestUsage: tokenUsage.applyIngestUsage,
+    autoGenerateLibrarySummaries: gptOptions.driveImportAutoSummary,
+  });
+  const taskProtocolDomain = useChatPageTaskProtocolDomain({
+    currentKin: kinManager.currentKin,
+    currentTaskDraft: taskDraftWorkspace.currentTaskDraft,
+    gptMessages: chatUi.gptMessages,
+    setCurrentTaskDraft: taskDraftWorkspace.setCurrentTaskDraft,
+    deleteSearchHistoryItemBase: searchDomain.deleteSearchHistoryItem,
   });
 
   useChatPageLifecycle({
-    currentKin,
-    ensureKinState,
-    setCurrentSessionId,
+    currentKin: kinManager.currentKin,
+    ensureKinState: taskProtocolDomain.ensureKinState,
+    setCurrentSessionId: chatUi.setCurrentSessionId,
   });
 
-  const {
-    multipartAssemblies,
-    deleteMultipartAssembly,
-    allDocuments,
-    recordIngestedDocument,
-    updateStoredDocument,
-    deleteStoredDocument,
-    moveStoredDocument,
-    libraryItems,
-    selectedTaskLibraryItemId,
-    setSelectedTaskLibraryItemId,
-    autoLibraryReferenceEnabled,
-    setAutoLibraryReferenceEnabled,
-    libraryReferenceMode,
-    setLibraryReferenceMode,
-    libraryIndexResponseCount,
-    setLibraryIndexResponseCount,
-    libraryReferenceCount,
-    setLibraryReferenceCount,
-    libraryStorageMB,
-    setLibraryItemModeOverride,
-    moveLibraryItem,
-    getTaskLibraryItem,
-    buildLibraryReferenceContext,
-    libraryReferenceEstimatedTokens,
-    googleDriveFolderLink,
-    setGoogleDriveFolderLink,
-    googleDriveFolderId,
-    googleDrivePickerReady,
-    processMultipartTaskDoneText,
-    loadMultipartAssemblyToGptInput,
-    downloadMultipartAssembly,
-    loadStoredDocumentToGptInput,
-    downloadStoredDocument,
-    showLibraryItemInChat,
-    sendLibraryItemToKin,
-    uploadLibraryItemToGoogleDrive,
-    importGoogleDriveFile,
-    indexGoogleDriveFolder,
-    importGoogleDriveFolder,
-    openGoogleDriveFolder,
-  } = useChatPageReferenceDomain({
-    searchHistory,
-    searchHistoryStorageMB,
-    sourceDisplayCount,
-    uploadKind,
-    ingestMode,
-    imageDetail,
-    fileReadPolicy,
-    compactCharLimit,
-    simpleImageCharLimit,
-    driveImportAutoSummary,
-    currentTaskId: currentTaskDraft.id || undefined,
-    currentTaskTitle: taskProtocolView.currentTaskTitle,
+  const referenceDomain = useChatPageReferenceDomain({
+    searchHistory: searchDomain.searchHistory,
+    searchHistoryStorageMB: searchDomain.searchHistoryStorageMB,
+    sourceDisplayCount: searchDomain.sourceDisplayCount,
+    uploadKind: gptOptions.uploadKind,
+    ingestMode: gptOptions.ingestMode,
+    imageDetail: gptOptions.imageDetail,
+    fileReadPolicy: gptOptions.fileReadPolicy,
+    compactCharLimit: gptOptions.compactCharLimit,
+    simpleImageCharLimit: gptOptions.simpleImageCharLimit,
+    driveImportAutoSummary: gptOptions.driveImportAutoSummary,
+    currentTaskId: taskDraftWorkspace.currentTaskDraft.id || undefined,
+    currentTaskTitle: taskProtocolDomain.taskProtocolView.currentTaskTitle,
     currentKinDisplayLabel,
     getCurrentTaskCharConstraint: () =>
-      getCurrentTaskCharConstraint() as TaskCharConstraint | null,
-    setKinInput,
-    setGptInput,
-    gptMessages,
-    setGptMessages,
-    setIngestLoading,
-    gptMemoryRuntime,
-    applyChatUsage,
-    applyIngestUsage,
-    applyCompressionUsage,
-    focusGptPanel,
-    focusKinPanel,
-    setFinalizeReviewed: taskProtocolView.setFinalizeReviewed,
+      taskProtocolDomain.getCurrentTaskCharConstraint() as TaskCharConstraint | null,
+    setKinInput: chatUi.setKinInput,
+    setGptInput: chatUi.setGptInput,
+    gptMessages: chatUi.gptMessages,
+    setGptMessages: chatUi.setGptMessages,
+    setIngestLoading: chatUi.setIngestLoading,
+    gptMemoryRuntime: taskProtocolDomain.gptMemoryRuntime,
+    applyChatUsage: tokenUsage.applyChatUsage,
+    applyIngestUsage: tokenUsage.applyIngestUsage,
+    applyCompressionUsage: tokenUsage.applyCompressionUsage,
+    focusGptPanel: chatUi.focusGptPanel,
+    focusKinPanel: chatUi.focusKinPanel,
+    setFinalizeReviewed: taskProtocolDomain.taskProtocolView.setFinalizeReviewed,
   });
 
   useArchiveCompletedTaskResults({
-    documents: allDocuments,
-    progressViews: taskProtocolView.progressViews,
-    archiveTask: taskProtocolView.onClearTaskProgress,
+    documents: referenceDomain.allDocuments,
+    progressViews: taskProtocolDomain.taskProtocolView.progressViews,
+    archiveTask: taskProtocolDomain.taskProtocolView.onClearTaskProgress,
   });
 
   const { workspaceState, workspaceActions, workspaceServices } =
-    useChatPageWorkspaceInputs({
-      app: {
-        currentKin,
-        currentKinLabel: currentKinDisplayLabel,
-        kinStatus,
-        kinList,
-        isMobile: isSinglePanelLayout,
-        setActivePanelTab,
-        focusKinPanel,
-        focusGptPanel,
-        setKinConnectionState,
-      },
-      ui: {
-        gptInput,
-        setGptInput,
-        kinInput,
-        setKinInput,
-        gptLoading,
-        setGptLoading,
-        kinLoading,
-        setKinLoading,
-        ingestLoading,
-        setIngestLoading,
-        gptMessages,
-        setGptMessages,
-        kinMessages,
-        setKinMessages,
-        pendingKinInjectionBlocks,
-        setPendingKinInjectionBlocks,
-        pendingKinInjectionIndex,
-        setPendingKinInjectionIndex,
-      },
-      taskDraft: {
-        currentTaskDraft,
-        taskDraftCount: taskDrafts.length,
-        activeTaskDraftIndex,
-        setCurrentTaskDraft,
-        resetCurrentTaskDraft,
-        updateTaskDraftFields,
-        onSelectPreviousTaskDraft: selectPreviousTaskDraft,
-        onSelectNextTaskDraft: selectNextTaskDraft,
-      },
-      task: {
-        getTaskBaseText,
-        getResolvedTaskTitle,
-        resolveTaskTitleFromDraft,
-        getTaskSlotLabel,
-        syncTaskDraftFromProtocol,
-        applyPrefixedTaskFieldsFromText,
-        getCurrentTaskCharConstraint,
-        taskProtocol,
-        taskProtocolView,
-      },
-      protocol: {
-        approvedIntentPhrases,
-        rejectedIntentCandidateSignatures,
-        pendingIntentCandidates,
-        protocolPrompt,
-        setPendingIntentCandidates,
-        setApprovedIntentPhrases,
-        setRejectedIntentCandidateSignatures,
-        setProtocolPrompt,
-        protocolRulebook,
-        setProtocolRulebook,
-        chatBridgeSettings,
-      },
-      search: {
-        lastSearchContext,
-        searchHistory,
-        selectedTaskSearchResultId,
-        onSelectTaskSearchResult: setSelectedTaskSearchResultId,
-        searchMode,
-        onChangeSearchMode: setSearchMode,
-        searchEngines,
-        onChangeSearchEngines: setSearchEngines,
-        searchLocation,
-        onChangeSearchLocation: setSearchLocation,
-        sourceDisplayCount,
-        onChangeSourceDisplayCount: setSourceDisplayCount,
-        onMoveSearchHistoryItem: moveSearchHistoryItem,
-        recordSearchContext,
-        getContinuationTokenForSeries,
-        getAskAiModeLinkForQuery,
-        clearSearchHistory,
-        deleteSearchHistoryItemBase,
-        onDeleteSearchHistoryItem: deleteSearchHistoryItem,
-        processMultipartTaskDoneText,
-      },
-      references: {
-        multipartAssemblies,
-        storedDocuments: allDocuments,
-        referenceLibraryItems: libraryItems,
-        selectedTaskLibraryItemId,
-        autoLibraryReferenceEnabled,
-        libraryReferenceMode,
-        libraryIndexResponseCount,
-        libraryReferenceCount,
-        libraryStorageMB,
-        libraryReferenceEstimatedTokens,
-        googleDriveFolderLink,
-        googleDriveFolderId,
-        googleDriveIntegrationMode: googleDrivePickerReady
-          ? "picker"
-          : "manual_link",
-        onDeleteMultipartAssembly: deleteMultipartAssembly,
-        onLoadMultipartAssemblyToGptInput: loadMultipartAssemblyToGptInput,
-        onDownloadMultipartAssembly: downloadMultipartAssembly,
-        onLoadStoredDocumentToGptInput: loadStoredDocumentToGptInput,
-        onDownloadStoredDocument: downloadStoredDocument,
-        onDeleteStoredDocument: deleteStoredDocument,
-        onMoveStoredDocument: moveStoredDocument,
-        onMoveLibraryItem: moveLibraryItem,
-        onSelectTaskLibraryItem: setSelectedTaskLibraryItemId,
-        onChangeLibraryItemMode: setLibraryItemModeOverride,
-        onSaveStoredDocument: updateStoredDocument,
-        onShowLibraryItemInChat: showLibraryItemInChat,
-        onSendLibraryItemToKin: sendLibraryItemToKin,
-        onUploadLibraryItemToGoogleDrive: uploadLibraryItemToGoogleDrive,
-        onChangeAutoLibraryReferenceEnabled: setAutoLibraryReferenceEnabled,
-        onChangeLibraryReferenceMode: setLibraryReferenceMode,
-        onChangeLibraryIndexResponseCount: setLibraryIndexResponseCount,
-        onChangeLibraryReferenceCount: setLibraryReferenceCount,
-        onChangeGoogleDriveFolderLink: setGoogleDriveFolderLink,
-        onOpenGoogleDriveFolder: openGoogleDriveFolder,
-        onImportGoogleDriveFile: importGoogleDriveFile,
-        onIndexGoogleDriveFolder: indexGoogleDriveFolder,
-        onImportGoogleDriveFolder: importGoogleDriveFolder,
-        buildLibraryReferenceContext,
-        getTaskLibraryItem,
-      },
-      gpt: {
-        gptState,
-        uploadKind,
-        ingestMode,
-        imageDetail,
-        compactCharLimit,
-        simpleImageCharLimit,
-        fileReadPolicy,
-        driveImportAutoSummary,
-        defaultMemorySettings,
-        resetGptForCurrentKin,
-        onChangeUploadKind: setUploadKind,
-        onChangeIngestMode: setIngestMode,
-        onChangeImageDetail: setImageDetail,
-        onChangeCompactCharLimit: setCompactCharLimit,
-        onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
-        onChangeFileReadPolicy: setFileReadPolicy,
-        onChangeDriveImportAutoSummary: setDriveImportAutoSummary,
-        gptMemoryRuntime,
-        gptMemorySettingsControls,
-      },
-      bridge: {
-        autoBridgeSettings,
-        updateAutoBridgeSettings,
-      },
-      memory: {
-        tokenStats,
-        memorySettings,
-        memoryInterpreterSettings,
-        pendingMemoryRuleCandidates,
-        approvedMemoryRules,
-        onChangeMemoryInterpreterSettings: updateMemoryInterpreterSettings,
-        onApproveMemoryRuleCandidate: approveMemoryRuleCandidate,
-        onRejectMemoryRuleCandidate: rejectMemoryRuleCandidate,
-        onUpdateMemoryRuleCandidate: updateMemoryRuleCandidate,
-        onDeleteApprovedMemoryRule: deleteApprovedMemoryRule,
-      },
-      usage: {
-        applySearchUsage,
-        applyChatUsage,
-        applyCompressionUsage,
-        applyTaskUsage,
-        applyIngestUsage,
-        recordIngestedDocument,
-      },
-      kin: {
-        kinIdInput,
-        setKinIdInput,
-        kinNameInput,
-        setKinNameInput,
-        renameKin,
-        connectKin,
-        switchKin,
-        disconnectKin,
-        removeKinState,
-        removeKin,
-      },
-      resetTokenStats,
+    useChatPageWorkspaceDomainInputs({
+      chatUi,
+      taskDraftWorkspace,
+      gptOptions,
+      autoBridge,
+      tokenUsage,
+      kinManager,
+      currentKinDisplayLabel,
+      searchDomain,
+      taskProtocolDomain,
+      referenceDomain,
     });
 
   const { kinPanel, gptPanel } = useChatPagePanelsComposition({
@@ -462,40 +109,17 @@ export default function ChatApp() {
       actions: workspaceActions,
       services: workspaceServices,
     },
-    kinBottomRef,
-    gptBottomRef,
+    kinBottomRef: chatUi.kinBottomRef,
+    gptBottomRef: chatUi.gptBottomRef,
   });
 
   return (
-    <div
-      style={{
-        height: "100dvh",
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: "#ffffff",
-        backgroundPosition: "top left",
-        overflow: "visible",
-      }}
-    >
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          display: "flex",
-          gap: isSinglePanelLayout ? 0 : 12,
-          padding: isSinglePanelLayout ? 0 : 12,
-          overflow: "visible",
-        }}
-      >
-        <ChatPanelsLayout
-          isSinglePanelLayout={isSinglePanelLayout}
-          activePanelTab={activePanelTab}
-          kinPanel={kinPanel}
-          gptPanel={gptPanel}
-        />
-      </div>
-    </div>
+    <ChatAppShell
+      isSinglePanelLayout={chatUi.isSinglePanelLayout}
+      activePanelTab={chatUi.activePanelTab}
+      kinPanel={kinPanel}
+      gptPanel={gptPanel}
+    />
   );
 }
 

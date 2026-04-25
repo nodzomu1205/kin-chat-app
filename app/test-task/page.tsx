@@ -7,11 +7,10 @@ import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
 import { useGptMemory } from "@/hooks/useGptMemory";
 import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memory-domain/memoryInterpreterRules";
+import { CHAT_PAGE_MOBILE_BREAKPOINT } from "@/lib/app/ui-state/chatPageDefaults";
 import { buildGptPanelProps } from "@/lib/app/ui-state/panelPropsBuilders";
 import { createEmptyTaskDraft } from "@/types/task";
 import type { Message } from "@/types/chat";
-
-const MOBILE_BREAKPOINT = 1180;
 
 export default function TestTaskPage() {
   const [gptMessages] = useState<Message[]>([]);
@@ -20,7 +19,7 @@ export default function TestTaskPage() {
   const [protocolPrompt, setProtocolPrompt] = useState("");
   const [protocolRulebook, setProtocolRulebook] = useState("");
 
-  const { isSinglePanelLayout } = usePanelLayout(MOBILE_BREAKPOINT);
+  const { isSinglePanelLayout } = usePanelLayout(CHAT_PAGE_MOBILE_BREAKPOINT);
   const gptBottomRef = useMemo(() => ({ current: null }), []);
 
   const {

@@ -5,11 +5,13 @@ import {
 import type {
   ParsedInputLike,
   PendingRequestLike,
+} from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
+import type {
   PreparedRequestContextSource,
   PreparedRequestExecutionContext,
   PreparedRequestFinalizeContext,
   PreparedRequestGateContext,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptPreparedRequestTypes";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 import type { TaskRuntimeState } from "@/types/taskProtocol";

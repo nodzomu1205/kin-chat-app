@@ -10,7 +10,7 @@ import type {
   ParsedInputLike,
   PendingRequestLike,
   ProtocolTaskEventLike,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
 export function buildFinalRequestText(params: {

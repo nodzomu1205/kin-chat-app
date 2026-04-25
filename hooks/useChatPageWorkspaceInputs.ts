@@ -1,8 +1,6 @@
-import {
-  buildChatPageWorkspaceActions,
-  buildChatPageWorkspaceServices,
-  buildChatPageWorkspaceState,
-} from "@/hooks/chatPageWorkspaceInputBuilders";
+import { buildChatPageWorkspaceActions } from "@/hooks/chatPageWorkspaceActionBuilders";
+import { buildChatPageWorkspaceServices } from "@/hooks/chatPageWorkspaceServiceBuilders";
+import { buildChatPageWorkspaceState } from "@/hooks/chatPageWorkspaceStateBuilders";
 import type {
   ChatPageWorkspaceActionsApp,
   ChatPageWorkspaceActionsBridge,

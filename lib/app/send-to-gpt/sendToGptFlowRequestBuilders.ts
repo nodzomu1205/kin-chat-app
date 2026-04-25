@@ -2,7 +2,7 @@ import { buildChatApiRequestPayload } from "@/lib/app/send-to-gpt/sendToGptFlowR
 import type {
   GptAssistantRequestPayloadArgs,
   RequestGptAssistantArtifactsArgs,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 
 export function buildGptAssistantRequestArgs(
   args: RequestGptAssistantArtifactsArgs

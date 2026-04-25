@@ -25,7 +25,7 @@ Primary files:
 
 - [`app/page.tsx`](../app/page.tsx)
 - [`components/panels/gpt/GptSettingsSections.tsx`](../components/panels/gpt/GptSettingsSections.tsx)
-- [`components/panels/gpt/ReceivedDocsDrawer.tsx`](../components/panels/gpt/ReceivedDocsDrawer.tsx)
+- [`components/panels/gpt/LibraryDrawer.tsx`](../components/panels/gpt/LibraryDrawer.tsx)
 
 Current role:
 

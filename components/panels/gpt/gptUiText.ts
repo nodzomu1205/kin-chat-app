@@ -198,7 +198,7 @@ export const GPT_PROTOCOL_DRAWER_TEXT = {
   sendSysInfo: "SYS_INFO として Kin に送る",
 } as const;
 
-export const GPT_RECEIVED_DOCS_TEXT = {
+export const GPT_LIBRARY_DRAWER_TEXT = {
   tabs: {
     all: "すべて",
     kin: "Kin作成文書",

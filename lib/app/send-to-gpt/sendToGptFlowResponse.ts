@@ -5,15 +5,14 @@ import {
 } from "@/lib/app/send-to-gpt/sendToGptFlowResponseBuilders";
 import { buildUserResponseBlock } from "@/lib/task/taskRuntimeProtocol";
 import type {
-  ChatApiSearchLike,
   PendingRequestLike,
-  ProtocolSearchResponseArtifactsArgs,
   ProtocolTaskEventLike,
   SearchContextRecorder,
   SearchResponseEventLike,
-  SearchSource,
   WrappedSearchResponse,
-} from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+} from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
+import type { ChatApiSearchLike, SearchSource } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
+import type { ProtocolSearchResponseArtifactsArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 import type { SourceItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 

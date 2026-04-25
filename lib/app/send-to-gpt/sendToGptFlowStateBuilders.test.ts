@@ -24,7 +24,7 @@ import {
   buildFinalizeMemoryFollowUpArgs,
   buildFinalizeProtocolSideEffectArgs,
 } from "@/lib/app/send-to-gpt/sendToGptFlowFinalizeBuilders";
-import type { FinalizeSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
+import type { FinalizeSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArtifactTypes";
 import type { Message } from "@/types/chat";
 
 describe("sendToGptFlow state builders", () => {

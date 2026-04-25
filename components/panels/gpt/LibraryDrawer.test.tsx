@@ -1,12 +1,12 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import ReceivedDocsDrawer from "@/components/panels/gpt/ReceivedDocsDrawer";
+import LibraryDrawer from "@/components/panels/gpt/LibraryDrawer";
 
-describe("ReceivedDocsDrawer", () => {
+describe("LibraryDrawer", () => {
   it("keeps Google Drive and device import actions visible even when the library is empty", () => {
     const html = renderToStaticMarkup(
-      <ReceivedDocsDrawer
+      <LibraryDrawer
         multipartAssemblies={[]}
         referenceLibraryItems={[]}
         libraryReferenceCount={0}
@@ -41,9 +41,9 @@ describe("ReceivedDocsDrawer", () => {
     expect(html).toContain(">デバイス<");
   });
 
-  it("uses mobile-safe wrapping styles for expanded content", () => {
+  it("uses mobile-safe wrapping styles for library rows", () => {
     const html = renderToStaticMarkup(
-      <ReceivedDocsDrawer
+      <LibraryDrawer
         multipartAssemblies={[]}
         referenceLibraryItems={[
           {
@@ -93,7 +93,8 @@ describe("ReceivedDocsDrawer", () => {
       />
     );
 
-    expect(html).toContain("overflow-wrap:anywhere");
     expect(html).toContain("max-width:100%");
+    expect(html).toContain("flex-wrap:wrap");
+    expect(html).toContain("width:100%");
   });
 });

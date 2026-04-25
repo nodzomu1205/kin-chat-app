@@ -1,13 +1,11 @@
-"use client";
-
-import React from "react";
-import ReceivedDocsDrawer from "@/components/panels/gpt/ReceivedDocsDrawer";
 import type {
   GptPanelReferenceProps,
   GptPanelSettingsProps,
 } from "@/components/panels/gpt/gptPanelTypes";
 
-type Props = Pick<
+export type LibraryTab = "all" | "kin" | "ingest" | "search";
+
+export type LibraryDrawerProps = Pick<
   GptPanelReferenceProps,
   | "multipartAssemblies"
   | "referenceLibraryItems"
@@ -36,16 +34,10 @@ type Props = Pick<
     | "onImportGoogleDriveFile"
     | "onIndexGoogleDriveFolder"
     | "onImportGoogleDriveFolder"
-  >;
-
-export default function SearchRawDrawer(props: Props) {
-  return (
-    <ReceivedDocsDrawer
-      {...props}
-      initialTab="search"
-      onImportDeviceFile={() => Promise.resolve()}
-      deviceImportAccept=".txt,.md,.json,.csv,.pdf,image/*"
-      deviceImportDisabled
-    />
-  );
-}
+  > & {
+    initialTab?: LibraryTab;
+    isMobile?: boolean;
+    onImportDeviceFile: (file: File) => void | Promise<void>;
+    deviceImportAccept: string;
+    deviceImportDisabled?: boolean;
+  };

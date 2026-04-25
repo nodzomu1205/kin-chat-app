@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-04-25
+Updated: 2026-04-26
 
 ## Purpose
 
@@ -29,7 +29,7 @@ Current state:
 
 Working estimate:
 
-- maintainability program overall: `80-90% complete`
+- maintainability program overall: `85-90% complete`
 - still open before we call it complete: `device/Drive ingest convergence`,
   `token accounting watch`, `protocol responseMode naming watch`,
   `maintenance-watch discipline`
@@ -235,8 +235,12 @@ Use this short template at the end of future maintenance sessions:
 If no higher-priority product bug appears first, the next development item after
 this checklist setup should be:
 
-1. remove task-intent/task-progress/compiler half-migration residue
+1. inspect `hooks/useGoogleDrivePicker.ts`, check unused Drive/import residue,
+   and split only one low-risk boundary such as UI feedback / picker state /
+   import execution
 2. keep remaining protocol/task-payload `responseMode` naming under
    maintenance-watch and only rename those fields with direct boundary tests
 3. keep library-ingest authority and ingest token accounting under watch
-4. keep opportunistic mojibake cleanup limited to still-active owner files
+4. keep send-to-GPT and page composition in regrowth-watch mode rather than
+   active hub-splitting mode
+5. keep opportunistic mojibake cleanup limited to still-active owner files
