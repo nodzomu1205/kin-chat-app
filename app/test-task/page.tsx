@@ -24,8 +24,6 @@ export default function TestTaskPage() {
   const gptBottomRef = useMemo(() => ({ current: null }), []);
 
   const {
-    responseMode,
-    setResponseMode,
     uploadKind,
     setUploadKind,
     ingestMode,
@@ -159,7 +157,6 @@ export default function TestTaskPage() {
       memorySettings,
       defaultMemorySettings,
       tokenStats,
-      responseMode,
       uploadKind,
       ingestMode,
       imageDetail,
@@ -192,7 +189,6 @@ export default function TestTaskPage() {
       approvedMemoryRules: [],
       onSaveMemorySettings: updateMemorySettings,
       onResetMemorySettings: resetMemorySettings,
-      onChangeResponseMode: setResponseMode,
       onChangeUploadKind: setUploadKind,
       onChangeIngestMode: setIngestMode,
       onChangeImageDetail: setImageDetail,

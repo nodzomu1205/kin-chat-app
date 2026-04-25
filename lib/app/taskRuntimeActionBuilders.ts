@@ -53,7 +53,7 @@ export function buildTaskProtocolIntentSyncArgs(
     currentTaskId: args.taskProtocol.runtime.currentTaskId,
     currentTaskTitle: args.taskProtocol.runtime.currentTaskTitle,
     currentTaskDraftTitle: args.currentTaskDraft.title,
-    responseMode: args.responseMode === "creative" ? "creative" : "strict",
+    reasoningMode: args.reasoningMode === "creative" ? "creative" : "strict",
     applyTaskUsage: args.applyTaskUsage,
     replaceCurrentTaskIntent: args.taskProtocol.replaceCurrentTaskIntent,
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
@@ -95,12 +95,12 @@ export function buildStartKinTaskFlowArgs(
   args: UseKinTransferActionsArgs,
   mergePendingIntentCandidates: (candidates: PendingIntentCandidate[]) => void
 ): Parameters<typeof runStartKinTaskFlow>[0] {
-  const responseMode = args.responseMode === "creative" ? "creative" : "strict";
+  const reasoningMode = args.reasoningMode === "creative" ? "creative" : "strict";
 
   return {
     rawInput: args.gptInput,
     approvedIntentPhrases: args.approvedIntentPhrases,
-    responseMode,
+    reasoningMode,
     resolveIntent: resolveTaskIntentWithFallback,
     applyTaskUsage: args.applyTaskUsage,
     mergePendingIntentCandidates,
@@ -127,23 +127,23 @@ export function buildSendLatestGptContentToKinFlowArgs(
     currentTaskSlot: args.currentTaskDraft.slot,
     currentTaskTitle: args.currentTaskDraft.title,
     approvedIntentPhrases: args.approvedIntentPhrases,
-    resolveTransformIntent: ({ input, defaultMode, responseMode }: {
+    resolveTransformIntent: ({ input, defaultMode, reasoningMode }: {
       input: string;
       defaultMode: "sys_info" | "sys_task";
-      responseMode: "strict" | "creative";
-    }) => resolveTransformIntent({ input, defaultMode, responseMode }),
+      reasoningMode: "strict" | "creative";
+    }) => resolveTransformIntent({ input, defaultMode, reasoningMode }),
     resolveTaskIntent: resolveTaskIntentWithFallback,
     mergePendingIntentCandidates,
     startTask: args.taskProtocol.startTask,
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-    responseMode: args.responseMode,
+    reasoningMode: args.reasoningMode,
     applyTaskUsage: args.applyTaskUsage,
     shouldTransformContent,
-    transformTextWithIntent: ({ text, intent, responseMode }: {
+    transformTextWithIntent: ({ text, intent, reasoningMode }: {
       text: string;
       intent: Parameters<typeof transformTextWithIntent>[0]["intent"];
-      responseMode: "strict" | "creative";
-    }) => transformTextWithIntent({ text, intent, responseMode }),
+      reasoningMode: "strict" | "creative";
+    }) => transformTextWithIntent({ text, intent, reasoningMode }),
     setGptLoading: args.setGptLoading,
     setGptMessages: args.setGptMessages,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
@@ -169,23 +169,23 @@ export function buildSendCurrentTaskContentToKinFlowArgs(
     approvedIntentPhrases: args.approvedIntentPhrases,
     looksLikeTaskInstruction: looksLikeKinTaskStartInstruction,
     runStartKinTaskFromInput,
-    resolveTransformIntent: ({ input, defaultMode, responseMode }: {
+    resolveTransformIntent: ({ input, defaultMode, reasoningMode }: {
       input: string;
       defaultMode: "sys_info" | "sys_task";
-      responseMode: "strict" | "creative";
-    }) => resolveTransformIntent({ input, defaultMode, responseMode }),
+      reasoningMode: "strict" | "creative";
+    }) => resolveTransformIntent({ input, defaultMode, reasoningMode }),
     resolveTaskIntent: resolveTaskIntentWithFallback,
     mergePendingIntentCandidates,
     startTask: args.taskProtocol.startTask,
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
-    responseMode: args.responseMode,
+    reasoningMode: args.reasoningMode,
     applyTaskUsage: args.applyTaskUsage,
     shouldTransformContent,
-    transformTextWithIntent: ({ text, intent, responseMode }: {
+    transformTextWithIntent: ({ text, intent, reasoningMode }: {
       text: string;
       intent: Parameters<typeof transformTextWithIntent>[0]["intent"];
-      responseMode: "strict" | "creative";
-    }) => transformTextWithIntent({ text, intent, responseMode }),
+      reasoningMode: "strict" | "creative";
+    }) => transformTextWithIntent({ text, intent, reasoningMode }),
     setGptLoading: args.setGptLoading,
     setGptMessages: args.setGptMessages,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,

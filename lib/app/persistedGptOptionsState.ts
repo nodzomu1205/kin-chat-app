@@ -2,13 +2,11 @@ import type {
   FileReadPolicy,
   ImageDetail,
   IngestMode,
-  ResponseMode,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
 
 type StorageLike = Pick<Storage, "getItem"> | null;
 
-export const RESPONSE_MODE_KEY = "gpt_response_mode";
 export const UPLOAD_KIND_KEY = "gpt_upload_kind";
 export const INGEST_MODE_KEY = "gpt_ingest_mode";
 export const IMAGE_DETAIL_KEY = "gpt_image_detail";
@@ -19,7 +17,6 @@ export const DRIVE_IMPORT_AUTO_SUMMARY_KEY =
   "gpt_drive_import_auto_summary";
 
 export type PersistedGptOptionsState = {
-  responseMode: ResponseMode;
   uploadKind: UploadKind;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
@@ -31,7 +28,6 @@ export type PersistedGptOptionsState = {
 
 export function getDefaultPersistedGptOptionsState(): PersistedGptOptionsState {
   return {
-    responseMode: "strict",
     uploadKind: "text",
     ingestMode: "detailed",
     imageDetail: "detailed",

@@ -1,6 +1,5 @@
 import type { KinBlockMode } from "@/lib/app/kinStructuredProtocol";
-
-type ResponseMode = "strict" | "creative";
+import type { ReasoningMode } from "@/lib/app/reasoningMode";
 
 type UsageSummary = {
   inputTokens: number;
@@ -560,7 +559,7 @@ export function parseTransformIntent(
 export async function resolveTransformIntent(args: {
   input: string;
   defaultMode: KinBlockMode;
-  responseMode?: ResponseMode;
+  reasoningMode?: ReasoningMode;
 }): Promise<{ intent: TransformIntent; usage: UsageSummary | null }> {
   const base = buildDefaultIntent(args.input, args.defaultMode);
   const explicitModeLocked = hasExplicitModePrefix(args.input);
@@ -581,7 +580,7 @@ export async function resolveTransformIntent(args: {
         recentMessages: [],
         input: buildIntentParserPrompt(args.input, args.defaultMode),
         instructionMode: "normal",
-        reasoningMode: args.responseMode === "strict" ? "strict" : "creative",
+        reasoningMode: args.reasoningMode === "strict" ? "strict" : "creative",
       }),
     });
 
@@ -966,7 +965,7 @@ function buildTransformPrompt(text: string, intent: TransformIntent): string {
 export async function transformTextWithIntent(args: {
   text: string;
   intent: TransformIntent;
-  responseMode?: ResponseMode;
+  reasoningMode?: ReasoningMode;
 }): Promise<{ text: string; usage: UsageSummary | null }> {
   if (!shouldTransformContent(args.intent)) {
     return {
@@ -986,7 +985,7 @@ export async function transformTextWithIntent(args: {
       recentMessages: [],
       input: buildTransformPrompt(args.text, args.intent),
       instructionMode: "normal",
-      reasoningMode: args.responseMode === "strict" ? "strict" : "creative",
+      reasoningMode: args.reasoningMode === "strict" ? "strict" : "creative",
     }),
   });
 

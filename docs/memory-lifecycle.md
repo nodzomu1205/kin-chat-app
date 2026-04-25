@@ -49,7 +49,7 @@ user memory.
 The current code-level authority is:
 
 - `lib/memory.ts`
-- `lib/app/gptMemoryStorage.ts`
+- `lib/app/gpt-memory/gptMemoryStorage.ts`
 - `hooks/useGptMemory.ts`
 
 ### 3. Displayed-Context Memory
@@ -98,7 +98,7 @@ When adding new memory fields:
 ## Related Files
 
 - `lib/memory.ts`
-- `lib/app/gptMemoryRuntime.ts`
-- `lib/app/gptMemoryStorage.ts`
+- `lib/app/gpt-memory/gptMemoryRuntime.ts`
+- `lib/app/gpt-memory/gptMemoryStorage.ts`
 - `hooks/useGptMemory.ts`
-- `lib/app/memoryInterpreterStateInputs.ts`
+- `lib/app/memory-interpreter/memoryInterpreterStateInputs.ts`

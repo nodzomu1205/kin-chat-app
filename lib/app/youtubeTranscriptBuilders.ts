@@ -1,5 +1,5 @@
 import { buildKinSysInfoBlock } from "@/lib/app/kinStructuredProtocol";
-import { buildYouTubeTranscriptResponseBlock } from "@/lib/app/sendToGptProtocolBuilders";
+import { buildYouTubeTranscriptResponseBlock } from "@/lib/app/send-to-gpt/sendToGptProtocolBuilders";
 import { splitTextIntoKinChunks } from "@/lib/app/transformIntent";
 
 const CJK_CHAR = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}繝ｼ]/u;

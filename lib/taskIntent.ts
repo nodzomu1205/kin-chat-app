@@ -3,6 +3,7 @@ import {
   buildPendingTaskIntentCandidates,
   requestTaskIntentFallback,
 } from "@/lib/taskIntentFallbackRuntime";
+import type { ReasoningMode } from "@/lib/app/reasoningMode";
 import {
   STRONG_APPROVED_INTENT_MATCH_SCORE,
   filterPendingIntentCandidatesAgainstApproved,
@@ -265,7 +266,7 @@ export function parseTaskIntentFromText(
 export async function resolveTaskIntentWithFallback(args: {
   input: string;
   approvedPhrases?: ApprovedIntentPhrase[];
-  responseMode?: "strict" | "creative";
+  reasoningMode?: ReasoningMode;
 }): Promise<{
   intent: TaskIntent;
   pendingCandidates: PendingIntentCandidate[];
@@ -290,7 +291,7 @@ export async function resolveTaskIntentWithFallback(args: {
   const fallback = await requestTaskIntentFallback({
     input: text,
     baseIntent: base,
-    responseMode: args.responseMode,
+    reasoningMode: args.reasoningMode,
   });
 
   if (!fallback.payload) {

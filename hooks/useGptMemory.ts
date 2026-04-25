@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createEmptyKinMemoryState } from "@/lib/app/gptMemoryCore";
+import { createEmptyKinMemoryState } from "@/lib/app/gpt-memory/gptMemoryCore";
 import {
   type Memory,
   type MemorySettings,
@@ -9,7 +9,7 @@ import {
 } from "@/lib/memory";
 import {
   type TokenUsage,
-} from "@/lib/app/gptMemoryStateHelpers";
+} from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 import {
   clearTaskScopedMemoryState,
   ensureStoredKinMemoryState,
@@ -19,7 +19,7 @@ import {
   removeStoredKinMemoryState,
   resolveActiveKinMemoryState,
   upsertStoredKinMemoryState,
-} from "@/lib/app/gptMemoryStoreCoordinator";
+} from "@/lib/app/gpt-memory/gptMemoryStoreCoordinator";
 import {
   loadInitialGptMemoryRuntimeState,
   runGptMemoryRuntimeApprovedCandidateReapply,
@@ -27,12 +27,12 @@ import {
   runGptMemoryRuntimeRejectedCandidateReapply,
   runGptMemoryRuntimeUpdate,
   type GptMemoryRuntimeConfig,
-} from "@/lib/app/gptMemoryRuntime";
+} from "@/lib/app/gpt-memory/gptMemoryRuntime";
 import type { ApprovedMemoryRule, PendingMemoryRuleCandidate } from "@/lib/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { KinMemoryState, Message } from "@/types/chat";
 
-export type { TokenUsage } from "@/lib/app/gptMemoryStateHelpers";
+export type { TokenUsage } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 
 export function useGptMemory(
   currentKin: string | null,

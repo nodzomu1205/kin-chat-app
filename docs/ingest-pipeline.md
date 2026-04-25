@@ -36,7 +36,7 @@ authority chain before editing.
 
 There are currently two user-facing ingest entry paths:
 
-1. device-file import through `hooks/useFileIngestActions.ts` and `lib/app/fileIngestFlow.ts`
+1. device-file import through `hooks/useFileIngestActions.ts` and `lib/app/ingest/fileIngestFlow.ts`
 2. Google Drive import through `hooks/useGoogleDrivePicker.ts`
 
 They do not have identical picker/auth UX, but they should share canonical text, summary, stored-document, usage, and completion-message rules wherever possible.
@@ -45,7 +45,7 @@ They do not have identical picker/auth UX, but they should share canonical text,
 
 The following module is now the shared request boundary for both paths:
 
-- `lib/app/ingestClient.ts`
+- `lib/app/ingest/ingestClient.ts`
 
 It owns:
 - upload-kind resolution for ingest requests
@@ -79,7 +79,7 @@ Prompt text, result normalization, and budget/selection rules should live in hel
 
 ### Device-file flow
 
-- `lib/app/fileIngestFlow.ts`
+- `lib/app/ingest/fileIngestFlow.ts`
 
 This is the main device-file app-flow boundary. It owns:
 - ingest result extraction

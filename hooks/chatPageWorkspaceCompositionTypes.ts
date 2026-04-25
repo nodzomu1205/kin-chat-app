@@ -73,7 +73,6 @@ export type ChatPageWorkspaceCompositionState = {
   gpt: Pick<
     ChatPageWorkspaceViewGptArgs,
     | "gptState"
-    | "responseMode"
     | "uploadKind"
     | "ingestMode"
     | "imageDetail"
@@ -172,7 +171,6 @@ export type ChatPageWorkspaceCompositionActions = {
   gpt: Pick<
     ChatPageWorkspaceViewGptArgs,
     | "resetGptForCurrentKin"
-    | "onChangeResponseMode"
     | "onChangeUploadKind"
     | "onChangeIngestMode"
     | "onChangeImageDetail"

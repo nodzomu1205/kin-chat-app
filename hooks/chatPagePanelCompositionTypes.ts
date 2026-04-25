@@ -267,9 +267,6 @@ export type ChatPageWorkspaceViewGptArgs = {
   gptState: ChatPageGptPanelCompositionArgs["gptState"]["gptState"];
   resetGptForCurrentKin: ChatPageControllerResetArgs["resetGptForCurrentKin"];
   gptMemoryRuntime: ChatPageControllerServicesSectionArgs["gptMemoryRuntime"];
-  responseMode: ChatPageControllerServicesSectionArgs["responseMode"];
-  onChangeResponseMode:
-    ChatPageGptPanelCompositionArgs["settings"]["onChangeResponseMode"];
   uploadKind: ChatPageGptPanelCompositionArgs["settings"]["uploadKind"];
   onChangeUploadKind: ChatPageControllerServicesSectionArgs["setUploadKind"];
   ingestMode: ChatPageGptPanelCompositionArgs["settings"]["ingestMode"];

@@ -87,7 +87,6 @@ function buildWorkspaceStateReferences(args: ChatPageWorkspaceStateReferences) {
 function buildWorkspaceStateGpt(args: ChatPageWorkspaceStateGpt) {
   return {
     gptState: args.gptState,
-    responseMode: args.responseMode,
     uploadKind: args.uploadKind,
     ingestMode: args.ingestMode,
     imageDetail: args.imageDetail,

@@ -64,7 +64,7 @@ describe("miscUiFlows", () => {
       currentTaskId: "123",
       currentTaskTitle: "旧タイトル",
       currentTaskDraftTitle: "ドラフトタイトル",
-      responseMode: "strict",
+      reasoningMode: "strict",
       applyTaskUsage,
       replaceCurrentTaskIntent,
       syncTaskDraftFromProtocol,

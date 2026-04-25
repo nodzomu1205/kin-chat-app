@@ -4,7 +4,6 @@ import {
   DRIVE_IMPORT_AUTO_SUMMARY_KEY,
   IMAGE_DETAIL_KEY,
   INGEST_MODE_KEY,
-  RESPONSE_MODE_KEY,
   SIMPLE_IMAGE_CHAR_LIMIT_KEY,
   loadPersistedGptOptionsState,
 } from "@/lib/app/persistedGptOptionsState";
@@ -20,24 +19,21 @@ function createStorage(values: Record<string, string | null>) {
 describe("persistedGptOptionsState", () => {
   it("returns defaults when storage is unavailable", () => {
     expect(loadPersistedGptOptionsState(null)).toMatchObject({
-      responseMode: "strict",
       ingestMode: "detailed",
       imageDetail: "detailed",
       compactCharLimit: 500,
     });
   });
 
-  it("ignores legacy response mode values and keeps the unified default", () => {
+  it("migrates legacy ingest/detail mode values to current ingest options", () => {
     expect(
       loadPersistedGptOptionsState(
         createStorage({
-          [RESPONSE_MODE_KEY]: "balanced",
           [INGEST_MODE_KEY]: "strict",
           [IMAGE_DETAIL_KEY]: "high",
         })
       )
     ).toMatchObject({
-      responseMode: "strict",
       ingestMode: "compact",
       imageDetail: "max",
     });

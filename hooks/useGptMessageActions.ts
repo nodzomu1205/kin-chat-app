@@ -1,6 +1,6 @@
-﻿import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/uuid";
 import { useState } from "react";
-import { runSendToGptFlow } from "@/lib/app/sendToGptFlow";
+import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
 import { receiveLastKinResponseFlow } from "@/lib/app/kinTaskFlow";
 import {
   buildYoutubeTranscriptRetryBlock,
@@ -15,13 +15,13 @@ import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtubeTranscriptKinB
 import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,
-} from "@/lib/app/sendToGptTranscriptHelpers";
+} from "@/lib/app/send-to-gpt/sendToGptTranscriptHelpers";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
 import {
   buildCommonSendToGptFlowArgs,
   mergeSendToGptFlowArgs,
-} from "@/lib/app/sendToGptFlowArgBuilders";
+} from "@/lib/app/send-to-gpt/sendToGptFlowArgBuilders";
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { Message, SourceItem } from "@/types/chat";
 

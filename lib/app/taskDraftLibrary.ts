@@ -1,6 +1,6 @@
 import type { StoredDocument } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
-import { buildLibraryFilenameWithCharCount } from "@/lib/app/ingestDocumentModel";
+import { buildLibraryFilenameWithCharCount } from "@/lib/app/ingest/ingestDocumentModel";
 
 function trimLine(value: string) {
   return value.replace(/\s+/g, " ").trim();

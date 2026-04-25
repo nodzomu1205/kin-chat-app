@@ -5,6 +5,7 @@ import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskInt
 import { normalizeUsage } from "@/lib/tokenStats";
 import type { BucketUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
+import type { ReasoningMode } from "@/lib/app/reasoningMode";
 import type { TaskIntent } from "@/types/taskProtocol";
 
 type StartedTask = {
@@ -22,11 +23,11 @@ type IntentResolution = {
 type StartKinTaskArgs = {
   rawInput: string;
   approvedIntentPhrases: ApprovedIntentPhrase[];
-  responseMode: "strict" | "creative";
+  reasoningMode: ReasoningMode;
   resolveIntent: (args: {
     input: string;
     approvedPhrases: ApprovedIntentPhrase[];
-    responseMode: "strict" | "creative";
+    reasoningMode: ReasoningMode;
   }) => Promise<IntentResolution>;
   applyTaskUsage: (
     usage: Parameters<typeof normalizeUsage>[0],
@@ -58,7 +59,7 @@ type StartKinTaskArgs = {
 export async function runStartKinTaskFlow({
   rawInput,
   approvedIntentPhrases,
-  responseMode,
+  reasoningMode,
   resolveIntent,
   applyTaskUsage,
   mergePendingIntentCandidates,
@@ -88,7 +89,7 @@ export async function runStartKinTaskFlow({
     const resolved = await resolveIntent({
       input: effectiveInput,
       approvedPhrases: approvedIntentPhrases,
-      responseMode,
+      reasoningMode,
     });
     applyTaskUsage(resolved.usage);
 

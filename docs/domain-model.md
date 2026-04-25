@@ -49,7 +49,7 @@ The live user/GPT conversational layer.
 Current main files:
 
 - [`app/page.tsx`](../app/page.tsx)
-- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+- [`lib/app/send-to-gpt/sendToGptFlow.ts`](../lib/app/send-to-gpt/sendToGptFlow.ts)
 
 ### Memory
 
@@ -66,8 +66,8 @@ Current memory shape includes:
 Current main files:
 
 - [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
-- [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
-- [`lib/app/gptMemoryStateHelpers.ts`](../lib/app/gptMemoryStateHelpers.ts)
+- [`lib/app/memory-interpreter/memoryInterpreter.ts`](../lib/app/memory-interpreter/memoryInterpreter.ts)
+- [`lib/app/gpt-memory/gptMemoryStateHelpers.ts`](../lib/app/gpt-memory/gptMemoryStateHelpers.ts)
 
 ### Task
 
@@ -120,11 +120,11 @@ Important concepts:
 
 Current main files:
 
-- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
-- [`lib/app/sendToGptFlowRequestPreparation.ts`](../lib/app/sendToGptFlowRequestPreparation.ts)
-- [`lib/app/sendToGptFlowRequestPayload.ts`](../lib/app/sendToGptFlowRequestPayload.ts)
-- [`lib/app/sendToGptFlowRequestText.ts`](../lib/app/sendToGptFlowRequestText.ts)
-- [`lib/app/sendToGptFlowState.ts`](../lib/app/sendToGptFlowState.ts)
+- [`lib/app/send-to-gpt/sendToGptFlow.ts`](../lib/app/send-to-gpt/sendToGptFlow.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowRequestPreparation.ts`](../lib/app/send-to-gpt/sendToGptFlowRequestPreparation.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowRequestPayload.ts`](../lib/app/send-to-gpt/sendToGptFlowRequestPayload.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowRequestText.ts`](../lib/app/send-to-gpt/sendToGptFlowRequestText.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowState.ts`](../lib/app/send-to-gpt/sendToGptFlowState.ts)
 - [`lib/search-domain/`](../lib/search-domain)
 
 ### Library
@@ -153,7 +153,7 @@ Planned future sources:
 
 Current main files:
 
-- [`lib/app/fileIngestFlow.ts`](../lib/app/fileIngestFlow.ts)
+- [`lib/app/ingest/fileIngestFlow.ts`](../lib/app/ingest/fileIngestFlow.ts)
 - [`app/api/youtube-transcript/route.ts`](../app/api/youtube-transcript/route.ts)
 
 ## Current Source-Of-Truth Notes
@@ -161,7 +161,7 @@ Current main files:
 The current most important source-of-truth locations are:
 
 - memory interpretation:
-  - [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
+  - [`lib/app/memory-interpreter/memoryInterpreter.ts`](../lib/app/memory-interpreter/memoryInterpreter.ts)
 - memory persistence:
   - [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
 - task progress counting:

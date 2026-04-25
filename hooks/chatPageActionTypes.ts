@@ -15,9 +15,9 @@ import type { TaskDraftProtocolProjectionParams } from "@/lib/taskDraftProjectio
 import type {
   GptInstructionMode,
   GptPanelChatProps,
-  ResponseMode,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
+import type { ReasoningMode } from "@/lib/app/reasoningMode";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
@@ -170,7 +170,7 @@ export type ChatPageSearchArgs = {
 };
 
 export type ChatPageServicesArgs = {
-  responseMode: ResponseMode;
+  reasoningMode: ReasoningMode;
   autoCopyFileIngestSysInfoToKin: boolean;
   autoGenerateFileImportSummary: boolean;
   gptMemoryRuntime: GptMemoryRuntime;
@@ -241,7 +241,7 @@ export type UseGptMessageActionsArgs = Pick<
   | "recordIngestedDocument"
   | "recordSearchContext"
   | "referenceLibraryItems"
-  | "responseMode"
+  | "reasoningMode"
     | "searchEngines"
     | "searchLocation"
     | "searchMode"
@@ -274,7 +274,7 @@ export type UseKinTransferActionsArgs = Pick<
   | "pendingKinInjectionIndex"
   | "processMultipartTaskDoneText"
   | "rejectedIntentCandidateSignatures"
-  | "responseMode"
+  | "reasoningMode"
   | "setGptInput"
   | "setGptLoading"
   | "setGptMessages"
@@ -320,7 +320,7 @@ export type UseTaskProtocolActionsArgs = Pick<
   | "promptDefaultKey"
   | "protocolPrompt"
   | "protocolRulebook"
-  | "responseMode"
+  | "reasoningMode"
   | "rulebookDefaultKey"
   | "setApprovedIntentPhrases"
   | "setGptMessages"

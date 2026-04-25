@@ -23,21 +23,27 @@ Current state:
 - structural rescue work: mostly complete
 - quality gate recovery: complete
 - major hub splitting: mostly complete
-- remaining work: library-ingest authority watch, response-mode carry-through
-  cleanup, regrowth prevention, and narrow regression coverage
+- remaining work: library-ingest authority watch, protocol/task payload naming
+  watch after the `reasoningMode` runtime cleanup, regrowth prevention, and
+  narrow regression coverage
 
 Working estimate:
 
 - maintainability program overall: `80-90% complete`
 - still open before we call it complete: `device/Drive ingest convergence`,
-  `token accounting watch`, `remaining responseMode cleanup`,
+  `token accounting watch`, `protocol responseMode naming watch`,
   `maintenance-watch discipline`
 - memory lifecycle now has explicit `stable / task-scoped / displayed-context`
   naming; treat new memory fields as incomplete until that classification is
   explicit too
 - task-constraint behavior is now functionally stable and structurally much
-  cleaner; remaining cleanup is centered on repo-wide `responseMode`
-  carry-through and ingest authority/token-accounting work
+  cleaner; the dead GPT settings/persistence `responseMode` carry-through has
+  been removed, the controller/service runtime value is now named
+  `reasoningMode`, task-intent fallback / current-task refresh / Kin task start
+  / Kin transfer / transform-intent / send-to-GPT request internals now consume
+  that `reasoningMode` name directly, and remaining cleanup is centered on
+  protocol/task payload `responseMode` naming watch and ingest
+  authority/token-accounting work
 
 ## Exit Checklist
 
@@ -61,6 +67,10 @@ Treat the maintainability program as complete only when every item below is
 - device ingest and Drive ingest share one practical post-request authority path
 - canonical document text, summary text, and task/system envelope text have distinct owners
 - library / GPT chat / Kin protocol no longer derive from competing upstream text variants
+- generated library-summary usage for file and Drive import flows through one
+  post-request helper
+- file and Drive imported-document records are built through one shared model
+  helper
 - ingest token accounting lands in the correct bucket and stays there as new ingest-adjacent flows are added
 
 ### C. Coordinator Discipline
@@ -226,7 +236,7 @@ If no higher-priority product bug appears first, the next development item after
 this checklist setup should be:
 
 1. remove task-intent/task-progress/compiler half-migration residue
-2. audit and remove dead repo-wide `strict` / `creative` / `responseMode`
-   carry-through
+2. keep remaining protocol/task-payload `responseMode` naming under
+   maintenance-watch and only rename those fields with direct boundary tests
 3. keep library-ingest authority and ingest token accounting under watch
 4. keep opportunistic mojibake cleanup limited to still-active owner files

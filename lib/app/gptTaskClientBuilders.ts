@@ -4,7 +4,7 @@ import type {
 import {
   buildTaskPrepEnvelope,
   resolveCanonicalDocumentText,
-} from "@/lib/app/ingestDocumentModel";
+} from "@/lib/app/ingest/ingestDocumentModel";
 import type { TaskRequest } from "@/types/task";
 
 const VISUAL_EXTENSIONS = new Set([

@@ -62,8 +62,8 @@ Current risk:
 
 Primary files:
 
-- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
-- [`lib/app/fileIngestFlow.ts`](../lib/app/fileIngestFlow.ts)
+- [`lib/app/send-to-gpt/sendToGptFlow.ts`](../lib/app/send-to-gpt/sendToGptFlow.ts)
+- [`lib/app/ingest/fileIngestFlow.ts`](../lib/app/ingest/fileIngestFlow.ts)
 - [`lib/app/taskDraftActionFlows.ts`](../lib/app/taskDraftActionFlows.ts)
 - [`lib/app/kinMultipart.ts`](../lib/app/kinMultipart.ts)
 
@@ -95,13 +95,13 @@ Current risk:
 Primary files:
 
 - [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
-- [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
-- [`lib/app/gptMemoryStateHelpers.ts`](../lib/app/gptMemoryStateHelpers.ts)
-- [`lib/app/gptMemoryCore.ts`](../lib/app/gptMemoryCore.ts)
-- [`lib/app/gptMemoryPersistence.ts`](../lib/app/gptMemoryPersistence.ts)
-- [`lib/app/gptMemoryFallback.ts`](../lib/app/gptMemoryFallback.ts)
-- [`lib/app/gptMemoryApproval.ts`](../lib/app/gptMemoryApproval.ts)
-- [`lib/app/gptMemorySummarizePolicy.ts`](../lib/app/gptMemorySummarizePolicy.ts)
+- [`lib/app/memory-interpreter/memoryInterpreter.ts`](../lib/app/memory-interpreter/memoryInterpreter.ts)
+- [`lib/app/gpt-memory/gptMemoryStateHelpers.ts`](../lib/app/gpt-memory/gptMemoryStateHelpers.ts)
+- [`lib/app/gpt-memory/gptMemoryCore.ts`](../lib/app/gpt-memory/gptMemoryCore.ts)
+- [`lib/app/gpt-memory/gptMemoryPersistence.ts`](../lib/app/gpt-memory/gptMemoryPersistence.ts)
+- [`lib/app/gpt-memory/gptMemoryFallback.ts`](../lib/app/gpt-memory/gptMemoryFallback.ts)
+- [`lib/app/gpt-memory/gptMemoryApproval.ts`](../lib/app/gpt-memory/gptMemoryApproval.ts)
+- [`lib/app/gpt-memory/gptMemorySummarizePolicy.ts`](../lib/app/gpt-memory/gptMemorySummarizePolicy.ts)
 
 Current role:
 
@@ -181,7 +181,7 @@ Current progress:
 Important current source-of-truth locations:
 
 - memory interpretation:
-  - [`lib/app/memoryInterpreter.ts`](../lib/app/memoryInterpreter.ts)
+  - [`lib/app/memory-interpreter/memoryInterpreter.ts`](../lib/app/memory-interpreter/memoryInterpreter.ts)
 - memory state shaping and persistence:
   - [`hooks/useGptMemory.ts`](../hooks/useGptMemory.ts)
 - task progress and protocol runtime:
@@ -208,7 +208,7 @@ Based on the current repository state, the best remaining cleanup order is:
 1. [`app/page.tsx`](../app/page.tsx)
    - much thinner than before, but still the broadest remaining UI orchestration point
    - especially the large `useChatPagePanelsComposition(...)` input bundle and page-level memory / protocol glue
-2. [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+2. [`lib/app/send-to-gpt/sendToGptFlow.ts`](../lib/app/send-to-gpt/sendToGptFlow.ts)
    - still a large execution path even after context / builder / type extraction
 3. [`hooks/useChatPageController.ts`](../hooks/useChatPageController.ts)
    - now owns direct page-level action composition and is the next likely coordinator bottleneck

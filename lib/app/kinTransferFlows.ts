@@ -11,6 +11,7 @@ import { addUsage, emptyUsage, normalizeUsage } from "@/lib/tokenStats";
 import type { BucketUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
+import type { ReasoningMode } from "@/lib/app/reasoningMode";
 import type { TaskIntent } from "@/types/taskProtocol";
 import { findLatestTransferableGptMessage } from "@/lib/app/latestGptMessage";
 
@@ -34,12 +35,12 @@ type SendLatestGptContentToKinArgs = {
   resolveTransformIntent: (args: {
     input: string;
     defaultMode: "sys_info" | "sys_task";
-    responseMode: "strict" | "creative";
+    reasoningMode: ReasoningMode;
   }) => Promise<ResolveTransformIntentResult>;
   resolveTaskIntent: (args: {
     input: string;
     approvedPhrases: ApprovedIntentPhrase[];
-    responseMode: "strict" | "creative";
+    reasoningMode: ReasoningMode;
   }) => Promise<ResolveTaskIntentResult>;
   mergePendingIntentCandidates: (candidates: PendingIntentCandidate[]) => void;
   startTask: (params: {
@@ -54,7 +55,7 @@ type SendLatestGptContentToKinArgs = {
     compiledTaskPrompt: string;
     originalInstruction?: string;
   }) => void;
-  responseMode: "strict" | "creative";
+  reasoningMode: ReasoningMode;
   applyTaskUsage: (
     usage: Parameters<typeof normalizeUsage>[0],
     options?: BucketUsageOptions
@@ -63,7 +64,7 @@ type SendLatestGptContentToKinArgs = {
   transformTextWithIntent: (args: {
     text: string;
     intent: TransformIntent;
-    responseMode: "strict" | "creative";
+    reasoningMode: ReasoningMode;
   }) => Promise<{ text: string; usage?: Parameters<typeof normalizeUsage>[0] }>;
   setGptLoading: (value: boolean) => void;
   setGptMessages: (updater: (prev: Message[]) => Message[]) => void;
@@ -86,7 +87,7 @@ export async function sendLatestGptContentToKinFlow({
   mergePendingIntentCandidates,
   startTask,
   syncTaskDraftFromProtocol,
-  responseMode,
+  reasoningMode,
   applyTaskUsage,
   shouldTransformContent,
   transformTextWithIntent,
@@ -127,7 +128,7 @@ export async function sendLatestGptContentToKinFlow({
     const { intent, usage } = await resolveTransformIntent({
       input: directiveText,
       defaultMode: "sys_info",
-      responseMode,
+      reasoningMode,
     });
     addTaskUsage(usage);
 
@@ -137,7 +138,7 @@ export async function sendLatestGptContentToKinFlow({
       const resolved = await resolveTaskIntent({
         input: directiveText || content,
         approvedPhrases: approvedIntentPhrases,
-        responseMode,
+        reasoningMode,
       });
       addTaskUsage(resolved.usage);
       if (resolved.pendingCandidates.length > 0) {
@@ -188,7 +189,7 @@ export async function sendLatestGptContentToKinFlow({
       const transformed = await transformTextWithIntent({
         text: content,
         intent,
-        responseMode,
+        reasoningMode,
       });
       content = transformed.text.trim() || content;
       addTaskUsage(transformed.usage);
@@ -245,12 +246,12 @@ type SendCurrentTaskContentToKinArgs = {
   resolveTransformIntent: (args: {
     input: string;
     defaultMode: "sys_info" | "sys_task";
-    responseMode: "strict" | "creative";
+    reasoningMode: ReasoningMode;
   }) => Promise<ResolveTransformIntentResult>;
   resolveTaskIntent: (args: {
     input: string;
     approvedPhrases: ApprovedIntentPhrase[];
-    responseMode: "strict" | "creative";
+    reasoningMode: ReasoningMode;
   }) => Promise<ResolveTaskIntentResult>;
   mergePendingIntentCandidates: (candidates: PendingIntentCandidate[]) => void;
   startTask: (params: {
@@ -265,7 +266,7 @@ type SendCurrentTaskContentToKinArgs = {
     compiledTaskPrompt: string;
     originalInstruction?: string;
   }) => void;
-  responseMode: "strict" | "creative";
+  reasoningMode: ReasoningMode;
   applyTaskUsage: (
     usage: Parameters<typeof normalizeUsage>[0],
     options?: BucketUsageOptions
@@ -274,7 +275,7 @@ type SendCurrentTaskContentToKinArgs = {
   transformTextWithIntent: (args: {
     text: string;
     intent: TransformIntent;
-    responseMode: "strict" | "creative";
+    reasoningMode: ReasoningMode;
   }) => Promise<{ text: string; usage?: Parameters<typeof normalizeUsage>[0] }>;
   setGptLoading: (value: boolean) => void;
   setGptMessages: (updater: (prev: Message[]) => Message[]) => void;
@@ -318,7 +319,7 @@ export async function sendCurrentTaskContentToKinFlow({
   mergePendingIntentCandidates,
   startTask,
   syncTaskDraftFromProtocol,
-  responseMode,
+  reasoningMode,
   applyTaskUsage,
   shouldTransformContent,
   transformTextWithIntent,
@@ -352,7 +353,7 @@ export async function sendCurrentTaskContentToKinFlow({
     const { intent, usage } = await resolveTransformIntent({
       input: rawDirective,
       defaultMode: "sys_task",
-      responseMode,
+      reasoningMode,
     });
     addTaskUsage(usage);
 
@@ -360,7 +361,7 @@ export async function sendCurrentTaskContentToKinFlow({
       const resolved = await resolveTaskIntent({
         input: rawDirective,
         approvedPhrases: approvedIntentPhrases,
-        responseMode,
+        reasoningMode,
       });
       addTaskUsage(resolved.usage);
       if (resolved.pendingCandidates.length > 0) {
@@ -420,7 +421,7 @@ export async function sendCurrentTaskContentToKinFlow({
       const resolved = await resolveTaskIntent({
         input: taskInstruction,
         approvedPhrases: approvedIntentPhrases,
-        responseMode,
+        reasoningMode,
       });
       addTaskUsage(resolved.usage);
       if (resolved.pendingCandidates.length > 0) {
@@ -462,7 +463,7 @@ export async function sendCurrentTaskContentToKinFlow({
       const transformed = await transformTextWithIntent({
         text: content,
         intent,
-        responseMode,
+        reasoningMode,
       });
       content = transformed.text.trim() || content;
       addTaskUsage(transformed.usage);

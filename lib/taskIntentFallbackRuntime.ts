@@ -10,8 +10,7 @@ import {
   type IntentPhraseKind,
   type PendingIntentCandidate,
 } from "@/lib/taskIntentPhraseState";
-
-type ResponseMode = "strict" | "creative";
+import type { ReasoningMode } from "@/lib/app/reasoningMode";
 
 type UsageSummary = {
   inputTokens: number;
@@ -107,7 +106,7 @@ export function buildPendingTaskIntentCandidates(args: {
 export async function requestTaskIntentFallback(args: {
   input: string;
   baseIntent: TaskIntent;
-  responseMode?: ResponseMode;
+  reasoningMode?: ReasoningMode;
 }): Promise<{
   payload: TaskIntentFallbackPayload | null;
   usage: UsageSummary | null;
@@ -122,7 +121,7 @@ export async function requestTaskIntentFallback(args: {
         recentMessages: [],
         input: buildTaskIntentFallbackPrompt(args.input, args.baseIntent),
         instructionMode: "normal",
-        reasoningMode: args.responseMode === "creative" ? "creative" : "strict",
+        reasoningMode: args.reasoningMode === "creative" ? "creative" : "strict",
       }),
     });
     const data = await res.json();

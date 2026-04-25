@@ -30,7 +30,6 @@ export type GptInstructionMode =
   | "reply_only"
   | "polish";
 
-export type ResponseMode = "strict" | "creative";
 export type UploadKind = "auto" | "text" | "image" | "pdf" | "mixed";
 export type IngestMode = "compact" | "detailed" | "max";
 export type ImageDetail = "simple" | "detailed" | "max";
@@ -237,7 +236,6 @@ export type GptPanelSettingsProps = {
   memorySettings: MemorySettings;
   defaultMemorySettings: MemorySettings;
   tokenStats: TokenStats;
-  responseMode: ResponseMode;
   uploadKind: UploadKind;
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
@@ -270,7 +268,6 @@ export type GptPanelSettingsProps = {
   approvedMemoryRules: ApprovedMemoryRule[];
   onSaveMemorySettings: (next: MemorySettings) => void;
   onResetMemorySettings: () => void;
-  onChangeResponseMode: (value: ResponseMode) => void;
   onChangeUploadKind: (value: UploadKind) => void;
   onChangeIngestMode: (value: IngestMode) => void;
   onChangeImageDetail: (value: ImageDetail) => void;

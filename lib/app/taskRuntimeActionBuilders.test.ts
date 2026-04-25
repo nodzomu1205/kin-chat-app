@@ -57,7 +57,7 @@ function createTaskProtocolArgs(): UseTaskProtocolActionsArgs {
     promptDefaultKey: "prompt-default",
     protocolPrompt: "prompt",
     protocolRulebook: "rulebook",
-    responseMode: "strict",
+    reasoningMode: "strict",
     rulebookDefaultKey: "rulebook-default",
     setApprovedIntentPhrases: vi.fn(),
     setGptMessages: vi.fn(),

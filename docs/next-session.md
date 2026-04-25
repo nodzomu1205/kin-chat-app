@@ -55,7 +55,10 @@ The residue cleanup around that path is now substantially complete.
 
 Instead, the next session should default to:
 
-1. auditing the remaining repo-wide `strict` / `creative` / `responseMode` remnants
+1. keeping remaining protocol/task-payload `responseMode` naming under
+   maintenance-watch; the dead GPT settings/persistence carry-through has been
+   removed, and controller/task/transfer/send-to-GPT request boundaries now use
+   `reasoningMode`
 2. continuing ingest authority and ingest token-accounting cleanup
 3. keeping mojibake cleanup opportunistic in still-active owner files
 4. maintaining `sendToGpt` / page-composition boundaries without regrowth
@@ -70,7 +73,21 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `140 files / 619 tests`
+- current test count: `141 files / 621 tests`
+
+Latest maintenance movement:
+
+- removed the no-op GPT settings/persistence `responseMode` path from
+  `usePersistedGptOptions`, `persistedGptOptionsState`, page/workspace builders,
+  and GPT panel settings props
+- moved the current fixed `strict` runtime value to the app-side
+  `reasoningMode` service boundary, with `lib/app/reasoningMode.ts` owning the
+  runtime strict/creative type instead of GPT panel UI types
+- task-intent fallback, current-task intent refresh, Kin task start, Kin
+  transfer, transform-intent, and send-to-GPT request internals now use
+  `reasoningMode` at their flow/request boundaries
+- protocol/task payload fields still named `responseMode` remain under
+  maintenance-watch and should be renamed only with direct boundary tests
 
 Use `docs/maintenance-checklist.md` as the authoritative completion/status
 checklist before calling maintenance "done" or before downgrading a boundary
@@ -99,13 +116,22 @@ boundaries:
 - `chatPageWorkspaceInputBuilders.ts` now delegates state/actions/services assembly to dedicated builder files, and `sendToGptFlow` helper tests are now split again so guard failures are isolated from step/request builder failures
 - `lib/memory.ts` now declares the task-scoped memory lifecycle explicitly, and `gptMemoryStorage` now clears task-scoped state through that shared helper instead of a separate local cleanup rule
 - `useMemoryInterpreterSettings.ts` now reads/writes through `lib/app/memoryRuleStore.ts`, so the memory rule system has one persistence boundary for settings, pending candidates, approved rules, and rejected signatures
-- `useGptMemory.ts` now reads/writes runtime handoff through `lib/app/gptMemoryRuntime.ts`, so initial load plus update/reapply orchestration no longer lives inline inside the hook
+- `useGptMemory.ts` now reads/writes runtime handoff through `lib/app/gpt-memory/gptMemoryRuntime.ts`, so initial load plus update/reapply orchestration no longer lives inline inside the hook
 - `docs/memory-lifecycle.md` now names `stable / task-scoped / displayed-context` memory explicitly, so new memory fields should not be added without choosing one of those lifecycle buckets
 - token accounting now has one restored total-token source, conversation recent windows include memory compaction usage, the user-facing memory line is `圧縮`, and ingest-time summary generation usage now lands in the ingest bucket instead of the conversation compaction bucket
 
 - library ingest now has explicit `compact / detailed / max` output authority so one import request does not ask the model for multiple alternate versions
 - file import, Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
 - file and Drive imports now post visible GPT chat completion messages
+- file and Drive imports now share generated-summary resolution and ingest usage
+  aggregation through `lib/app/ingest/importSummaryGeneration.ts`
+- file and Drive imports now share stored ingested-document record construction,
+  so text cleanup, char count, and timestamps stay aligned
+- app-side ingest modules now live under `lib/app/ingest/`
+- send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`
+- memory-interpreter app-side modules now live under
+  `lib/app/memory-interpreter/`
+- GPT-memory app-side modules now live under `lib/app/gpt-memory/`
 
 The practical implication for the next session is:
 
@@ -130,7 +156,7 @@ Main files:
 - `hooks/useGoogleDrivePicker.ts`
 - `components/panels/gpt/ReceivedDocsDrawer.tsx`
 - `components/panels/gpt/GptSettingsWorkspace.tsx`
-- `lib/app/ingestClient.ts`
+- `lib/app/ingest/ingestClient.ts`
 
 ### 3. Ingest text handling moved toward a canonical model
 
@@ -145,15 +171,16 @@ We confirmed that ingest bugs were repeatedly caused by mixing:
 
 Progress made:
 
-- `lib/app/ingestDocumentModel.ts` now owns the basic ingest text authority split
+- `lib/app/ingest/ingestDocumentModel.ts` now owns the basic ingest text authority split
 - `fileIngestFlow` now uses `canonicalDocumentText` and `taskPrepEnvelope` naming internally
-- device-import and Drive-import now share more of the same summary and canonical-text logic
+- device-import and Drive-import now share more of the same summary, usage,
+  stored-record, and canonical-text logic
 - GPT chat / library / Kin outputs are much closer to deriving from one source instead of parallel text variants
 
 Main files:
 
-- `lib/app/ingestDocumentModel.ts`
-- `lib/app/fileIngestFlow.ts`
+- `lib/app/ingest/ingestDocumentModel.ts`
+- `lib/app/ingest/fileIngestFlow.ts`
 - `lib/app/gptTaskClient.ts`
 - `hooks/useGoogleDrivePicker.ts`
 - `docs/ingest-pipeline.md`
@@ -249,10 +276,10 @@ Focus:
 
 Primary files:
 
-- `lib/app/fileIngestFlow.ts`
+- `lib/app/ingest/fileIngestFlow.ts`
 - `hooks/useFileIngestActions.ts`
 - `hooks/useGoogleDrivePicker.ts`
-- `lib/app/ingestDocumentModel.ts`
+- `lib/app/ingest/ingestDocumentModel.ts`
 - `lib/server/ingest/promptBuilder.ts`
 - `lib/server/ingest/resultSelection.ts`
 - `docs/ingest-pipeline.md`
@@ -273,14 +300,14 @@ Primary files:
 
 - `hooks/useFileIngestActions.ts`
 - `hooks/useGoogleDrivePicker.ts`
-- `lib/app/fileIngestFlow.ts`
-- `lib/app/ingestDocumentModel.ts`
+- `lib/app/ingest/fileIngestFlow.ts`
+- `lib/app/ingest/ingestDocumentModel.ts`
 
 ### Priority C: maintain the now-stabilized boundaries without regrowth
 
 Still under watch:
 
-- `lib/app/sendToGptFlow.ts` and adjacent request/finalize surfaces
+- `lib/app/send-to-gpt/sendToGptFlow.ts` and adjacent request/finalize surfaces
 - `app/page.tsx` and page-side composition boundaries
 - responsive single-panel / panel-focus authority boundaries
 - search-domain enrichment / extraction boundaries
@@ -388,7 +415,7 @@ This is exactly the pattern that wasted time in this session.
 
 ## Recommended Next-Session Order
 
-1. audit and remove dead repo-wide `strict` / `creative` / `responseMode` carry-through
+1. keep remaining protocol/task-payload `responseMode` naming under maintenance-watch
 2. keep the fixed library-ingest authority under watch while moving any obvious shared post-request behavior into helpers
 3. continue shrinking device-file vs Drive post-processing divergence
 4. move device-file ingest UI into the library drawer/settings surfaces when product timing allows
@@ -410,13 +437,13 @@ Reference:
 
 ## Files To Review First Next Time
 
-1. `lib/app/ingestDocumentModel.ts`
-2. `lib/app/fileIngestFlow.ts`
+1. `lib/app/ingest/ingestDocumentModel.ts`
+2. `lib/app/ingest/fileIngestFlow.ts`
 3. `hooks/useFileIngestActions.ts`
 4. `hooks/useGoogleDrivePicker.ts`
 5. `lib/server/ingest/promptBuilder.ts`
 6. `lib/server/ingest/resultSelection.ts`
-7. `lib/app/sendToGptFlow.ts`
+7. `lib/app/send-to-gpt/sendToGptFlow.ts`
 8. `app/page.tsx`
 9. `docs/refactor-roadmap.md`
 10. `docs/ingest-pipeline.md`

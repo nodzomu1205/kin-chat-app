@@ -12,7 +12,7 @@ export function buildCurrentTaskIntentRefreshResolverArgs(
   return {
     sourceInstruction,
     approvedPhrases: args.approvedIntentPhrases,
-    responseMode: args.responseMode,
+    reasoningMode: args.reasoningMode,
     currentTaskTitle: args.currentTaskTitle,
     currentTaskDraftTitle: args.currentTaskDraftTitle,
     replaceCurrentTaskIntent: args.replaceCurrentTaskIntent,

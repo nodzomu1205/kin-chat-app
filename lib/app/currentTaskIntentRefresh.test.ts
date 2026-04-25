@@ -55,7 +55,7 @@ describe("currentTaskIntentRefresh", () => {
       currentTaskId: "task-1",
       currentTaskTitle: "Current title",
       currentTaskDraftTitle: "Draft title",
-      responseMode: "strict",
+      reasoningMode: "strict",
       applyTaskUsage,
       replaceCurrentTaskIntent,
       syncTaskDraftFromProtocol,
@@ -73,7 +73,7 @@ describe("currentTaskIntentRefresh", () => {
           rule: "up_to",
         }),
       ],
-      responseMode: "strict",
+      reasoningMode: "strict",
     });
     expect(applyTaskUsage).toHaveBeenCalledWith({
       inputTokens: 10,
@@ -111,7 +111,7 @@ describe("currentTaskIntentRefresh", () => {
       currentTaskId: null,
       currentTaskTitle: "Current title",
       currentTaskDraftTitle: "Draft title",
-      responseMode: "strict",
+      reasoningMode: "strict",
       applyTaskUsage,
       replaceCurrentTaskIntent: vi.fn(),
       syncTaskDraftFromProtocol: vi.fn(),

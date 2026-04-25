@@ -61,8 +61,6 @@ export default function ChatApp() {
   } = useTaskDraftWorkspace();
 
   const {
-    responseMode,
-    setResponseMode,
     uploadKind,
     setUploadKind,
     ingestMode,
@@ -400,7 +398,6 @@ export default function ChatApp() {
       },
       gpt: {
         gptState,
-        responseMode,
         uploadKind,
         ingestMode,
         imageDetail,
@@ -410,7 +407,6 @@ export default function ChatApp() {
         driveImportAutoSummary,
         defaultMemorySettings,
         resetGptForCurrentKin,
-        onChangeResponseMode: setResponseMode,
         onChangeUploadKind: setUploadKind,
         onChangeIngestMode: setIngestMode,
         onChangeImageDetail: setImageDetail,

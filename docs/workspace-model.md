@@ -145,8 +145,8 @@ Should not do:
 This is where real behavior lives.
 
 Main examples:
-- `lib/app/sendToGptFlow.ts`
-- `lib/app/fileIngestFlow.ts`
+- `lib/app/send-to-gpt/sendToGptFlow.ts`
+- `lib/app/ingest/fileIngestFlow.ts`
 - `lib/app/taskDraftActionFlows.ts`
 - `hooks/useKinTaskProtocol.ts`
 - `lib/app/currentTaskIntentRefresh.ts`

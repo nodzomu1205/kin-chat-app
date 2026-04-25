@@ -11,8 +11,8 @@ import {
   normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
 } from "@/lib/app/librarySummaryClient";
-import { cleanImportSummarySource } from "@/lib/app/importSummaryText";
-import { buildCanonicalSummarySource } from "@/lib/app/ingestDocumentModel";
+import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
+import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
 import { normalizeUsage } from "@/lib/tokenStats";
 import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
 import type { SearchContext, SearchEngine, SearchMode } from "@/types/task";

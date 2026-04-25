@@ -4,7 +4,7 @@ import {
   getMemoryRuleSignature,
   getMemoryRuleSourceSignature,
 } from "@/lib/memoryInterpreterRules";
-import { buildApprovedRuleFromCandidate } from "@/lib/app/gptMemoryApproval";
+import { buildApprovedRuleFromCandidate } from "@/lib/app/gpt-memory/gptMemoryApproval";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,

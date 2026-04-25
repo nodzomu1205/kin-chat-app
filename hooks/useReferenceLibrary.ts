@@ -16,7 +16,7 @@ import {
 import {
   buildReferenceLibraryDocumentItem,
   buildReferenceLibrarySearchItem,
-} from "@/lib/app/ingestDocumentModel";
+} from "@/lib/app/ingest/ingestDocumentModel";
 
 const LIBRARY_ORDER_KEY = "reference_library_order";
 const LIBRARY_AUTO_REFERENCE_ENABLED_KEY = "library_auto_reference_enabled";

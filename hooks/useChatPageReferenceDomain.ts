@@ -8,7 +8,7 @@ import { useStoredDocuments } from "@/hooks/useStoredDocuments";
 import { useStoredDocumentUiActions } from "@/hooks/useStoredDocumentUiActions";
 import type { TaskCharConstraint } from "@/lib/app/multipartAssemblyFlow";
 import type { GptMemoryRuntime } from "@/lib/app/chatPageGptMemoryControls";
-import type { SharedIngestOptions } from "@/lib/app/ingestClient";
+import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
 import type { Message } from "@/types/chat";
 import type { SearchContext } from "@/types/task";

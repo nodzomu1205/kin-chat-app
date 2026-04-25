@@ -62,7 +62,6 @@ describe("chatPageWorkspaceCompositionBuilders", () => {
           },
           gpt: {
             gptState: {} as never,
-            responseMode: "strict",
             uploadKind: "file",
             ingestMode: "standard",
             imageDetail: "auto",
@@ -154,7 +153,7 @@ describe("chatPageWorkspaceCompositionBuilders", () => {
             storedDocuments: "state-references",
           },
           gpt: {
-            responseMode: "state-gpt",
+            uploadKind: "state-gpt",
           },
           bridge: {
             autoBridgeSettings: "state-bridge",
@@ -255,7 +254,7 @@ describe("chatPageWorkspaceCompositionBuilders", () => {
       buildReferenceSummary: "service-references",
     });
     expect(result.gpt).toMatchObject({
-      responseMode: "state-gpt",
+      uploadKind: "state-gpt",
       submitGpt: "action-gpt",
       sendToGpt: "service-gpt",
     });

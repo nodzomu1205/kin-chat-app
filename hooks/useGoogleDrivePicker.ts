@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import {
   DEFAULT_GOOGLE_DRIVE_FOLDER_LINK,
@@ -11,26 +11,22 @@ import {
   resolveIngestErrorMessage,
   resolveIngestFileTitle,
   type SharedIngestOptions,
-} from "@/lib/app/ingestClient";
+} from "@/lib/app/ingest/ingestClient";
+import { resolveIngestExtractionArtifacts } from "@/lib/app/ingest/fileIngestFlowBuilders";
+import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import {
-  normalizeLibrarySummaryUsage,
-  requestGeneratedLibrarySummary,
-} from "@/lib/app/librarySummaryClient";
-import { resolveIngestExtractionArtifacts } from "@/lib/app/fileIngestFlowBuilders";
-import {
-  cleanImportSummarySource,
-} from "@/lib/app/importSummaryText";
-import {
+  buildIngestedDocumentRecord,
   buildCanonicalDocumentSummary,
   buildCanonicalSummarySource,
-} from "@/lib/app/ingestDocumentModel";
+} from "@/lib/app/ingest/ingestDocumentModel";
+import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
 import {
   buildDriveFolderIndexMessage,
   buildDriveUploadDestinationPrompt,
   resolveDriveUploadDestinationIndex,
   type DriveFolderNode,
 } from "@/hooks/googleDrivePickerBuilders";
-import { addUsage, normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage } from "@/lib/tokenStats";
 
 const GOOGLE_API_KEY = "AIzaSyCQc_DKFE3WxU6SgVSE47X2SQv7nxZvm08";
 const GOOGLE_OAUTH_CLIENT_ID =
@@ -544,48 +540,42 @@ export function useGoogleDrivePicker({
           fallback: file.name,
         });
         const rawTextForSummary = buildCanonicalSummarySource(storedText);
-        let summary = "";
-
-        if (autoSummarizeImports && rawTextForSummary) {
-          summary = buildDriveImportSummary({
-            result: data?.result,
-            fallbackText: rawTextForSummary,
-            fallbackTitle: title,
-          });
-          try {
-            const summaryResult = await requestGeneratedLibrarySummary({
-              title,
-              text: rawTextForSummary,
-            });
-            if (summaryResult.summary?.trim()) {
-              summary = cleanImportSummarySource(summaryResult.summary).trim();
-            }
-            totalIngestUsage = addUsage(
-              totalIngestUsage,
-              normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
-            );
-          } catch (error) {
+        const generatedSummary = await resolveGeneratedImportSummary({
+          enabled: autoSummarizeImports,
+          title,
+          canonicalText: storedText,
+          currentUsage: totalIngestUsage,
+          fallbackSummary:
+            autoSummarizeImports && rawTextForSummary
+              ? buildDriveImportSummary({
+                  result: data?.result,
+                  fallbackText: rawTextForSummary,
+                  fallbackTitle: title,
+                })
+              : "",
+          onError: (error) => {
             console.warn("Drive import summary generation failed", error);
-          }
-        }
+          },
+        });
+        const summary = generatedSummary.summary;
+        totalIngestUsage = generatedSummary.totalUsage;
 
         applyIngestUsage(totalIngestUsage);
 
-        recordIngestedDocument({
+        const storedDocument = buildIngestedDocumentRecord({
           title,
           filename: title,
           text: storedText,
           summary,
           taskId: currentTaskId,
-          charCount: storedText.length,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
         });
+        recordIngestedDocument(storedDocument);
         appendUiMessage(
           setGptMessages,
           [
             `Google Driveファイルをライブラリに保存しました: ${title}`,
-            `抽出文字数: ${storedText.length.toLocaleString("ja-JP")} chars`,
+            `抽出文字数: ${storedDocument.charCount.toLocaleString("ja-JP")} chars`,
           ].join("\n"),
           "file_ingest"
         );

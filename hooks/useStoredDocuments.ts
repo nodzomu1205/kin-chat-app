@@ -5,7 +5,7 @@ import {
   buildIngestedStoredDocument,
   buildKinStoredDocument,
   normalizeStoredDocument,
-} from "@/lib/app/ingestDocumentModel";
+} from "@/lib/app/ingest/ingestDocumentModel";
 
 const INGESTED_DOCUMENTS_KEY = "ingested_documents";
 const DOCUMENT_ORDER_KEY = "stored_document_order";

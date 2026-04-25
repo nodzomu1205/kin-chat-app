@@ -6,7 +6,6 @@ import type {
   UploadKind,
   ImageDetail,
   IngestMode,
-  ResponseMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
   COMPACT_CHAR_LIMIT_KEY,
@@ -25,8 +24,6 @@ export function usePersistedGptOptions() {
       typeof window === "undefined" ? null : window.localStorage
     )
   );
-  const responseMode: ResponseMode = "strict";
-  const setResponseMode = () => {};
   const [uploadKind, setUploadKind] = useState<UploadKind>(
     initialState.uploadKind
   );
@@ -90,8 +87,6 @@ export function usePersistedGptOptions() {
   }, [driveImportAutoSummary]);
 
   return {
-    responseMode,
-    setResponseMode,
     uploadKind,
     setUploadKind,
     ingestMode,

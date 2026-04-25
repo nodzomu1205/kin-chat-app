@@ -3,7 +3,7 @@ import {
   resolveMemoryRuleTopicDecision,
   type TopicDecision,
 } from "@/lib/memoryInterpreterRules";
-import { normalizeText } from "@/lib/app/memoryInterpreterText";
+import { normalizeText } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 
 export type MemoryTopicAdjudication = {
   committedTopic?: string;

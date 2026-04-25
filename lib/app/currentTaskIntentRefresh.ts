@@ -5,6 +5,7 @@ import {
   buildCurrentTaskIntentRefreshApplyArgs,
   buildCurrentTaskIntentRefreshResolverArgs,
 } from "@/lib/app/currentTaskIntentRefreshBuilders";
+import type { ReasoningMode } from "@/lib/app/reasoningMode";
 import type { TaskIntent } from "@/types/taskProtocol";
 
 export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
@@ -13,7 +14,7 @@ export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
   currentTaskId: string | null;
   currentTaskTitle: string;
   currentTaskDraftTitle: string;
-  responseMode: "strict" | "creative";
+  reasoningMode: ReasoningMode;
   applyTaskUsage: (
     usage: { inputTokens: number; outputTokens: number; totalTokens: number } | null,
     options?: BucketUsageOptions
@@ -53,7 +54,7 @@ async function resolveCurrentTaskIntentRefresh(
   const resolved = await resolveTaskIntentWithFallback({
     input: resolverArgs.sourceInstruction,
     approvedPhrases: resolverArgs.approvedPhrases,
-    responseMode: resolverArgs.responseMode,
+    reasoningMode: resolverArgs.reasoningMode,
   });
 
   args.applyTaskUsage(resolved.usage);

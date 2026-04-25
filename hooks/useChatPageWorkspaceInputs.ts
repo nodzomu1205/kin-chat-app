@@ -144,7 +144,6 @@ export function useChatPageWorkspaceInputs(args: UseChatPageWorkspaceInputsArgs)
     },
     gpt: {
       gptState: args.gpt.gptState,
-      responseMode: args.gpt.responseMode,
       uploadKind: args.gpt.uploadKind,
       ingestMode: args.gpt.ingestMode,
       imageDetail: args.gpt.imageDetail,

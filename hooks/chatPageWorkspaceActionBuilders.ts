@@ -104,7 +104,6 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
 function buildWorkspaceActionsGpt(args: ChatPageWorkspaceActionsGpt) {
   return {
     resetGptForCurrentKin: args.resetGptForCurrentKin,
-    onChangeResponseMode: args.onChangeResponseMode,
     onChangeUploadKind: args.onChangeUploadKind,
     onChangeIngestMode: args.onChangeIngestMode,
     onChangeImageDetail: args.onChangeImageDetail,

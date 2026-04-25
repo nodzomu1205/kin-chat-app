@@ -1,4 +1,4 @@
-import { runFileIngestFlow } from "@/lib/app/fileIngestFlow";
+import { runFileIngestFlow } from "@/lib/app/ingest/fileIngestFlow";
 import type {
   FileReadPolicy,
   ImageDetail,

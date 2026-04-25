@@ -116,7 +116,7 @@ export function buildChatPageControllerServicesArgs(
   args: ChatPageWorkspaceViewArgs
 ): ChatPageServicesArgs {
   return {
-    responseMode: args.gpt.responseMode,
+    reasoningMode: "strict",
     autoCopyFileIngestSysInfoToKin:
       args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
     autoGenerateFileImportSummary: args.gpt.driveImportAutoSummary,
@@ -200,7 +200,7 @@ export function buildGptMessageActionArgs(
     recordIngestedDocument: groups.services.recordIngestedDocument,
     recordSearchContext: groups.search.recordSearchContext,
     referenceLibraryItems: groups.services.referenceLibraryItems,
-    responseMode: groups.services.responseMode,
+    reasoningMode: groups.services.reasoningMode,
     searchEngines: groups.search.searchEngines,
     searchLocation: groups.search.searchLocation,
     searchMode: groups.search.searchMode,
@@ -237,7 +237,7 @@ export function buildKinTransferActionArgs(
     processMultipartTaskDoneText: groups.search.processMultipartTaskDoneText,
     rejectedIntentCandidateSignatures:
       groups.protocol.rejectedIntentCandidateSignatures,
-    responseMode: groups.services.responseMode,
+    reasoningMode: groups.services.reasoningMode,
     setGptInput: groups.uiState.setGptInput,
     setGptLoading: groups.uiState.setGptLoading,
     setGptMessages: groups.uiState.setGptMessages,
@@ -289,7 +289,7 @@ export function buildTaskProtocolActionArgs(
     promptDefaultKey: groups.protocol.promptDefaultKey,
     protocolPrompt: groups.protocol.protocolPrompt,
     protocolRulebook: groups.protocol.protocolRulebook,
-    responseMode: groups.services.responseMode,
+    reasoningMode: groups.services.reasoningMode,
     rulebookDefaultKey: groups.protocol.rulebookDefaultKey,
     setApprovedIntentPhrases: groups.protocol.setApprovedIntentPhrases,
     setGptMessages: groups.uiState.setGptMessages,

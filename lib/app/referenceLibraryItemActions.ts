@@ -2,7 +2,7 @@ import { buildKinSysInfoBlock } from "@/lib/app/kinStructuredProtocol";
 import {
   cleanImportedDocumentText,
   cleanImportSummarySource,
-} from "@/lib/app/importSummaryText";
+} from "@/lib/app/ingest/importSummaryText";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
 function normalizeWhitespace(value: string): string {

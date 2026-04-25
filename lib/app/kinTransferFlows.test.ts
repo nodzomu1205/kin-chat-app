@@ -43,7 +43,7 @@ describe("kinTransferFlows", () => {
       mergePendingIntentCandidates: vi.fn(),
       startTask,
       syncTaskDraftFromProtocol,
-      responseMode: "strict",
+      reasoningMode: "strict",
       applyTaskUsage,
       shouldTransformContent: () => false,
       transformTextWithIntent: async () => ({ text: "" }),

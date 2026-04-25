@@ -63,9 +63,9 @@ The current maintainability principles are:
 Before starting a new refactor or feature, review these first:
 
 - `app/api/chatgpt/route.ts`
-- `lib/app/sendToGptFlow.ts`
+- `lib/app/send-to-gpt/sendToGptFlow.ts`
 - `hooks/useGptMemory.ts`
-- `lib/app/memoryInterpreter.ts`
+- `lib/app/memory-interpreter/memoryInterpreter.ts`
 - `hooks/useKinTaskProtocol.ts`
 
 ## Current Refactor Focus
@@ -107,7 +107,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `140 files / 619 tests`
+- current test count: `141 files / 621 tests`
 
 Recent regression fixes and maintainability wins include:
 
@@ -134,17 +134,26 @@ Recent regression fixes and maintainability wins include:
 - fallback debug payload is no longer persisted into memory state, and the obsolete `gptMemoryStateSummaryMerge.ts` branch has been removed so memory compaction now follows one authoritative path
 - memory lifecycle boundaries are now more explicit: `lib/memory.ts` names task-scoped list/context keys directly, and task-scoped cleanup now flows through one shared helper instead of local storage-specific cleanup logic
 - memory rule persistence now flows through `lib/app/memoryRuleStore.ts`, so `useMemoryInterpreterSettings` no longer owns raw localStorage parsing/writing inline
-- `useGptMemory.ts` now delegates runtime load/update/reapply handoff to `lib/app/gptMemoryRuntime.ts`, keeping the hook closer to a state facade instead of a mixed orchestration surface
+- `useGptMemory.ts` now delegates runtime load/update/reapply handoff to `lib/app/gpt-memory/gptMemoryRuntime.ts`, keeping the hook closer to a state facade instead of a mixed orchestration surface
 - token accounting now restores correct total-token aggregation, treats memory compaction as a conversation-internal token line, and routes ingest-time summary-generation usage into the ingest bucket instead of the conversation compaction bucket
 - task-intent constraint extraction now uses a fixed-slot LLM JSON schema instead of free-form candidate lists
 - approved task constraints now compile directly into `CONSTRAINTS`, and task progress now derives from `CONSTRAINTS` instead of the removed `REQUIRED_WORKFLOW` / `OPTIONAL_WORKFLOW` sections
 - task-intent approval wording is now deterministic and rule-aware (`up_to` / `exact` / `at_least` / `around`) instead of relying on drifting fallback prose
+- response-mode cleanup now removes the dead settings/persistence carry-through from GPT options and page/panel workspace builders, and the controller/service boundary now names the fixed runtime value `reasoningMode`
+- task-intent fallback, current-task intent refresh, Kin task start, Kin transfer, transform-intent, and send-to-GPT request internals now use `reasoningMode` for the LLM strict/creative runtime value; remaining `responseMode` references are protocol/task payload semantics such as structured results or ack modes
+- file import and Drive import now share generated library-summary handling through `lib/app/ingest/importSummaryGeneration.ts`, so summary fallback, summary cleanup, and ingest usage aggregation have one post-request helper
+- file import and Drive import now also share stored ingested-document record construction through `buildIngestedDocumentRecord`, keeping text cleanup, char count, and timestamps aligned
+- ingest app-side modules now live under `lib/app/ingest/`, making the first folder-organization pass concrete without changing runtime behavior
+- send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`, making the second folder-organization pass concrete without changing runtime behavior
+- memory-interpreter app-side modules now live under `lib/app/memory-interpreter/`, making the third folder-organization pass concrete without changing runtime behavior
+- GPT-memory app-side modules now live under `lib/app/gpt-memory/`, making the fourth folder-organization pass concrete without changing runtime behavior
 
 Current caution after the latest task/constraint stabilization:
 
 - the task-intent / task-progress / compiler residue cleanup is substantially complete,
-  but repo-wide `strict` / `creative` / `responseMode` remnants still exist outside the
-  now-simplified normal chat prompt
+  and the dead GPT settings/persistence response-mode path is now removed; remaining
+  `responseMode` references are protocol/task payload fields and should not be
+  confused with removed UI policy or LLM strict/creative runtime state
 - library-ingest authority should stay under watch, especially when adding new ingest-adjacent flows or token accounting paths
 - active mojibake cleanup is much smaller than before, but touched text-owner and
   parser files should still be reviewed carefully when edited
@@ -204,7 +213,7 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. audit repo-wide `strict` / `creative` / `responseMode` remnants and remove dead carry-through paths
+1. keep the remaining protocol/task-payload `responseMode` names under maintenance-watch, but treat the dead UI/settings and LLM strict/creative carry-through cleanup as substantially complete
 2. keep the fixed library-ingest authority under watch while extracting any proven shared device/Drive post-request helpers
 3. continue shrinking remaining device-file vs Drive ingest post-request divergence after the now-shared ingest authority model
 4. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
@@ -212,6 +221,6 @@ Before large new features, continue maintainability work in this order:
 6. continue opportunistic mojibake cleanup in still-active owner files when those boundaries are touched
 7. continue adding narrow regression tests around the next touched boundary instead of broad rewrites
 
-`hooks/useGptMemory.ts` and `lib/app/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
+`hooks/useGptMemory.ts` and `lib/app/memory-interpreter/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
 
 For the GPT settings surface, the next step is not just helper extraction. We expect a broader section-level reorganization so that search, memory, protocol, and ingest controls are easier to scan and maintain.

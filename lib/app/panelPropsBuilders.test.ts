@@ -154,8 +154,6 @@ describe("panelPropsBuilders", () => {
         memorySettings: DEFAULT_MEMORY_SETTINGS,
         defaultMemorySettings: DEFAULT_MEMORY_SETTINGS,
         tokenStats: {},
-        responseMode: "strict",
-        onChangeResponseMode: vi.fn(),
         uploadKind: "auto",
         ingestMode: "compact",
         imageDetail: "simple",

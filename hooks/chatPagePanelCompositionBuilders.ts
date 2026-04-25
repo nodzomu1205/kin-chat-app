@@ -9,8 +9,8 @@ import {
   normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
 } from "@/lib/app/librarySummaryClient";
-import { cleanImportSummarySource } from "@/lib/app/importSummaryText";
-import { buildCanonicalSummarySource } from "@/lib/app/ingestDocumentModel";
+import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
+import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
 import { normalizeUsage } from "@/lib/tokenStats";
 import { buildTaskDraftLibrarySummarySource } from "@/lib/app/taskDraftLibrary";
 
@@ -129,7 +129,6 @@ function buildChatPageWorkspaceGptSettings(
     memorySettings: args.memory.memorySettings,
     defaultMemorySettings: args.gpt.defaultMemorySettings,
     tokenStats: args.memory.tokenStats,
-    responseMode: args.gpt.responseMode,
     uploadKind: args.gpt.uploadKind,
     ingestMode: args.gpt.ingestMode,
     imageDetail: args.gpt.imageDetail,
@@ -161,7 +160,6 @@ function buildChatPageWorkspaceGptSettings(
     googleDriveFolderLink: args.references.googleDriveFolderLink,
     googleDriveFolderId: args.references.googleDriveFolderId,
     googleDriveIntegrationMode: args.references.googleDriveIntegrationMode,
-    onChangeResponseMode: args.gpt.onChangeResponseMode,
     onChangeUploadKind: args.gpt.onChangeUploadKind,
     onChangeIngestMode: args.gpt.onChangeIngestMode,
     onChangeImageDetail: args.gpt.onChangeImageDetail,

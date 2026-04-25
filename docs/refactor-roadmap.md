@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `140 files / 619 tests`
+- test status: `141 files / 621 tests`
 
 This roadmap should now be read together with:
 
@@ -29,9 +29,9 @@ The repository is already functionally strong, but a few integration points rema
 
 Primary review points:
 - `app/api/chatgpt/route.ts`
-- `lib/app/sendToGptFlow.ts`
+- `lib/app/send-to-gpt/sendToGptFlow.ts`
 - `hooks/useGptMemory.ts`
-- `lib/app/memoryInterpreter.ts`
+- `lib/app/memory-interpreter/memoryInterpreter.ts`
 - `hooks/useKinTaskProtocol.ts`
 - `lib/app/kinMultipart.ts`
 
@@ -39,7 +39,7 @@ Current cleanup priority:
 1. repo-wide `strict` / `creative` / `responseMode` cleanup
 2. library-ingest authority watch and remaining device/Drive post-request convergence
 3. mojibake cleanup in still-active parsing/matching owner files
-4. `lib/app/sendToGptFlow.ts` maintenance-watch boundaries
+4. `lib/app/send-to-gpt/sendToGptFlow.ts` maintenance-watch boundaries
 5. `app/page.tsx` / page composition regrow prevention
 6. responsive / panel-mode authority guardrails
 7. user-facing text drift outside owner files
@@ -68,7 +68,7 @@ These areas are much healthier than before, but should still be treated as
 high-signal review points before and after changes.
 
 - `app/page.tsx` and page-side composition boundaries
-- `lib/app/sendToGptFlow.ts` and adjacent request/finalize coordinators
+- `lib/app/send-to-gpt/sendToGptFlow.ts` and adjacent request/finalize coordinators
 - legacy/current ingest split after the shared request + draft layers
 - ingest text authority when one imported content fans out into summary,
   library, GPT chat, and Kin protocol surfaces
@@ -153,13 +153,18 @@ It is intentionally ordered by regression risk, not by which files are easiest t
 Why first:
 - the visible task-constraint path is now stable enough to leave alone unless a
   concrete regression appears
-- stale `strict` / `creative` / `responseMode` plumbing is now the next most
-  likely source of false reasoning and half-removed behavior
+- the dead GPT settings/persistence `responseMode` carry-through has been
+  removed, and the controller/service runtime boundary now uses
+  `reasoningMode`
+- stale `strict` / `creative` plumbing can still create false reasoning if an
+  inner request/task flow or protocol payload field is mistaken for a removed
+  setting
 
 Primary authority:
 - GPT request preparation and route payload shaping
-- settings state/persistence builders
-- any UI surface that still exposes or passes response-mode state
+- task / Kin transfer runtime builders that still pass the fixed reasoning mode
+- `lib/app/reasoningMode.ts` as the app-side owner of the runtime reasoning type
+- any future UI surface that tries to reintroduce response-mode state
 
 Boundary rules to keep:
 - do not remove a mode value from one surface until all live callers have been
@@ -168,16 +173,32 @@ Boundary rules to keep:
 - add a narrow regression test for each removed or reclassified branch
 
 Mini phases:
-1. inventory all live `strict`, `creative`, and `responseMode` references
+1. inventory remaining live `strict`, `creative`, and `responseMode` references
 2. classify each reference as active behavior, compatibility read, or dead
    carry-through
-3. remove dead pass-through in small slices
+3. remove additional dead pass-through in small slices only after classification
 4. update docs when a boundary moves from maintenance-watch to stabilized
+
+Recent progress:
+- `usePersistedGptOptions` no longer exposes a no-op `responseMode` setting
+- `persistedGptOptionsState` no longer stores or returns response-mode state
+- page/workspace/panel settings builders no longer pass `responseMode` or
+  `onChangeResponseMode` as GPT settings props
+- controller services now supply the current fixed `strict` runtime value as
+  `reasoningMode` instead of reading it from page settings state
+- `components/panels/gpt/gptPanelTypes.ts` no longer owns the runtime
+  strict/creative type; `lib/app/reasoningMode.ts` does
+- task-intent fallback, current-task intent refresh, Kin task start, Kin
+  transfer, transform-intent, and send-to-GPT request internals now use
+  `reasoningMode` at their flow/request boundaries
+- remaining `responseMode` names are protocol/task payload semantics, not
+  strict/creative runtime policy
 
 Done when:
 - response-mode state has one clear owner
 - no deleted UI option still travels through persistence or request builders
-- the next session cannot misread a stale response-mode branch as active policy
+- the next session cannot misread a protocol/payload `responseMode` field as
+  active UI policy or LLM strict/creative runtime state
 
 ### Priority 2: Untangle task runtime, draft sync, and Kin injection
 
@@ -224,7 +245,7 @@ Why now:
 - this creates "fix one symptom, miss another surface" behavior
 
 Primary authority:
-- `lib/app/fileIngestFlow.ts`
+- `lib/app/ingest/fileIngestFlow.ts`
 - `lib/app/gptTaskClient.ts`
 - `hooks/useStoredDocuments.ts`
 - `hooks/useReferenceLibrary.ts`
@@ -249,12 +270,21 @@ Done when:
   from different upstream variants
 
 Recent progress:
-- `lib/app/ingestDocumentModel.ts` now owns the canonical-document vs task-envelope split
+- `lib/app/ingest/ingestDocumentModel.ts` now owns the canonical-document vs task-envelope split
 - `fileIngestFlow` has started renaming `prepInput/sharedInfo` internals toward
   `taskPrepEnvelope` and `canonicalDocumentText` so authority is visible in code,
   not just in docs
 - Drive import summary fallback now uses the same canonical summary helper as
   file ingest instead of a separate local fallback path
+- file import and Drive import now share generated-summary resolution and ingest
+  usage aggregation through `lib/app/ingest/importSummaryGeneration.ts`
+- file import and Drive import now share stored ingested-document record
+  construction through `buildIngestedDocumentRecord`
+- app-side ingest modules now live under `lib/app/ingest/`
+- send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`
+- memory-interpreter app-side modules now live under
+  `lib/app/memory-interpreter/`
+- GPT-memory app-side modules now live under `lib/app/gpt-memory/`
 - `/api/ingest` prompts now use one output authority per mode:
   - `compact` -> `kinCompact`
   - `detailed` -> `kinDetailed`
@@ -266,7 +296,7 @@ Recent progress:
 
 Next ingest-specific work:
 1. reduce remaining device-import vs Drive-import post-processing divergence
-2. extract shared post-request helpers only where duplication is proven live
+2. extract more shared post-request helpers only where duplication is proven live
 3. keep ingest summary usage in the ingest bucket as new ingest-adjacent flows are added
 4. consolidate device-file ingest UI into the library drawer/settings surfaces
 5. implement Google Drive upload subfolder selection without creating a second ingest authority path
@@ -366,7 +396,7 @@ Use this table before editing. If a change would cross multiple rows, pause and 
 | Task runtime state | `lib/taskProtocolTaskState.ts`, `hooks/useKinTaskProtocol.ts` | task lifecycle state and protocol transitions | panel rendering or ad-hoc string formatting |
 | Task draft sync | `hooks/useTaskDraftHelpers.ts` | editable page draft projection | intent classification or Kin send policy |
 | Kin task transport | `lib/app/kinTaskFlow.ts`, `lib/app/kinTransferFlows.ts` | compiled SYS block delivery and injection | deciding what the task means |
-| Topic fallback | `lib/app/memoryInterpreterFallbackOrchestrator.ts` | approved-fragment shortcut and LLM fallback orchestration | broad entry-side pre-classification |
+| Topic fallback | `lib/app/memory-interpreter/memoryInterpreterFallbackOrchestrator.ts` | approved-fragment shortcut and LLM fallback orchestration | broad entry-side pre-classification |
 | Page composition | `app/page.tsx`, `hooks/useChatPagePanelsComposition.tsx` | state roots and final composition | hidden business policy |
 | Controller composition | `hooks/useChatPageController.ts` | grouped domain action composition | page render concerns or raw panel formatting |
 | Responsive mode | `hooks/useResponsive.ts` | viewport/device heuristics | protocol or task policy |
@@ -583,73 +613,73 @@ Done:
 - [`lib/server/chatgpt/responseBuilders.ts`](../lib/server/chatgpt/responseBuilders.ts)
   - `buildChatRouteResponse`
   - `buildMapLinkShortcutResponse`
-- [`lib/app/sendToGptTranscriptHelpers.ts`](../lib/app/sendToGptTranscriptHelpers.ts)
+- [`lib/app/send-to-gpt/sendToGptTranscriptHelpers.ts`](../lib/app/send-to-gpt/sendToGptTranscriptHelpers.ts)
   - YouTube transcript request helper extraction
-- [`lib/app/sendToGptFlowRequestPreparation.ts`](../lib/app/sendToGptFlowRequestPreparation.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowRequestPreparation.ts`](../lib/app/send-to-gpt/sendToGptFlowRequestPreparation.ts)
   - protocol limit resolution
   - combined `prepareSendToGptRequest` request-preparation step extracted from `sendToGptFlow.ts`
   - `buildPreparedRequestArtifacts` now isolates the pure request-ready enrichment step inside request preparation
-- [`lib/app/sendToGptFlowRequestPayload.ts`](../lib/app/sendToGptFlowRequestPayload.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowRequestPayload.ts`](../lib/app/send-to-gpt/sendToGptFlowRequestPayload.ts)
   - chat API request payload builder
-- [`lib/app/sendToGptFlowRequestText.ts`](../lib/app/sendToGptFlowRequestText.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowRequestText.ts`](../lib/app/send-to-gpt/sendToGptFlowRequestText.ts)
   - protocol override request-text builder
   - final request-text assembly
-- [`lib/app/sendToGptFlowState.ts`](../lib/app/sendToGptFlowState.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowState.ts`](../lib/app/send-to-gpt/sendToGptFlowState.ts)
   - implicit search usage / context helper
   - protocol post-response side-effect helper
   - shared recent-message / previous-topic memory-update helpers
-- [`lib/app/sendToGptFlowGuards.ts`](../lib/app/sendToGptFlowGuards.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowGuards.ts`](../lib/app/send-to-gpt/sendToGptFlowGuards.ts)
   - now grouped into pre-preparation and post-preparation gate pipelines for the main `sendToGpt` coordinator
-- [`lib/app/sendToGptProtocolBuilders.ts`](../lib/app/sendToGptProtocolBuilders.ts)
+- [`lib/app/send-to-gpt/sendToGptProtocolBuilders.ts`](../lib/app/send-to-gpt/sendToGptProtocolBuilders.ts)
   - protocol request / response block builders extracted from the former monolithic `sendToGptFlowHelpers.ts`
-- [`lib/app/sendToGptFlowTypes.ts`](../lib/app/sendToGptFlowTypes.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowTypes.ts`](../lib/app/send-to-gpt/sendToGptFlowTypes.ts)
   - shared flow / helper protocol and artifact types extracted for reuse across `sendToGptFlow.ts` and helpers
-- [`lib/app/sendToGptFlowContext.ts`](../lib/app/sendToGptFlowContext.ts)
+- [`lib/app/send-to-gpt/sendToGptFlowContext.ts`](../lib/app/send-to-gpt/sendToGptFlowContext.ts)
   - protocol event / search-context derivation extracted from the former monolithic `sendToGptFlowHelpers.ts`
   - now internally split into protocol interaction extraction, protocol limit resolution, and derived search resolution helpers
-  - [`lib/app/sendToGptText.ts`](../lib/app/sendToGptText.ts)
+  - [`lib/app/send-to-gpt/sendToGptText.ts`](../lib/app/send-to-gpt/sendToGptText.ts)
     - UTF-8-safe request text and task-info text helpers extracted so the main `sendToGpt` path no longer depends on mojibake-prone literals
-  - [`lib/app/sendToGptFlowArgBuilders.ts`](../lib/app/sendToGptFlowArgBuilders.ts)
+  - [`lib/app/send-to-gpt/sendToGptFlowArgBuilders.ts`](../lib/app/send-to-gpt/sendToGptFlowArgBuilders.ts)
     - common `runSendToGptFlow` arg assembly extracted from `useGptMessageActions.ts`
-  - [`lib/app/sendToGptFlowRequest.ts`](../lib/app/sendToGptFlowRequest.ts)
+  - [`lib/app/send-to-gpt/sendToGptFlowRequest.ts`](../lib/app/send-to-gpt/sendToGptFlowRequest.ts)
     - chat API request execution and assistant-artifact shaping extracted from the main `runSendToGptFlow` coordinator
-  - [`lib/app/sendToGptFlowResponse.ts`](../lib/app/sendToGptFlowResponse.ts)
+  - [`lib/app/send-to-gpt/sendToGptFlowResponse.ts`](../lib/app/send-to-gpt/sendToGptFlowResponse.ts)
     - assistant response shaping, protocol wrapping, and protocol search-response artifacts extracted from the former monolithic `sendToGptFlowHelpers.ts`
-  - [`lib/app/sendToGptFlowGuards.ts`](../lib/app/sendToGptFlowGuards.ts)
+  - [`lib/app/send-to-gpt/sendToGptFlowGuards.ts`](../lib/app/send-to-gpt/sendToGptFlowGuards.ts)
     - early-return gate handling extracted from the front half of `runSendToGptFlow`
-  - [`lib/app/sendToGptFlowFinalize.ts`](../lib/app/sendToGptFlowFinalize.ts)
+  - [`lib/app/send-to-gpt/sendToGptFlowFinalize.ts`](../lib/app/send-to-gpt/sendToGptFlowFinalize.ts)
     - assistant finalize side effects, implicit search handling, and memory follow-up extracted from the back half of `runSendToGptFlow`
-- [`lib/app/sendToGptFlow.ts`](../lib/app/sendToGptFlow.ts)
+- [`lib/app/send-to-gpt/sendToGptFlow.ts`](../lib/app/send-to-gpt/sendToGptFlow.ts)
   - request / search / protocol / memory / UI args now grouped through shared flow-slice types
   - low-value request/finalize bundle staging was removed so the coordinator now passes prepared request data directly into `request` and `finalize`
-- [`lib/app/memoryInterpreterText.ts`](../lib/app/memoryInterpreterText.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterText.ts`](../lib/app/memory-interpreter/memoryInterpreterText.ts)
   - shared text normalization / topic candidate helpers extracted from `memoryInterpreter.ts`
   - search-directive detection is now anchored to a UTF-8-safe shared prefix regex
-- [`lib/app/memoryInterpreterTopicText.ts`](../lib/app/memoryInterpreterTopicText.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterTopicText.ts`](../lib/app/memory-interpreter/memoryInterpreterTopicText.ts)
   - shared topic-tail cleanup now keeps `memoryInterpreterText.ts` and `memoryInterpreterTopicExtractor.ts` aligned
-- [`lib/app/memoryInterpreterTextPatterns.ts`](../lib/app/memoryInterpreterTextPatterns.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterTextPatterns.ts`](../lib/app/memory-interpreter/memoryInterpreterTextPatterns.ts)
   - shared acknowledgement lead-in and sentence-marker patterns extracted for reuse across memory text helpers
-- [`lib/app/memoryInterpreterFacts.ts`](../lib/app/memoryInterpreterFacts.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterFacts.ts`](../lib/app/memory-interpreter/memoryInterpreterFacts.ts)
   - fact / preference / tracked-entity helpers extracted from `memoryInterpreter.ts`
-- [`lib/app/memoryInterpreterWorks.ts`](../lib/app/memoryInterpreterWorks.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterWorks.ts`](../lib/app/memory-interpreter/memoryInterpreterWorks.ts)
   - active-document resolution and works-by-entity merge helpers extracted from `memoryInterpreter.ts`
-- [`lib/app/memoryInterpreterContext.ts`](../lib/app/memoryInterpreterContext.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterContext.ts`](../lib/app/memory-interpreter/memoryInterpreterContext.ts)
   - context / goal / follow-up-rule helpers extracted from `memoryInterpreter.ts`
-- [`lib/app/memoryInterpreterFallbackHelpers.ts`](../lib/app/memoryInterpreterFallbackHelpers.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterFallbackHelpers.ts`](../lib/app/memory-interpreter/memoryInterpreterFallbackHelpers.ts)
   - approved-rule matching and fallback prompt / JSON helpers extracted from `memoryInterpreter.ts`
-- [`lib/app/gptMemoryStorage.ts`](../lib/app/gptMemoryStorage.ts)
+- [`lib/app/gpt-memory/gptMemoryStorage.ts`](../lib/app/gpt-memory/gptMemoryStorage.ts)
   - local storage and kin-memory-map load/save helpers extracted from `useGptMemory.ts`
-- [`lib/app/gptMemoryCandidatePreparation.ts`](../lib/app/gptMemoryCandidatePreparation.ts)
+- [`lib/app/gpt-memory/gptMemoryCandidatePreparation.ts`](../lib/app/gpt-memory/gptMemoryCandidatePreparation.ts)
   - fallback evaluation, candidate filtering, and candidate-memory preparation extracted from `useGptMemory.ts`
-- [`lib/app/gptMemoryUpdateCoordinator.ts`](../lib/app/gptMemoryUpdateCoordinator.ts)
+- [`lib/app/gpt-memory/gptMemoryUpdateCoordinator.ts`](../lib/app/gpt-memory/gptMemoryUpdateCoordinator.ts)
   - summarize branch and finalized update orchestration extracted from `useGptMemory.ts`
-- [`lib/app/gptMemorySummaryResolution.ts`](../lib/app/gptMemorySummaryResolution.ts)
+- [`lib/app/gpt-memory/gptMemorySummaryResolution.ts`](../lib/app/gpt-memory/gptMemorySummaryResolution.ts)
   - summarized-state resolution extracted from `useGptMemory.ts`
-- [`lib/app/gptMemoryReapply.ts`](../lib/app/gptMemoryReapply.ts)
+- [`lib/app/gpt-memory/gptMemoryReapply.ts`](../lib/app/gpt-memory/gptMemoryReapply.ts)
   - approved-rule merge and reapplicable-recent selection extracted from `useGptMemory.ts`
-- [`lib/app/gptMemoryRegistry.ts`](../lib/app/gptMemoryRegistry.ts)
+- [`lib/app/gpt-memory/gptMemoryRegistry.ts`](../lib/app/gpt-memory/gptMemoryRegistry.ts)
   - kin-memory-map registry updates and memory-settings normalization extracted from `useGptMemory.ts`
-- [`lib/app/sendToGptShortcutFlows.ts`](../lib/app/sendToGptShortcutFlows.ts)
+- [`lib/app/send-to-gpt/sendToGptShortcutFlows.ts`](../lib/app/send-to-gpt/sendToGptShortcutFlows.ts)
   - inline URL shortcut helper is now on the main execution path
 - redundant library response post-processing branches removed from `sendToGptFlow.ts`
 - dead local inline search / URL helper functions removed from `sendToGptFlow.ts`
@@ -679,14 +709,14 @@ Done:
 - `/api/ingest` selected-line / summary-level branching now also lives in `lib/server/ingest/resultSelection.ts`, so the route no longer owns the full result-budget decision tree inline
 - `app/api/ingest/route.ts` itself is now aligned to helper-backed orchestration, with local parsing/budget/prompt duplication removed in favor of server helper modules
 - legacy local helper block removed from `route.ts`
-- `lib/app/ingestClient.ts` now owns shared `/api/ingest` request assembly, fetch, title resolution, and error resolution for file ingest and Drive import callers
+- `lib/app/ingest/ingestClient.ts` now owns shared `/api/ingest` request assembly, fetch, title resolution, and error resolution for file ingest and Drive import callers
 - obsolete post-ingest task-update branches have now been removed from the active device-ingest path instead of being kept dormant behind hidden settings
 - `docs/ingest-pipeline.md` now documents the current ingest boundaries so device import and Drive import do not drift into separate private helper stacks
 - approved-candidate reapply now uses the same formal memory recomputation path as approved-rule reapply
 - fallback debug payload is no longer persisted inside memory state, and the obsolete summary-merge branch `gptMemoryStateSummaryMerge.ts` has been removed so recent-message compaction now has one authoritative path
 - `lib/memory.ts` now declares task-scoped memory keys explicitly and `gptMemoryStorage` clears task-scoped state through that shared lifecycle helper instead of a private local cleanup path
 - `useMemoryInterpreterSettings.ts` now delegates rule-store persistence to `lib/app/memoryRuleStore.ts`, so interpreter settings, pending candidates, approved rules, and rejected signatures share one persistence boundary
-- `useGptMemory.ts` now delegates runtime load/update/reapply orchestration to `lib/app/gptMemoryRuntime.ts`, shrinking the hook toward a lifecycle facade and giving memory runtime handoff its own tested boundary
+- `useGptMemory.ts` now delegates runtime load/update/reapply orchestration to `lib/app/gpt-memory/gptMemoryRuntime.ts`, shrinking the hook toward a lifecycle facade and giving memory runtime handoff its own tested boundary
 - `docs/memory-lifecycle.md` now fixes the intended split between stable memory, task-scoped memory, and displayed-context memory, and `lib/memory.ts` exposes matching lifecycle key lists
 - token accounting now restores total-token aggregation, counts memory compaction inside conversation recent/cumulative usage, relabels the old summary line as compaction, and routes ingest-time summary generation usage into the ingest bucket
 - closing-reply detection now uses a single source of truth
@@ -700,7 +730,7 @@ Next:
 - keep thinning `sendToGptFlowRequestPreparation.ts`, `sendToGptFlowState.ts`, and `sendToGptFlow.ts` so the remaining coordinator path stays easy to audit
 - consider the next `sendToGptFlow` slice around request-text normalization or transcript request handling
 - continue polishing the new GPT settings workspace and reduce duplication between it and the legacy settings drawer
-- review `app/api/ingest/route.ts`, `hooks/useFileIngestActions.ts`, `hooks/useGoogleDrivePicker.ts`, and `lib/app/fileIngestFlow.ts` as the next ingest-side integration points
+- review `app/api/ingest/route.ts`, `hooks/useFileIngestActions.ts`, `hooks/useGoogleDrivePicker.ts`, and `lib/app/ingest/fileIngestFlow.ts` as the next ingest-side integration points
 - periodically audit topic write authority and remove any newly regrown hidden mutation paths instead of layering blockers over them
 
 ### 4. Test Readiness
@@ -738,22 +768,22 @@ Done:
 - [`lib/taskProtocolTaskState.test.ts`](../lib/taskProtocolTaskState.test.ts)
 - [`lib/taskCompiler.test.ts`](../lib/taskCompiler.test.ts)
 - [`lib/memory.test.ts`](../lib/memory.test.ts)
-- [`lib/app/gptMemoryStateHelpers.test.ts`](../lib/app/gptMemoryStateHelpers.test.ts)
-- [`lib/app/gptMemorySummarizePolicy.test.ts`](../lib/app/gptMemorySummarizePolicy.test.ts)
-- [`lib/app/gptMemoryPersistence.test.ts`](../lib/app/gptMemoryPersistence.test.ts)
-- [`lib/app/gptMemoryFallback.test.ts`](../lib/app/gptMemoryFallback.test.ts)
-- [`lib/app/gptMemoryApproval.test.ts`](../lib/app/gptMemoryApproval.test.ts)
-- [`lib/app/memoryInterpreterText.test.ts`](../lib/app/memoryInterpreterText.test.ts)
-- [`lib/app/memoryInterpreterFacts.test.ts`](../lib/app/memoryInterpreterFacts.test.ts)
-- [`lib/app/memoryInterpreterWorks.test.ts`](../lib/app/memoryInterpreterWorks.test.ts)
-- [`lib/app/memoryInterpreterContext.test.ts`](../lib/app/memoryInterpreterContext.test.ts)
-- [`lib/app/memoryInterpreterFallbackHelpers.test.ts`](../lib/app/memoryInterpreterFallbackHelpers.test.ts)
-- [`lib/app/gptMemoryStorage.test.ts`](../lib/app/gptMemoryStorage.test.ts)
-- [`lib/app/gptMemoryCandidatePreparation.test.ts`](../lib/app/gptMemoryCandidatePreparation.test.ts)
-- [`lib/app/gptMemoryUpdateCoordinator.test.ts`](../lib/app/gptMemoryUpdateCoordinator.test.ts)
-- [`lib/app/gptMemorySummaryResolution.test.ts`](../lib/app/gptMemorySummaryResolution.test.ts)
-- [`lib/app/gptMemoryReapply.test.ts`](../lib/app/gptMemoryReapply.test.ts)
-- [`lib/app/gptMemoryRegistry.test.ts`](../lib/app/gptMemoryRegistry.test.ts)
+- [`lib/app/gpt-memory/gptMemoryStateHelpers.test.ts`](../lib/app/gpt-memory/gptMemoryStateHelpers.test.ts)
+- [`lib/app/gpt-memory/gptMemorySummarizePolicy.test.ts`](../lib/app/gpt-memory/gptMemorySummarizePolicy.test.ts)
+- [`lib/app/gpt-memory/gptMemoryPersistence.test.ts`](../lib/app/gpt-memory/gptMemoryPersistence.test.ts)
+- [`lib/app/gpt-memory/gptMemoryFallback.test.ts`](../lib/app/gpt-memory/gptMemoryFallback.test.ts)
+- [`lib/app/gpt-memory/gptMemoryApproval.test.ts`](../lib/app/gpt-memory/gptMemoryApproval.test.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterText.test.ts`](../lib/app/memory-interpreter/memoryInterpreterText.test.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterFacts.test.ts`](../lib/app/memory-interpreter/memoryInterpreterFacts.test.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterWorks.test.ts`](../lib/app/memory-interpreter/memoryInterpreterWorks.test.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterContext.test.ts`](../lib/app/memory-interpreter/memoryInterpreterContext.test.ts)
+- [`lib/app/memory-interpreter/memoryInterpreterFallbackHelpers.test.ts`](../lib/app/memory-interpreter/memoryInterpreterFallbackHelpers.test.ts)
+- [`lib/app/gpt-memory/gptMemoryStorage.test.ts`](../lib/app/gpt-memory/gptMemoryStorage.test.ts)
+- [`lib/app/gpt-memory/gptMemoryCandidatePreparation.test.ts`](../lib/app/gpt-memory/gptMemoryCandidatePreparation.test.ts)
+- [`lib/app/gpt-memory/gptMemoryUpdateCoordinator.test.ts`](../lib/app/gpt-memory/gptMemoryUpdateCoordinator.test.ts)
+- [`lib/app/gpt-memory/gptMemorySummaryResolution.test.ts`](../lib/app/gpt-memory/gptMemorySummaryResolution.test.ts)
+- [`lib/app/gpt-memory/gptMemoryReapply.test.ts`](../lib/app/gpt-memory/gptMemoryReapply.test.ts)
+- [`lib/app/gpt-memory/gptMemoryRegistry.test.ts`](../lib/app/gpt-memory/gptMemoryRegistry.test.ts)
 - [`hooks/useMemoryRuleActions.test.ts`](../hooks/useMemoryRuleActions.test.ts)
 
 Next:
@@ -802,7 +832,7 @@ At the start of each new refactor step, review these files first:
 
 1. `app/api/chatgpt/route.ts`
 2. `app/page.tsx`
-3. `lib/app/sendToGptFlowRequestPreparation.ts` / `lib/app/sendToGptFlowState.ts` / `lib/app/sendToGptFlow.ts`
+3. `lib/app/send-to-gpt/sendToGptFlowRequestPreparation.ts` / `lib/app/send-to-gpt/sendToGptFlowState.ts` / `lib/app/send-to-gpt/sendToGptFlow.ts`
 
 ## Working Agreement
 For each refactor step:

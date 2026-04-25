@@ -95,7 +95,7 @@ export type ChatPageControllerCompositionArgs = {
     deleteSearchHistoryItemBase: (rawResultId: string) => void;
   };
   services: {
-    responseMode: UseChatPageActionsArgs["responseMode"];
+    reasoningMode: UseChatPageActionsArgs["reasoningMode"];
     autoCopyFileIngestSysInfoToKin: boolean;
     gptMemoryRuntime: GptMemoryRuntime;
     setUploadKind: UseChatPageActionsArgs["setUploadKind"];
