@@ -121,13 +121,15 @@ type UseGoogleDrivePickerArgs = {
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  setIngestLoading: React.Dispatch<React.SetStateAction<boolean>>;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   focusGptPanel: () => boolean;
 };
 
 function appendUiMessage(
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>,
-  text: string
+  text: string,
+  sourceType: NonNullable<Message["meta"]>["sourceType"] = "manual"
 ) {
   setGptMessages((prev) => [
     ...prev,
@@ -137,7 +139,7 @@ function appendUiMessage(
       text,
       meta: {
         kind: "task_info",
-        sourceType: "manual",
+        sourceType,
       },
     },
   ]);
@@ -443,6 +445,7 @@ export function useGoogleDrivePicker({
   currentTaskId,
   recordIngestedDocument,
   setGptMessages,
+  setIngestLoading,
   applyIngestUsage,
   focusGptPanel,
 }: UseGoogleDrivePickerArgs) {
@@ -498,78 +501,98 @@ export function useGoogleDrivePicker({
   }, []);
 
   const importDriveFile = useCallback(
-    async (file: { id: string; name: string; mimeType: string; path?: string }) => {
-      const accessToken = await ensureAccessToken();
-      const blob = await fetchDriveFileBlob({
-        fileId: file.id,
-        mimeType: file.mimeType,
-        accessToken,
-      });
-      const downloadedFile = new File([blob], file.name, {
-        type:
-          file.mimeType === "application/vnd.google-apps.spreadsheet"
-            ? "text/csv"
-            : blob.type || file.mimeType || "application/octet-stream",
-      });
-      const { response, data } = await requestFileIngest({
-        file: downloadedFile,
-        options: ingestOptions,
-      });
-      let totalIngestUsage = normalizeUsage(data?.usage);
-      if (!response.ok) {
+    async (
+      file: { id: string; name: string; mimeType: string; path?: string },
+      options: { manageLoading?: boolean } = {}
+    ) => {
+      const manageLoading = options.manageLoading !== false;
+      if (manageLoading) setIngestLoading(true);
+
+      try {
+        const accessToken = await ensureAccessToken();
+        const blob = await fetchDriveFileBlob({
+          fileId: file.id,
+          mimeType: file.mimeType,
+          accessToken,
+        });
+        const downloadedFile = new File([blob], file.name, {
+          type:
+            file.mimeType === "application/vnd.google-apps.spreadsheet"
+              ? "text/csv"
+              : blob.type || file.mimeType || "application/octet-stream",
+        });
+        const { response, data } = await requestFileIngest({
+          file: downloadedFile,
+          options: ingestOptions,
+        });
+        let totalIngestUsage = normalizeUsage(data?.usage);
+        if (!response.ok) {
+          appendUiMessage(
+            setGptMessages,
+            `Google Drive import failed: ${resolveIngestErrorMessage({
+              data,
+              fallback: `Failed to import ${file.name}.`,
+            })}`
+          );
+          focusGptPanel();
+          return;
+        }
+
+        const storedText = buildDriveImportStoredText(data?.result || {});
+        const title = file.path || resolveIngestFileTitle({
+          data,
+          fallback: file.name,
+        });
+        const rawTextForSummary = buildCanonicalSummarySource(storedText);
+        let summary = "";
+
+        if (autoSummarizeImports && rawTextForSummary) {
+          summary = buildDriveImportSummary({
+            result: data?.result,
+            fallbackText: rawTextForSummary,
+            fallbackTitle: title,
+          });
+          try {
+            const summaryResult = await requestGeneratedLibrarySummary({
+              title,
+              text: rawTextForSummary,
+            });
+            if (summaryResult.summary?.trim()) {
+              summary = cleanImportSummarySource(summaryResult.summary).trim();
+            }
+            totalIngestUsage = addUsage(
+              totalIngestUsage,
+              normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+            );
+          } catch (error) {
+            console.warn("Drive import summary generation failed", error);
+          }
+        }
+
+        applyIngestUsage(totalIngestUsage);
+
+        recordIngestedDocument({
+          title,
+          filename: title,
+          text: storedText,
+          summary,
+          taskId: currentTaskId,
+          charCount: storedText.length,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
         appendUiMessage(
           setGptMessages,
-          `Google Drive import failed: ${resolveIngestErrorMessage({
-            data,
-            fallback: `Failed to import ${file.name}.`,
-          })}`
+          [
+            `Google Driveファイルをライブラリに保存しました: ${title}`,
+            `抽出文字数: ${storedText.length.toLocaleString("ja-JP")} chars`,
+          ].join("\n"),
+          "file_ingest"
         );
         focusGptPanel();
-        return;
+      } finally {
+        if (manageLoading) setIngestLoading(false);
       }
-
-      const storedText = buildDriveImportStoredText(data?.result || {});
-      const title = file.path || resolveIngestFileTitle({
-        data,
-        fallback: file.name,
-      });
-      const rawTextForSummary = buildCanonicalSummarySource(storedText);
-      let summary = buildDriveImportSummary({
-        result: data?.result,
-        fallbackText: rawTextForSummary,
-        fallbackTitle: title,
-      });
-
-      if (autoSummarizeImports && rawTextForSummary) {
-        try {
-          const summaryResult = await requestGeneratedLibrarySummary({
-            title,
-            text: rawTextForSummary,
-          });
-          if (summaryResult.summary?.trim()) {
-            summary = cleanImportSummarySource(summaryResult.summary).trim();
-          }
-          totalIngestUsage = addUsage(
-            totalIngestUsage,
-            normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
-          );
-        } catch (error) {
-          console.warn("Drive import summary generation failed", error);
-        }
-      }
-
-      applyIngestUsage(totalIngestUsage);
-
-      recordIngestedDocument({
-        title,
-        filename: title,
-        text: storedText,
-        summary,
-        taskId: currentTaskId,
-        charCount: storedText.length,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
     },
     [
       applyIngestUsage,
@@ -578,6 +601,7 @@ export function useGoogleDrivePicker({
       focusGptPanel,
       ingestOptions,
       recordIngestedDocument,
+      setIngestLoading,
       setGptMessages,
       autoSummarizeImports,
     ]
@@ -585,27 +609,32 @@ export function useGoogleDrivePicker({
 
   const importDriveFolder = useCallback(
     async (folder: { id: string; name: string }, mode: "index" | "import") => {
-      const accessToken = await ensureAccessToken();
-      const entries = await listDriveFolderChildren({
-        accessToken,
-        folderId: folder.id,
-        currentPath: folder.name,
-      });
-      appendUiMessage(
-        setGptMessages,
-        buildDriveFolderIndexMessage({
-          folderName: folder.name,
-          entries,
-        })
-      );
-      focusGptPanel();
-      if (mode === "index") return;
-      const files = entries.filter((file) => canImportDriveMimeType(file.mimeType));
-      for (const file of files) {
-        await importDriveFile(file);
+      setIngestLoading(true);
+      try {
+        const accessToken = await ensureAccessToken();
+        const entries = await listDriveFolderChildren({
+          accessToken,
+          folderId: folder.id,
+          currentPath: folder.name,
+        });
+        appendUiMessage(
+          setGptMessages,
+          buildDriveFolderIndexMessage({
+            folderName: folder.name,
+            entries,
+          })
+        );
+        focusGptPanel();
+        if (mode === "index") return;
+        const files = entries.filter((file) => canImportDriveMimeType(file.mimeType));
+        for (const file of files) {
+          await importDriveFile(file, { manageLoading: false });
+        }
+      } finally {
+        setIngestLoading(false);
       }
     },
-    [ensureAccessToken, focusGptPanel, importDriveFile, setGptMessages]
+    [ensureAccessToken, focusGptPanel, importDriveFile, setGptMessages, setIngestLoading]
   );
 
   const openPickerForMode = useCallback(async (mode: GoogleDrivePickerMode) => {

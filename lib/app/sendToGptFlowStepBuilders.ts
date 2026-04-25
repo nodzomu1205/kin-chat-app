@@ -112,6 +112,7 @@ export function buildSendToGptPreparedRequestGateArgs(args: {
     handleGptMemory: args.flowArgs.handleGptMemory,
     applyChatUsage: args.flowArgs.applyChatUsage,
     applyCompressionUsage: args.flowArgs.applyCompressionUsage,
+    applyIngestUsage: args.flowArgs.applyIngestUsage,
   };
 }
 

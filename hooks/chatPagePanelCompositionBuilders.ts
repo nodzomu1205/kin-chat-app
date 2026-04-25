@@ -268,7 +268,8 @@ export function buildChatPageTaskSnapshotDocument(
 }
 
 export async function saveChatPageTaskSnapshot(
-  args: Pick<ChatPageWorkspaceViewArgs, "task" | "usage">
+  args: Pick<ChatPageWorkspaceViewArgs, "task" | "usage"> &
+    Partial<Pick<ChatPageWorkspaceViewArgs, "gpt">>
 ) {
   const nextDocument = buildChatPageTaskSnapshotDocument(args);
   if (!nextDocument) return false;
@@ -278,7 +279,7 @@ export async function saveChatPageTaskSnapshot(
   );
   let generatedSummary = nextDocument.summary || "";
 
-  if (summarySource.trim()) {
+  if (args.gpt?.driveImportAutoSummary !== false && summarySource.trim()) {
     try {
       const summaryResult = await requestGeneratedLibrarySummary({
         title: nextDocument.title,

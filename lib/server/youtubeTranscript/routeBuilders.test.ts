@@ -19,6 +19,7 @@ describe("youtubeTranscript routeBuilders", () => {
       title: "Example",
       channelName: "Channel",
       duration: "12:34",
+      generateSummary: true,
     });
   });
 
@@ -48,10 +49,22 @@ describe("youtubeTranscript routeBuilders", () => {
     ).toEqual(
       expect.objectContaining({
         title: "Example Video [Transcript]",
-        filename: "Example Video-abc123.txt",
+        filename: "Example Video.txt",
         text: "[0:01] first line",
       })
     );
+  });
+
+  it("can omit fallback summaries when summary generation is disabled", () => {
+    expect(
+      buildYouTubeTranscriptSuccessResponse({
+        videoId: "abc123",
+        title: "Example Video",
+        raw: { transcript: [] },
+        transcript: [{ start: "0:01", text: "first line" }],
+        includeFallbackSummary: false,
+      }).summary
+    ).toBe("");
   });
 
   it("prefers a shared generated summary when provided", () => {
@@ -64,5 +77,18 @@ describe("youtubeTranscript routeBuilders", () => {
         summary: "Shared summary",
       }).summary
     ).toBe("Shared summary");
+  });
+
+  it("includes generated summary usage when provided", () => {
+    expect(
+      buildYouTubeTranscriptSuccessResponse({
+        videoId: "abc123",
+        title: "Example Video",
+        raw: { transcript: [] },
+        transcript: [{ start: "0:01", text: "first line" }],
+        summary: "Shared summary",
+        usage: { inputTokens: 10, outputTokens: 3, totalTokens: 13 },
+      }).usage
+    ).toEqual({ inputTokens: 10, outputTokens: 3, totalTokens: 13 });
   });
 });

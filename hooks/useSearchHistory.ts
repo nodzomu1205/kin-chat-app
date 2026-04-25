@@ -157,6 +157,7 @@ function loadSearchHistoryState() {
 
 export function useSearchHistory(params?: {
   applyIngestUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  autoGenerateLibrarySummaries?: boolean;
 }) {
   const [initialState] = useState(loadSearchHistoryState);
   const [lastSearchContext, setLastSearchContext] = useState<SearchContext | null>(
@@ -296,7 +297,9 @@ export function useSearchHistory(params?: {
       const deduped = prev.filter((item) => item.rawResultId !== nextContext.rawResultId);
       return [nextContext, ...deduped].slice(0, searchHistoryLimit);
     });
-    void enrichSearchContextSummary(nextContext);
+    if (params?.autoGenerateLibrarySummaries !== false) {
+      void enrichSearchContextSummary(nextContext);
+    }
 
     return nextContext;
   };

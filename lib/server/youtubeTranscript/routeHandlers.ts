@@ -48,7 +48,7 @@ async function fetchTranscriptRaw(videoId: string) {
 }
 
 export async function handleYouTubeTranscriptRoute(body: unknown) {
-  const { videoId, title, channelName, duration } =
+  const { videoId, title, channelName, duration, generateSummary } =
     resolveYouTubeTranscriptRequest(body);
 
   if (!videoId) {
@@ -64,15 +64,21 @@ export async function handleYouTubeTranscriptRoute(body: unknown) {
 
   const cleanTranscriptText = buildCleanTranscriptText(raw.transcript);
   let summary = "";
+  let summaryUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
 
-  try {
-    const result = await generateLibrarySummary({
-      title: title || `YouTube Transcript ${videoId}`,
-      text: cleanTranscriptText || transcriptText,
-    });
-    summary = result.text;
-  } catch (error) {
-    console.warn("youtube transcript summary generation failed", error);
+  if (generateSummary) {
+    try {
+      const result = await generateLibrarySummary({
+        title: title || `YouTube Transcript ${videoId}`,
+        text: cleanTranscriptText || transcriptText,
+      });
+      summary = result.text;
+      if (result.usage) {
+        summaryUsage = result.usage;
+      }
+    } catch (error) {
+      console.warn("youtube transcript summary generation failed", error);
+    }
   }
 
   return NextResponse.json(
@@ -84,6 +90,8 @@ export async function handleYouTubeTranscriptRoute(body: unknown) {
       raw,
       transcript: raw.transcript,
       summary,
+      includeFallbackSummary: generateSummary,
+      usage: summaryUsage,
     })
   );
 }

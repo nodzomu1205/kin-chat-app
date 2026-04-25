@@ -180,6 +180,8 @@ export function buildGptMessageActionArgs(
     applyPrefixedTaskFieldsFromText: groups.task.applyPrefixedTaskFieldsFromText,
     applySearchUsage: groups.services.applySearchUsage,
     applyCompressionUsage: groups.services.applyCompressionUsage,
+    applyIngestUsage: groups.services.applyIngestUsage,
+    autoGenerateFileImportSummary: groups.services.autoGenerateFileImportSummary,
     buildLibraryReferenceContext: groups.services.buildLibraryReferenceContext,
     chatBridgeSettings: groups.protocol.chatBridgeSettings,
     currentTaskDraft: groups.task.currentTaskDraft,

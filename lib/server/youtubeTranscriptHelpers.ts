@@ -75,12 +75,12 @@ export function buildTranscriptSummary(params: {
   return [titleLine, preview].filter(Boolean).join(" ").trim();
 }
 
-export function sanitizeTranscriptFilename(title: string, videoId: string) {
+export function sanitizeTranscriptFilename(title: string) {
   const base = title
     .replace(/[^\w\-ぁ-んァ-ヶ一-龠 ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return `${base || "youtube_transcript"}-${videoId}.txt`;
+  return `${base || "youtube_transcript"}.txt`;
 }
 
 export function buildCleanTranscriptText(transcript: unknown) {

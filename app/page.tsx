@@ -130,6 +130,7 @@ export default function ChatApp() {
     searchHistoryStorageMB,
   } = useSearchHistory({
     applyIngestUsage,
+    autoGenerateLibrarySummaries: driveImportAutoSummary,
   });
   const {
     memoryInterpreterSettings,
@@ -250,6 +251,7 @@ export default function ChatApp() {
     setGptInput,
     gptMessages,
     setGptMessages,
+    setIngestLoading,
     gptMemoryRuntime,
     applyChatUsage,
     applyIngestUsage,

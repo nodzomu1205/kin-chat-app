@@ -40,8 +40,6 @@ export function IngestSettingsSection(props: {
   onChangeSimpleImageCharLimit: (v: number) => void;
   fileReadPolicy: FileReadPolicy;
   onChangeFileReadPolicy: (v: FileReadPolicy) => void;
-  driveImportAutoSummary: boolean;
-  onChangeDriveImportAutoSummary: (value: boolean) => void;
 }) {
   return (
     <div style={sectionCard}>
@@ -126,7 +124,7 @@ export function IngestSettingsSection(props: {
               value={props.imageDetail}
               onChange={(value) => props.onChangeImageDetail(value as ImageDetail)}
             >
-              <option value="simple">simple</option>
+              <option value="simple">compact</option>
               <option value="detailed">detailed</option>
               <option value="max">max</option>
             </LabeledSelect>
@@ -139,12 +137,22 @@ export function IngestSettingsSection(props: {
             </div>
           </div>
         </div>
-        <ToggleButtons
-          label={GPT_INGEST_SETTINGS_TEXT.autoSummaryLabel}
-          checked={props.driveImportAutoSummary}
-          onChange={props.onChangeDriveImportAutoSummary}
-        />
       </div>
+    </div>
+  );
+}
+
+export function LibraryCardSummarySettingsSection(props: {
+  driveImportAutoSummary: boolean;
+  onChangeDriveImportAutoSummary: (value: boolean) => void;
+}) {
+  return (
+    <div style={sectionCard}>
+      <ToggleButtons
+        label={GPT_INGEST_SETTINGS_TEXT.autoSummaryLabel}
+        checked={props.driveImportAutoSummary}
+        onChange={props.onChangeDriveImportAutoSummary}
+      />
     </div>
   );
 }

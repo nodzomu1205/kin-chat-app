@@ -246,6 +246,13 @@ export async function runFileIngestFlow({
       createdAt: documentCreatedAt,
       updatedAt: documentCreatedAt,
     });
+    appendInfo(
+      setGptMessages,
+      [
+        `ファイルをライブラリに保存しました: ${fileTitle}`,
+        `抽出文字数: ${storedDocumentText.length.toLocaleString("ja-JP")} chars`,
+      ].join("\n")
+    );
 
     const chatContextBody = buildSummaryPrefixedContent(
       storedDocumentText,

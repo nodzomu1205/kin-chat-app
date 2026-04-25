@@ -28,6 +28,16 @@ export function buildYoutubeTranscriptRequestBody(videoId: string) {
   return { videoId };
 }
 
+export function buildYoutubeTranscriptRequestBodyWithOptions(args: {
+  videoId: string;
+  generateSummary: boolean;
+}) {
+  return {
+    videoId: args.videoId,
+    generateSummary: args.generateSummary,
+  };
+}
+
 export function buildYoutubeTranscriptDocumentRecord(args: {
   artifacts: ReturnType<typeof buildTranscriptSuccessArtifacts>;
   taskId?: string;

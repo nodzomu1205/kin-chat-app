@@ -4,6 +4,7 @@ import {
   buildYoutubeTranscriptDocumentRecord,
   buildYoutubeTranscriptFailureState,
   buildYoutubeTranscriptRequestBody,
+  buildYoutubeTranscriptRequestBodyWithOptions,
   resolveYoutubeTranscriptFlowContext,
 } from "@/lib/app/sendToGptYoutubeFlowBuilders";
 
@@ -29,6 +30,15 @@ describe("sendToGptYoutubeFlowBuilders", () => {
   it("builds request body and assistant message", () => {
     expect(buildYoutubeTranscriptRequestBody("abc123")).toEqual({
       videoId: "abc123",
+    });
+    expect(
+      buildYoutubeTranscriptRequestBodyWithOptions({
+        videoId: "abc123",
+        generateSummary: false,
+      })
+    ).toEqual({
+      videoId: "abc123",
+      generateSummary: false,
     });
     expect(buildYoutubeTranscriptAssistantMessage("hello")).toEqual(
       expect.objectContaining({

@@ -29,6 +29,7 @@ export function resolveYouTubeTranscriptRequest(body: unknown) {
         : "",
     duration:
       typeof candidate.duration === "string" ? candidate.duration.trim() : "",
+    generateSummary: candidate.generateSummary !== false,
   };
 }
 
@@ -61,23 +62,32 @@ export function buildYouTubeTranscriptSuccessResponse(args: {
   raw: unknown;
   transcript: unknown;
   summary?: string;
+  includeFallbackSummary?: boolean;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
 }) {
   const transcriptText = toTranscriptText(args.transcript);
   const resolvedTitle = args.title?.trim() || `YouTube Transcript ${args.videoId}`;
 
   return {
     title: `${resolvedTitle} [Transcript]`,
-    filename: sanitizeTranscriptFilename(resolvedTitle, args.videoId),
+    filename: sanitizeTranscriptFilename(resolvedTitle),
     text: transcriptText,
     cleanText: buildCleanTranscriptText(args.transcript),
     summary:
       args.summary?.trim() ||
-      buildTranscriptSummary({
-        title: resolvedTitle,
-        channelName: args.channelName,
-        duration: args.duration,
-        transcriptText,
-      }),
+      (args.includeFallbackSummary === false
+        ? ""
+        : buildTranscriptSummary({
+            title: resolvedTitle,
+            channelName: args.channelName,
+            duration: args.duration,
+            transcriptText,
+          })),
+    usage: args.usage || { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
     raw: args.raw,
   };
 }

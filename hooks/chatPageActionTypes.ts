@@ -221,6 +221,8 @@ export type UseGptMessageActionsArgs = Pick<
   | "applyPrefixedTaskFieldsFromText"
   | "applySearchUsage"
   | "applyCompressionUsage"
+  | "applyIngestUsage"
+  | "autoGenerateFileImportSummary"
   | "buildLibraryReferenceContext"
   | "chatBridgeSettings"
   | "currentTaskDraft"

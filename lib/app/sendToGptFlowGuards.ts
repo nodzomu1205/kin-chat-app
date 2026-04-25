@@ -250,6 +250,7 @@ export async function handleYoutubeTranscriptGate(args: {
     options?: ConversationUsageOptions
   ) => void;
   applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyIngestUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
   if (!args.youtubeTranscriptRequestEvent?.url?.trim()) return false;
 
@@ -272,6 +273,7 @@ export async function handleYoutubeTranscriptGate(args: {
     handleGptMemory: args.handleGptMemory as never,
     applyChatUsage: args.applyChatUsage as never,
     applyCompressionUsage: args.applyCompressionUsage as never,
+    applyIngestUsage: args.applyIngestUsage ?? (() => undefined),
   });
   return true;
 }
@@ -331,6 +333,7 @@ export async function runPreparedRequestGates(args: {
     options?: ConversationUsageOptions
   ) => void;
   applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyIngestUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
   const taskDirectiveOnlyGateContext = buildTaskDirectiveOnlyGateContext({
     preparedRequest: args.preparedRequest,
@@ -396,6 +399,7 @@ export async function runPreparedRequestGates(args: {
     handleGptMemory: args.handleGptMemory,
     applyChatUsage: args.applyChatUsage,
     applyCompressionUsage: args.applyCompressionUsage,
+    applyIngestUsage: args.applyIngestUsage ?? (() => undefined),
   });
 }
 

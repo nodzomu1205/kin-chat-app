@@ -309,14 +309,6 @@ export function buildReferenceLibraryDocumentItem(
   item: StoredDocument
 ): ReferenceLibraryItem {
   const normalizedItem = normalizeStoredDocument(item);
-  const detailPrefix = (() => {
-    if (normalizedItem.artifactType === "task_result") return "タスク成果物";
-    if (normalizedItem.artifactType === "task_snapshot") {
-      return "タスクスナップショット";
-    }
-    if (normalizedItem.sourceType === "kin_created") return "Kin成果物";
-    return "取込文書";
-  })();
 
   return {
     id: `doc:${normalizedItem.id}`,

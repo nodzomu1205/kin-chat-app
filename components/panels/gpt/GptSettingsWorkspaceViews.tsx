@@ -29,6 +29,7 @@ import {
 import {
   GoogleDriveLibrarySection,
   IngestSettingsSection,
+  LibraryCardSummarySettingsSection,
 } from "@/components/panels/gpt/GptSettingsLibrarySections";
 import type { LocalMemorySettingsInput } from "@/components/panels/gpt/gptPanelHelpers";
 import type { SearchEngine } from "@/types/task";
@@ -346,6 +347,9 @@ export function LibrarySettingsWorkspaceView(props: {
         onChangeSimpleImageCharLimit={props.settings.onChangeSimpleImageCharLimit}
         fileReadPolicy={props.settings.fileReadPolicy}
         onChangeFileReadPolicy={props.settings.onChangeFileReadPolicy}
+      />
+
+      <LibraryCardSummarySettingsSection
         driveImportAutoSummary={props.settings.driveImportAutoSummary}
         onChangeDriveImportAutoSummary={
           props.settings.onChangeDriveImportAutoSummary

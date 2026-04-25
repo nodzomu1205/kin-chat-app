@@ -119,6 +119,7 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
     memoryArgs: {
       handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
       applyCompressionUsage: args.applyCompressionUsage,
+      applyIngestUsage: args.applyIngestUsage,
       chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       gptStateRef: args.gptMemoryRuntime.gptStateRef,
     },

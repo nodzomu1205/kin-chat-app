@@ -188,6 +188,7 @@ export type SendToGptFlowMemoryArgs = {
     options?: MemoryUpdateOptions
   ) => Promise<MemoryResultLike>;
   applyCompressionUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applyIngestUsage?: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
   chatRecentLimit: number;
   gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: Memory }>;
 };

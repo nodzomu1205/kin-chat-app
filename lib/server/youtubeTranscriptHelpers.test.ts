@@ -55,8 +55,8 @@ describe("youtubeTranscriptHelpers", () => {
   });
 
   it("sanitizes filenames while preserving readable text", () => {
-    expect(sanitizeTranscriptFilename("Tokyo / South Africa?", "abc123")).toBe(
-      "Tokyo South Africa-abc123.txt"
+    expect(sanitizeTranscriptFilename("Tokyo / South Africa?")).toBe(
+      "Tokyo South Africa.txt"
     );
   });
 });

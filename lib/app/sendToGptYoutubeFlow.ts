@@ -80,6 +80,7 @@ export async function handleYoutubeTranscriptFlow(args: {
     options?: ConversationUsageOptions
   ) => void;
   applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }): Promise<boolean> {
   const transcriptUrl = args.youtubeTranscriptRequestEvent.url?.trim();
   if (!transcriptUrl) return false;
@@ -124,6 +125,7 @@ export async function handleYoutubeTranscriptFlow(args: {
     if (!response.ok || !data.text) {
       throw new Error(data.error || "YouTube transcript fetch failed");
     }
+    args.applyIngestUsage(normalizeUsage(data.usage));
 
     const now = new Date().toISOString();
     const transcriptArtifacts = buildYoutubeTranscriptArtifacts({

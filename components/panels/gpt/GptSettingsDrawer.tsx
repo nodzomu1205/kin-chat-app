@@ -361,7 +361,7 @@ export default function GptSettingsDrawer(props: Props) {
                   }
                   style={selectStyle}
                 >
-                  <option value="simple">simple</option>
+                  <option value="simple">compact</option>
                   <option value="detailed">detailed</option>
                   <option value="max">max</option>
                 </select>

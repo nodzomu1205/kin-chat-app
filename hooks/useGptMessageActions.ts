@@ -22,6 +22,7 @@ import {
   buildCommonSendToGptFlowArgs,
   mergeSendToGptFlowArgs,
 } from "@/lib/app/sendToGptFlowArgBuilders";
+import { normalizeUsage } from "@/lib/tokenStats";
 import type { Message, SourceItem } from "@/types/chat";
 
 export function useGptMessageActions(args: UseGptMessageActionsArgs) {
@@ -59,7 +60,10 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ videoId: resolvedVideoId }),
+        body: JSON.stringify({
+          videoId: resolvedVideoId,
+          generateSummary: args.autoGenerateFileImportSummary,
+        }),
       });
       const data = (await response.json()) as {
         title?: string;
@@ -67,11 +71,17 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         text?: string;
         cleanText?: string;
         summary?: string;
+        usage?: {
+          inputTokens: number;
+          outputTokens: number;
+          totalTokens: number;
+        };
         error?: string;
       };
       if (!response.ok || !data.text) {
         throw new Error(data.error || "YouTube transcript fetch failed");
       }
+      args.applyIngestUsage(normalizeUsage(data.usage));
 
       const now = new Date().toISOString();
       const transcriptArtifacts = buildYoutubeTranscriptSuccessArtifacts({
@@ -298,6 +308,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     const videoId = source.videoId?.trim();
     if (!videoId) return;
 
+    args.setGptLoading(true);
     try {
       const response = await fetch("/api/youtube-transcript", {
         method: "POST",
@@ -309,6 +320,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
           title: source.title,
           channelName: source.channelName,
           duration: source.duration,
+          generateSummary: args.autoGenerateFileImportSummary,
         }),
       });
 
@@ -318,12 +330,18 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         summary?: string;
         text?: string;
         cleanText?: string;
+        usage?: {
+          inputTokens: number;
+          outputTokens: number;
+          totalTokens: number;
+        };
         error?: string;
       };
 
       if (!response.ok || !data.text) {
         throw new Error(data.error || "transcript import failed");
       }
+      args.applyIngestUsage(normalizeUsage(data.usage));
 
       args.recordIngestedDocument({
         title: data.title || `${source.title} [Transcript]`,
@@ -362,6 +380,8 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
           },
         },
       ]);
+    } finally {
+      args.setGptLoading(false);
     }
   };
 
@@ -369,6 +389,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     const videoId = source.videoId?.trim();
     if (!videoId) return;
 
+    args.setGptLoading(true);
     try {
       const response = await fetch("/api/youtube-transcript", {
         method: "POST",
@@ -380,6 +401,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
           title: source.title,
           channelName: source.channelName,
           duration: source.duration,
+          generateSummary: args.autoGenerateFileImportSummary,
         }),
       });
 
@@ -387,12 +409,18 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         title?: string;
         text?: string;
         cleanText?: string;
+        usage?: {
+          inputTokens: number;
+          outputTokens: number;
+          totalTokens: number;
+        };
         error?: string;
       };
 
       if (!response.ok || !(data.cleanText || data.text)) {
         throw new Error(data.error || "transcript kin transfer failed");
       }
+      args.applyIngestUsage(normalizeUsage(data.usage));
 
       const cleanTranscript = cleanYouTubeTranscriptText(data.cleanText || data.text || "");
       const blocks = buildYouTubeTranscriptKinBlocks({
@@ -420,6 +448,8 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
           },
         },
       ]);
+    } finally {
+      args.setGptLoading(false);
     }
   };
 

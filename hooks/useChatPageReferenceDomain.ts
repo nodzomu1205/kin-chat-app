@@ -32,6 +32,7 @@ type UseChatPageReferenceDomainArgs = {
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
   gptMessages: Message[];
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  setIngestLoading: React.Dispatch<React.SetStateAction<boolean>>;
   gptMemoryRuntime: GptMemoryRuntime;
   applyChatUsage: (
     usage: Parameters<typeof normalizeUsage>[0],
@@ -122,6 +123,7 @@ export function useChatPageReferenceDomain(
     currentTaskId: args.currentTaskId,
     recordIngestedDocument,
     setGptMessages: args.setGptMessages,
+    setIngestLoading: args.setIngestLoading,
     applyIngestUsage: args.applyIngestUsage,
     focusGptPanel: args.focusGptPanel,
   });

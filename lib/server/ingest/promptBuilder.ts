@@ -16,6 +16,37 @@ export function buildIngestPrompt(params: {
   const { file, mimeType, uploadKind, mode, detail, readPolicy } = params;
 
   if (uploadKind === "visual") {
+    const isTextFirstMax = readPolicy === "text_first" && detail === "max";
+    const outputPlan =
+      detail === "max" && readPolicy === "text_first"
+        ? `
+Output plan:
+- Put the full extracted document text in rawText.
+- Set structuredSummary, kinCompact, and kinDetailed to empty arrays unless there are short non-duplicative warnings or visual notes.
+        `.trim()
+        : detail === "max"
+          ? `
+Output plan:
+- Put the useful high-detail extraction in kinDetailed only.
+- Set rawText to an empty string.
+- Set structuredSummary and kinCompact to empty arrays.
+          `.trim()
+          : detail === "detailed"
+            ? `
+Output plan:
+- Put one complete medium-detail coverage digest in kinDetailed only.
+- Preserve fixed sets, enumerations, steps, comparisons, and stated counts; compress evenly instead of dropping later items.
+- Set rawText to an empty string.
+- Set structuredSummary and kinCompact to empty arrays.
+            `.trim()
+            : `
+Output plan:
+- Put one compact high-signal digest in kinCompact only.
+- Preserve explicit counts and include every named item when the source presents a fixed set.
+- Use complete short lines; do not end an item with an ellipsis.
+- Set rawText to an empty string.
+- Set structuredSummary and kinDetailed to empty arrays.
+            `.trim();
     const detailInstruction =
       detail === "max"
         ? "Use very high granularity when describing layouts, figures, images, and visible text."
@@ -35,6 +66,13 @@ Reading policy: text-first.
 - structuredSummary should summarize the textual content first.
 - kinCompact should be concise text-first notes.
 - kinDetailed should preserve more original wording and order, then add only necessary visual notes.
+${isTextFirstMax
+  ? `
+- For text-first max, rawText is the single full-text authority.
+- Do not repeat the extracted text in structuredSummary, kinCompact, or kinDetailed.
+- Use structuredSummary, kinCompact, and kinDetailed only for short non-duplicative notes; otherwise return empty arrays for them.
+  `.trim()
+  : ""}
       `.trim()
         : readPolicy === "visual_first"
           ? `
@@ -72,6 +110,8 @@ Rules:
 
 ${policyInstruction}
 
+${outputPlan}
+
 Return exactly this JSON shape:
 {
   "title": string,
@@ -84,13 +124,38 @@ Return exactly this JSON shape:
 }
 
 Constraints:
-- kinCompact: short, high-signal lines
-- kinDetailed: richer and longer than kinCompact when useful
+- Populate only the output field named in Output plan.
+- Do not generate multiple alternate versions of the same content.
+- Avoid duplicate text across JSON fields.
 - No emotional language
 - No first-person voice
 `.trim();
   }
 
+  const textOutputPlan =
+    mode === "max"
+      ? `
+Output plan:
+- Put the full extracted text in kinDetailed only.
+- Set rawText to an empty string.
+- Set structuredSummary and kinCompact to empty arrays.
+      `.trim()
+      : mode === "detailed"
+        ? `
+Output plan:
+- Put one complete medium-detail coverage digest in kinDetailed only.
+- Preserve fixed sets, enumerations, steps, comparisons, and stated counts; compress evenly instead of dropping later items.
+- Set rawText to an empty string.
+- Set structuredSummary and kinCompact to empty arrays.
+        `.trim()
+        : `
+Output plan:
+- Put one compact high-signal digest in kinCompact only.
+- Preserve explicit counts and include every named item when the source presents a fixed set.
+- Use complete short lines; do not end an item with an ellipsis.
+- Set rawText to an empty string.
+- Set structuredSummary and kinDetailed to empty arrays.
+        `.trim();
   const fullModeInstruction =
     mode === "max"
       ? `
@@ -128,6 +193,8 @@ Rules:
 
 ${fullModeInstruction}
 
+${textOutputPlan}
+
 Return exactly this JSON shape:
 {
   "title": string,
@@ -140,8 +207,9 @@ Return exactly this JSON shape:
 }
 
 Constraints:
-- kinCompact: 4 to 12 short high-signal lines
-- kinDetailed: richer and longer than kinCompact when useful
+- Populate only the output field named in Output plan.
+- Do not generate multiple alternate versions of the same content.
+- Avoid duplicate text across JSON fields.
 - No emotional language
 - No first-person voice
 `.trim();

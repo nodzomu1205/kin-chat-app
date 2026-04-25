@@ -9,6 +9,11 @@ export type YouTubeTranscriptApiResponse = {
   text?: string;
   cleanText?: string;
   summary?: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
   error?: string;
 };
 

@@ -4,8 +4,8 @@ import type {
   IngestMode,
 } from "@/lib/server/ingest/routeHelpers";
 import {
-  chooseIntermediateLines,
   chooseLinesWithinBudget,
+  splitRawTextIntoLines,
 } from "@/lib/server/ingest/routeHelpers";
 
 export function resolveIngestResultSelection(params: {
@@ -16,6 +16,7 @@ export function resolveIngestResultSelection(params: {
   compactCharLimit: number;
   simpleImageCharLimit: number;
   normalized: {
+    rawText?: string;
     structuredSummary: string[];
     kinCompact: string[];
     kinDetailed: string[];
@@ -23,29 +24,35 @@ export function resolveIngestResultSelection(params: {
 }) {
   let selectedLines: string[] = [];
   let summaryLevel = "kin_compact";
+  const compactLines =
+    params.normalized.kinCompact.length > 0
+      ? params.normalized.kinCompact
+      : chooseLinesWithinBudget(
+          params.normalized.structuredSummary,
+          [],
+          params.uploadKind === "visual"
+            ? params.simpleImageCharLimit
+            : params.compactCharLimit
+        );
 
   if (params.uploadKind === "visual") {
     if (params.readPolicy === "text_first") {
+      const rawTextLines =
+        params.detail === "max" && params.normalized.rawText?.trim()
+          ? splitRawTextIntoLines(params.normalized.rawText)
+          : [];
       selectedLines =
-        params.detail === "max"
+        rawTextLines.length > 0
+          ? rawTextLines
+          : params.detail === "max"
           ? params.normalized.kinDetailed.length > 0
             ? params.normalized.kinDetailed
             : params.normalized.kinCompact
           : params.detail === "detailed"
-            ? chooseIntermediateLines(
-                params.normalized.kinDetailed,
-                params.normalized.kinCompact,
-                {
-                  ratio: 0.6,
-                  min: Math.max(700, params.simpleImageCharLimit + 180),
-                  max: 2200,
-                }
-              )
-            : chooseLinesWithinBudget(
-                params.normalized.kinCompact,
-                params.normalized.structuredSummary,
-                params.simpleImageCharLimit
-              );
+            ? params.normalized.kinDetailed.length > 0
+              ? params.normalized.kinDetailed
+              : params.normalized.kinCompact
+            : compactLines;
       summaryLevel =
         params.detail === "max" ? "visual_text_first_max" : "visual_text_first";
     } else if (params.readPolicy === "hybrid") {
@@ -55,39 +62,19 @@ export function resolveIngestResultSelection(params: {
             ? params.normalized.kinDetailed
             : params.normalized.kinCompact
           : params.detail === "detailed"
-            ? chooseIntermediateLines(
-                params.normalized.kinDetailed,
-                params.normalized.kinCompact,
-                {
-                  ratio: 0.62,
-                  min: Math.max(720, params.simpleImageCharLimit + 220),
-                  max: 2400,
-                }
-              )
-            : chooseLinesWithinBudget(
-                params.normalized.kinCompact,
-                params.normalized.structuredSummary,
-                params.simpleImageCharLimit
-              );
+            ? params.normalized.kinDetailed.length > 0
+              ? params.normalized.kinDetailed
+              : params.normalized.kinCompact
+            : compactLines;
       summaryLevel = params.detail === "max" ? "visual_hybrid_max" : "visual_hybrid";
     } else {
       selectedLines =
         params.detail === "simple"
-          ? chooseLinesWithinBudget(
-              params.normalized.kinCompact,
-              params.normalized.structuredSummary,
-              params.simpleImageCharLimit
-            )
+          ? compactLines
           : params.detail === "detailed"
-            ? chooseIntermediateLines(
-                params.normalized.kinDetailed,
-                params.normalized.kinCompact,
-                {
-                  ratio: 0.65,
-                  min: Math.max(760, params.simpleImageCharLimit + 260),
-                  max: 2600,
-                }
-              )
+            ? params.normalized.kinDetailed.length > 0
+              ? params.normalized.kinDetailed
+              : params.normalized.kinCompact
             : params.normalized.kinDetailed.length > 0
               ? params.normalized.kinDetailed
               : params.normalized.kinCompact;
@@ -106,20 +93,10 @@ export function resolveIngestResultSelection(params: {
           ? params.normalized.kinDetailed
           : params.normalized.kinCompact
         : params.mode === "detailed"
-          ? chooseIntermediateLines(
-              params.normalized.kinDetailed,
-              params.normalized.kinCompact,
-              {
-                ratio: 0.58,
-                min: Math.max(800, params.compactCharLimit + 240),
-                max: 2600,
-              }
-            )
-          : chooseLinesWithinBudget(
-              params.normalized.kinCompact,
-              params.normalized.structuredSummary,
-              params.compactCharLimit
-            );
+          ? params.normalized.kinDetailed.length > 0
+            ? params.normalized.kinDetailed
+            : params.normalized.kinCompact
+          : compactLines;
 
     summaryLevel =
       params.mode === "max"
