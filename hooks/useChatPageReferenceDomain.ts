@@ -9,7 +9,7 @@ import { useStoredDocumentUiActions } from "@/hooks/useStoredDocumentUiActions";
 import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import type { GptMemoryRuntime } from "@/lib/app/ui-state/chatPageGptMemoryControls";
 import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
-import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import type { SearchContext } from "@/types/task";
 

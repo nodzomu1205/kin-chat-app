@@ -4,14 +4,14 @@ import React from "react";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
   TopicDecision,
   UserUtteranceIntent,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import {
   buttonPrimary,
   buttonSecondaryWide,

@@ -6,7 +6,7 @@ import {
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 
 const buildCandidate = (
   id: string,

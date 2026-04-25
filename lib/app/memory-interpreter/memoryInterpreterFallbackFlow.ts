@@ -1,8 +1,8 @@
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import type {
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import {
   buildMemoryFallbackPrompt,
   tryParseMemoryFallbackJson,

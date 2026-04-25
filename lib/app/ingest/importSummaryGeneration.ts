@@ -4,7 +4,7 @@ import {
 } from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
-import { addUsage, normalizeUsage } from "@/lib/tokenStats";
+import { addUsage, normalizeUsage } from "@/lib/shared/tokenStats";
 
 type NormalizedUsage = ReturnType<typeof normalizeUsage>;
 

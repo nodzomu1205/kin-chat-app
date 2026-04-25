@@ -1,9 +1,9 @@
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import {
   buildInterpretedMemoryState,
 } from "@/lib/app/memory-interpreter/memoryInterpreterStateAssembly";

@@ -1,7 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import type { KinMemoryState, Message, MessageMeta } from "@/types/chat";
-import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 
 export type TaskMemoryBridgeArgs = {
   setGptState: Dispatch<SetStateAction<KinMemoryState>>;

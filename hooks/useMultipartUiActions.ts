@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import {
   processMultipartTaskDoneText as processMultipartTaskDoneTextBase,
   type TaskCharConstraint,

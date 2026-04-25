@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import {
   buildMergedTaskInput,
   buildTaskInput,
@@ -25,7 +25,7 @@ import {
   mergeTaskTitleInstructions,
   resolveGeneratedTaskTitle,
   resolveTaskDraftUserInstruction,
-} from "@/lib/taskTitleGeneration";
+} from "@/lib/task/taskTitleGeneration";
 import type {
   PrepTaskFromInputFlowArgs,
   UpdateTaskFromInputFlowArgs,

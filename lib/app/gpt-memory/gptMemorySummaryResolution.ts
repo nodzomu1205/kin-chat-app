@@ -1,10 +1,10 @@
-import { type MemorySettings } from "@/lib/memory";
+import { type MemorySettings } from "@/lib/memory-domain/memory";
 import {
   normalizeTokenUsage,
   type TokenUsage,
 } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 import type { KinMemoryState, Message } from "@/types/chat";
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 
 function buildCompactedRecentMessages(args: {
   trimmedRecent: Message[];

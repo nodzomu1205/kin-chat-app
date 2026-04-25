@@ -1,4 +1,4 @@
-import type { ApprovedMemoryRule } from "@/lib/memoryInterpreterRules";
+import type { ApprovedMemoryRule } from "@/lib/memory-domain/memoryInterpreterRules";
 import { normalizeText } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 
 type RulePatternMetadata = Pick<

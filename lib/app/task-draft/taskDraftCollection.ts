@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import type { TaskDraft } from "@/types/task";
 import { createEmptyTaskDraft } from "@/types/task";
 

@@ -1,4 +1,4 @@
-import type { MemorySettings } from "@/lib/memory";
+import type { MemorySettings } from "@/lib/memory-domain/memory";
 import type { TokenUsage } from "@/hooks/useGptMemory";
 
 export type LocalMemorySettingsInput = {

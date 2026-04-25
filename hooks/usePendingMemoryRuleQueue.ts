@@ -5,7 +5,7 @@ import { mergePendingMemoryRuleCandidates } from "@/lib/app/memory-rules/memoryR
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 
 type UsePendingMemoryRuleQueueArgs = {
   approvedMemoryRules: ApprovedMemoryRule[];

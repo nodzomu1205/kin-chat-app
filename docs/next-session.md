@@ -114,7 +114,7 @@ boundaries:
 - `taskDraftActionFlows.ts` now delegates prep/update/attach/deepen flows to dedicated modules, and those modules now share recent-message/success-postlude helpers instead of repeating assistant append and summary replay inline
 - fallback debug payload is no longer persisted into memory state, and the obsolete `gptMemoryStateSummaryMerge.ts` branch has been removed so memory compaction now follows one authoritative path
 - `chatPageWorkspaceInputBuilders.ts` now delegates state/actions/services assembly to dedicated builder files, and `sendToGptFlow` helper tests are now split again so guard failures are isolated from step/request builder failures
-- `lib/memory.ts` now declares the task-scoped memory lifecycle explicitly, and `gptMemoryStorage` now clears task-scoped state through that shared helper instead of a separate local cleanup rule
+- `lib/memory-domain/memory.ts` now declares the task-scoped memory lifecycle explicitly, and `gptMemoryStorage` now clears task-scoped state through that shared helper instead of a separate local cleanup rule
 - `useMemoryInterpreterSettings.ts` now reads/writes through `lib/app/memory-rules/memoryRuleStore.ts`, so the memory rule system has one persistence boundary for settings, pending candidates, approved rules, and rejected signatures
 - `useGptMemory.ts` now reads/writes runtime handoff through `lib/app/gpt-memory/gptMemoryRuntime.ts`, so initial load plus update/reapply orchestration no longer lives inline inside the hook
 - `docs/memory-lifecycle.md` now names `stable / task-scoped / displayed-context` memory explicitly, so new memory fields should not be added without choosing one of those lifecycle buckets
@@ -125,6 +125,9 @@ boundaries:
 - search-history app-side state now lives under `lib/app/search-history/`
 - panel/UI state helpers now live under `lib/app/ui-state/`
 - remaining app-side utility clusters now live under dedicated folders such as `gpt-task/`, `youtube-transcript/`, `memory-rules/`, `multipart/`, `task-support/`, `google-drive/`, `auto-bridge/`, and `gpt-context/`
+- task-domain modules now live under `lib/task/`
+- memory-domain modules now live under `lib/memory-domain/`
+- shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
 - file import, Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
 - file and Drive imports now post visible GPT chat completion messages
 - file and Drive imports now share generated-summary resolution and ingest usage
@@ -332,24 +335,24 @@ Why:
 
 Focus:
 
-- `lib/taskIntent.ts`
+- `lib/task/taskIntent.ts`
   - remove or isolate old rewrite-era helpers such as `parseIntentCandidateDraftText(...)`
   - remove dead compatibility carry-through where possible
-- `lib/taskCompilerSections.ts`
+- `lib/task/taskCompilerSections.ts`
   - remove `buildCompletionCriteria(...)`
   - remove `buildRequiredWorkflow(...)`
   - remove `buildOptionalWorkflow(...)`
   - drop tests that only pin dead sections
-- `lib/taskProgress.ts`
+- `lib/task/taskProgress.ts`
   - keep the rule-based `CONSTRAINTS` reader simple and explicit
 
 Primary files:
 
-- `lib/taskIntent.ts`
-- `lib/taskIntentFallback.ts`
-- `lib/taskProgress.ts`
-- `lib/taskCompiler.ts`
-- `lib/taskCompilerSections.ts`
+- `lib/task/taskIntent.ts`
+- `lib/task/taskIntentFallback.ts`
+- `lib/task/taskProgress.ts`
+- `lib/task/taskCompiler.ts`
+- `lib/task/taskCompilerSections.ts`
 
 Reference:
 

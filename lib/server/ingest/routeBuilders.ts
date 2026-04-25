@@ -1,4 +1,4 @@
-import { buildKinSysInfoBlocks, type IngestResult } from "@/lib/kinSysInfo";
+import { buildKinSysInfoBlocks, type IngestResult } from "@/lib/shared/kinSysInfo";
 
 export const OPENAI_INGEST_API_URL = "https://api.openai.com/v1/responses";
 export const MAX_INGEST_BYTES = 20 * 1024 * 1024;

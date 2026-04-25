@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { createSession, getSessions } from "@/lib/storage";
+import { createSession, getSessions } from "@/lib/shared/storage";
 
 export type ChatPageLifecycleArgs = {
   currentKin: string | null;

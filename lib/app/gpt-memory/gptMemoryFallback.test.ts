@@ -8,7 +8,7 @@ import {
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 
 const candidateA: PendingMemoryRuleCandidate = {
   id: "cand-a",

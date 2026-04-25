@@ -1,4 +1,4 @@
-import { buildTaskPrompt } from "@/lib/taskProtocol";
+import { buildTaskPrompt } from "@/lib/task/taskProtocol";
 import type { TaskResult, TaskRequest } from "@/types/task";
 import type { UsageSummary } from "@/lib/server/chatgpt/openaiResponse";
 

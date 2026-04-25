@@ -1,4 +1,4 @@
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import type {
   GptStateSnapshotLike,
   PendingRequestLike,
@@ -7,7 +7,7 @@ import type {
 } from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
 import type { Message } from "@/types/chat";
 import type { SourceItem } from "@/types/chat";
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import {
   buildImplicitSearchRecordArgs,
   buildMemoryUpdateContext,

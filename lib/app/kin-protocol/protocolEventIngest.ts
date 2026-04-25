@@ -1,4 +1,4 @@
-import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
+import { extractTaskProtocolEvents } from "@/lib/task/taskRuntimeProtocol";
 
 type IngestProtocolEventFn = (
   payload: {

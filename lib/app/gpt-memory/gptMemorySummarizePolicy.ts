@@ -1,4 +1,4 @@
-import type { Memory, MemorySettings } from "@/lib/memory";
+import type { Memory, MemorySettings } from "@/lib/memory-domain/memory";
 import type { Message } from "@/types/chat";
 
 export function shouldSummarizeMemoryUpdate(params: {

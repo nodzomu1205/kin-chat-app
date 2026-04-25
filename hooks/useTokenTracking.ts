@@ -14,7 +14,7 @@ import {
   isZeroUsage,
   normalizeUsage,
   resolveLatestPromptMetrics,
-} from "@/lib/tokenStats";
+} from "@/lib/shared/tokenStats";
 
 export function useTokenTracking() {
   const [tokenStats, setTokenStats] = useState<TokenStats>(emptyTokenStats());

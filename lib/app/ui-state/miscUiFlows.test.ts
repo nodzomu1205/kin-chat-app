@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildNextApprovedIntentPhrasesOnApprove } from "@/lib/taskIntent";
+import { buildNextApprovedIntentPhrasesOnApprove } from "@/lib/task/taskIntent";
 import { syncApprovedIntentPhrasesToCurrentTaskFlow } from "@/lib/app/task-runtime/currentTaskIntentRefresh";
 
 describe("miscUiFlows", () => {

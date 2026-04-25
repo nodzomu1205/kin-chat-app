@@ -1,5 +1,5 @@
 import { parseSearchContinuation } from "@/lib/search-domain/continuations";
-import { extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
+import { extractTaskProtocolEvents } from "@/lib/task/taskRuntimeProtocol";
 import type {
   DerivedSearchContext,
   ParsedInputLike,

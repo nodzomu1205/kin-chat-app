@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import { handleYoutubeTranscriptFlow } from "@/lib/app/send-to-gpt/sendToGptYoutubeFlow";
 import { runInlineUrlShortcut } from "@/lib/app/send-to-gpt/sendToGptShortcutFlows";
 import {
@@ -6,7 +6,7 @@ import {
   resolvePreparedRequestGateDecision,
 } from "@/lib/app/send-to-gpt/sendToGptFlowDecisionState";
 import type { Dispatch, SetStateAction } from "react";
-import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import type {
   InlineUrlGateContext,

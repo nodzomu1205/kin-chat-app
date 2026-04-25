@@ -3,7 +3,7 @@ import {
   buildProtocolSearchRecordArgs,
   buildSourceItems,
 } from "@/lib/app/send-to-gpt/sendToGptFlowResponseBuilders";
-import { buildUserResponseBlock } from "@/lib/taskRuntimeProtocol";
+import { buildUserResponseBlock } from "@/lib/task/taskRuntimeProtocol";
 import type {
   ChatApiSearchLike,
   PendingRequestLike,

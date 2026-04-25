@@ -1,7 +1,7 @@
 import {
   type Memory,
   type MemorySettings,
-} from "@/lib/memory";
+} from "@/lib/memory-domain/memory";
 import {
   normalizeMemoryContextState,
 } from "@/lib/app/memory-interpreter/memoryInterpreterContextReducer";

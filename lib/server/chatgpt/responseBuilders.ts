@@ -1,5 +1,5 @@
 import type { UsageSummary } from "@/lib/server/chatgpt/openaiResponse";
-import type { ChatPromptMetrics } from "@/lib/chatPromptMetrics";
+import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
 
 type ChatRouteSource = {
   title: string;

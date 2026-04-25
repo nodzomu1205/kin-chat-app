@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import ChatPanelsLayout from "@/components/ChatPanelsLayout";
+import ChatPanelsLayout from "@/components/layout/ChatPanelsLayout";
 import { useKinManager } from "@/hooks/useKinManager";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useAutoBridgeSettings } from "@/hooks/useAutoBridgeSettings";

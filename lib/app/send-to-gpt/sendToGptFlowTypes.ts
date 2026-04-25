@@ -1,14 +1,14 @@
 import type { Message, SourceItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { ReferenceLibraryItem } from "@/types/chat";
 import type { TaskProtocolEvent, TaskRuntimeState } from "@/types/taskProtocol";
-import type { ConversationUsageOptions } from "@/lib/tokenStats";
-import type { ChatPromptMetrics } from "@/lib/chatPromptMetrics";
+import type { ConversationUsageOptions } from "@/lib/shared/tokenStats";
+import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
 
 export type ParsedInputLike = {
   searchQuery?: string;
@@ -50,7 +50,7 @@ export type SearchSource = {
 
 export type ChatApiSearchLike = {
   reply?: string;
-  usage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
+  usage?: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0];
   usageDetails?: Record<string, unknown> | null;
   promptMetrics?: ChatPromptMetrics | null;
   searchUsed?: boolean;
@@ -142,8 +142,8 @@ export type SearchContextRecorder = (args: {
 }) => SearchRecord;
 
 export type MemoryResultLike = {
-  compressionUsage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
-  fallbackUsage?: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0];
+  compressionUsage?: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0];
+  fallbackUsage?: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0];
   fallbackUsageDetails?: Record<string, unknown> | null;
   fallbackMetrics?: {
     promptChars: number;
@@ -159,9 +159,9 @@ export type SendToGptFlowSearchArgs = {
   recordSearchContext: SearchContextRecorder;
   getContinuationTokenForSeries: (seriesId: string) => string;
   getAskAiModeLinkForQuery: (query: string) => string;
-  applySearchUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applySearchUsage: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
   applyChatUsage: (
-    usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0],
+    usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0],
     options?: ConversationUsageOptions
   ) => void;
 };
@@ -188,8 +188,8 @@ export type SendToGptFlowMemoryArgs = {
     recent: Message[],
     options?: MemoryUpdateOptions
   ) => Promise<MemoryResultLike>;
-  applyCompressionUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
-  applyIngestUsage?: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applyCompressionUsage: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
+  applyIngestUsage?: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
   chatRecentLimit: number;
   gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: Memory }>;
 };
@@ -330,16 +330,16 @@ export type SendToGptImplicitSearchArtifactsArgs = {
   cleanQuery?: string;
   effectiveParsedSearchQuery?: string;
   finalRequestText: string;
-  applySearchUsage: (usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0]) => void;
+  applySearchUsage: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
   applyChatUsage: (
-    usage: Parameters<typeof import("@/lib/tokenStats").normalizeUsage>[0],
+    usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0],
     options?: ConversationUsageOptions
   ) => void;
   recordSearchContext: SearchContextRecorder;
 };
 
 export type ProtocolInteractionContext = {
-  protocolEvents: ReturnType<typeof import("@/lib/taskRuntimeProtocol").extractTaskProtocolEvents>;
+  protocolEvents: ReturnType<typeof import("@/lib/task/taskRuntimeProtocol").extractTaskProtocolEvents>;
   askGptEvent?: ProtocolTaskEventLike;
   searchRequestEvent?: SearchResponseEventLike;
   youtubeTranscriptRequestEvent?: TaskProtocolEvent & { url?: string };

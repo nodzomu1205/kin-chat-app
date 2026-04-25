@@ -32,7 +32,7 @@ import type {
   PendingMemoryRuleCandidate,
   TopicDecision,
   UserUtteranceIntent,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 
 type ApprovalSectionApprovedItem = {
   id: string;

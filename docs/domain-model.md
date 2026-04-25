@@ -83,8 +83,8 @@ Important concepts:
 
 Current main files:
 
-- [`lib/taskIntent.ts`](../lib/taskIntent.ts)
-- [`lib/taskCompiler.ts`](../lib/taskCompiler.ts)
+- [`lib/task/taskIntent.ts`](../lib/task/taskIntent.ts)
+- [`lib/task/taskCompiler.ts`](../lib/task/taskCompiler.ts)
 - [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
 
 ### Protocol
@@ -102,7 +102,7 @@ Current protocol blocks:
 
 Current main files:
 
-- [`lib/taskRuntimeProtocol.ts`](../lib/taskRuntimeProtocol.ts)
+- [`lib/task/taskRuntimeProtocol.ts`](../lib/task/taskRuntimeProtocol.ts)
 - [`lib/app/kin-protocol/kinProtocolDefaults.ts`](../lib/app/kin-protocol/kinProtocolDefaults.ts)
 - [`lib/app/kin-protocol/kinMultipart.ts`](../lib/app/kin-protocol/kinMultipart.ts)
 

@@ -1,8 +1,8 @@
 import type React from "react";
-import type { MemorySettings } from "@/lib/memory";
+import type { MemorySettings } from "@/lib/memory-domain/memory";
 import type { KinMemoryState, Message } from "@/types/chat";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
-import type { normalizeUsage } from "@/lib/tokenStats";
+import type { normalizeUsage } from "@/lib/shared/tokenStats";
 
 export type GptMemoryRuntime = {
   gptStateRef: React.MutableRefObject<KinMemoryState>;

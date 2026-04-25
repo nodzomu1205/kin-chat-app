@@ -13,7 +13,7 @@ import {
 import {
   buildTaskDraftProjectionFromProtocol,
   type TaskDraftProtocolProjectionParams,
-} from "@/lib/taskDraftProjection";
+} from "@/lib/task/taskDraftProjection";
 import type { Message } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 

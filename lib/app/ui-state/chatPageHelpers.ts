@@ -1,4 +1,4 @@
-import type { PendingIntentCandidate } from "@/lib/taskIntent";
+import type { PendingIntentCandidate } from "@/lib/task/taskIntent";
 
 export function getIntentCandidateSignature(candidate: {
   kind: string;

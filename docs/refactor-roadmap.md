@@ -212,7 +212,7 @@ Why second:
 Primary authority:
 - `hooks/useTaskProtocolActions.ts`
 - `hooks/useTaskDraftHelpers.ts`
-- `lib/taskProtocolTaskState.ts`
+- `lib/task/taskProtocolTaskState.ts`
 - `lib/app/task-runtime/kinTaskFlow.ts`
 - `lib/app/task-runtime/kinTransferFlows.ts`
 - `lib/app/ui-state/miscUiFlows.ts`
@@ -294,6 +294,9 @@ Recent progress:
 - remaining app-side utility clusters now live under dedicated folders:
   `gpt-task/`, `youtube-transcript/`, `memory-rules/`, `multipart/`,
   `task-support/`, `google-drive/`, `auto-bridge/`, and `gpt-context/`
+- task-domain modules now live under `lib/task/`
+- memory-domain modules now live under `lib/memory-domain/`
+- shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
 - `/api/ingest` prompts now use one output authority per mode:
   - `compact` -> `kinCompact`
   - `detailed` -> `kinDetailed`
@@ -401,8 +404,8 @@ Use this table before editing. If a change would cross multiple rows, pause and 
 
 | Domain | Source of truth | Should own | Should not own |
 | --- | --- | --- | --- |
-| Task intent discovery | `lib/taskIntent.ts`, `lib/taskIntentFallback.ts` | candidate extraction and approval-aware interpretation | transport assembly, UI field sync |
-| Task runtime state | `lib/taskProtocolTaskState.ts`, `hooks/useKinTaskProtocol.ts` | task lifecycle state and protocol transitions | panel rendering or ad-hoc string formatting |
+| Task intent discovery | `lib/task/taskIntent.ts`, `lib/task/taskIntentFallback.ts` | candidate extraction and approval-aware interpretation | transport assembly, UI field sync |
+| Task runtime state | `lib/task/taskProtocolTaskState.ts`, `hooks/useKinTaskProtocol.ts` | task lifecycle state and protocol transitions | panel rendering or ad-hoc string formatting |
 | Task draft sync | `hooks/useTaskDraftHelpers.ts` | editable page draft projection | intent classification or Kin send policy |
 | Kin task transport | `lib/app/task-runtime/kinTaskFlow.ts`, `lib/app/task-runtime/kinTransferFlows.ts` | compiled SYS block delivery and injection | deciding what the task means |
 | Topic fallback | `lib/app/memory-interpreter/memoryInterpreterFallbackOrchestrator.ts` | approved-fragment shortcut and LLM fallback orchestration | broad entry-side pre-classification |
@@ -586,7 +589,7 @@ Done:
 - task-progress runtime now exposes direct archive support used by the progress UI clear button
 
 Next:
-- physically remove dead compatibility-era helpers from `lib/taskIntent.ts` so the active runtime path is easier to audit
+- physically remove dead compatibility-era helpers from `lib/task/taskIntent.ts` so the active runtime path is easier to audit
 - decide whether `addPendingRequest` should also move to a pure helper
 - continue Priority 4 by deciding whether `useResponsive.ts` should stay heuristic-only or graduate into a broader layout-mode boundary with explicit narrow-desktop tests
 
@@ -723,10 +726,10 @@ Done:
 - `docs/ingest-pipeline.md` now documents the current ingest boundaries so device import and Drive import do not drift into separate private helper stacks
 - approved-candidate reapply now uses the same formal memory recomputation path as approved-rule reapply
 - fallback debug payload is no longer persisted inside memory state, and the obsolete summary-merge branch `gptMemoryStateSummaryMerge.ts` has been removed so recent-message compaction now has one authoritative path
-- `lib/memory.ts` now declares task-scoped memory keys explicitly and `gptMemoryStorage` clears task-scoped state through that shared lifecycle helper instead of a private local cleanup path
+- `lib/memory-domain/memory.ts` now declares task-scoped memory keys explicitly and `gptMemoryStorage` clears task-scoped state through that shared lifecycle helper instead of a private local cleanup path
 - `useMemoryInterpreterSettings.ts` now delegates rule-store persistence to `lib/app/memory-rules/memoryRuleStore.ts`, so interpreter settings, pending candidates, approved rules, and rejected signatures share one persistence boundary
 - `useGptMemory.ts` now delegates runtime load/update/reapply orchestration to `lib/app/gpt-memory/gptMemoryRuntime.ts`, shrinking the hook toward a lifecycle facade and giving memory runtime handoff its own tested boundary
-- `docs/memory-lifecycle.md` now fixes the intended split between stable memory, task-scoped memory, and displayed-context memory, and `lib/memory.ts` exposes matching lifecycle key lists
+- `docs/memory-lifecycle.md` now fixes the intended split between stable memory, task-scoped memory, and displayed-context memory, and `lib/memory-domain/memory.ts` exposes matching lifecycle key lists
 - token accounting now restores total-token aggregation, counts memory compaction inside conversation recent/cumulative usage, relabels the old summary line as compaction, and routes ingest-time summary generation usage into the ingest bucket
 - closing-reply detection now uses a single source of truth
 - chat topic adjudication flow was structurally rebuilt and reached a stable live-reviewed state
@@ -765,17 +768,17 @@ Done:
 - [`lib/server/chatgpt/promptBuilders.test.ts`](../lib/server/chatgpt/promptBuilders.test.ts)
 - [`lib/server/chatgpt/openaiResponse.test.ts`](../lib/server/chatgpt/openaiResponse.test.ts)
 - [`lib/app/kin-protocol/kinMultipart.test.ts`](../lib/app/kin-protocol/kinMultipart.test.ts)
-- [`lib/taskIntent.test.ts`](../lib/taskIntent.test.ts)
-- [`lib/taskProgress.test.ts`](../lib/taskProgress.test.ts)
-- [`lib/taskProgressPolicy.test.ts`](../lib/taskProgressPolicy.test.ts)
+- [`lib/task/taskIntent.test.ts`](../lib/task/taskIntent.test.ts)
+- [`lib/task/taskProgress.test.ts`](../lib/task/taskProgress.test.ts)
+- [`lib/task/taskProgressPolicy.test.ts`](../lib/task/taskProgressPolicy.test.ts)
 - [`lib/server/youtubeTranscriptHelpers.test.ts`](../lib/server/youtubeTranscriptHelpers.test.ts)
-- [`lib/taskProtocolParser.test.ts`](../lib/taskProtocolParser.test.ts)
-- [`lib/taskProtocolRuntime.test.ts`](../lib/taskProtocolRuntime.test.ts)
-- [`lib/taskProtocolIngest.test.ts`](../lib/taskProtocolIngest.test.ts)
-- [`lib/taskProtocolState.test.ts`](../lib/taskProtocolState.test.ts)
-- [`lib/taskProtocolMutations.test.ts`](../lib/taskProtocolMutations.test.ts)
-- [`lib/taskProtocolTaskState.test.ts`](../lib/taskProtocolTaskState.test.ts)
-- [`lib/taskCompiler.test.ts`](../lib/taskCompiler.test.ts)
+- [`lib/task/taskProtocolParser.test.ts`](../lib/task/taskProtocolParser.test.ts)
+- [`lib/task/taskProtocolRuntime.test.ts`](../lib/task/taskProtocolRuntime.test.ts)
+- [`lib/task/taskProtocolIngest.test.ts`](../lib/task/taskProtocolIngest.test.ts)
+- [`lib/task/taskProtocolState.test.ts`](../lib/task/taskProtocolState.test.ts)
+- [`lib/task/taskProtocolMutations.test.ts`](../lib/task/taskProtocolMutations.test.ts)
+- [`lib/task/taskProtocolTaskState.test.ts`](../lib/task/taskProtocolTaskState.test.ts)
+- [`lib/task/taskCompiler.test.ts`](../lib/task/taskCompiler.test.ts)
 - [`lib/memory.test.ts`](../lib/memory.test.ts)
 - [`lib/app/gpt-memory/gptMemoryStateHelpers.test.ts`](../lib/app/gpt-memory/gptMemoryStateHelpers.test.ts)
 - [`lib/app/gpt-memory/gptMemorySummarizePolicy.test.ts`](../lib/app/gpt-memory/gptMemorySummarizePolicy.test.ts)

@@ -1,13 +1,13 @@
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import {
   getMemoryRulePhraseSignature,
   getMemoryRuleReviewSignature,
   getMemoryRuleSignature,
   getMemoryRuleSourceSignature,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 
 export function trimPendingMemoryRuleCandidates(
   items: PendingMemoryRuleCandidate[]

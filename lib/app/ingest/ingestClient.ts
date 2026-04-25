@@ -13,7 +13,7 @@ import type {
   IngestMode,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
 
 export type SharedIngestOptions = {
   kind: UploadKind;

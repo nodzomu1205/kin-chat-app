@@ -1,6 +1,6 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import type { MemorySettings } from "@/lib/memory";
-import type { ChatPromptMetrics } from "@/lib/chatPromptMetrics";
+import type { MemorySettings } from "@/lib/memory-domain/memory";
+import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
 import type {
   Message,
   MultipartAssembly,
@@ -12,12 +12,12 @@ import type { SearchContext, SearchEngine, SearchMode, TaskDraft } from "@/types
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import type {
   TaskRequirementProgress,
   TaskExecutionStatus,

@@ -1,4 +1,4 @@
-import { DEFAULT_MEMORY_SETTINGS, type MemorySettings } from "@/lib/memory";
+import { DEFAULT_MEMORY_SETTINGS, type MemorySettings } from "@/lib/memory-domain/memory";
 import {
   clearTaskScopedMemoryState,
   loadKinMemoryMapFromStorage,

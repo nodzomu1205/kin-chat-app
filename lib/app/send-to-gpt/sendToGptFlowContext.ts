@@ -1,4 +1,4 @@
-import { parseTaskInput } from "@/lib/taskInputParser";
+import { parseTaskInput } from "@/lib/task/taskInputParser";
 import { parseSearchContinuation } from "@/lib/search-domain/continuations";
 import type {
   ParsedInputLike,

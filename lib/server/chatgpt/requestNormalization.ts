@@ -2,7 +2,7 @@ import {
   createEmptyMemory,
   normalizeMemoryShape,
   safeParseMemory,
-} from "@/lib/memory";
+} from "@/lib/memory-domain/memory";
 
 export type ChatRouteMode = "chat" | "compact_recent" | "memory_interpret";
 

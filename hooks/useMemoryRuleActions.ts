@@ -3,13 +3,13 @@ import {
   getMemoryRuleReviewSignature,
   getMemoryRuleSignature,
   getMemoryRuleSourceSignature,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import { buildApprovedRuleFromCandidate } from "@/lib/app/gpt-memory/gptMemoryApproval";
 import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import type { Dispatch, SetStateAction } from "react";
 
 type Params = {

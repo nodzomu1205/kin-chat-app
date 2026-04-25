@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ServiceWorkerRegister from "../components/ServiceWorkerRegister";
-import InstallButton from "../components/InstallButton";
+import ServiceWorkerRegister from "../components/pwa/ServiceWorkerRegister";
+import InstallButton from "../components/pwa/InstallButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

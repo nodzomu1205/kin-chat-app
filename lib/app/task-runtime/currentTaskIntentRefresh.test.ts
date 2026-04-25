@@ -4,7 +4,7 @@ const { resolveTaskIntentWithFallbackMock } = vi.hoisted(() => ({
   resolveTaskIntentWithFallbackMock: vi.fn(),
 }));
 
-vi.mock("@/lib/taskIntent", () => ({
+vi.mock("@/lib/task/taskIntent", () => ({
   resolveTaskIntentWithFallback: resolveTaskIntentWithFallbackMock,
 }));
 

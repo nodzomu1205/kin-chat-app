@@ -1,4 +1,4 @@
-import { parseTaskInput } from "@/lib/taskInputParser";
+import { parseTaskInput } from "@/lib/task/taskInputParser";
 import { resolveDraftTitle } from "@/lib/app/task-support/contextNaming";
 import type { TaskDraft } from "@/types/task";
 

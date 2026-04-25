@@ -4,7 +4,7 @@ import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 
 const candidate: PendingMemoryRuleCandidate = {
   id: "memcand-1",

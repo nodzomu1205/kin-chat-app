@@ -4,7 +4,7 @@ import {
   buildProtocolBlock,
   buildProtocolLine,
   buildProtocolSection,
-} from "@/lib/protocolBlockBuilders";
+} from "@/lib/shared/protocolBlockBuilders";
 
 export function buildAskGptRequestBlock(params: {
   taskId: string;

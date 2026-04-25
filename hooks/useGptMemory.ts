@@ -6,7 +6,7 @@ import {
   type Memory,
   type MemorySettings,
   DEFAULT_MEMORY_SETTINGS,
-} from "@/lib/memory";
+} from "@/lib/memory-domain/memory";
 import {
   type TokenUsage,
 } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
@@ -28,7 +28,7 @@ import {
   runGptMemoryRuntimeUpdate,
   type GptMemoryRuntimeConfig,
 } from "@/lib/app/gpt-memory/gptMemoryRuntime";
-import type { ApprovedMemoryRule, PendingMemoryRuleCandidate } from "@/lib/memoryInterpreterRules";
+import type { ApprovedMemoryRule, PendingMemoryRuleCandidate } from "@/lib/memory-domain/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { KinMemoryState, Message } from "@/types/chat";
 

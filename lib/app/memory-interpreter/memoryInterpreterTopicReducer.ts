@@ -1,4 +1,4 @@
-import type { PendingMemoryRuleCandidate, TopicDecision, UserUtteranceIntent } from "@/lib/memoryInterpreterRules";
+import type { PendingMemoryRuleCandidate, TopicDecision, UserUtteranceIntent } from "@/lib/memory-domain/memoryInterpreterRules";
 import type { MemoryInterpreterFallbackResponse } from "@/lib/app/memory-interpreter/memoryInterpreterFallbackHelpers";
 import { buildPatternMetadata } from "@/lib/app/memory-interpreter/memoryInterpreterPatternMemory";
 import type { MemoryUtteranceClassification } from "@/lib/app/memory-interpreter/memoryInterpreterUtterance";

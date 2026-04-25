@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createEmptyMemory } from "@/lib/memory";
+import { createEmptyMemory } from "@/lib/memory-domain/memory";
 import {
   buildChatCompletionMessages,
   buildChatPromptMetrics,

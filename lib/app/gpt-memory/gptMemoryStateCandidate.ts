@@ -1,4 +1,4 @@
-import { mergeMemory, type Memory, type MemorySettings } from "@/lib/memory";
+import { mergeMemory, type Memory, type MemorySettings } from "@/lib/memory-domain/memory";
 import { interpretMemoryState } from "@/lib/app/memory-interpreter/memoryInterpreter";
 import {
   isClosingReplyText,

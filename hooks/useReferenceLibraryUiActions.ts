@@ -7,7 +7,7 @@ import {
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import type { GptMemoryRuntime } from "@/lib/app/ui-state/chatPageGptMemoryControls";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
-import type { ConversationUsageOptions, normalizeUsage } from "@/lib/tokenStats";
+import type { ConversationUsageOptions, normalizeUsage } from "@/lib/shared/tokenStats";
 
 type UseReferenceLibraryUiActionsArgs = {
   getLibraryItemById: (itemId: string) => ReferenceLibraryItem | null;

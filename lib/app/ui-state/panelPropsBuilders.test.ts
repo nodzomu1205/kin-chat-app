@@ -4,8 +4,8 @@ import {
   clampPanelCount,
   resolvePendingInjectionProgress,
 } from "@/lib/app/ui-state/panelPropsBuilders";
-import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
-import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
+import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory-domain/memory";
+import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memory-domain/memoryInterpreterRules";
 import { createEmptyTaskDraft } from "@/types/task";
 
 describe("panelPropsBuilders", () => {

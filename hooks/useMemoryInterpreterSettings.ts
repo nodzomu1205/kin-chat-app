@@ -5,8 +5,8 @@ import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
-import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
+import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memory-domain/memoryInterpreterRules";
 import {
   loadMemoryRuleStoreState,
   saveApprovedMemoryRulesState,

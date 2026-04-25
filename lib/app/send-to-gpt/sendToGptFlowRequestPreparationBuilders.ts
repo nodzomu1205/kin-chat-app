@@ -1,4 +1,4 @@
-import { buildTaskChatBridgeContext } from "@/lib/taskChatBridge";
+import { buildTaskChatBridgeContext } from "@/lib/task/taskChatBridge";
 import { buildFinalRequestText } from "@/lib/app/send-to-gpt/sendToGptFlowRequestText";
 import type {
   PendingRequestLike,

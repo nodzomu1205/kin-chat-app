@@ -1,5 +1,5 @@
-import { buildLimitExceededBlock, extractTaskProtocolEvents } from "@/lib/taskRuntimeProtocol";
-import { shouldInjectTaskContext } from "@/lib/taskChatBridge";
+import { buildLimitExceededBlock, extractTaskProtocolEvents } from "@/lib/task/taskRuntimeProtocol";
+import { shouldInjectTaskContext } from "@/lib/task/taskChatBridge";
 import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
 import type {
   RunSendToGptFlowArgs,

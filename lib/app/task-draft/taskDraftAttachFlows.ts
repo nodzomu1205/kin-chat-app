@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import {
   buildTaskInput,
   buildTaskStructuredInput,
@@ -25,7 +25,7 @@ import {
   mergeTaskTitleInstructions,
   resolveGeneratedTaskTitle,
   resolveTaskDraftUserInstruction,
-} from "@/lib/taskTitleGeneration";
+} from "@/lib/task/taskTitleGeneration";
 
 export async function runAttachSearchResultToTaskFlow(
   args: AttachSearchResultToTaskFlowArgs

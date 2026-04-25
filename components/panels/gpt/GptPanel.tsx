@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import ChatMessages from "@/components/ChatMessages";
+import ChatMessages from "@/components/message/ChatMessages";
 import DrawerTabs, { type DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import GptDrawerRouter from "@/components/panels/gpt/GptDrawerRouter";
 import GptComposer from "@/components/panels/gpt/GptComposer";

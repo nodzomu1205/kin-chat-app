@@ -1,4 +1,4 @@
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import { extractRecentSearchQueries } from "@/lib/app/memory-interpreter/memoryInterpreterFacts";
 import { resolveTopicFromInputs } from "@/lib/app/memory-interpreter/memoryInterpreterTopicResolution";
 import { resolveActiveDocumentFields } from "@/lib/app/memory-interpreter/memoryInterpreterWorks";

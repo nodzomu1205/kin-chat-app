@@ -12,11 +12,11 @@ import {
   buildYoutubeTranscriptRequestBody,
   resolveYoutubeTranscriptFlowContext,
 } from "@/lib/app/send-to-gpt/sendToGptYoutubeFlowBuilders";
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { Message } from "@/types/chat";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
-import { normalizeUsage, type ConversationUsageOptions } from "@/lib/tokenStats";
+import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 
 type MemoryResultLike = {
   compressionUsage?: Parameters<typeof normalizeUsage>[0];

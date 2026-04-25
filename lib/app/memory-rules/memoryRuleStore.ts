@@ -2,8 +2,8 @@ import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
-import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
+import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memory-domain/memoryInterpreterRules";
 import { trimPendingMemoryRuleCandidates } from "@/lib/app/memory-rules/memoryRuleCandidateQueue";
 import {
   APPROVED_MEMORY_RULES_KEY,

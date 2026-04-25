@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { callOpenAIResponses } from "@/lib/server/chatgpt/openaiClient";
-import { parseTaskResult } from "@/lib/taskParser";
+import { parseTaskResult } from "@/lib/task/taskParser";
 import type { TaskRequest } from "@/types/task";
 import {
   buildTaskResponsesRequest,

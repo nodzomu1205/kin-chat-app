@@ -1,5 +1,5 @@
-import type { Memory, MemorySettings } from "@/lib/memory";
-import type { ApprovedMemoryRule, MemoryInterpreterSettings } from "@/lib/memoryInterpreterRules";
+import type { Memory, MemorySettings } from "@/lib/memory-domain/memory";
+import type { ApprovedMemoryRule, MemoryInterpreterSettings } from "@/lib/memory-domain/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { Message } from "@/types/chat";
 import { type TokenUsage } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";

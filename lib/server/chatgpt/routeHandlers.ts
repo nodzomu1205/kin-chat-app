@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { callOpenAIResponses } from "@/lib/server/chatgpt/openaiClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
-import { parseTaskInput } from "@/lib/taskInputParser";
+import { parseTaskInput } from "@/lib/task/taskInputParser";
 import { generateLibrarySummary } from "@/lib/server/librarySummary/summaryService";
 import {
   buildChatRouteResponse,

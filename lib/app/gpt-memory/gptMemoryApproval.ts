@@ -1,10 +1,10 @@
 import { normalizeMemoryTextValue } from "@/lib/app/gpt-memory/gptMemoryCore";
 import { applyCommittedTopicContext } from "@/lib/app/memory-interpreter/memoryInterpreterContextReducer";
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { KinMemoryState } from "@/types/chat";
 import { buildRuleTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";

@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import {
   buildKinSysInfoBlock,
   buildKinSysTaskBlock,
@@ -7,10 +7,10 @@ import {
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
 import { buildKinDirectiveLines } from "@/lib/app/task-runtime/transformIntent";
 import type { TransformIntent } from "@/lib/app/task-runtime/transformIntent";
-import { addUsage, emptyUsage, normalizeUsage } from "@/lib/tokenStats";
-import type { BucketUsageOptions } from "@/lib/tokenStats";
+import { addUsage, emptyUsage, normalizeUsage } from "@/lib/shared/tokenStats";
+import type { BucketUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
-import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
+import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/task/taskIntent";
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { TaskIntent } from "@/types/taskProtocol";
 import { findLatestTransferableGptMessage } from "@/lib/app/task-support/latestGptMessage";

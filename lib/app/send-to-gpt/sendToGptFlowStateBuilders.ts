@@ -1,4 +1,4 @@
-import { createEmptyMemory, type Memory } from "@/lib/memory";
+import { createEmptyMemory, type Memory } from "@/lib/memory-domain/memory";
 import type {
   GptStateSnapshotLike,
   SendToGptImplicitSearchArtifactsArgs,

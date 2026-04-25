@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import {
   getSavedProtocolDefaults,
   normalizeProtocolRulebook,
@@ -8,10 +8,10 @@ import type { Message } from "@/types/chat";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntentPhraseState";
+} from "@/lib/task/taskIntentPhraseState";
 import {
   buildNextApprovedIntentPhrasesOnApprove,
-} from "@/lib/taskIntentPhraseState";
+} from "@/lib/task/taskIntentPhraseState";
 
 export function prepareTaskRequestAckFlow(args: {
   requestId: string;

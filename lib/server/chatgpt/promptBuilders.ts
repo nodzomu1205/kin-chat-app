@@ -1,5 +1,5 @@
-import { memoryToPrompt } from "@/lib/memory";
-import type { Memory } from "@/lib/memory";
+import { memoryToPrompt } from "@/lib/memory-domain/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import type {
   InstructionMode,
   ReasoningMode,

@@ -3,7 +3,7 @@ import {
   createDefaultTaskName,
   createEmptyTaskDraft,
 } from "@/types/task";
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 
 export function createTaskSource(
   type: TaskSource["type"],

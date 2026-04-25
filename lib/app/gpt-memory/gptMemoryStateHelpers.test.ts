@@ -6,7 +6,7 @@ import {
   trimMemoryState,
 } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 import { buildCandidateMemoryState } from "@/lib/app/gpt-memory/gptMemoryStateCandidate";
-import { DEFAULT_MEMORY_SETTINGS, type Memory } from "@/lib/memory";
+import { DEFAULT_MEMORY_SETTINGS, type Memory } from "@/lib/memory-domain/memory";
 import type { Message } from "@/types/chat";
 
 const interpretMemoryStateMock = vi.fn();

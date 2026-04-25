@@ -1,7 +1,7 @@
 import type {
   ApprovedMemoryRule,
   UserUtteranceIntent,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import { findBestApprovedMemoryRuleMatch } from "@/lib/app/memory-interpreter/memoryInterpreterPatternMemory";
 import {
   isSearchDirectiveText,

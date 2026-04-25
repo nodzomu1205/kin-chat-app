@@ -133,7 +133,7 @@ RAW_RESULT_AVAILABLE: NO
 - Mark the final part clearly.
 
 ## First Implementation Plan
-1. Add `search_request` and `search_response` parsing to `lib/taskRuntimeProtocol.ts`.
+1. Add `search_request` and `search_response` parsing to `lib/task/taskRuntimeProtocol.ts`.
 2. Extend `types/taskProtocol.ts` with any missing event typing for search response state.
 3. Detect `<<SYS_SEARCH_REQUEST>>` in GPT input flow inside `app/page.tsx`.
 4. Convert it into an internal GPT search request using the existing search endpoint.

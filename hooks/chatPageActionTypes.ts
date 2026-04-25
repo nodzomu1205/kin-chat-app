@@ -11,7 +11,7 @@ import type {
   SearchMode,
   TaskDraft,
 } from "@/types/task";
-import type { TaskDraftProtocolProjectionParams } from "@/lib/taskDraftProjection";
+import type { TaskDraftProtocolProjectionParams } from "@/lib/task/taskDraftProjection";
 import type {
   GptInstructionMode,
   GptPanelChatProps,
@@ -21,7 +21,7 @@ import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import type {
   ChatPanelFocusHandler,
@@ -31,7 +31,7 @@ import {
   normalizeUsage,
   type BucketUsageOptions,
   type ConversationUsageOptions,
-} from "@/lib/tokenStats";
+} from "@/lib/shared/tokenStats";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import type { useKinTaskProtocol } from "@/hooks/useKinTaskProtocol";
 import type {
@@ -39,8 +39,8 @@ import type {
   GptMemorySettingsControls,
 } from "@/lib/app/ui-state/chatPageGptMemoryControls";
 import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
-import type { ParsedTaskInput } from "@/lib/taskInputParser";
-import type { MemorySettings } from "@/lib/memory";
+import type { ParsedTaskInput } from "@/lib/task/taskInputParser";
+import type { MemorySettings } from "@/lib/memory-domain/memory";
 
 type TaskProtocolController = ReturnType<typeof useKinTaskProtocol>;
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
 import { requestGeneratedLibrarySummary } from "@/lib/app/reference-library/librarySummaryClient";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
 
 vi.mock("@/lib/app/reference-library/librarySummaryClient", () => ({
   normalizeLibrarySummaryUsage: vi.fn((usage) => usage),

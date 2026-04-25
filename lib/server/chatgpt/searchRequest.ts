@@ -1,5 +1,5 @@
 import { parseSearchContinuation } from "@/lib/search-domain/continuations";
-import { parseTaskInput } from "@/lib/taskInputParser";
+import { parseTaskInput } from "@/lib/task/taskInputParser";
 
 type SearchContinuationInfo = {
   cleanQuery: string;

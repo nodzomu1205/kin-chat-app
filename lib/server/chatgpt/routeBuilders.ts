@@ -3,14 +3,14 @@ import {
   buildInstructionWrappedInput,
   buildSearchSystemPrompt,
 } from "@/lib/server/chatgpt/promptBuilders";
-import type { ChatPromptMetrics } from "@/lib/chatPromptMetrics";
-import { memoryToPrompt } from "@/lib/memory";
+import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
+import { memoryToPrompt } from "@/lib/memory-domain/memory";
 import { normalizeChatMessages } from "@/lib/server/chatgpt/requestNormalization";
 import type {
   InstructionMode,
   ReasoningMode,
 } from "@/lib/server/chatgpt/requestNormalization";
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 
 export type OpenAIMessage = {
   role: "system" | "user" | "assistant";

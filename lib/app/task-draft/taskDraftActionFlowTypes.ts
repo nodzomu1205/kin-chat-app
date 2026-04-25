@@ -5,7 +5,7 @@ import {
   normalizeUsage,
   type BucketUsageOptions,
   type ConversationUsageOptions,
-} from "@/lib/tokenStats";
+} from "@/lib/shared/tokenStats";
 
 export type ParsedInputLike = {
   title?: string;

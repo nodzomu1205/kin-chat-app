@@ -1,4 +1,4 @@
-import { createEmptyMemory } from "@/lib/memory";
+import { createEmptyMemory } from "@/lib/memory-domain/memory";
 import type { KinMemoryState } from "@/types/chat";
 
 export function createEmptyKinMemoryState(): KinMemoryState {

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import type { Message } from "@/types/chat";
 import type { KinConnectionState } from "@/hooks/useKinManager";
 import {

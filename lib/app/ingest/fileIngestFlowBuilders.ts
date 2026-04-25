@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import { buildPrepInputFromIngestResult } from "@/lib/app/gpt-task/gptTaskClient";
 import {
   buildKinSysInfoBlock,

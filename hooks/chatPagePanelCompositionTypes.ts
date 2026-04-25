@@ -15,12 +15,12 @@ import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import type { AutoBridgeSettings } from "@/hooks/useAutoBridgeSettings";
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import type { SearchContext, TaskDraft } from "@/types/task";
 

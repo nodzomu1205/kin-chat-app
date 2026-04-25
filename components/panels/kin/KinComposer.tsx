@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ChatTextarea from "@/components/ChatTextarea";
+import ChatTextarea from "@/components/ui/ChatTextarea";
 import { KIN_PANEL_TEXT } from "./kinUiText";
 
 type Props = {

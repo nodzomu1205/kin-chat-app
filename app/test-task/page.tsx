@@ -6,7 +6,7 @@ import { usePanelLayout } from "@/hooks/usePanelLayout";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
 import { useTokenTracking } from "@/hooks/useTokenTracking";
 import { useGptMemory } from "@/hooks/useGptMemory";
-import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memoryInterpreterRules";
+import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memory-domain/memoryInterpreterRules";
 import { buildGptPanelProps } from "@/lib/app/ui-state/panelPropsBuilders";
 import { createEmptyTaskDraft } from "@/types/task";
 import type { Message } from "@/types/chat";

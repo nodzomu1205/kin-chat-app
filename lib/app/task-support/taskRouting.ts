@@ -1,4 +1,4 @@
-import { parseTaskInput, type ParsedTaskInput } from "@/lib/taskInputParser";
+import { parseTaskInput, type ParsedTaskInput } from "@/lib/task/taskInputParser";
 
 export type RoutedTaskInput = {
   rawText: string;

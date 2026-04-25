@@ -1,13 +1,13 @@
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import type {
   ApprovedMemoryRule,
   PendingMemoryRuleCandidate,
   TopicDecision,
   UserUtteranceIntent,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 
 export const GPT_PROTOCOL_SETTINGS_TEXT = {
   automationTitle: "自動プロトコル連携",

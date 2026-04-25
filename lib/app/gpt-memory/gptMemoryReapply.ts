@@ -1,8 +1,8 @@
-import type { ApprovedMemoryRule, PendingMemoryRuleCandidate } from "@/lib/memoryInterpreterRules";
+import type { ApprovedMemoryRule, PendingMemoryRuleCandidate } from "@/lib/memory-domain/memoryInterpreterRules";
 import { normalizeText } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 import type { KinMemoryState, Message } from "@/types/chat";
 import { buildApprovedRuleFromCandidate } from "@/lib/app/gpt-memory/gptMemoryApproval";
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import { buildRejectedReapplyContext } from "@/lib/app/memory-interpreter/memoryInterpreterContextReducer";
 
 export function getReapplicableRecentMessages(state: KinMemoryState): Message[] {

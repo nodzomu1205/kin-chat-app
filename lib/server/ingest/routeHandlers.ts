@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { IngestResult } from "@/lib/kinSysInfo";
+import type { IngestResult } from "@/lib/shared/kinSysInfo";
 import { buildIngestPrompt } from "@/lib/server/ingest/promptBuilder";
 import { resolveIngestResultSelection } from "@/lib/server/ingest/resultSelection";
 import {

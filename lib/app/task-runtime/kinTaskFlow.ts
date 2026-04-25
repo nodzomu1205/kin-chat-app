@@ -1,9 +1,9 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import { extractPreferredKinTransferText } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
-import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/taskIntent";
-import { normalizeUsage } from "@/lib/tokenStats";
-import type { BucketUsageOptions } from "@/lib/tokenStats";
+import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/task/taskIntent";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
+import type { BucketUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { TaskIntent } from "@/types/taskProtocol";

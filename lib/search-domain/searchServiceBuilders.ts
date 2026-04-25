@@ -1,4 +1,4 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import { getPresetEnginesForMode } from "@/lib/search-domain/presets";
 import type {
   SearchEngineResult,

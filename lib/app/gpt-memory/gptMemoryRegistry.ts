@@ -1,5 +1,5 @@
 import { createEmptyKinMemoryState } from "@/lib/app/gpt-memory/gptMemoryCore";
-import { normalizeMemorySettings, type MemorySettings } from "@/lib/memory";
+import { normalizeMemorySettings, type MemorySettings } from "@/lib/memory-domain/memory";
 import { normalizeKinMemoryStateForSettings } from "@/lib/app/gpt-memory/gptMemoryPersistence";
 import type { KinMemoryState } from "@/types/chat";
 

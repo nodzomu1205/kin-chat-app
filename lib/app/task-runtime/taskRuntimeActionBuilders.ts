@@ -4,10 +4,10 @@ import {
   getIntentCandidateSignature,
 } from "@/lib/app/ui-state/chatPageHelpers";
 import { looksLikeKinTaskStartInstruction } from "@/lib/app/task-support/kinTaskStartDetection";
-import { resolveTaskRecompileSourceInstruction } from "@/lib/taskProtocolTaskState";
+import { resolveTaskRecompileSourceInstruction } from "@/lib/task/taskProtocolTaskState";
 import {
   resolveTaskIntentWithFallback,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import {
   resolveTransformIntent,
   shouldTransformContent,
@@ -26,7 +26,7 @@ import type {
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import type { Message } from "@/types/chat";
 
 export function buildAppendGptMessage(

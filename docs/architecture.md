@@ -122,15 +122,15 @@ Current risk:
 Primary files:
 
 - [`hooks/useKinTaskProtocol.ts`](../hooks/useKinTaskProtocol.ts)
-- [`lib/taskIntent.ts`](../lib/taskIntent.ts)
-- [`lib/taskCompiler.ts`](../lib/taskCompiler.ts)
-- [`lib/taskRuntimeProtocol.ts`](../lib/taskRuntimeProtocol.ts)
-- [`lib/taskProtocolParser.ts`](../lib/taskProtocolParser.ts)
-- [`lib/taskProtocolRuntime.ts`](../lib/taskProtocolRuntime.ts)
-- [`lib/taskProtocolIngest.ts`](../lib/taskProtocolIngest.ts)
-- [`lib/taskProtocolState.ts`](../lib/taskProtocolState.ts)
-- [`lib/taskProtocolMutations.ts`](../lib/taskProtocolMutations.ts)
-- [`lib/taskProtocolTaskState.ts`](../lib/taskProtocolTaskState.ts)
+- [`lib/task/taskIntent.ts`](../lib/task/taskIntent.ts)
+- [`lib/task/taskCompiler.ts`](../lib/task/taskCompiler.ts)
+- [`lib/task/taskRuntimeProtocol.ts`](../lib/task/taskRuntimeProtocol.ts)
+- [`lib/task/taskProtocolParser.ts`](../lib/task/taskProtocolParser.ts)
+- [`lib/task/taskProtocolRuntime.ts`](../lib/task/taskProtocolRuntime.ts)
+- [`lib/task/taskProtocolIngest.ts`](../lib/task/taskProtocolIngest.ts)
+- [`lib/task/taskProtocolState.ts`](../lib/task/taskProtocolState.ts)
+- [`lib/task/taskProtocolMutations.ts`](../lib/task/taskProtocolMutations.ts)
+- [`lib/task/taskProtocolTaskState.ts`](../lib/task/taskProtocolTaskState.ts)
 
 Current role:
 

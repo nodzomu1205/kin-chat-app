@@ -4,7 +4,7 @@ import {
   resolveActiveDocumentFields,
   resolveWorksByEntityState,
 } from "@/lib/app/memory-interpreter/memoryInterpreterWorks";
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 
 function buildMemory(overrides?: Partial<Memory>): Memory {
   return {

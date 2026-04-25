@@ -1,4 +1,4 @@
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import { buildTrackedEntities } from "@/lib/app/memory-interpreter/memoryInterpreterFacts";
 import { resolveWorksByEntityState } from "@/lib/app/memory-interpreter/memoryInterpreterWorks";
 

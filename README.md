@@ -132,7 +132,7 @@ Recent regression fixes and maintainability wins include:
 - `sendToGptFlow` guard tests now live in their own test file, so gate failures are easier to diagnose separately from step/request builder failures
 - library-first device ingest now routes through the library surface instead of the old file-tab flow, and the obsolete post-ingest UI/state/task-update branches have been removed rather than hidden
 - fallback debug payload is no longer persisted into memory state, and the obsolete `gptMemoryStateSummaryMerge.ts` branch has been removed so memory compaction now follows one authoritative path
-- memory lifecycle boundaries are now more explicit: `lib/memory.ts` names task-scoped list/context keys directly, and task-scoped cleanup now flows through one shared helper instead of local storage-specific cleanup logic
+- memory lifecycle boundaries are now more explicit: `lib/memory-domain/memory.ts` names task-scoped list/context keys directly, and task-scoped cleanup now flows through one shared helper instead of local storage-specific cleanup logic
 - memory rule persistence now flows through `lib/app/memory-rules/memoryRuleStore.ts`, so `useMemoryInterpreterSettings` no longer owns raw localStorage parsing/writing inline
 - `useGptMemory.ts` now delegates runtime load/update/reapply handoff to `lib/app/gpt-memory/gptMemoryRuntime.ts`, keeping the hook closer to a state facade instead of a mixed orchestration surface
 - token accounting now restores correct total-token aggregation, treats memory compaction as a conversation-internal token line, and routes ingest-time summary-generation usage into the ingest bucket instead of the conversation compaction bucket
@@ -154,6 +154,9 @@ Recent regression fixes and maintainability wins include:
 - search-history app-side modules now live under `lib/app/search-history/`, making the ninth folder-organization pass concrete without changing runtime behavior
 - panel/UI state app-side modules now live under `lib/app/ui-state/`, making the tenth folder-organization pass concrete without changing runtime behavior
 - remaining app-side utility clusters now live under dedicated folders: `gpt-task/`, `youtube-transcript/`, `memory-rules/`, `multipart/`, `task-support/`, `google-drive/`, `auto-bridge/`, and `gpt-context/`
+- task-domain modules now live under `lib/task/`, reducing the number of files directly under `lib/`
+- memory-domain modules now live under `lib/memory-domain/`, continuing the `lib` root organization pass
+- shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
 
 Current caution after the latest task/constraint stabilization:
 

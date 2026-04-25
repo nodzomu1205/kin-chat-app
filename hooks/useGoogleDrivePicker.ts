@@ -26,7 +26,7 @@ import {
   resolveDriveUploadDestinationIndex,
   type DriveFolderNode,
 } from "@/hooks/googleDrivePickerBuilders";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
 
 const GOOGLE_API_KEY = "AIzaSyCQc_DKFE3WxU6SgVSE47X2SQv7nxZvm08";
 const GOOGLE_OAUTH_CLIENT_ID =

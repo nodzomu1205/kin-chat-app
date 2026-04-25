@@ -11,7 +11,7 @@ import {
 } from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
 import { buildTaskDraftLibrarySummarySource } from "@/lib/app/task-draft/taskDraftLibrary";
 
 type BuildChatPageWorkspaceGptPanelArgsOptions = {

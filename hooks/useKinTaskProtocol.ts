@@ -13,26 +13,26 @@ import {
   removeTaskRuntimeSnapshot,
   resolveRuntimeAfterArchive,
   upsertTaskRuntimeSnapshot,
-} from "@/lib/taskRuntimeCollection";
-import { toUserFacingRequests } from "@/lib/taskProgress";
-import { ingestTaskProtocolEventsState } from "@/lib/taskProtocolIngest";
+} from "@/lib/task/taskRuntimeCollection";
+import { toUserFacingRequests } from "@/lib/task/taskProgress";
+import { ingestTaskProtocolEventsState } from "@/lib/task/taskProtocolIngest";
 import {
   answerPendingTaskRequestState,
   applyFinalizeReviewedState,
   updateRequirementProgressCountsState,
-} from "@/lib/taskProtocolMutations";
+} from "@/lib/task/taskProtocolMutations";
 import {
   createEmptyTaskRuntime,
-} from "@/lib/taskProtocolState";
+} from "@/lib/task/taskProtocolState";
 import {
   buildReplacedTaskIntentState,
   buildStartedTaskState,
-} from "@/lib/taskProtocolTaskState";
+} from "@/lib/task/taskProtocolTaskState";
 import {
   buildTaskConfirmBlock,
   buildTaskSuspendBlock,
   buildWaitingAckBlock,
-} from "@/lib/taskRuntimeProtocol";
+} from "@/lib/task/taskRuntimeProtocol";
 
 function createTaskId() {
   return String(Date.now()).slice(-6);

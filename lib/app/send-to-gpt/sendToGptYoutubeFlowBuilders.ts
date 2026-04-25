@@ -1,5 +1,5 @@
-import { generateId } from "@/lib/uuid";
-import { buildYoutubeTranscriptRetryBlock } from "@/lib/taskRuntimeProtocol";
+import { generateId } from "@/lib/shared/uuid";
+import { buildYoutubeTranscriptRetryBlock } from "@/lib/task/taskRuntimeProtocol";
 import {
   buildTranscriptFailureArtifacts,
   buildTranscriptSuccessArtifacts,

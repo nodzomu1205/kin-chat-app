@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
+import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory-domain/memory";
 import {
   ensureKinMemoryMapState,
   normalizeNextMemorySettings,

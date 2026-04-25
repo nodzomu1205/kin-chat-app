@@ -2,7 +2,7 @@ import {
   type MemoryRuleKind,
   resolveMemoryRuleTopicDecision,
   type TopicDecision,
-} from "@/lib/memoryInterpreterRules";
+} from "@/lib/memory-domain/memoryInterpreterRules";
 import { normalizeText } from "@/lib/app/memory-interpreter/memoryInterpreterText";
 
 export type MemoryTopicAdjudication = {

@@ -1,4 +1,4 @@
-import { searchWithMode } from "@/lib/search";
+import { searchWithMode } from "@/lib/search-domain/search";
 import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
 import type { SearchEngine, SearchMode } from "@/types/task";
 

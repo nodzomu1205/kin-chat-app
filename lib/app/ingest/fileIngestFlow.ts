@@ -1,12 +1,12 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import {
   buildSharedIngestOptions,
   requestFileIngest,
   resolveIngestErrorMessage,
   resolveIngestFileTitle,
 } from "@/lib/app/ingest/ingestClient";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
 import type {
   FileReadPolicy,
   ImageDetail,

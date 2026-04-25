@@ -48,7 +48,7 @@ user memory.
 
 The current code-level authority is:
 
-- `lib/memory.ts`
+- `lib/memory-domain/memory.ts`
 - `lib/app/gpt-memory/gptMemoryStorage.ts`
 - `hooks/useGptMemory.ts`
 
@@ -91,13 +91,13 @@ It intentionally preserves:
 When adding new memory fields:
 
 1. decide first whether the field is `stable`, `task-scoped`, or `displayed-context`
-2. add it to the explicit key lists in `lib/memory.ts` when it participates in lifecycle clearing
+2. add it to the explicit key lists in `lib/memory-domain/memory.ts` when it participates in lifecycle clearing
 3. do not put debug payloads into persisted memory state
 4. do not treat displayed-context bridges as durable memory facts
 
 ## Related Files
 
-- `lib/memory.ts`
+- `lib/memory-domain/memory.ts`
 - `lib/app/gpt-memory/gptMemoryRuntime.ts`
 - `lib/app/gpt-memory/gptMemoryStorage.ts`
 - `hooks/useGptMemory.ts`

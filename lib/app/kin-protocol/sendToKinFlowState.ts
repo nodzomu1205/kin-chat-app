@@ -2,7 +2,7 @@ import {
   buildProgressAckResponseBlock,
   buildResendLastMessageBlock,
   extractTaskProtocolEvents,
-} from "@/lib/taskRuntimeProtocol";
+} from "@/lib/task/taskRuntimeProtocol";
 
 export function extractTaskIdFromOutboundText(text: string): string | undefined {
   const directMatch = text.match(/TASK_ID:\s*([^\n\r]+)/);

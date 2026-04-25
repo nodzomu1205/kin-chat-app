@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { shouldSummarizeMemoryUpdate } from "@/lib/app/gpt-memory/gptMemorySummarizePolicy";
-import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
+import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory-domain/memory";
 import type { Message } from "@/types/chat";
 
 function buildMessage(id: string, role: Message["role"], text: string): Message {

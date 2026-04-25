@@ -12,7 +12,7 @@ import type {
 import type {
   ApprovedIntentPhrase,
   PendingIntentCandidate,
-} from "@/lib/taskIntent";
+} from "@/lib/task/taskIntent";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchContext, SearchEngine, TaskDraft } from "@/types/task";

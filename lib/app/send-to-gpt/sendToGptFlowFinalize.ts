@@ -9,7 +9,7 @@ import type {
   FinalizeSendToGptFlowArgs,
   PreparedRequestFinalizeContext,
 } from "@/lib/app/send-to-gpt/sendToGptFlowTypes";
-import type { ConversationUsageOptions } from "@/lib/tokenStats";
+import type { ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import {
   buildFinalizeAssistantMessageArgs,

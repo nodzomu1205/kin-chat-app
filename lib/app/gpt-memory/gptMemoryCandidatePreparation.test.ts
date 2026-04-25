@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory";
+import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory-domain/memory";
 import { prepareCandidateMemoryUpdate } from "@/lib/app/gpt-memory/gptMemoryCandidatePreparation";
 
 const resolveMemoryFallbackOptionsMock = vi.fn();

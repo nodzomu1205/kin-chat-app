@@ -1,4 +1,4 @@
-import type { Memory } from "@/lib/memory";
+import type { Memory } from "@/lib/memory-domain/memory";
 import {
   SEARCH_PREFIX_RE,
   isClosingReplyText,

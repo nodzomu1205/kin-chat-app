@@ -1,10 +1,10 @@
-import { generateId } from "@/lib/uuid";
+import { generateId } from "@/lib/shared/uuid";
 import { useState } from "react";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
 import { receiveLastKinResponseFlow } from "@/lib/app/task-runtime/kinTaskFlow";
 import {
   buildYoutubeTranscriptRetryBlock,
-} from "@/lib/taskRuntimeProtocol";
+} from "@/lib/task/taskRuntimeProtocol";
 import {
   extractPreferredKinTransferText,
 } from "@/lib/app/kin-protocol/kinStructuredProtocol";
@@ -22,7 +22,7 @@ import {
   buildCommonSendToGptFlowArgs,
   mergeSendToGptFlowArgs,
 } from "@/lib/app/send-to-gpt/sendToGptFlowArgBuilders";
-import { normalizeUsage } from "@/lib/tokenStats";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
 import type { Message, SourceItem } from "@/types/chat";
 
 export function useGptMessageActions(args: UseGptMessageActionsArgs) {
