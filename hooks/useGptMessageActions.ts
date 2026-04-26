@@ -3,9 +3,6 @@ import { useState } from "react";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
 import { receiveLastKinResponseFlow } from "@/lib/app/task-runtime/kinTaskFlow";
 import {
-  buildYoutubeTranscriptRetryBlock,
-} from "@/lib/task/taskRuntimeProtocol";
-import {
   extractPreferredKinTransferText,
 } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import {
@@ -13,7 +10,13 @@ import {
 } from "@/lib/app/youtube-transcript/youtubeTranscriptText";
 import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtube-transcript/youtubeTranscriptKinBlocks";
 import {
-  buildYoutubeTranscriptFailureText,
+  buildYoutubeTranscriptAssistantMessage,
+  buildYoutubeTranscriptDocumentRecord,
+  buildYoutubeTranscriptFailureState,
+  buildYoutubeTranscriptRequestBodyWithOptions,
+  resolveYoutubeTranscriptBatchRequest,
+} from "@/lib/app/send-to-gpt/sendToGptYoutubeFlowBuilders";
+import {
   buildYoutubeTranscriptSuccessArtifacts,
   extractYouTubeVideoIdFromUrl,
 } from "@/lib/app/send-to-gpt/sendToGptTranscriptHelpers";
@@ -61,10 +64,12 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          videoId: resolvedVideoId,
-          generateSummary: args.autoGenerateFileImportSummary,
-        }),
+        body: JSON.stringify(
+          buildYoutubeTranscriptRequestBodyWithOptions({
+            videoId: resolvedVideoId,
+            generateSummary: args.autoGenerateFileImportSummary,
+          })
+        ),
       });
       const data = (await response.json()) as {
         title?: string;
@@ -94,16 +99,13 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         actionId: params.actionId,
         storedDocumentId: "",
       });
-      const storedDocument = args.recordIngestedDocument({
-        title: transcriptArtifacts.title,
-        filename: transcriptArtifacts.filename,
-        text: transcriptArtifacts.cleanTranscript,
-        summary: transcriptArtifacts.summary,
-        taskId: params.taskId || undefined,
-        charCount: transcriptArtifacts.cleanTranscript.length,
-        createdAt: now,
-        updatedAt: now,
-      });
+      const storedDocument = args.recordIngestedDocument(
+        buildYoutubeTranscriptDocumentRecord({
+          artifacts: transcriptArtifacts,
+          taskId: params.taskId,
+          now,
+        })
+      );
       const finalizedArtifacts = buildYoutubeTranscriptSuccessArtifacts({
         data,
         videoId: resolvedVideoId,
@@ -113,15 +115,9 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
         actionId: params.actionId,
         storedDocumentId: storedDocument.id,
       });
-      const assistantMsg: Message = {
-        id: generateId(),
-        role: "gpt",
-        text: finalizedArtifacts.assistantText,
-        meta: {
-          kind: "task_info",
-          sourceType: "file_ingest",
-        },
-      };
+      const assistantMsg = buildYoutubeTranscriptAssistantMessage(
+        finalizedArtifacts.assistantText
+      );
 
       args.ingestProtocolMessage(finalizedArtifacts.assistantText, "gpt_to_kin");
       args.setKinInput(finalizedArtifacts.kinBlocks[0] || "");
@@ -153,33 +149,17 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
       }
     } catch (error) {
       console.error(error);
-      const failureText = buildYoutubeTranscriptFailureText({
+      const failureState = buildYoutubeTranscriptFailureState({
         taskId: params.taskId,
         actionId: params.actionId,
         transcriptUrl: params.transcriptUrl,
         outputMode: params.outputMode,
       });
-      const retryBlock = buildYoutubeTranscriptRetryBlock({
-        taskId: params.taskId,
-        actionId: params.actionId,
-        url: params.transcriptUrl,
-      });
-      args.setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: failureText,
-          meta: {
-            kind: "task_info",
-            sourceType: "manual",
-          },
-        },
-      ]);
-      args.ingestProtocolMessage(failureText, "gpt_to_kin");
+      args.setGptMessages((prev) => [...prev, failureState.message]);
+      args.ingestProtocolMessage(failureState.failureText, "gpt_to_kin");
       args.setPendingKinInjectionBlocks([]);
       args.setPendingKinInjectionIndex(0);
-      args.setKinInput(retryBlock);
+      args.setKinInput(failureState.retryBlock);
       args.focusKinPanel();
     } finally {
       args.setGptLoading(false);
@@ -219,43 +199,26 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     };
     currentTaskId: string | null;
   }) => {
-    const urls = Array.from(
-      new Set(
-        (params.youtubeTranscriptRequestEvent.urls?.length
-          ? params.youtubeTranscriptRequestEvent.urls
-          : [params.youtubeTranscriptRequestEvent.url || ""])
-          .map((item) => item.trim())
-          .filter(Boolean)
-      )
-    ).slice(0, 3);
+    const batch = resolveYoutubeTranscriptBatchRequest({
+      event: params.youtubeTranscriptRequestEvent,
+      currentTaskId: params.currentTaskId,
+    });
+    if (!batch) return false;
 
-    if (urls.length === 0) return false;
-
-    const taskId = params.youtubeTranscriptRequestEvent.taskId || params.currentTaskId || "";
-    const outputMode =
-      params.youtubeTranscriptRequestEvent.outputMode || "summary_plus_raw";
-    const actionIdBase =
-      params.youtubeTranscriptRequestEvent.actionId || "YOUTUBE_TRANSCRIPT";
-    const queueItems = urls.map((url, index) => ({
-      url,
-      actionId: urls.length === 1 ? actionIdBase : `${actionIdBase}-${index + 1}`,
-    }));
-
-    const [firstItem, ...restItems] = queueItems;
     setPendingYoutubeTranscriptQueue(
-      restItems.length > 0
+      batch.remainingItems.length > 0
         ? {
-            taskId,
-            outputMode,
-            items: restItems,
+            taskId: batch.taskId,
+            outputMode: batch.outputMode,
+            items: batch.remainingItems,
           }
         : null
     );
     await fetchAndPrepareYoutubeTranscript({
-      transcriptUrl: firstItem.url,
-      taskId,
-      actionId: firstItem.actionId,
-      outputMode,
+      transcriptUrl: batch.firstItem.url,
+      taskId: batch.taskId,
+      actionId: batch.firstItem.actionId,
+      outputMode: batch.outputMode,
       appendUserMessage: params.userMessage,
     });
     return true;

@@ -5,6 +5,7 @@ import {
   buildYoutubeTranscriptFailureState,
   buildYoutubeTranscriptRequestBody,
   buildYoutubeTranscriptRequestBodyWithOptions,
+  resolveYoutubeTranscriptBatchRequest,
   resolveYoutubeTranscriptFlowContext,
 } from "@/lib/app/send-to-gpt/sendToGptYoutubeFlowBuilders";
 
@@ -46,6 +47,41 @@ describe("sendToGptYoutubeFlowBuilders", () => {
         text: "hello",
       })
     );
+  });
+
+  it("resolves transcript batch requests into first and queued items", () => {
+    expect(
+      resolveYoutubeTranscriptBatchRequest({
+        event: {
+          urls: [
+            "https://www.youtube.com/watch?v=a",
+            "https://youtu.be/b",
+            "https://youtu.be/b",
+            "https://youtu.be/c",
+            "https://youtu.be/d",
+          ],
+          actionId: "READ",
+        },
+        currentTaskId: "TASK-1",
+      })
+    ).toEqual({
+      taskId: "TASK-1",
+      outputMode: "summary_plus_raw",
+      firstItem: {
+        url: "https://www.youtube.com/watch?v=a",
+        actionId: "READ-1",
+      },
+      remainingItems: [
+        {
+          url: "https://youtu.be/b",
+          actionId: "READ-2",
+        },
+        {
+          url: "https://youtu.be/c",
+          actionId: "READ-3",
+        },
+      ],
+    });
   });
 
   it("builds failure and document record state", () => {

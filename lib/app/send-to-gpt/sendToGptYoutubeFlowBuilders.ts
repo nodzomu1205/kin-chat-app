@@ -38,6 +38,43 @@ export function buildYoutubeTranscriptRequestBodyWithOptions(args: {
   };
 }
 
+export function resolveYoutubeTranscriptBatchRequest(args: {
+  event: {
+    taskId?: string;
+    actionId?: string;
+    outputMode?: string;
+    url?: string;
+    urls?: string[];
+  };
+  currentTaskId: string | null;
+}) {
+  const urls = Array.from(
+    new Set(
+      (args.event.urls?.length ? args.event.urls : [args.event.url || ""])
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  ).slice(0, 3);
+
+  if (urls.length === 0) return null;
+
+  const taskId = args.event.taskId || args.currentTaskId || "";
+  const outputMode = args.event.outputMode || "summary_plus_raw";
+  const actionIdBase = args.event.actionId || "YOUTUBE_TRANSCRIPT";
+  const items = urls.map((url, index) => ({
+    url,
+    actionId: urls.length === 1 ? actionIdBase : `${actionIdBase}-${index + 1}`,
+  }));
+  const [firstItem, ...remainingItems] = items;
+
+  return {
+    taskId,
+    outputMode,
+    firstItem,
+    remainingItems,
+  };
+}
+
 export function buildYoutubeTranscriptDocumentRecord(args: {
   artifacts: ReturnType<typeof buildTranscriptSuccessArtifacts>;
   taskId?: string;
