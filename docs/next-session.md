@@ -104,6 +104,11 @@ Latest Drive maintenance progress:
   text clearly tied to the Kin protocol instead of GPT UI policy. The new
   `lib/shared/kinSysInfo.test.ts` also pins nested sentinel escaping and
   multipart `SILENT_ACK` / `FINAL_ACK` behavior.
+- App-side send-to-GPT chat payload boundaries now type `reasoningMode` as
+  `ReasoningMode` instead of a free `string` in
+  `sendToGptApiTypes.ts`, `sendToGptFlowArtifactTypes.ts`, and
+  `sendToGptFlowRequestPayload.ts`. The new request-payload test pins the
+  payload shape while keeping server-side unknown normalization intact.
 
 ## Current Verification State
 
@@ -113,7 +118,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `162 files / 702 tests`
+- current test count: `163 files / 703 tests`
 
 Latest maintenance movement:
 

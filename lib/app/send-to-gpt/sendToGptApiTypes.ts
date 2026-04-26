@@ -1,4 +1,5 @@
 import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
+import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { Message } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
@@ -46,5 +47,5 @@ export type ChatApiRequestPayload = {
   searchEngines: SearchEngine[];
   searchLocation: string;
   instructionMode: string;
-  reasoningMode: string;
+  reasoningMode: ReasoningMode;
 };

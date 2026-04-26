@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { Memory } from "@/lib/memory-domain/memory";
 import type { MemoryResultLike } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import type { ChatApiSearchLike } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
@@ -84,7 +85,7 @@ export type GptAssistantRequestPayloadArgs = {
   effectiveSearchEngines: SearchEngine[];
   effectiveSearchLocation: string;
   instructionMode: string;
-  reasoningMode: string;
+  reasoningMode: ReasoningMode;
 };
 
 export type RequestGptAssistantArtifactsArgs = GptAssistantRequestPayloadArgs & {

@@ -941,6 +941,9 @@ Next:
   `kinProtocolResponseMode` variable, and `kinSysInfo.test.ts` pins nested
   sentinel escaping plus multipart `SILENT_ACK` / `FINAL_ACK` behavior so the
   remaining `RESPONSE_MODE` text stays clearly protocol-scoped
+- App-side send-to-GPT chat payload boundaries now type `reasoningMode` as the
+  shared `ReasoningMode` instead of a free `string`, with focused payload
+  coverage in `sendToGptFlowRequestPayload.test.ts`
 - `ReceivedDocsDrawer.tsx` was renamed to `LibraryDrawer.tsx`; it now delegates
   import controls, tabs, library item shell, item header/actions/metadata,
   search preview, and stored-document editing to local components. The unused

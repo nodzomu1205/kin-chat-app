@@ -1,4 +1,5 @@
 import type { ChatApiRequestPayload } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
+import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { Message } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 
@@ -16,7 +17,7 @@ export function buildChatApiRequestPayload(params: {
   searchEngines: SearchEngine[];
   searchLocation: string;
   instructionMode: string;
-  reasoningMode: string;
+  reasoningMode: ReasoningMode;
 }) {
   const payload: ChatApiRequestPayload = {
     mode: "chat",
