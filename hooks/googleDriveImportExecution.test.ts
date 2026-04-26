@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   runDriveFileImport,
   runDriveFolderImport,
+  runDrivePickedDocumentsImport,
   runDriveLibraryItemUpload,
 } from "@/hooks/googleDriveImportExecution";
 import {
@@ -43,6 +44,47 @@ const ingestOptions = {
   compactCharLimit: 1200,
   simpleImageCharLimit: 800,
 } as const;
+
+describe("runDrivePickedDocumentsImport", () => {
+  it("dispatches picked Drive docs to folder and file imports", async () => {
+    const importDriveFile = vi.fn(async () => {});
+    const importDriveFolder = vi.fn(async () => {});
+
+    await runDrivePickedDocumentsImport({
+      mode: "folder_import",
+      docs: [
+        {
+          id: "folder-1",
+          name: "Project",
+          mimeType: "application/vnd.google-apps.folder",
+        },
+        {
+          id: "file-1",
+          name: "notes.txt",
+          mimeType: "text/plain",
+        },
+        {
+          id: "image-1",
+          name: "image.png",
+          mimeType: "image/png",
+        },
+      ],
+      importDriveFile,
+      importDriveFolder,
+    });
+
+    expect(importDriveFolder).toHaveBeenCalledWith(
+      { id: "folder-1", name: "Project" },
+      "import"
+    );
+    expect(importDriveFile).toHaveBeenCalledWith({
+      id: "file-1",
+      name: "notes.txt",
+      mimeType: "text/plain",
+    });
+    expect(importDriveFile).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("runDriveFileImport", () => {
   beforeEach(() => {

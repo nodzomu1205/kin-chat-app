@@ -933,6 +933,10 @@ Next:
   runtime test covering file/folder picker view selection and picked-doc
   callback behavior; `useGoogleDrivePicker.ts` now dispatches selected docs to
   import actions instead of building Picker views directly
+- Picker-selected Drive doc dispatch now lives in
+  `runDrivePickedDocumentsImport` inside `googleDriveImportExecution.ts`, with
+  focused coverage for folder import, file import, and unsupported-file skip
+  behavior
 - `ReceivedDocsDrawer.tsx` was renamed to `LibraryDrawer.tsx`; it now delegates
   import controls, tabs, library item shell, item header/actions/metadata,
   search preview, and stored-document editing to local components. The unused

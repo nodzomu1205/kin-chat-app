@@ -8,12 +8,12 @@ import {
 import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
 import {
   buildDriveUiMessage,
-  resolveDrivePickedImportAction,
   type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
 import {
   runDriveFileImport,
   runDriveFolderImport,
+  runDrivePickedDocumentsImport,
   runDriveLibraryItemUpload,
 } from "@/hooks/googleDriveImportExecution";
 import {
@@ -134,15 +134,12 @@ export function useGoogleDrivePicker({
       folderId,
       accessToken,
       onPickedDocs: async (docs) => {
-        for (const doc of docs) {
-          const action = resolveDrivePickedImportAction({ doc, mode });
-          if (!action) continue;
-          if (action.kind === "folder") {
-            await importDriveFolder(action.folder, action.mode);
-            continue;
-          }
-          await importDriveFile(action.file);
-        }
+        await runDrivePickedDocumentsImport({
+          docs,
+          mode,
+          importDriveFile,
+          importDriveFolder,
+        });
       },
     });
   }, [ensureAccessToken, folderId, importDriveFile, importDriveFolder]);

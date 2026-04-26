@@ -94,6 +94,11 @@ Latest Drive maintenance progress:
 - `hooks/googleDrivePickerRuntime.test.ts` pins file/folder picker view
   selection, configured-folder rooting, visibility, and picked-doc callback
   behavior.
+- Picker-selected Drive doc dispatch now routes through
+  `runDrivePickedDocumentsImport` in `hooks/googleDriveImportExecution.ts`, so
+  `useGoogleDrivePicker.ts` no longer owns the folder/file import routing loop.
+  The execution test pins folder import, file import, and unsupported-file skip
+  behavior.
 
 ## Current Verification State
 
@@ -103,7 +108,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `161 files / 699 tests`
+- current test count: `161 files / 700 tests`
 
 Latest maintenance movement:
 

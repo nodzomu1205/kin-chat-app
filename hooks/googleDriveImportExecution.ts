@@ -29,7 +29,10 @@ import {
   buildDriveUploadDestinationPrompt,
   buildDriveUploadInvalidSelectionMessage,
   canImportDriveMimeType,
+  resolveDrivePickedImportAction,
   resolveDriveUploadDestinationIndex,
+  type DrivePickerDocument,
+  type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
@@ -48,6 +51,36 @@ export type DriveImportFolder = {
 };
 
 export type DriveFolderImportMode = "index" | "import";
+
+export type RunDrivePickedDocumentsImportArgs = {
+  docs: DrivePickerDocument[];
+  mode: DrivePickerMode;
+  importDriveFile: (
+    file: DriveImportFile,
+    options?: { manageLoading?: boolean }
+  ) => Promise<void>;
+  importDriveFolder: (
+    folder: DriveImportFolder,
+    mode: DriveFolderImportMode
+  ) => Promise<void>;
+};
+
+export async function runDrivePickedDocumentsImport({
+  docs,
+  mode,
+  importDriveFile,
+  importDriveFolder,
+}: RunDrivePickedDocumentsImportArgs) {
+  for (const doc of docs) {
+    const action = resolveDrivePickedImportAction({ doc, mode });
+    if (!action) continue;
+    if (action.kind === "folder") {
+      await importDriveFolder(action.folder, action.mode);
+      continue;
+    }
+    await importDriveFile(action.file);
+  }
+}
 
 export type RunDriveFileImportArgs = {
   file: DriveImportFile;
