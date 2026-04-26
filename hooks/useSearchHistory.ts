@@ -7,25 +7,28 @@ import {
   resolveSelectedSearchResultId,
   resolveTaskSearchContext,
 } from "@/lib/app/search-history/searchHistoryState";
+import {
+  loadSearchHistoryState,
+  saveLastSearchContext,
+  saveSearchEngines,
+  saveSearchHistory,
+  saveSearchHistoryLimit,
+  saveSearchLocation,
+  saveSearchMode,
+  saveSourceDisplayCount,
+} from "@/lib/app/search-history/searchHistoryStorage";
 import { requestGeneratedLibrarySummary } from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
 import { normalizeLibrarySummaryIngestUsage } from "@/lib/app/ingest/ingestUsage";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
-import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
 import type { SearchContext, SearchEngine, SearchMode } from "@/types/task";
 
-const LAST_SEARCH_CONTEXT_KEY = "last_search_context";
-const SEARCH_HISTORY_KEY = "search_history";
-const SEARCH_HISTORY_LIMIT_KEY = "search_history_limit";
-const SEARCH_MODE_KEY = "search_mode";
-const SEARCH_ENGINES_KEY = "search_engines";
-const SEARCH_LOCATION_KEY = "search_location";
-const SOURCE_DISPLAY_COUNT_KEY = "source_display_count";
-
-export const DEFAULT_SEARCH_HISTORY_LIMIT = 20;
-export const DEFAULT_SEARCH_MODE: SearchMode = "normal";
-export const DEFAULT_SOURCE_DISPLAY_COUNT = 3;
+export {
+  DEFAULT_SEARCH_HISTORY_LIMIT,
+  DEFAULT_SEARCH_MODE,
+  DEFAULT_SOURCE_DISPLAY_COUNT,
+} from "@/lib/app/search-history/searchHistoryStorage";
 
 export function buildSearchContextLibrarySummaryRequest(
   context: Pick<SearchContext, "query" | "rawText" | "summaryText" | "metadata">
@@ -55,102 +58,6 @@ export function applySearchContextLibrarySummary(
       librarySummaryGenerated: true,
     },
   };
-}
-
-const ALLOWED_SEARCH_ENGINES: SearchEngine[] = [
-  "google_search",
-  "google_ai_mode",
-  "google_news",
-  "google_maps",
-  "google_local",
-  "youtube_search",
-  "google_flights",
-  "google_hotels",
-  "google_shopping",
-  "amazon_search",
-];
-
-function loadSearchHistoryState() {
-  const initialState = {
-    lastSearchContext: null as SearchContext | null,
-    searchHistory: [] as SearchContext[],
-    selectedTaskSearchResultId: "",
-    searchHistoryLimit: DEFAULT_SEARCH_HISTORY_LIMIT,
-    searchMode: DEFAULT_SEARCH_MODE,
-    searchEngines: [] as SearchEngine[],
-    searchLocation: "",
-    sourceDisplayCount: DEFAULT_SOURCE_DISPLAY_COUNT,
-  };
-
-  if (typeof window === "undefined") {
-    return initialState;
-  }
-
-  const savedSearchContext = window.localStorage.getItem(LAST_SEARCH_CONTEXT_KEY);
-  const savedSearchHistory = window.localStorage.getItem(SEARCH_HISTORY_KEY);
-  const savedSearchHistoryLimit = window.localStorage.getItem(SEARCH_HISTORY_LIMIT_KEY);
-  const savedSearchMode = window.localStorage.getItem(SEARCH_MODE_KEY);
-  const savedSearchEngines = window.localStorage.getItem(SEARCH_ENGINES_KEY);
-  const savedSearchLocation = window.localStorage.getItem(SEARCH_LOCATION_KEY);
-  const savedSourceDisplayCount = window.localStorage.getItem(
-    SOURCE_DISPLAY_COUNT_KEY
-  );
-
-  if (savedSearchHistoryLimit) {
-    const parsed = Number(savedSearchHistoryLimit);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      initialState.searchHistoryLimit = parsed;
-    }
-  }
-
-  if (savedSearchMode) {
-    initialState.searchMode = normalizeStoredSearchMode(savedSearchMode);
-  }
-
-  if (savedSearchEngines) {
-    try {
-      const parsed = JSON.parse(savedSearchEngines) as string[];
-      if (Array.isArray(parsed)) {
-        initialState.searchEngines = parsed.filter(
-          (engine): engine is SearchEngine =>
-            ALLOWED_SEARCH_ENGINES.includes(engine as SearchEngine)
-        );
-      }
-    } catch {}
-  }
-
-  if (savedSearchLocation) {
-    initialState.searchLocation = savedSearchLocation;
-  }
-
-  if (savedSourceDisplayCount) {
-    const parsed = Number(savedSourceDisplayCount);
-    if (Number.isFinite(parsed) && parsed >= 1) {
-      initialState.sourceDisplayCount = parsed;
-    }
-  }
-
-  if (savedSearchContext) {
-    try {
-      const parsed = JSON.parse(savedSearchContext) as SearchContext;
-      if (parsed?.rawResultId && parsed?.query) {
-        initialState.lastSearchContext = parsed;
-      }
-    } catch {}
-  }
-
-  if (savedSearchHistory) {
-    try {
-      const parsed = JSON.parse(savedSearchHistory) as SearchContext[];
-      if (Array.isArray(parsed)) {
-        initialState.searchHistory = parsed
-          .filter((item) => item?.rawResultId && item?.query)
-          .slice(0, initialState.searchHistoryLimit);
-      }
-    } catch {}
-  }
-
-  return initialState;
 }
 
 export function useSearchHistory(params?: {
@@ -196,50 +103,37 @@ export function useSearchHistory(params?: {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_HISTORY_LIMIT_KEY, String(searchHistoryLimit));
+    saveSearchHistoryLimit(searchHistoryLimit);
   }, [searchHistoryLimit]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_MODE_KEY, searchMode);
+    saveSearchMode(searchMode);
   }, [searchMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_ENGINES_KEY, JSON.stringify(searchEngines));
+    saveSearchEngines(searchEngines);
   }, [searchEngines]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_LOCATION_KEY, searchLocation);
+    saveSearchLocation(searchLocation);
   }, [searchLocation]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      SOURCE_DISPLAY_COUNT_KEY,
-      String(sourceDisplayCount)
-    );
+    saveSourceDisplayCount(sourceDisplayCount);
   }, [sourceDisplayCount]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (lastSearchContext) {
-      window.localStorage.setItem(
-        LAST_SEARCH_CONTEXT_KEY,
-        JSON.stringify(lastSearchContext)
-      );
-      return;
-    }
-    window.localStorage.removeItem(LAST_SEARCH_CONTEXT_KEY);
+    saveLastSearchContext(lastSearchContext);
   }, [lastSearchContext]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      SEARCH_HISTORY_KEY,
-      JSON.stringify(visibleSearchHistory)
-    );
+    saveSearchHistory(visibleSearchHistory);
   }, [visibleSearchHistory]);
 
   const getTaskSearchContext = () =>
