@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DrivePickerDocument } from "@/hooks/googleDrivePickerBuilders";
+import type {
+  DrivePickerDocument,
+  DrivePickerMode,
+} from "@/hooks/googleDrivePickerBuilders";
 
 const GOOGLE_OAUTH_CLIENT_ID =
   "593361829346-aq6ofe9uttbovg08hi8s14lqv7gj684o.apps.googleusercontent.com";
 const GOOGLE_PICKER_SCOPE = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
+const GOOGLE_API_KEY = "AIzaSyCQc_DKFE3WxU6SgVSE47X2SQv7nxZvm08";
+const GOOGLE_PICKER_APP_ID = "593361829346";
 
 const GOOGLE_API_SCRIPT = "https://apis.google.com/js/api.js";
 const GOOGLE_GIS_SCRIPT = "https://accounts.google.com/gsi/client";
@@ -42,6 +47,13 @@ type GooglePickerNamespace = {
     DOCS: string;
     FOLDERS: string;
   };
+};
+
+export type OpenGoogleDrivePickerArgs = {
+  mode: DrivePickerMode;
+  folderId?: string;
+  accessToken: string;
+  onPickedDocs: (docs: DrivePickerDocument[]) => void | Promise<void>;
 };
 
 type GoogleAccountsNamespace = {
@@ -93,6 +105,43 @@ function loadScript(src: string): Promise<void> {
     script.onerror = () => reject(new Error(`Failed to load ${src}`));
     window.document.head.appendChild(script);
   });
+}
+
+export async function openGoogleDrivePicker({
+  mode,
+  folderId,
+  accessToken,
+  onPickedDocs,
+}: OpenGoogleDrivePickerArgs) {
+  if (typeof window === "undefined") return false;
+  const pickerApi = window.google?.picker;
+  if (!pickerApi) return false;
+
+  const docsView = new pickerApi.DocsView(pickerApi.ViewId.DOCS)
+    .setIncludeFolders(true)
+    .setSelectFolderEnabled(true);
+  const foldersView = new pickerApi.DocsView(pickerApi.ViewId.FOLDERS)
+    .setIncludeFolders(true)
+    .setMimeTypes("application/vnd.google-apps.folder")
+    .setSelectFolderEnabled(true);
+
+  if (folderId) {
+    docsView.setParent(folderId);
+    foldersView.setParent(folderId);
+  }
+
+  const pickerBuilder = new pickerApi.PickerBuilder()
+    .setAppId(GOOGLE_PICKER_APP_ID)
+    .setDeveloperKey(GOOGLE_API_KEY)
+    .setOAuthToken(accessToken)
+    .setCallback(async (data: GooglePickerCallbackData) => {
+      if (data.action !== pickerApi.Action.PICKED) return;
+      await onPickedDocs(data.docs || []);
+    });
+
+  pickerBuilder.addView(mode === "file_import" ? docsView : foldersView);
+  pickerBuilder.build().setVisible(true);
+  return true;
 }
 
 export function useGoogleDrivePickerRuntime() {

@@ -18,12 +18,9 @@ import {
 } from "@/hooks/googleDriveImportExecution";
 import {
   useGoogleDrivePickerRuntime,
-  type GooglePickerCallbackData,
+  openGoogleDrivePicker,
 } from "@/hooks/googleDrivePickerRuntime";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
-
-const GOOGLE_API_KEY = "AIzaSyCQc_DKFE3WxU6SgVSE47X2SQv7nxZvm08";
-const GOOGLE_PICKER_APP_ID = "593361829346";
 
 type UseGoogleDrivePickerArgs = {
   folderLink: string;
@@ -131,31 +128,13 @@ export function useGoogleDrivePicker({
   );
 
   const openPickerForMode = useCallback(async (mode: DrivePickerMode) => {
-    if (typeof window === "undefined") return;
-    const pickerApi = window.google?.picker;
-    if (!pickerApi) return;
     const accessToken = await ensureAccessToken();
-    const docsView = new pickerApi.DocsView(pickerApi.ViewId.DOCS)
-      .setIncludeFolders(true)
-      .setSelectFolderEnabled(true);
-    const foldersView = new pickerApi.DocsView(pickerApi.ViewId.FOLDERS)
-      .setIncludeFolders(true)
-      .setMimeTypes("application/vnd.google-apps.folder")
-      .setSelectFolderEnabled(true);
-
-    if (folderId) {
-      docsView.setParent(folderId);
-      foldersView.setParent(folderId);
-    }
-
-    const pickerBuilder = new pickerApi.PickerBuilder()
-      .setAppId(GOOGLE_PICKER_APP_ID)
-      .setDeveloperKey(GOOGLE_API_KEY)
-      .setOAuthToken(accessToken)
-      .setCallback(async (data: GooglePickerCallbackData) => {
-        if (data.action !== pickerApi.Action.PICKED) return;
-        const picked = data.docs || [];
-        for (const doc of picked) {
+    await openGoogleDrivePicker({
+      mode,
+      folderId,
+      accessToken,
+      onPickedDocs: async (docs) => {
+        for (const doc of docs) {
           const action = resolveDrivePickedImportAction({ doc, mode });
           if (!action) continue;
           if (action.kind === "folder") {
@@ -164,16 +143,8 @@ export function useGoogleDrivePicker({
           }
           await importDriveFile(action.file);
         }
-      });
-
-    if (mode === "file_import") {
-      pickerBuilder.addView(docsView);
-    } else {
-      pickerBuilder.addView(foldersView);
-    }
-
-    const picker = pickerBuilder.build();
-    picker.setVisible(true);
+      },
+    });
   }, [ensureAccessToken, folderId, importDriveFile, importDriveFolder]);
 
   const uploadLibraryItemToDrive = useCallback(

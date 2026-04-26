@@ -928,6 +928,11 @@ Next:
   `googleDrivePickerBuilders.ts` via `buildDriveUiMessage`, so
   `useGoogleDrivePicker.ts` no longer owns the inline `task_info` message
   envelope while coordinating Drive import/upload execution
+- Google Picker browser API construction now lives in
+  `openGoogleDrivePicker` inside `googleDrivePickerRuntime.ts`, with a focused
+  runtime test covering file/folder picker view selection and picked-doc
+  callback behavior; `useGoogleDrivePicker.ts` now dispatches selected docs to
+  import actions instead of building Picker views directly
 - `ReceivedDocsDrawer.tsx` was renamed to `LibraryDrawer.tsx`; it now delegates
   import controls, tabs, library item shell, item header/actions/metadata,
   search preview, and stored-document editing to local components. The unused

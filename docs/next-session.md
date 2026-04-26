@@ -87,6 +87,13 @@ Latest Drive maintenance progress:
 - The focused Drive picker/import tests cover the shared status-message shape
   alongside existing importability, folder-index, upload, and import execution
   behavior.
+- Google Picker browser API construction now lives in
+  `openGoogleDrivePicker` inside `hooks/googleDrivePickerRuntime.ts`, with
+  `useGoogleDrivePicker.ts` handling only access-token orchestration and
+  picked-document import action dispatch.
+- `hooks/googleDrivePickerRuntime.test.ts` pins file/folder picker view
+  selection, configured-folder rooting, visibility, and picked-doc callback
+  behavior.
 
 ## Current Verification State
 
@@ -96,7 +103,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `160 files / 697 tests`
+- current test count: `161 files / 699 tests`
 
 Latest maintenance movement:
 
