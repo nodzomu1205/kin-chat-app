@@ -86,7 +86,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `160 files / 695 tests`
+- current test count: `160 files / 696 tests`
 
 Latest maintenance movement:
 
@@ -293,6 +293,8 @@ Current maintenance remaining:
   reconstructed markdown/code/table content from SerpAPI responses
 - Search library entries now suppress AI Mode `References` sections and inline
   `[refs: ...]` markers from display and generated library summaries
+- Search library summaries also ignore the leading `Google AI Mode` engine label
+  so it is not mistaken for the subject of the result
 - search-history localStorage load/save now lives in
   `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search
   settings out of `useSearchHistory.ts`

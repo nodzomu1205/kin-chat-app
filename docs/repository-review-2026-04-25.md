@@ -37,7 +37,7 @@ Verification baseline from the latest completed check:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test status: `160 files / 695 tests`
+- current test status: `160 files / 696 tests`
 
 ## What Not To Do Next
 
@@ -139,6 +139,8 @@ Status:
   reconstructed markdown/code/table content from SerpAPI responses
 - Search library entries suppress AI Mode `References` sections and inline
   `[refs: ...]` markers from display and generated library summaries
+- Search library summaries also ignore the leading `Google AI Mode` engine label
+  so it is not mistaken for the subject of the result
 - `searchHistoryStorage.ts` owns persisted search-history settings and
   localStorage load/save helpers used by `useSearchHistory.ts`
 - `lib/app/google-drive/googleDriveApi.ts` owns Drive HTTP fetch/upload/listing

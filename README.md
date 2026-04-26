@@ -107,7 +107,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `160 files / 695 tests`
+- current test count: `160 files / 696 tests`
 
 Current maintenance status:
 
@@ -189,6 +189,8 @@ Recent regression fixes and maintainability wins include:
   reconstructed markdown/code/table content from SerpAPI responses
 - Search library entries now suppress AI Mode `References` sections and inline
   `[refs: ...]` markers from display and generated library summaries
+- Search library summaries also ignore the leading `Google AI Mode` engine label
+  so it is not mistaken for the subject of the result
 - search-history localStorage load/save now lives in `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search settings out of `useSearchHistory.ts`
 - `transformIntent.ts` is now a small public facade plus Kin directive assembly; rule-based directive parsing, API intent resolving, type definitions, text transformation runtime, and Kin chunk splitting live in focused task-runtime modules with a facade regression test
 - `kinTransferFlows.ts` now delegates task-usage accumulation and Kin transfer status-message shaping to `kinTransferFlowBuilders.ts`, keeping the flow closer to orchestration-only
