@@ -9,6 +9,7 @@ import {
   buildDriveUploadCompletedMessage,
   buildDriveUploadDestinationPrompt,
   buildDriveUploadInvalidSelectionMessage,
+  buildDriveUiMessage,
   canImportDriveMimeType,
   resolveDrivePickedImportAction,
   resolveDriveUploadDestinationIndex,
@@ -203,5 +204,30 @@ describe("googleDrivePickerBuilders", () => {
         destinationFolderName: "Drafts",
       })
     ).toBe("Google Drive uploaded: export.txt -> Drafts");
+  });
+
+  it("builds Drive GPT status messages with a consistent task-info shape", () => {
+    expect(
+      buildDriveUiMessage({
+        id: "drive-ui-1",
+        text: "Google Drive import failed: boom",
+        sourceType: "file_ingest",
+      })
+    ).toEqual({
+      id: "drive-ui-1",
+      role: "gpt",
+      text: "Google Drive import failed: boom",
+      meta: {
+        kind: "task_info",
+        sourceType: "file_ingest",
+      },
+    });
+
+    expect(
+      buildDriveUiMessage({
+        id: "drive-ui-2",
+        text: "Google Drive upload cancelled.",
+      }).meta?.sourceType
+    ).toBe("manual");
   });
 });

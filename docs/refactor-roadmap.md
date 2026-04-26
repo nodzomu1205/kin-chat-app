@@ -924,6 +924,10 @@ Next:
 - `taskDraft*Flows.ts` now share recent-message context and success-postlude helpers through `taskDraftFlowShared.ts`, reducing repeated assistant-append and summary-replay logic across prep/update/attach/deepen orchestration
 - `sendToGptFlow` guard coverage now lives in `sendToGptFlowGuards.test.ts`, so guard failures are diagnosed separately from step/request builder regressions
 - Google Drive library export now lets the user choose a child folder under the configured parent before upload, and Drive folder indexing now includes per-entry timestamps, file sizes, and importable-item counts through `googleDrivePickerBuilders.ts`
+- Google Drive assistant/status message shaping now also lives in
+  `googleDrivePickerBuilders.ts` via `buildDriveUiMessage`, so
+  `useGoogleDrivePicker.ts` no longer owns the inline `task_info` message
+  envelope while coordinating Drive import/upload execution
 - `ReceivedDocsDrawer.tsx` was renamed to `LibraryDrawer.tsx`; it now delegates
   import controls, tabs, library item shell, item header/actions/metadata,
   search preview, and stored-document editing to local components. The unused

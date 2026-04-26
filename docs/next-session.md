@@ -78,6 +78,16 @@ Concrete next default item:
    `googleDrivePickerBuilders.ts`
 5. run focused Drive picker tests plus the full verification baseline
 
+Latest Drive maintenance progress:
+
+- Drive GPT status message shaping now routes through
+  `buildDriveUiMessage` in `hooks/googleDrivePickerBuilders.ts`, leaving
+  `useGoogleDrivePicker.ts` responsible for orchestration and ID generation
+  rather than owning the assistant-message structure inline.
+- The focused Drive picker/import tests cover the shared status-message shape
+  alongside existing importability, folder-index, upload, and import execution
+  behavior.
+
 ## Current Verification State
 
 The repository is in a good stopping state.
@@ -86,7 +96,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `160 files / 696 tests`
+- current test count: `160 files / 697 tests`
 
 Latest maintenance movement:
 

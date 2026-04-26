@@ -1,6 +1,7 @@
 import { resolveIngestExtractionArtifacts } from "@/lib/app/ingest/fileIngestFlowBuilders";
 import { buildCanonicalDocumentSummary } from "@/lib/app/ingest/ingestDocumentModel";
 import type { DriveFolderNode } from "@/lib/app/google-drive/googleDriveApi";
+import type { Message } from "@/types/chat";
 
 export type { DriveFolderNode } from "@/lib/app/google-drive/googleDriveApi";
 
@@ -243,4 +244,20 @@ export function buildDriveUploadCompletedMessage(args: {
   destinationFolderName: string;
 }) {
   return `Google Drive uploaded: ${args.fileName} -> ${args.destinationFolderName}`;
+}
+
+export function buildDriveUiMessage(args: {
+  id: string;
+  text: string;
+  sourceType?: NonNullable<Message["meta"]>["sourceType"];
+}): Message {
+  return {
+    id: args.id,
+    role: "gpt",
+    text: args.text,
+    meta: {
+      kind: "task_info",
+      sourceType: args.sourceType || "manual",
+    },
+  };
 }

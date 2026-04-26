@@ -7,6 +7,7 @@ import {
 } from "@/lib/app/google-drive/googleDriveLink";
 import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
 import {
+  buildDriveUiMessage,
   resolveDrivePickedImportAction,
   type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
@@ -46,15 +47,11 @@ function appendUiMessage(
 ) {
   setGptMessages((prev) => [
     ...prev,
-    {
+    buildDriveUiMessage({
       id: `drive-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      role: "gpt",
       text,
-      meta: {
-        kind: "task_info",
-        sourceType,
-      },
-    },
+      sourceType,
+    }),
   ]);
 }
 
