@@ -34,6 +34,20 @@ describe("latestGptMessage", () => {
     expect(isLatestGptStatusMessage(message)).toBe(false);
   });
 
+  it("treats Drive import completion notices as non-transferable", () => {
+    const message: Message = {
+      id: "drive-status",
+      role: "gpt",
+      text: "Google Driveファイルをライブラリに保存しました: Project notes\n抽出文字数: 12,345 chars",
+      meta: {
+        kind: "task_info",
+        sourceType: "file_ingest",
+      },
+    };
+
+    expect(isLatestGptStatusMessage(message)).toBe(true);
+  });
+
   it("returns the latest meaningful GPT message while skipping status notices", () => {
     const messages: Message[] = [
       {

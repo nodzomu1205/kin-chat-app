@@ -4,6 +4,29 @@ import type { DriveFolderNode } from "@/lib/app/google-drive/googleDriveApi";
 
 export type { DriveFolderNode } from "@/lib/app/google-drive/googleDriveApi";
 
+export type DrivePickerMode =
+  | "file_import"
+  | "folder_index"
+  | "folder_import";
+
+export type DrivePickerDocument = {
+  id: string;
+  name?: string;
+  mimeType?: string;
+  type?: string;
+};
+
+export type DrivePickedImportAction =
+  | {
+      kind: "folder";
+      folder: { id: string; name: string };
+      mode: "index" | "import";
+    }
+  | {
+      kind: "file";
+      file: { id: string; name: string; mimeType: string };
+    };
+
 function formatDriveTimestamp(value?: string) {
   if (!value) return "";
   const date = new Date(value);
@@ -30,7 +53,7 @@ function isDriveFolder(entry: Pick<DriveFolderNode, "mimeType">) {
   return entry.mimeType === "application/vnd.google-apps.folder";
 }
 
-export function canImportDriveMimeType(mimeType?: string) {
+export function canImportDriveMimeType(mimeType?: string): mimeType is string {
   if (!mimeType) return false;
   if (mimeType.startsWith("text/")) return true;
   if (mimeType === "application/pdf") return true;
@@ -43,6 +66,33 @@ export function canImportDriveMimeType(mimeType?: string) {
 
 function isImportableDriveEntry(entry: Pick<DriveFolderNode, "mimeType">) {
   return canImportDriveMimeType(entry.mimeType);
+}
+
+export function resolveDrivePickedImportAction(args: {
+  doc: DrivePickerDocument;
+  mode: DrivePickerMode;
+}): DrivePickedImportAction | null {
+  if (args.doc.mimeType === "application/vnd.google-apps.folder") {
+    return {
+      kind: "folder",
+      folder: {
+        id: args.doc.id,
+        name: args.doc.name || "Google Drive Folder",
+      },
+      mode: args.mode === "folder_index" ? "index" : "import",
+    };
+  }
+
+  if (!canImportDriveMimeType(args.doc.mimeType)) return null;
+
+  return {
+    kind: "file",
+    file: {
+      id: args.doc.id,
+      name: args.doc.name || "Google Drive File",
+      mimeType: args.doc.mimeType,
+    },
+  };
 }
 
 export function buildDriveFolderIndexMessage(args: {
@@ -162,4 +212,35 @@ export function buildDriveImportStoredText(result: {
     fileName: "",
     fileTitle: "",
   }).canonicalDocumentText;
+}
+
+export function buildDriveImportFailedMessage(args: {
+  errorMessage: string;
+}) {
+  return `Google Drive import failed: ${args.errorMessage}`;
+}
+
+export function buildDriveImportSavedInfoMessage(args: {
+  title: string;
+  storedDocumentCharCount: number;
+}) {
+  return [
+    `Google Driveファイルをライブラリに保存しました: ${args.title}`,
+    `抽出文字数: ${args.storedDocumentCharCount.toLocaleString("ja-JP")} chars`,
+  ].join("\n");
+}
+
+export function buildDriveUploadCancelledMessage() {
+  return "Google Drive upload cancelled.";
+}
+
+export function buildDriveUploadInvalidSelectionMessage() {
+  return "Google Drive upload cancelled: invalid child-folder selection.";
+}
+
+export function buildDriveUploadCompletedMessage(args: {
+  fileName: string;
+  destinationFolderName: string;
+}) {
+  return `Google Drive uploaded: ${args.fileName} -> ${args.destinationFolderName}`;
 }

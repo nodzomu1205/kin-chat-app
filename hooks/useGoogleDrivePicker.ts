@@ -1,116 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import {
   DEFAULT_GOOGLE_DRIVE_FOLDER_LINK,
   resolveGoogleDriveFolderId,
   sanitizeGoogleDriveFolderLink,
 } from "@/lib/app/google-drive/googleDriveLink";
+import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
 import {
-  fetchDriveFileBlob,
-  listDriveChildFolders,
-  listDriveFolderChildren,
-  uploadDriveTextFile,
-} from "@/lib/app/google-drive/googleDriveApi";
-import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
-import {
-  requestFileIngest,
-  resolveIngestErrorMessage,
-  resolveIngestFileTitle,
-  type SharedIngestOptions,
-} from "@/lib/app/ingest/ingestClient";
-import {
-  buildIngestedDocumentRecord,
-  buildCanonicalSummarySource,
-} from "@/lib/app/ingest/ingestDocumentModel";
-import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
-import {
-  buildDriveImportStoredText as buildSharedDriveImportStoredText,
-  buildDriveImportSummary as buildSharedDriveImportSummary,
-  buildDriveFolderIndexMessage,
-  buildDriveUploadDestinationPrompt,
-  canImportDriveMimeType,
-  resolveDriveUploadDestinationIndex,
+  resolveDrivePickedImportAction,
+  type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
+import {
+  runDriveFileImport,
+  runDriveFolderImport,
+  runDriveLibraryItemUpload,
+} from "@/hooks/googleDriveImportExecution";
+import {
+  useGoogleDrivePickerRuntime,
+  type GooglePickerCallbackData,
+} from "@/hooks/googleDrivePickerRuntime";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
 
 const GOOGLE_API_KEY = "AIzaSyCQc_DKFE3WxU6SgVSE47X2SQv7nxZvm08";
-const GOOGLE_OAUTH_CLIENT_ID =
-  "593361829346-aq6ofe9uttbovg08hi8s14lqv7gj684o.apps.googleusercontent.com";
 const GOOGLE_PICKER_APP_ID = "593361829346";
-const GOOGLE_PICKER_SCOPE = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
-
-const GOOGLE_API_SCRIPT = "https://apis.google.com/js/api.js";
-const GOOGLE_GIS_SCRIPT = "https://accounts.google.com/gsi/client";
-
-type GooglePickerDocument = {
-  id: string;
-  name?: string;
-  mimeType?: string;
-  type?: string;
-};
-
-type GooglePickerCallbackData = {
-  action?: string;
-  docs?: GooglePickerDocument[];
-};
-
-type GoogleDrivePickerMode =
-  | "file_import"
-  | "folder_index"
-  | "folder_import";
-
-type GoogleTokenClient = {
-  callback: (response: { access_token?: string; error?: string }) => void;
-  requestAccessToken: (options: { prompt: string }) => void;
-};
-
-type GooglePickerDocsView = {
-  setIncludeFolders: (value: boolean) => GooglePickerDocsView;
-  setSelectFolderEnabled: (value: boolean) => GooglePickerDocsView;
-  setMimeTypes: (value: string) => GooglePickerDocsView;
-  setParent: (value: string) => GooglePickerDocsView;
-};
-
-type GooglePickerBuilder = {
-  setAppId: (value: string) => GooglePickerBuilder;
-  setDeveloperKey: (value: string) => GooglePickerBuilder;
-  setOAuthToken: (value: string) => GooglePickerBuilder;
-  setCallback: (value: (data: GooglePickerCallbackData) => void | Promise<void>) => GooglePickerBuilder;
-  addView: (value: GooglePickerDocsView) => GooglePickerBuilder;
-  build: () => { setVisible: (value: boolean) => void };
-};
-
-type GooglePickerNamespace = {
-  Action: { PICKED: string };
-  DocsView: new (viewId: string) => GooglePickerDocsView;
-  PickerBuilder: new () => GooglePickerBuilder;
-  ViewId: {
-    DOCS: string;
-    FOLDERS: string;
-  };
-};
-
-type GoogleAccountsNamespace = {
-  oauth2: {
-    initTokenClient: (config: {
-      client_id: string;
-      scope: string;
-      callback: (response: { access_token?: string; error?: string }) => void;
-    }) => GoogleTokenClient;
-  };
-};
-
-declare global {
-  interface Window {
-    gapi?: {
-      load: (name: string, callback: () => void) => void;
-    };
-    google?: {
-      accounts?: GoogleAccountsNamespace;
-      picker?: GooglePickerNamespace;
-    };
-  }
-}
 
 type UseGoogleDrivePickerArgs = {
   folderLink: string;
@@ -146,35 +58,6 @@ function appendUiMessage(
   ]);
 }
 
-function loadScript(src: string): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  const existing = window.document.querySelector(`script[src="${src}"]`);
-  if (existing) {
-    if ((existing as HTMLScriptElement).dataset.loaded === "true") {
-      return Promise.resolve();
-    }
-    return new Promise((resolve, reject) => {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), {
-        once: true,
-      });
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = window.document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      script.dataset.loaded = "true";
-      resolve();
-    };
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    window.document.head.appendChild(script);
-  });
-}
-
 export function useGoogleDrivePicker({
   folderLink,
   setFolderLink,
@@ -187,56 +70,8 @@ export function useGoogleDrivePicker({
   applyIngestUsage,
   focusGptPanel,
 }: UseGoogleDrivePickerArgs) {
-  const [pickerReady, setPickerReady] = useState(false);
-  const tokenClientRef = useRef<GoogleTokenClient | null>(null);
-  const accessTokenRef = useRef<string>("");
+  const { pickerReady, ensureAccessToken } = useGoogleDrivePickerRuntime();
   const folderId = useMemo(() => resolveGoogleDriveFolderId(folderLink), [folderLink]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function prepare() {
-      if (typeof window === "undefined") return;
-      await Promise.all([loadScript(GOOGLE_API_SCRIPT), loadScript(GOOGLE_GIS_SCRIPT)]);
-      if (!window.gapi) return;
-      const { gapi } = window;
-      await new Promise<void>((resolve) => {
-        gapi.load("picker", resolve);
-      });
-      if (!window.google?.accounts?.oauth2) return;
-      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_OAUTH_CLIENT_ID,
-        scope: GOOGLE_PICKER_SCOPE,
-        callback: () => {},
-      });
-      if (!cancelled) setPickerReady(true);
-    }
-
-    void prepare();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const ensureAccessToken = useCallback(async () => {
-    if (accessTokenRef.current) return accessTokenRef.current;
-    const tokenClient = tokenClientRef.current;
-    if (!tokenClient) {
-      throw new Error("Google Picker is not ready.");
-    }
-
-    return await new Promise<string>((resolve, reject) => {
-      tokenClient.callback = (response: { access_token?: string; error?: string }) => {
-        if (response.error || !response.access_token) {
-          reject(new Error(response.error || "Missing Google access token."));
-          return;
-        }
-        accessTokenRef.current = response.access_token;
-        resolve(response.access_token);
-      };
-      tokenClient.requestAccessToken({ prompt: "consent" });
-    });
-  }, []);
 
   const importDriveFile = useCallback(
     async (
@@ -247,81 +82,19 @@ export function useGoogleDrivePicker({
       if (manageLoading) setIngestLoading(true);
 
       try {
-        const accessToken = await ensureAccessToken();
-        const blob = await fetchDriveFileBlob({
-          fileId: file.id,
-          mimeType: file.mimeType,
-          accessToken,
-        });
-        const downloadedFile = new File([blob], file.name, {
-          type:
-            file.mimeType === "application/vnd.google-apps.spreadsheet"
-              ? "text/csv"
-              : blob.type || file.mimeType || "application/octet-stream",
-        });
-        const { response, data } = await requestFileIngest({
-          file: downloadedFile,
-          options: ingestOptions,
-        });
-        let totalIngestUsage = normalizeUsage(data?.usage);
-        if (!response.ok) {
-          appendUiMessage(
-            setGptMessages,
-            `Google Drive import failed: ${resolveIngestErrorMessage({
-              data,
-              fallback: `Failed to import ${file.name}.`,
-            })}`
-          );
-          focusGptPanel();
-          return;
-        }
-
-        const storedText = buildSharedDriveImportStoredText(data?.result || {});
-        const title = file.path || resolveIngestFileTitle({
-          data,
-          fallback: file.name,
-        });
-        const rawTextForSummary = buildCanonicalSummarySource(storedText);
-        const generatedSummary = await resolveGeneratedImportSummary({
-          enabled: autoSummarizeImports,
-          title,
-          canonicalText: storedText,
-          currentUsage: totalIngestUsage,
-          fallbackSummary:
-            autoSummarizeImports && rawTextForSummary
-              ? buildSharedDriveImportSummary({
-                  result: data?.result,
-                  fallbackText: rawTextForSummary,
-                  fallbackTitle: title,
-                })
-              : "",
-          onError: (error) => {
-            console.warn("Drive import summary generation failed", error);
+        await runDriveFileImport({
+          file,
+          ensureAccessToken,
+          ingestOptions,
+          autoSummarizeImports,
+          currentTaskId,
+          recordIngestedDocument,
+          appendUiMessage: (text, sourceType) => {
+            appendUiMessage(setGptMessages, text, sourceType);
           },
+          applyIngestUsage,
+          focusGptPanel,
         });
-        const summary = generatedSummary.summary;
-        totalIngestUsage = generatedSummary.totalUsage;
-
-        applyIngestUsage(totalIngestUsage);
-
-        const storedDocument = buildIngestedDocumentRecord({
-          title,
-          filename: title,
-          text: storedText,
-          summary,
-          taskId: currentTaskId,
-          timestamp: new Date().toISOString(),
-        });
-        recordIngestedDocument(storedDocument);
-        appendUiMessage(
-          setGptMessages,
-          [
-            `Google Driveファイルをライブラリに保存しました: ${title}`,
-            `抽出文字数: ${storedDocument.charCount.toLocaleString("ja-JP")} chars`,
-          ].join("\n"),
-          "file_ingest"
-        );
-        focusGptPanel();
       } finally {
         if (manageLoading) setIngestLoading(false);
       }
@@ -343,25 +116,16 @@ export function useGoogleDrivePicker({
     async (folder: { id: string; name: string }, mode: "index" | "import") => {
       setIngestLoading(true);
       try {
-        const accessToken = await ensureAccessToken();
-        const entries = await listDriveFolderChildren({
-          accessToken,
-          folderId: folder.id,
-          currentPath: folder.name,
+        await runDriveFolderImport({
+          folder,
+          mode,
+          ensureAccessToken,
+          appendUiMessage: (text, sourceType) => {
+            appendUiMessage(setGptMessages, text, sourceType);
+          },
+          importDriveFile,
+          focusGptPanel,
         });
-        appendUiMessage(
-          setGptMessages,
-          buildDriveFolderIndexMessage({
-            folderName: folder.name,
-            entries,
-          })
-        );
-        focusGptPanel();
-        if (mode === "index") return;
-        const files = entries.filter((file) => canImportDriveMimeType(file.mimeType));
-        for (const file of files) {
-          await importDriveFile(file, { manageLoading: false });
-        }
       } finally {
         setIngestLoading(false);
       }
@@ -369,7 +133,7 @@ export function useGoogleDrivePicker({
     [ensureAccessToken, focusGptPanel, importDriveFile, setGptMessages, setIngestLoading]
   );
 
-  const openPickerForMode = useCallback(async (mode: GoogleDrivePickerMode) => {
+  const openPickerForMode = useCallback(async (mode: DrivePickerMode) => {
     if (typeof window === "undefined") return;
     const pickerApi = window.google?.picker;
     if (!pickerApi) return;
@@ -395,19 +159,13 @@ export function useGoogleDrivePicker({
         if (data.action !== pickerApi.Action.PICKED) return;
         const picked = data.docs || [];
         for (const doc of picked) {
-          if (doc.mimeType === "application/vnd.google-apps.folder") {
-            await importDriveFolder({
-              id: doc.id,
-              name: doc.name || "Google Drive Folder",
-            }, mode === "folder_index" ? "index" : "import");
+          const action = resolveDrivePickedImportAction({ doc, mode });
+          if (!action) continue;
+          if (action.kind === "folder") {
+            await importDriveFolder(action.folder, action.mode);
             continue;
           }
-          if (!canImportDriveMimeType(doc.mimeType)) continue;
-          await importDriveFile({
-            id: doc.id,
-            name: doc.name || "Google Drive File",
-            mimeType: doc.mimeType || "text/plain",
-          });
+          await importDriveFile(action.file);
         }
       });
 
@@ -432,57 +190,16 @@ export function useGoogleDrivePicker({
       if (normalizedFolderLink && normalizedFolderLink !== folderLink) {
         setFolderLink(normalizedFolderLink);
       }
-      const accessToken = await ensureAccessToken();
-      let destinationFolderId = folderId;
-      let destinationFolderName = "configured folder";
-      const childFolders = await listDriveChildFolders({
-        accessToken,
+      return await runDriveLibraryItemUpload({
+        item,
         folderId,
+        ensureAccessToken,
+        promptForDestination: (message) => window.prompt(message),
+        appendUiMessage: (text, sourceType) => {
+          appendUiMessage(setGptMessages, text, sourceType);
+        },
+        focusGptPanel,
       });
-
-      if (childFolders.length > 0) {
-        const selectionInput = window.prompt(
-          buildDriveUploadDestinationPrompt({
-            childFolders,
-          })
-        );
-        if (selectionInput === null) {
-          appendUiMessage(setGptMessages, "Google Drive upload cancelled.");
-          focusGptPanel();
-          return "cancelled" as const;
-        }
-        const selectionIndex = resolveDriveUploadDestinationIndex({
-          input: selectionInput,
-          childFolderCount: childFolders.length,
-        });
-        if (selectionIndex === null) {
-          appendUiMessage(
-            setGptMessages,
-            "Google Drive upload cancelled: invalid child-folder selection."
-          );
-          focusGptPanel();
-          return "cancelled" as const;
-        }
-        if (selectionIndex >= 0) {
-          const selectedFolder = childFolders[selectionIndex];
-          destinationFolderId = selectedFolder.id;
-          destinationFolderName = selectedFolder.name;
-        }
-      }
-
-      const artifact = buildLibraryItemDriveExport(item);
-      const uploaded = await uploadDriveTextFile({
-        accessToken,
-        folderId: destinationFolderId,
-        fileName: artifact.fileName,
-        text: artifact.text,
-      });
-      appendUiMessage(
-        setGptMessages,
-        `Google Drive uploaded: ${uploaded.name || artifact.fileName} -> ${destinationFolderName}`
-      );
-      focusGptPanel();
-      return "uploaded" as const;
     },
     [
       ensureAccessToken,

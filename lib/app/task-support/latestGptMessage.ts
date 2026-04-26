@@ -9,6 +9,7 @@ const GPT_STATUS_PATTERNS = [
   /^Transforming the current task for Kin failed\./u,
   /^Google Drive upload(?:ed| cancelled| failed)/u,
   /^Google Drive import failed:/u,
+  /^Google Driveファイルをライブラリに保存しました:/u,
   /^Task preparation failed\.$/u,
   /^Task update failed\.$/u,
   /^Updating the task from the latest GPT message failed\.$/u,

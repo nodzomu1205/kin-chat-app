@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   buildDriveImportStoredText,
   buildDriveImportSummary,
+  buildDriveImportFailedMessage,
+  buildDriveImportSavedInfoMessage,
   buildDriveFolderIndexMessage,
+  buildDriveUploadCancelledMessage,
+  buildDriveUploadCompletedMessage,
   buildDriveUploadDestinationPrompt,
+  buildDriveUploadInvalidSelectionMessage,
   canImportDriveMimeType,
+  resolveDrivePickedImportAction,
   resolveDriveUploadDestinationIndex,
   type DriveFolderNode,
 } from "@/hooks/googleDrivePickerBuilders";
@@ -82,6 +88,73 @@ describe("googleDrivePickerBuilders", () => {
     expect(canImportDriveMimeType("image/png")).toBe(false);
   });
 
+  it("resolves picked Drive folder actions from picker mode", () => {
+    expect(
+      resolveDrivePickedImportAction({
+        doc: {
+          id: "folder-1",
+          mimeType: "application/vnd.google-apps.folder",
+        },
+        mode: "folder_index",
+      })
+    ).toEqual({
+      kind: "folder",
+      folder: {
+        id: "folder-1",
+        name: "Google Drive Folder",
+      },
+      mode: "index",
+    });
+
+    expect(
+      resolveDrivePickedImportAction({
+        doc: {
+          id: "folder-2",
+          name: "Project",
+          mimeType: "application/vnd.google-apps.folder",
+        },
+        mode: "folder_import",
+      })
+    ).toEqual({
+      kind: "folder",
+      folder: {
+        id: "folder-2",
+        name: "Project",
+      },
+      mode: "import",
+    });
+  });
+
+  it("resolves picked Drive file actions and skips unsupported files", () => {
+    expect(
+      resolveDrivePickedImportAction({
+        doc: {
+          id: "file-1",
+          name: "notes.txt",
+          mimeType: "text/plain",
+        },
+        mode: "file_import",
+      })
+    ).toEqual({
+      kind: "file",
+      file: {
+        id: "file-1",
+        name: "notes.txt",
+        mimeType: "text/plain",
+      },
+    });
+
+    expect(
+      resolveDrivePickedImportAction({
+        doc: {
+          id: "file-2",
+          mimeType: "image/png",
+        },
+        mode: "file_import",
+      })
+    ).toBeNull();
+  });
+
   it("builds Drive import stored text and prefers compact summaries", () => {
     expect(
       buildDriveImportStoredText({
@@ -100,5 +173,35 @@ describe("googleDrivePickerBuilders", () => {
         fallbackTitle: "Drive doc",
       })
     ).toBe("short compact summary");
+  });
+
+  it("builds Drive UI feedback messages in one shared place", () => {
+    expect(
+      buildDriveImportFailedMessage({
+        errorMessage: "Failed to import notes.txt.",
+      })
+    ).toBe("Google Drive import failed: Failed to import notes.txt.");
+
+    expect(
+      buildDriveImportSavedInfoMessage({
+        title: "Project notes",
+        storedDocumentCharCount: 12345,
+      })
+    ).toBe(
+      "Google Driveファイルをライブラリに保存しました: Project notes\n抽出文字数: 12,345 chars"
+    );
+
+    expect(buildDriveUploadCancelledMessage()).toBe(
+      "Google Drive upload cancelled."
+    );
+    expect(buildDriveUploadInvalidSelectionMessage()).toBe(
+      "Google Drive upload cancelled: invalid child-folder selection."
+    );
+    expect(
+      buildDriveUploadCompletedMessage({
+        fileName: "export.txt",
+        destinationFolderName: "Drafts",
+      })
+    ).toBe("Google Drive uploaded: export.txt -> Drafts");
   });
 });
