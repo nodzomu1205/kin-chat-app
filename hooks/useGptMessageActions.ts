@@ -15,6 +15,7 @@ import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtube-transcript/yo
 import {
   buildYoutubeTranscriptFailureText,
   buildYoutubeTranscriptSuccessArtifacts,
+  extractYouTubeVideoIdFromUrl,
 } from "@/lib/app/send-to-gpt/sendToGptTranscriptHelpers";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
@@ -43,7 +44,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     outputMode: string;
     appendUserMessage?: Message | null;
   }) => {
-    const resolvedVideoId = sourceVideoId(params.transcriptUrl);
+    const resolvedVideoId = extractYouTubeVideoIdFromUrl(params.transcriptUrl);
     if (!resolvedVideoId) {
       throw new Error("Invalid YouTube URL");
     }
@@ -260,20 +261,6 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     return true;
   };
 
-  function sourceVideoId(url: string) {
-    const trimmed = url.trim();
-    if (!trimmed) return "";
-    try {
-      const parsed = new URL(trimmed);
-      if (/youtu\\.be$/i.test(parsed.hostname)) {
-        return parsed.pathname.replace(/^\/+/, "").trim();
-      }
-      if (/youtube\\.com$/i.test(parsed.hostname) || /www\\.youtube\\.com$/i.test(parsed.hostname)) {
-        return parsed.searchParams.get("v")?.trim() || "";
-      }
-    } catch {}
-    return "";
-  }
   const buildCommonFlowArgs = () => {
     return mergeSendToGptFlowArgs(buildCommonSendToGptFlowArgs(args));
   };

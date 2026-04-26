@@ -69,12 +69,13 @@ This is now a better default next step than touching broader UI or feature work.
 
 Concrete next default item:
 
-1. inspect `hooks/useGoogleDrivePicker.ts`
-2. check for unused Drive/import residue before editing
-3. split only a low-risk boundary such as UI feedback / picker state / import
-   execution if the live references support it
+1. continue the Drive/device ingest boundary from `hooks/useGoogleDrivePicker.ts`
+2. check for unused Drive/import residue before each follow-up edit
+3. split only a low-risk boundary such as picker state or import execution if
+   the live references support it
 4. keep Drive HTTP operations in `lib/app/google-drive/googleDriveApi.ts` and
-   importability/summary/stored-text shaping in `googleDrivePickerBuilders.ts`
+   importability/Picker action/summary/stored-text/UI-feedback message shaping in
+   `googleDrivePickerBuilders.ts`
 5. run focused Drive picker tests plus the full verification baseline
 
 ## Current Verification State
@@ -85,7 +86,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `151 files / 659 tests`
+- current test count: `155 files / 677 tests`
 
 Latest maintenance movement:
 
@@ -254,6 +255,27 @@ Current maintenance remaining:
   aggregation through `lib/app/ingest/importSummaryGeneration.ts`
 - file and Drive imports now share stored ingested-document record construction,
   so text cleanup, char count, and timestamps stay aligned
+- Drive import/upload completion, failure, and cancellation messages now build
+  through `googleDrivePickerBuilders.ts`, with focused coverage; Drive import
+  completion notices are also skipped by latest-GPT transfer selection
+- Google Picker selected-document routing now resolves through
+  `resolveDrivePickedImportAction`, with focused coverage for folder
+  index/import actions and unsupported file skips
+- Google Picker script/token readiness now lives in
+  `googleDrivePickerRuntime.ts`, while Drive file-import execution lives in
+  `googleDriveImportExecution.ts` with focused success/failure coverage
+- Drive folder index/import execution now also lives in
+  `googleDriveImportExecution.ts`, with focused coverage for index-only mode and
+  importable-file filtering during folder import
+- Drive library-item upload execution now also lives in
+  `googleDriveImportExecution.ts`, with focused coverage for parent-folder
+  upload, child-folder selection, cancelled selection, and invalid selection
+- device-file import and Drive import now share stored-document preparation
+  through `lib/app/ingest/ingestStoredDocumentPreparation.ts`, with focused
+  coverage for generated-summary usage and record construction
+- library-summary usage normalization for ingest accounting now flows through
+  `lib/app/ingest/ingestUsage.ts`, keeping file/Drive/search/task-snapshot
+  summary usage on one ingest-bucket conversion path
 - app-side ingest modules now live under `lib/app/ingest/`
 - send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`
 - memory-interpreter app-side modules now live under

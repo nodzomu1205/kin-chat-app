@@ -37,7 +37,7 @@ Verification baseline from the latest completed check:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test status: `151 files / 659 tests`
+- current test status: `155 files / 677 tests`
 
 ## What Not To Do Next
 
@@ -113,12 +113,26 @@ Watch next:
 Status:
 
 - first split completed
-- `useGoogleDrivePicker.ts` keeps picker/auth, import orchestration, and UI
-  feedback
+- `useGoogleDrivePicker.ts` keeps picker/open-folder orchestration and UI
+  feedback dispatch
+- `googleDrivePickerRuntime.ts` owns Google script loading, picker readiness,
+  and token acquisition
+- `googleDriveImportExecution.ts` owns Drive file/folder import and
+  library-item upload execution after loading state is entered
+- `ingestStoredDocumentPreparation.ts` owns the shared post-request step that
+  resolves import summaries, aggregates ingest usage, and builds ingested
+  stored-document records for device-file and Drive imports
+- `ingestUsage.ts` owns library-summary usage normalization before ingest
+  bucket accounting, shared by file/Drive import summaries, search summaries,
+  and task-snapshot summaries
 - `lib/app/google-drive/googleDriveApi.ts` owns Drive HTTP fetch/upload/listing
 - `googleDrivePickerBuilders.ts` owns Drive importability, folder index text,
-  upload destination prompts, Drive import stored text, and summary fallback
+  Picker selected-document action resolution, upload destination prompts, Drive
+  import stored text, summary fallback, and Drive import/upload feedback
+  message text
 - the unused exported `summarizeImportedText` residue was removed
+- Drive import completion notices are now skipped by latest-GPT transfer
+  selection through `latestGptMessage`
 
 Watch next:
 

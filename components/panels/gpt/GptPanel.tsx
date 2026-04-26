@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import ChatMessages from "@/components/message/ChatMessages";
 import DrawerTabs, { type DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import GptDrawerRouter from "@/components/panels/gpt/GptDrawerRouter";
+import { buildDeviceImportOptions } from "@/components/panels/gpt/GptDrawerRouterHelpers";
 import GptComposer from "@/components/panels/gpt/GptComposer";
 import GptSettingsWorkspace, {
   type SettingsWorkspaceView,
@@ -272,14 +273,7 @@ export default function GptPanel(props: GptPanelProps) {
 
   const handleInjectFile = async (file?: File | null) => {
     if (!file || settings.ingestLoading || !settings.canInjectFile) return;
-    await chat.onInjectFile(file, {
-      kind: settings.uploadKind,
-      mode: settings.ingestMode,
-      detail: settings.imageDetail,
-      readPolicy: settings.fileReadPolicy,
-      compactCharLimit: settings.compactCharLimit,
-      simpleImageCharLimit: settings.simpleImageCharLimit,
-    });
+    await chat.onInjectFile(file, buildDeviceImportOptions(settings));
   };
 
   const toggleSettingsWorkspace = (next: SettingsWorkspaceView) => {

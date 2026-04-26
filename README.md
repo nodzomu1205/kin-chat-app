@@ -107,16 +107,17 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `151 files / 659 tests`
+- current test count: `155 files / 677 tests`
 
 Current maintenance status:
 
 - the repository is in late-stage maintenance-watch, roughly `85-90%` complete
 - send-to-GPT hub splitting is no longer the default next target; keep it in
   regrowth-watch mode
-- the next default maintenance slice is `hooks/useGoogleDrivePicker.ts`, after
-  checking unused Drive/import residue and preserving the existing
-  `googleDriveApi.ts` / `googleDrivePickerBuilders.ts` ownership split
+- the next default maintenance slice remains the Drive/device ingest boundary,
+  now after Drive UI-feedback message, Picker document-action, runtime, and
+  file-import execution extraction; preserve the existing `googleDriveApi.ts`
+  / `googleDrivePickerBuilders.ts` ownership split
 
 Recent regression fixes and maintainability wins include:
 
@@ -152,6 +153,8 @@ Recent regression fixes and maintainability wins include:
 - task-intent fallback, current-task intent refresh, Kin task start, Kin transfer, transform-intent, and send-to-GPT request internals now use `reasoningMode` for the LLM strict/creative runtime value; remaining `responseMode` references are protocol/task payload semantics such as structured results or ack modes
 - file import and Drive import now share generated library-summary handling through `lib/app/ingest/importSummaryGeneration.ts`, so summary fallback, summary cleanup, and ingest usage aggregation have one post-request helper
 - file import and Drive import now also share stored ingested-document record construction through `buildIngestedDocumentRecord`, keeping text cleanup, char count, and timestamps aligned
+- file import and Drive import now share stored-document preparation through `lib/app/ingest/ingestStoredDocumentPreparation.ts`, keeping generated-summary usage and record construction on one post-request path
+- library-summary usage normalization for ingest accounting now flows through `lib/app/ingest/ingestUsage.ts`, so file/Drive/search/task-snapshot summary usage stays on one ingest-bucket conversion path
 - ingest app-side modules now live under `lib/app/ingest/`, making the first folder-organization pass concrete without changing runtime behavior
 - send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`, making the second folder-organization pass concrete without changing runtime behavior
 - memory-interpreter app-side modules now live under `lib/app/memory-interpreter/`, making the third folder-organization pass concrete without changing runtime behavior
@@ -172,7 +175,9 @@ Recent regression fixes and maintainability wins include:
 - Library drawer user-facing mojibake in item metadata and right-side card action glyphs was repaired through the local text owner/components (`gptUiText.ts`, `LibraryItemMetadata.tsx`, `LibraryItemCardHeader.tsx`, `LibraryItemCardActions.tsx`), with `LibraryDrawer.test.tsx` now pinning the visible labels and icon text
 - Memory-facing mojibake from ingest/task flows was repaired at the source: task draft last-intent labels now come from `taskDraftIntentText.ts`, file-ingest saved info text is covered in `fileIngestFlowBuilders.ts`, and YouTube transcript punctuation/music-marker cleanup uses readable Japanese-safe regexes
 - `messageSourcePreview.tsx` now delegates preview helpers, source banners, and YouTube transcript actions to focused local modules, and its dormant render/helper test is back in the Vitest baseline
-- Drive picker maintenance now keeps picker/auth and UI feedback in `useGoogleDrivePicker.ts`, Drive HTTP operations in `lib/app/google-drive/googleDriveApi.ts`, and importability/summary/stored-text shaping in `googleDrivePickerBuilders.ts`
+- Drive picker maintenance now keeps picker/open-folder orchestration in `useGoogleDrivePicker.ts`, script/token readiness in `googleDrivePickerRuntime.ts`, Drive file/folder import and library upload execution in `googleDriveImportExecution.ts`, Drive HTTP operations in `lib/app/google-drive/googleDriveApi.ts`, and importability/Picker action/summary/stored-text/UI-feedback message shaping in `googleDrivePickerBuilders.ts`
+- Drive folder index/import execution also lives in `googleDriveImportExecution.ts`, keeping folder traversal, index message posting, and importable-file filtering out of `useGoogleDrivePicker.ts`
+- Drive library-item upload execution also lives in `googleDriveImportExecution.ts`, keeping child-folder listing, destination selection, upload execution, and upload feedback out of `useGoogleDrivePicker.ts`
 - `transformIntent.ts` is now a small public facade plus Kin directive assembly; rule-based directive parsing, API intent resolving, type definitions, text transformation runtime, and Kin chunk splitting live in focused task-runtime modules with a facade regression test
 - `kinTransferFlows.ts` now delegates task-usage accumulation and Kin transfer status-message shaping to `kinTransferFlowBuilders.ts`, keeping the flow closer to orchestration-only
 - Kin transfer flow argument/result contracts now live in `kinTransferFlowTypes.ts`, keeping `kinTransferFlows.ts` focused on the two transfer orchestrations

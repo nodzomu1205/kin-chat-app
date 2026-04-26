@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `151 files / 659 tests`
+- test status: `155 files / 677 tests`
 
 This roadmap should now be read together with:
 
@@ -37,8 +37,9 @@ Primary review points:
 - `lib/app/kin-protocol/kinMultipart.ts`
 
 Current cleanup priority:
-1. Drive/device ingest authority watch, starting with
-   `hooks/useGoogleDrivePicker.ts` only after unused residue is checked
+1. Drive/device ingest authority watch, continuing from the first
+   `hooks/useGoogleDrivePicker.ts` UI-feedback message, Picker action, runtime,
+   and file-import execution extraction
 2. large hook/UI-surface decomposition follow-up only where live behavior is
    actively growing again
 3. repo-wide `strict` / `creative` / `responseMode` maintenance-watch
@@ -150,17 +151,16 @@ Reference:
 
 ### Next Default Slice
 
-If no higher-priority product bug appears first, start the next session at
-`hooks/useGoogleDrivePicker.ts`.
+If no higher-priority product bug appears first, continue at the Drive/device
+ingest boundary around `hooks/useGoogleDrivePicker.ts`.
 
 Before editing:
 
 1. check Drive/import live references and unused residue
 2. keep `googleDriveApi.ts` as the Drive HTTP owner
-3. keep `googleDrivePickerBuilders.ts` as importability/summary/stored-text
-   shaping owner
-4. choose one low-risk split such as UI feedback, picker state, or import
-   execution
+3. keep `googleDrivePickerBuilders.ts` as importability/Picker
+   action/summary/stored-text and Drive UI-feedback message shaping owner
+4. choose one low-risk follow-up split such as picker state or import execution
 5. verify with focused Drive picker tests and the full baseline
 
 ## Immediate Action Plan
@@ -300,6 +300,28 @@ Recent progress:
   usage aggregation through `lib/app/ingest/importSummaryGeneration.ts`
 - file import and Drive import now share stored ingested-document record
   construction through `buildIngestedDocumentRecord`
+- Drive import/upload completion, failure, and cancellation messages now build
+  through `googleDrivePickerBuilders.ts`, and Drive import completion notices
+  are excluded from latest-GPT transfer selection through `latestGptMessage`
+- Google Picker selected-document routing now resolves through
+  `resolveDrivePickedImportAction`, keeping MIME support, folder/file fallback
+  labels, and folder index/import mode mapping out of `useGoogleDrivePicker.ts`
+- Google Picker script/token readiness now lives in
+  `googleDrivePickerRuntime.ts`, while Drive file-import execution lives in
+  `googleDriveImportExecution.ts` with focused coverage for success and failure
+  paths
+- Drive folder index/import execution now also lives in
+  `googleDriveImportExecution.ts`, with focused coverage for index-only mode and
+  importable-file filtering during folder import
+- Drive library-item upload execution now also lives in
+  `googleDriveImportExecution.ts`, with focused coverage for parent-folder
+  upload, child-folder selection, cancelled selection, and invalid selection
+- device-file import and Drive import now share stored-document preparation
+  through `lib/app/ingest/ingestStoredDocumentPreparation.ts`, with focused
+  coverage for generated-summary usage and record construction
+- library-summary usage normalization for ingest accounting now flows through
+  `lib/app/ingest/ingestUsage.ts`, keeping file/Drive/search/task-snapshot
+  summary usage on one ingest-bucket conversion path
 - app-side ingest modules now live under `lib/app/ingest/`
 - send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`
 - memory-interpreter app-side modules now live under
@@ -329,12 +351,10 @@ Recent progress:
 - obsolete intermediate-budget ingest helpers were removed from `routeHelpers.ts`
 
 Next ingest-specific work:
-1. reduce remaining device-import vs Drive-import post-processing divergence
-2. extract more shared post-request helpers only where duplication is proven live
-3. keep ingest summary usage in the ingest bucket as new ingest-adjacent flows are added
-4. consolidate device-file ingest UI into the library drawer/settings surfaces
-5. implement Google Drive upload subfolder selection without creating a second ingest authority path
-6. decide ZIP import scope only after the canonical ingest authority is stable
+1. review whether any remaining device-import vs Drive-import post-processing divergence is still live duplication
+2. keep ingest summary usage in the ingest bucket as new ingest-adjacent flows are added
+3. consolidate device-file ingest UI into the library drawer/settings surfaces
+4. decide ZIP import scope only after the canonical ingest authority is stable
 
 ### Priority 3: Re-audit page-side composition before it regrows
 
