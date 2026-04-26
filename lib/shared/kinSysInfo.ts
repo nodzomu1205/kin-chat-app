@@ -55,13 +55,13 @@ function buildHeader(
   part: number,
   total: number
 ) {
-  const responseMode = part < total ? "SILENT_ACK" : "FINAL_ACK";
+  const kinProtocolResponseMode = part < total ? "SILENT_ACK" : "FINAL_ACK";
 
   return [
     "<<SYS_INFO>>",
     "TYPE: KNOWLEDGE",
     `PART: ${part}/${total}`,
-    `RESPONSE_MODE: ${responseMode}`,
+    `RESPONSE_MODE: ${kinProtocolResponseMode}`,
     `TITLE: ${sanitizeLine(title || "Untitled")}`,
     `SOURCE_KIND: ${sanitizeLine(sourceKind || "unknown")}`,
     `SUMMARY_LEVEL: ${sanitizeLine(summaryLevel || "kin_compact")}`,

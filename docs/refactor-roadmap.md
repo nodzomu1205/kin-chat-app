@@ -937,6 +937,10 @@ Next:
   `runDrivePickedDocumentsImport` inside `googleDriveImportExecution.ts`, with
   focused coverage for folder import, file import, and unsupported-file skip
   behavior
+- Kin SYS_INFO block response-mode naming now uses a local
+  `kinProtocolResponseMode` variable, and `kinSysInfo.test.ts` pins nested
+  sentinel escaping plus multipart `SILENT_ACK` / `FINAL_ACK` behavior so the
+  remaining `RESPONSE_MODE` text stays clearly protocol-scoped
 - `ReceivedDocsDrawer.tsx` was renamed to `LibraryDrawer.tsx`; it now delegates
   import controls, tabs, library item shell, item header/actions/metadata,
   search preview, and stored-document editing to local components. The unused

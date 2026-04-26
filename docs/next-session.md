@@ -99,6 +99,11 @@ Latest Drive maintenance progress:
   `useGoogleDrivePicker.ts` no longer owns the folder/file import routing loop.
   The execution test pins folder import, file import, and unsupported-file skip
   behavior.
+- Kin SYS_INFO block response-mode naming now uses the local
+  `kinProtocolResponseMode` variable, keeping the remaining `RESPONSE_MODE`
+  text clearly tied to the Kin protocol instead of GPT UI policy. The new
+  `lib/shared/kinSysInfo.test.ts` also pins nested sentinel escaping and
+  multipart `SILENT_ACK` / `FINAL_ACK` behavior.
 
 ## Current Verification State
 
@@ -108,7 +113,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `161 files / 700 tests`
+- current test count: `162 files / 702 tests`
 
 Latest maintenance movement:
 
