@@ -18,9 +18,8 @@ import type { KinMemoryState } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 import {
   buildIngestedDocumentFilename,
-  buildIngestedDocumentRecord,
 } from "@/lib/app/ingest/ingestDocumentModel";
-import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
+import { prepareIngestedStoredDocument } from "@/lib/app/ingest/ingestStoredDocumentPreparation";
 import {
   buildFileIngestBridgeState as buildFileIngestBridgeStateFromBuilders,
   buildFileIngestSavedInfoMessage,
@@ -178,17 +177,19 @@ export async function runFileIngestFlow({
       fileTitle,
     });
 
-    const summaryResult = await resolveGeneratedImportSummary({
-      enabled: autoGenerateFileImportSummary,
+    const preparedDocument = await prepareIngestedStoredDocument({
       title: fileTitle,
-      canonicalText: canonicalDocumentText,
+      filename: storedFilename,
+      text: canonicalDocumentText,
+      taskId: currentTaskDraft.id || undefined,
+      autoGenerateSummary: autoGenerateFileImportSummary,
       currentUsage: totalIngestUsage,
-      onError: (error) => {
+      onSummaryError: (error) => {
         console.warn("File import summary generation failed", error);
       },
     });
-    const documentSummary = summaryResult.summary;
-    totalIngestUsage = summaryResult.totalUsage;
+    const documentSummary = preparedDocument.summary;
+    totalIngestUsage = preparedDocument.totalUsage;
 
     applyIngestUsage(totalIngestUsage);
 
@@ -221,14 +222,7 @@ export async function runFileIngestFlow({
       setPendingKinInjectionIndex(0);
     }
 
-    const storedDocument = buildIngestedDocumentRecord({
-      title: fileTitle,
-      filename: storedFilename,
-      text: canonicalDocumentText,
-      summary: documentSummary,
-      taskId: currentTaskDraft.id || undefined,
-      timestamp: new Date().toISOString(),
-    });
+    const storedDocument = preparedDocument.storedDocument;
     const storedDocumentText = storedDocument.text;
     recordIngestedDocument(storedDocument);
     appendInfo(
