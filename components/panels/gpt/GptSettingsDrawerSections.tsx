@@ -41,55 +41,53 @@ export function MemorySettingsSection(props: {
 }) {
   const text = props.text ?? GPT_SETTINGS_DRAWER_TEXT;
   return (
-    <>
-      <div style={props.cardStyle ?? sectionCard}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: props.isMobile
-              ? "1fr"
-              : "repeat(3, minmax(0, 1fr))",
-            gap: 10,
-          }}
-        >
-          <NumberField
-            label="MAX_FACTS"
-            value={props.localSettings.maxFacts}
-            onChange={(value) => props.onFieldChange("maxFacts", value)}
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxFacts}
-          />
-          <NumberField
-            label="MAX_PREFERENCES"
-            value={props.localSettings.maxPreferences}
-            onChange={(value) => props.onFieldChange("maxPreferences", value)}
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxPreferences}
-          />
-          <NumberField
-            label="CHAT_RECENT_LIMIT"
-            value={props.localSettings.chatRecentLimit}
-            onChange={(value) => props.onFieldChange("chatRecentLimit", value)}
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.chatRecentLimit}
-          />
-          <NumberField
-            label="SUMMARIZE_THRESHOLD"
-            value={props.localSettings.summarizeThreshold}
-            onChange={(value) =>
-              props.onFieldChange("summarizeThreshold", value)
-            }
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.summarizeThreshold}
-          />
-          <NumberField
-            label="RECENT_KEEP"
-            value={props.localSettings.recentKeep}
-            onChange={(value) => props.onFieldChange("recentKeep", value)}
-            help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.recentKeep}
-          />
-          <ReadonlyStatField
-            label={text.memoryCapacityPreviewLabel}
-            value={`${text.memoryCapacityPreviewPrefix}${props.memoryCapacityPreview}`}
-            help={text.memoryCapacityPreviewHelp}
-          />
-        </div>
+    <div style={props.cardStyle ?? sectionCard}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: props.isMobile
+            ? "1fr"
+            : "repeat(3, minmax(0, 1fr))",
+          gap: 10,
+        }}
+      >
+        <NumberField
+          label="MAX_FACTS"
+          value={props.localSettings.maxFacts}
+          onChange={(value) => props.onFieldChange("maxFacts", value)}
+          help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxFacts}
+        />
+        <NumberField
+          label="MAX_PREFERENCES"
+          value={props.localSettings.maxPreferences}
+          onChange={(value) => props.onFieldChange("maxPreferences", value)}
+          help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxPreferences}
+        />
+        <NumberField
+          label="CHAT_RECENT_LIMIT"
+          value={props.localSettings.chatRecentLimit}
+          onChange={(value) => props.onFieldChange("chatRecentLimit", value)}
+          help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.chatRecentLimit}
+        />
+        <NumberField
+          label="SUMMARIZE_THRESHOLD"
+          value={props.localSettings.summarizeThreshold}
+          onChange={(value) =>
+            props.onFieldChange("summarizeThreshold", value)
+          }
+          help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.summarizeThreshold}
+        />
+        <NumberField
+          label="RECENT_KEEP"
+          value={props.localSettings.recentKeep}
+          onChange={(value) => props.onFieldChange("recentKeep", value)}
+          help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.recentKeep}
+        />
+        <ReadonlyStatField
+          label={text.memoryCapacityPreviewLabel}
+          value={`${text.memoryCapacityPreviewPrefix}${props.memoryCapacityPreview}`}
+          help={text.memoryCapacityPreviewHelp}
+        />
       </div>
       <div
         style={{
@@ -97,7 +95,7 @@ export function MemorySettingsSection(props: {
           gap: 8,
           justifyContent: "flex-end",
           flexWrap: "wrap",
-          marginTop: props.actionTopMargin,
+          marginTop: props.actionTopMargin ?? 16,
         }}
       >
         <button type="button" style={buttonSecondaryWide} onClick={props.onReset}>
@@ -107,7 +105,7 @@ export function MemorySettingsSection(props: {
           {text.save}
         </button>
       </div>
-    </>
+    </div>
   );
 }
 

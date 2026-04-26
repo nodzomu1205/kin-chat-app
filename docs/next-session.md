@@ -6,829 +6,124 @@ Updated: 2026-04-26
 
 Do not patch the first visible symptom.
 
-This project has already lost significant time to the same failure mode:
+For topic / task / memory / protocol regressions, trace the adopted value end to
+end before changing code:
 
-- a visible bug appears in one surface
-- the nearest renderer/helper gets patched
-- the underlying authority chain stays mixed
-- another surface still breaks
+1. prompt sent to the LLM or Kin
+2. raw reply
+3. parsed protocol event or parsed memory candidate
+4. every post-parse transform / resolver / gate
+5. final value written to UI, memory, task state, or library card
 
-For the next session, treat these as hard rules:
+If only part of that path was inspected, record it as partial verification. Do
+not call a path removed or fixed from a nearby helper read alone.
 
-1. define the canonical model first
-2. identify which outputs derive from it
-3. only then change downstream surfaces
-4. prefer shared helpers over parallel local fixes
-5. if two similar systems exist, first ask whether they should share one lower-level tool
-6. if old behavior is being replaced, remove the obsolete path back to its root owner when practical instead of only hiding the surface UI
-7. for LLM-backed flows, do not declare a rewrite path removed until prompt, raw reply, parsed reply, post-parse transforms, and final adopted value have all been inspected
+## Session Close Status
 
-If a fix idea does not improve authority clarity, it is probably the wrong fix.
+Closeout verification passed:
 
-For topic / task / memory regressions specifically, prefer subtractive tracing
-over new guards:
+- `npx tsc --noEmit`
+- `npm run lint`
+- `npm test` (`166 files / 739 tests`)
+- `npm run build`
 
-1. inspect the actual prompt
-2. inspect the raw model reply
-3. inspect parsed data
-4. inspect every local rewrite after parsing
-5. remove the interfering rewrite at its root
+The repository is in `late-stage maintenance-watch`, not active rescue.
 
-Do not trust "we already removed that path" unless the full runtime path was
-checked end-to-end.
-
-Also do not promote a partial file read into certainty. If only part of the
-runtime path was checked, record it as partial verification, not a confirmed
-fact.
-
-## New Immediate Priority
-
-The current task/constraint path is functionally in a good stopping state:
+Stable enough to avoid broad refactor by default:
 
 - task-intent fallback uses a fixed-slot JSON schema
 - approved wording compiles directly into `CONSTRAINTS`
 - task progress derives from `CONSTRAINTS`
-
-Do not destabilize that visible behavior.
-
-The residue cleanup around that path is now substantially complete.
-
-Instead, the next session should default to:
-
-1. keeping remaining protocol/task-payload `responseMode` naming under
-   maintenance-watch; the dead GPT settings/persistence carry-through has been
-   removed, and controller/task/transfer/send-to-GPT request boundaries now use
-   `reasoningMode`
-2. keeping ingest authority and ingest token-accounting under watch as new
-   ingest-adjacent behavior is added
-3. keeping mojibake cleanup opportunistic in still-active owner files
-4. maintaining `sendToGpt` / page-composition boundaries without regrowth
-
-This is now a better default posture than touching broader UI or feature work.
-
-Concrete next default item:
-
-1. start from the next product or bug boundary, not a default broad refactor
-2. classify the touched boundary before editing
-3. split only when live duplication or regrowth is observed
-4. keep existing owner modules intact unless the change proves a better owner
-5. run focused boundary tests plus the full verification baseline
-
-## Next Requested Product Work
-
-The next session should start from the library / Kin protocol product changes
-below. Treat these as product work with maintenance guardrails, not as another
-broad rescue refactor.
-
-### 1. Simplify library tabs
-
-Remove the library tab filter switcher:
-
-- `すべて`
-- `Kin作成文書`
-- `取込文書`
-- `検索データ`
-
-Goal:
-
-- recover vertical space in the library tab
-- keep filtering logic only if a live caller still needs it elsewhere
-
-Maintenance guardrail:
-
-- inspect `LibraryDrawer.tsx` and local library drawer components before editing
-- remove dead filter state/routes if the switcher was the only live owner
-- update `LibraryDrawer.test.tsx` to pin the simplified layout
-
-### 2. Expand and collapse library import/action tiles
-
-Expand the current library action tiles:
-
-- `Google Drive参照`
-- `Google Driveからインポート`
-- `デバイスからインポート`
-
-Target compact layout:
-
-1. row 1: existing three buttons
-2. row 2: `画面に一括表示` + mode dropdown
-3. row 3: `Kinに一括送信` + mode dropdown
-
-Dropdown modes:
-
-- `Index`
-- `Index + Summary`
-- `Index + Summary + Detail`
-
-The tile group must be collapsible so the expanded actions do not permanently
-consume library space.
-
-Maintenance guardrail:
-
-- keep UI text in the appropriate text-owner file
-- keep library-card aggregation separate from rendering
-- add focused tests for collapsed/expanded actions and selected aggregation mode
-
-### 3. Unify library-card Kin sending with multipart delivery
-
-Known issue:
-
-- sending a library card to Kin from the card action does not currently use the
-  same multipart delivery path as SYS-format sending
-- large sends can therefore fail from the library-card route while SYS-format
-  routes split correctly
-
-Next-session approach:
-
-1. inventory all Kin send routes from library cards, bulk library actions,
-   SYS_INFO / SYS_TASK flows, and task transfer flows
-2. identify the single multipart owner, likely under the existing Kin protocol /
-   multipart boundary
-3. route library-card and bulk-library Kin sends through that owner
-4. keep presentation-specific formatting outside the transport owner
-
-Maintenance guardrail:
-
-- do not add a second splitting implementation
-- pin a large-library-card send test that proves multipart behavior is shared
-- keep latest-GPT / task transfer behavior unchanged
-
-### 4. Make task SYS protocol rules constraint-aware
-
-Current issue:
-
-- SYS-format task sends append all protocol rules by default
-- unrelated protocol guidance can confuse Kin
-
-Target:
-
-- include only protocol guidance relevant to the task constraints
-- derive the selected rule set from `CONSTRAINTS` and task intent data
-
-Maintenance guardrail:
-
-- do not mutate the stable task constraint behavior
-- add a pure helper for constraint -> protocol-rule selection
-- test at least:
-  - no relevant constraint
-  - search-related constraint
-  - file/library/output-related constraint
-  - multiple matching constraints
-
-### 5. Redesign draft / file-saving protocol
-
-Current issue:
-
-- Kin-authored final output is saved to the library when multipart `PART x/y`
-  messages are received and the final part arrives
-- non-PART final output does not go through the same save flow
-- the current operation should be replaced by explicit draft and file-saving
-  protocols
-
-Planned protocol concepts:
-
-- Draft Preparation protocol
-  - Kin asks GPT to create a document or future artifact such as JSON or image
-  - GPT creates the draft and returns it with a GPT-issued draft number
-- Draft Modification protocol
-  - Kin specifies a draft number and asks GPT to revise it
-  - Kin can request either local patch/context-only response or full revised
-    draft
-  - if unspecified, partial response is the default
-- File Saving protocol
-  - Kin specifies a draft number and asks GPT to save that draft as a library
-    file
-  - Kin-authored content can also include this protocol; single-message content
-    saves directly, multipart content saves after final part aggregation
-
-Maintenance guardrail:
-
-- design protocol names and examples before implementation
-- keep draft registry/storage separate from library file persistence
-- keep multipart aggregation as transport/input assembly, not as the file-saving
-  authority
-- add parser/runtime tests before UI wiring
-- update `docs/domain-model.md` and Kin protocol docs when protocol names are
-  finalized
-
-Recommended implementation order:
-
-1. library tab simplification
-2. collapsible library action tile UI without bulk side effects
-3. shared library aggregation helper for `Index` / `Summary` / `Detail`
-4. unified Kin multipart send path for card and bulk sends
-5. constraint-aware SYS task protocol rule selection
-6. protocol design doc for Draft Preparation / Draft Modification / File Saving
-7. parser/runtime implementation for the new protocols
-8. library save integration for explicit File Saving protocol
-
-Latest Drive maintenance progress:
-
-- Drive GPT status message shaping now routes through
-  `buildDriveUiMessage` in `hooks/googleDrivePickerBuilders.ts`, leaving
-  `useGoogleDrivePicker.ts` responsible for orchestration and ID generation
-  rather than owning the assistant-message structure inline.
-- The focused Drive picker/import tests cover the shared status-message shape
-  alongside existing importability, folder-index, upload, and import execution
-  behavior.
-- Google Picker browser API construction now lives in
-  `openGoogleDrivePicker` inside `hooks/googleDrivePickerRuntime.ts`, with
-  `useGoogleDrivePicker.ts` handling only access-token orchestration and
-  picked-document import action dispatch.
-- `hooks/googleDrivePickerRuntime.test.ts` pins file/folder picker view
-  selection, configured-folder rooting, visibility, and picked-doc callback
-  behavior.
-- Picker-selected Drive doc dispatch now routes through
-  `runDrivePickedDocumentsImport` in `hooks/googleDriveImportExecution.ts`, so
-  `useGoogleDrivePicker.ts` no longer owns the folder/file import routing loop.
-  The execution test pins folder import, file import, and unsupported-file skip
-  behavior.
-- Kin SYS_INFO block response-mode naming now uses the local
-  `kinProtocolResponseMode` variable, keeping the remaining `RESPONSE_MODE`
-  text clearly tied to the Kin protocol instead of GPT UI policy. The new
-  `lib/shared/kinSysInfo.test.ts` also pins nested sentinel escaping and
-  multipart `SILENT_ACK` / `FINAL_ACK` behavior.
-- App-side send-to-GPT chat payload boundaries now type `reasoningMode` as
-  `ReasoningMode` instead of a free `string` in
-  `sendToGptApiTypes.ts`, `sendToGptFlowArtifactTypes.ts`, and
-  `sendToGptFlowRequestPayload.ts`. The new request-payload test pins the
-  payload shape while keeping server-side unknown normalization intact.
-- Task payload `TaskResponseMode` now only allows the live
-  `STRUCTURED_RESULT` mode; the unused silent result variant was removed after
-  focused task client/server payload tests.
-
-## Current Verification State
-
-The repository is in a good stopping state.
-
-- `npx tsc --noEmit` passes
-- `npm run lint` passes
-- `npm test` passes
-- `npm run build` passes
-- current test count: `163 files / 703 tests`
-
-Latest maintenance movement:
-
-- removed the no-op GPT settings/persistence `responseMode` path from
-  `usePersistedGptOptions`, `persistedGptOptionsState`, page/workspace builders,
-  and GPT panel settings props
-- moved the current fixed `strict` runtime value to the app-side
-  `reasoningMode` service boundary, with `lib/app/task-runtime/reasoningMode.ts` owning the
-  runtime strict/creative type instead of GPT panel UI types
-- task-intent fallback, current-task intent refresh, Kin task start, Kin
-  transfer, transform-intent, and send-to-GPT request internals now use
-  `reasoningMode` at their flow/request boundaries
-- protocol/task payload fields still named `responseMode` remain under
-  maintenance-watch and should be renamed only with direct boundary tests
-- `LibraryDrawer.tsx` now delegates import controls, tabs, library item shell,
-  item header/actions/metadata, search preview, and stored-document editing to
-  local components; the unused `SearchRawDrawer.tsx` wrapper is gone, and the
-  library drawer render test is part of the default Vitest baseline
-- Library drawer user-facing mojibake in item metadata and right-side card
-  action glyphs was repaired in the local text owner/components
-  (`gptUiText.ts`, `LibraryItemMetadata.tsx`, `LibraryItemCardHeader.tsx`,
-  `LibraryItemCardActions.tsx`), with `LibraryDrawer.test.tsx` pinning the
-  visible labels and icon text
-- Memory-facing mojibake from ingest/task flows was repaired at the source:
-  task draft last-intent labels now come from `taskDraftIntentText.ts`,
-  file-ingest saved info text is covered in `fileIngestFlowBuilders.ts`, and
-  YouTube transcript punctuation/music-marker cleanup uses readable
-  Japanese-safe regexes
-- `GptDrawerRouter.tsx` now keeps drawer selection in the router while
-  delegating device-import option shaping, meta/task/library/settings drawer prop
-  bundles, and memory-settings reset/save value shaping to
-  `GptDrawerRouterHelpers.ts`; the helper test is part of the default Vitest
-  baseline
-- `GptSettingsDrawer.tsx` and `GptSettingsWorkspace.tsx` now share search
-  preset / engine-toggle / source-count normalization through
-  `GptSettingsSearchState.ts`, and the duplicate drawer-local numeric field was
-  replaced with the shared settings primitive
-- `GptSettingsDrawer.tsx` now delegates memory and ingest tab bodies to
-  `GptSettingsDrawerSections.tsx`
-- `GptSettingsWorkspaceViews.tsx` now reuses the shared memory settings section
-  and memory reset/save builders
-- the unused `GptSettingsWorkspaceSections.tsx` re-export layer and orphaned
-  generic `RuleApprovalSection` are gone
-- `GptSettingsApprovalSections.tsx` and `GptSettingsRulesSection.tsx` now share
-  memory review options and topic-decision value shaping through
-  `GptSettingsApprovalState.ts`
-- `GptSettingsApprovalSections.tsx` now delegates memory/sys approval item cards
-  to `GptSettingsApprovalCards.tsx`
-- `GptSettingsRulesSection.tsx` now delegates pending/approved memory and SYS
-  rule cards to `GptSettingsRuleCards.tsx`
-- `TaskProgressPanel.tsx` now delegates `SYS_TASK_CONFIRM` output construction
-  to `TaskProgressPanelHelpers.ts`
-- `TaskProgressPanel.tsx` now delegates requirement/request cards and
-  sync/suspend action sections to `TaskProgressPanelParts.tsx`
-- `normalizerBuilders.ts` now delegates AI Mode block/table shaping to
-  `normalizerAiModeBuilders.ts`, local-result shaping to
-  `normalizerLocalBuilders.ts`, YouTube shaping to
-  `normalizerYoutubeBuilders.ts`, and shared raw-text block formatting to
-  `normalizerRawBlocks.ts`
-- `sendToGptFlowGuards.ts` now delegates pure gate-context builders to
-  `sendToGptFlowGateContextBuilders.ts`
-
-Use `docs/maintenance-checklist.md` as the authoritative completion/status
-checklist before calling maintenance "done" or before downgrading a boundary
-from maintenance-watch to stabilized.
-
-For memory work specifically, also read:
-
-- `docs/memory-lifecycle.md`
-
-## What Was Stabilized In This Session
-
-### 1. The repo is now in late-stage maintainability watch, not early rescue refactor
-
-This session finished a large amount of structural work across the highest-risk
-boundaries:
-
-- `sendToGptFlow` top-level coordination was thinned and sectioned
-- ingest authority moved closer to one shared canonical-document model
-- page/controller/panel composition was split into narrower grouped contracts
-- task runtime / draft sync / Kin transfer handoff now routes through shared builders
-- server routes and client boundaries now follow a much more consistent thin-entrypoint pattern
-- responsive single-panel heuristics now live behind shared viewport/device helpers with direct tests
-- `GptSettingsWorkspace.tsx` now delegates approval sections and library/ingest sections to dedicated modules, so the workspace root is closer to view-state and top-level composition
-- `taskDraftActionFlows.ts` now delegates prep/update/attach/deepen flows to dedicated modules, and those modules now share recent-message/success-postlude helpers instead of repeating assistant append and summary replay inline
-- fallback debug payload is no longer persisted into memory state, and the obsolete `gptMemoryStateSummaryMerge.ts` branch has been removed so memory compaction now follows one authoritative path
-- the former `chatPageWorkspaceInputBuilders.ts` pass-through layer is gone; `useChatPageWorkspaceInputs.ts` now imports the state/action/service builders directly, and `sendToGptFlow` helper tests are split so guard failures are isolated from step/request builder failures
-- `app/page.tsx` now delegates the root viewport shell to `ChatAppShell.tsx`, so
-  the page entry stays focused on domain hook wiring and workspace composition
-- chat-page defaults now live in `chatPageDefaults.ts`, with focused coverage
-  for the breakpoint, bridge defaults, and current-Kin label derivation
-- `app/page.tsx` now keeps chat UI state, GPT options, token usage, bridge
-  settings, Kin manager state, task-draft workspace state, search history,
-  task/protocol state, and reference-library state as named domain bundles
-  before passing them into workspace composition
-- `useChatPageWorkspaceDomainInputs.ts` now owns the large domain-bundle to
-  workspace state/action/service projection, so `app/page.tsx` stays thin
-  after the page-side composition pass
-- `chatPagePanelCompositionBuilders.ts` now stays as the public facade for
-  panel composition while `chatPagePanelSectionBuilders.ts` owns section-level
-  Kin/GPT arg projection and `chatPageTaskSnapshot.ts` owns task snapshot saves
-- `chatPagePanelCompositionTypes.ts` now stays as the public type facade while
-  `chatPagePanelArgsTypes.ts` owns panel arg contracts and
-  `chatPageWorkspaceViewTypes.ts` owns workspace-view section contracts
-- `chatPageWorkspaceReferenceTypes.ts` now owns the reference-library / Drive
-  workspace view contract that had made `chatPageWorkspaceViewTypes.ts` the next
-  local concentration point
-- `transformIntentResolver.ts` now owns the API intent resolver prompt, JSON
-  extraction, and LLM patch merge/coercion, leaving
-  `transformIntentParser.ts` focused on rule-based directive parsing
-- `kinTransferFlowTypes.ts` now owns Kin transfer flow argument/result
-  contracts, reducing `kinTransferFlows.ts` to the two transfer orchestrations
-  plus local branching
-- `kinTransferFlows.ts` now stays as the public transfer facade while
-  `kinTransferLatestFlow.ts` and `kinTransferCurrentTaskFlow.ts` own the two
-  orchestration paths
-- `sendToGptPreparedRequestGates.ts` now owns prepared-request gates, leaving
-  `sendToGptFlowGuards.ts` focused on pre-preparation gates plus public
-  re-exports
-- `sendToGptApiTypes.ts` now owns ChatGPT API request/response/search-source
-  contracts, reducing `sendToGptFlowTypes.ts` catch-all pressure
-- `sendToGptPreparedRequestTypes.ts` now owns prepared-request and gate context
-  contracts, further narrowing `sendToGptFlowTypes.ts`
-- `sendToGptFlowArgTypes.ts`, `sendToGptFlowArtifactTypes.ts`, and
-  `sendToGptFlowBaseTypes.ts` now own the former flow type groups directly, so
-  the unused `sendToGptFlowTypes.ts` facade was removed
-- `sendToGptFlowContextResolvers.ts` now owns inline-search extraction, AI
-  continuation artifacts, protocol limit priority, and protocol search-engine
-  overrides, keeping `sendToGptFlowContext.ts` closer to public context
-  composition
-- `sendToGptPreparedGateHandlers.ts` now owns prepared-request gate side
-  effects, leaving `sendToGptPreparedRequestGates.ts` focused on gate context
-  assembly and decision dispatch
-
-Current maintenance remaining:
-
-- overall maintainability is late-stage watch; broad rescue refactor is no
-  longer the default posture
-- the biggest remaining product-authority watch is Drive/device ingest
-  convergence and ingest token accounting when new ingest-adjacent behavior is
-  added
-- the biggest regrowth risks are large UI/hook surfaces such as
-  `useGoogleDrivePicker.ts`, `useGptMessageActions.ts`, `GptPanel.tsx`,
-  `useSearchHistory.ts`, and `useReferenceLibrary.ts`
-- send-to-GPT is no longer an active hub-splitting target by default; treat it
-  as maintenance-watch and only split further if new behavior starts to regrow
-- `lib/memory-domain/memory.ts` now declares the task-scoped memory lifecycle explicitly, and `gptMemoryStorage` now clears task-scoped state through that shared helper instead of a separate local cleanup rule
-- `useMemoryInterpreterSettings.ts` now reads/writes through `lib/app/memory-rules/memoryRuleStore.ts`, so the memory rule system has one persistence boundary for settings, pending candidates, approved rules, and rejected signatures
-- `useGptMemory.ts` now reads/writes runtime handoff through `lib/app/gpt-memory/gptMemoryRuntime.ts`, so initial load plus update/reapply orchestration no longer lives inline inside the hook
-- `docs/memory-lifecycle.md` now names `stable / task-scoped / displayed-context` memory explicitly, so new memory fields should not be added without choosing one of those lifecycle buckets
-- token accounting now has one restored total-token source, conversation recent windows include memory compaction usage, the user-facing memory line is `圧縮`, and ingest-time summary generation usage now lands in the ingest bucket instead of the conversation compaction bucket
-
-- library ingest now has explicit `compact / detailed / max` output authority so one import request does not ask the model for multiple alternate versions
-- reference-library app-side state, item actions, and summary client helpers now live under `lib/app/reference-library/`
-- search-history app-side state now lives under `lib/app/search-history/`
-- panel/UI state helpers now live under `lib/app/ui-state/`
-- remaining app-side utility clusters now live under dedicated folders such as `gpt-task/`, `youtube-transcript/`, `memory-rules/`, `multipart/`, `task-support/`, `google-drive/`, `auto-bridge/`, and `gpt-context/`
-- task-domain modules now live under `lib/task/`
-- memory-domain modules now live under `lib/memory-domain/`
-- shared primitives now live under `lib/shared/`, and the search facade now lives under `lib/search-domain/search.ts`
-- component root files now live under `components/layout/`,
-  `components/message/`, `components/ui/`, and `components/pwa/`
-- post-organization repository review now lives in
-  `docs/repository-review-2026-04-25.md`
-- file import, Drive import, YouTube transcripts, search, and task snapshots now honor the shared library-card summary toggle
-- file and Drive imports now post visible GPT chat completion messages
-- file and Drive imports now share generated-summary resolution and ingest usage
-  aggregation through `lib/app/ingest/importSummaryGeneration.ts`
-- file and Drive imports now share stored ingested-document record construction,
-  so text cleanup, char count, and timestamps stay aligned
-- Drive import/upload completion, failure, and cancellation messages now build
-  through `googleDrivePickerBuilders.ts`, with focused coverage; Drive import
-  completion notices are also skipped by latest-GPT transfer selection
-- Google Picker selected-document routing now resolves through
-  `resolveDrivePickedImportAction`, with focused coverage for folder
-  index/import actions and unsupported file skips
-- Google Picker script/token readiness now lives in
-  `googleDrivePickerRuntime.ts`, while Drive file-import execution lives in
-  `googleDriveImportExecution.ts` with focused success/failure coverage
-- Drive folder index/import execution now also lives in
-  `googleDriveImportExecution.ts`, with focused coverage for index-only mode and
-  importable-file filtering during folder import
-- Drive library-item upload execution now also lives in
-  `googleDriveImportExecution.ts`, with focused coverage for parent-folder
-  upload, child-folder selection, cancelled selection, and invalid selection
-- device-file import and Drive import now share stored-document preparation
-  through `lib/app/ingest/ingestStoredDocumentPreparation.ts`, with focused
-  coverage for generated-summary usage and record construction
-- library-summary usage normalization for ingest accounting now flows through
-  `lib/app/ingest/ingestUsage.ts`, keeping file/Drive/search/task-snapshot
-  summary usage on one ingest-bucket conversion path
-- YouTube transcript batch request shaping now lives in
-  `sendToGptYoutubeFlowBuilders.ts`, keeping queue splitting and transcript
-  request bodies out of `useGptMessageActions.ts`
-- queued YouTube transcript request execution now lives in
-  `sendToGptYoutubeFlow.ts`, keeping transcript fetch/storage/Kin handoff side
-  effects out of `useGptMessageActions.ts`
-- YouTube transcript library import and send-to-Kin execution now live in
-  `youtubeTranscriptLibraryFlows.ts`, keeping transcript fetch/storage/Kin side
-  effects out of `useGptMessageActions.ts`
-- GPT panel utility actions such as Ask AI Mode search, latest-Kin draft copy,
-  receive-last-Kin, and latest-GPT transfer notices now live in
-  `gptMessageActionFlows.ts`
-- Google AI Mode continuation now uses compact markers such as `(#1)`,
-  sends `continuable=true`, keeps location out of the query text, and preserves
-  reconstructed markdown/code/table content from SerpAPI responses
-- Search library entries now suppress AI Mode `References` sections and inline
-  `[refs: ...]` markers from display and generated library summaries
-- Search library summaries also ignore the leading `Google AI Mode` engine label
-  so it is not mistaken for the subject of the result
-- search-history localStorage load/save now lives in
-  `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search
-  settings out of `useSearchHistory.ts`
-- app-side ingest modules now live under `lib/app/ingest/`
-- send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`
-- memory-interpreter app-side modules now live under
-  `lib/app/memory-interpreter/`
-- GPT-memory app-side modules now live under `lib/app/gpt-memory/`
-- task-draft app-side modules now live under `lib/app/task-draft/`
-- task-runtime app-side modules now live under `lib/app/task-runtime/`
-- Kin protocol core and sidecar modules now live under `lib/app/kin-protocol/`
-
-The practical implication for the next session is:
-
-- do not start from "what giant file should be split next?"
-- start from "which maintenance-watch boundary is being changed, and what narrow test should pin it?"
-
-### 2. Google Drive integration shipped and is usable
-
-Implemented and verified:
-
-- Google Picker-based Drive access now works
-- library drawer now has dedicated Google Drive actions
-- Drive picker opens from the configured folder
-- file import can show files and folders together
-- folder index and folder bulk import are separated
-- Drive-imported files flow into the same ingest pipeline as device-imported files
-- PDF / CSV / Google Spreadsheet import now runs through ingest
-- Google Drive settings were moved to the bottom of the library settings workspace
-
-Main files:
-
-- `hooks/useGoogleDrivePicker.ts`
-- `components/panels/gpt/LibraryDrawer.tsx`
-- `components/panels/gpt/GptSettingsWorkspace.tsx`
-- `lib/app/ingest/ingestClient.ts`
-
-### 3. Ingest text handling moved toward a canonical model
-
-This was the most important structural lesson of the session.
-
-We confirmed that ingest bugs were repeatedly caused by mixing:
-
-- stored/display text
-- summary source text
-- protocol/task envelope text
-- GPT chat display text
-
-Progress made:
-
-- `lib/app/ingest/ingestDocumentModel.ts` now owns the basic ingest text authority split
-- `fileIngestFlow` now uses `canonicalDocumentText` and `taskPrepEnvelope` naming internally
-- device-import and Drive-import now share more of the same summary, usage,
-  stored-record, and canonical-text logic
-- GPT chat / library / Kin outputs are much closer to deriving from one source instead of parallel text variants
-
-Main files:
-
-- `lib/app/ingest/ingestDocumentModel.ts`
-- `lib/app/ingest/fileIngestFlow.ts`
-- `lib/app/gpt-task/gptTaskClient.ts`
-- `hooks/useGoogleDrivePicker.ts`
-- `docs/ingest-pipeline.md`
-
-### 4. The core development rule had to be re-affirmed again
-
-This session re-confirmed a recurring failure pattern:
-
-- "I can see the bug, so I know where to patch it"
-
-That approach repeatedly caused:
-
-- wrong-file edits
-- false-positive fixes
-- downstream disagreements between library, chat, and protocol
-- duplicated helpers and unclear authority
-
-The rule is now explicit again in docs:
-
-- `docs/architecture-guidelines.md`
-- `docs/ingest-pipeline.md`
-- `docs/refactor-roadmap.md`
-
-## Outstanding Google Drive Work
-
-The Google Drive feature is usable, but not finished.
-
-### Remaining functional improvements
-
-1. upload destination subfolder selection
-   - current upload still targets the configured root folder
-   - next step: allow selecting a child folder before upload
-
-2. folder index presentation polish
-   - current index is functional
-   - next step: improve readability of hierarchy, counts, and per-file metadata
-
-3. ZIP import support
-   - not implemented
-   - decide whether unzip should happen client-side or server-side
-
-4. expand import format support carefully
-   - Drive import already handles text/PDF/CSV/Sheets better than before
-   - next step: decide whether Word/Excel/ZIP deserve first-class support or should remain outside scope for now
-
-### Known mismatches to watch next
-
-1. ingest token accounting is improved but should stay under watch
-   - file/Drive/YouTube summary-generation usage now lands in the ingest bucket
-   - the latest PDF regressions were caused by duplicate output authority and post-selection clipping, not by a display-only meter error
-   - next review should verify new ingest-adjacent flows keep this bucket ownership
-
-2. device-file ingest UI should be consolidated into the library surfaces
-   - current device-file ingest entry still lives in the GPT panel bottom `file` tab
-   - target direction:
-     - move ingest entry actions to the top library drawer area, alongside the Google Drive actions
-     - keep ingest-related settings inside the library settings workspace
-   - this should reduce split mental models between Drive import and device import
-
-### Google Drive maintenance rule
-
-Do not create a separate "Drive ingest system".
-
-Drive should keep sharing:
-
-- ingest request boundary
-- canonical text model
-- summary generation rules
-- stored-document projection
-
-Only Drive-specific concerns should stay local, such as:
-
-- picker auth
-- folder traversal
-- upload destination selection
-
-## Outstanding Maintainability Work
-
-### Priority A: keep the now-fixed library ingest authority from regrowing
-
-Why:
-
-- this is the area that caused the most wasted effort this session
-- canonical authority is improved, but not fully complete yet
-
-Focus:
-
-- keep `compact / detailed / max` mapped to one output authority instead of multiple alternate model fields
-- keep reducing cases where summary/library/chat/Kin can diverge
-- keep ingest summary usage in the ingest bucket
-- extract shared post-request helpers only when device import and Drive import genuinely duplicate behavior
-- use the ingest cleanup as the foundation for the device-file ingest UI move into the library surfaces
-
-Primary files:
-
-- `lib/app/ingest/fileIngestFlow.ts`
-- `hooks/useFileIngestActions.ts`
-- `hooks/useGoogleDrivePicker.ts`
-- `lib/app/ingest/ingestDocumentModel.ts`
-- `lib/server/ingest/promptBuilder.ts`
-- `lib/server/ingest/resultSelection.ts`
-- `docs/ingest-pipeline.md`
-
-### Priority B: keep the remaining legacy/current ingest split shrinking
-
-Why:
-
-- lower-level request boundaries are more shared now
-- post-request behavior is still not as unified as it should be
-
-Focus:
-
-- move duplicated ingest post-processing into shared helpers where it is actually duplicated
-- avoid a permanent split between device ingest and Drive ingest behavior
-
-Primary files:
-
-- `hooks/useFileIngestActions.ts`
-- `hooks/useGoogleDrivePicker.ts`
-- `lib/app/ingest/fileIngestFlow.ts`
-- `lib/app/ingest/ingestDocumentModel.ts`
-
-### Priority C: maintain the now-stabilized boundaries without regrowth
-
-Still under watch:
-
-- `lib/app/send-to-gpt/sendToGptFlow.ts` and adjacent request/finalize surfaces
-- `app/page.tsx` and page-side composition boundaries
-- responsive single-panel / panel-focus authority boundaries
-- search-domain enrichment / extraction boundaries
-- user-facing text drift outside owner files
-- `components/panels/gpt/GptSettingsApprovalSections.tsx` / `GptSettingsLibrarySections.tsx` as the next likely UI hubs
-- `lib/app/task-draft/taskDraftPrepFlows.ts` / `taskDraftAttachFlows.ts` / `taskDraftDeepenFlows.ts` as the next likely workflow hubs
-- `hooks/chatPageWorkspaceStateBuilders.ts` / `chatPageWorkspaceActionBuilders.ts` / `chatPageWorkspaceServiceBuilders.ts` as the next likely page-side builder hubs
-
-### Priority D: remove task-intent/task-progress half-migration residue
-
-Why:
-
-- the visible task constraint behavior is now good
-- the implementation still contains old residue that can mislead the next debug session
-
-Focus:
-
-- `lib/task/taskIntent.ts`
-  - remove or isolate old rewrite-era helpers such as `parseIntentCandidateDraftText(...)`
-  - remove dead compatibility carry-through where possible
-- `lib/task/taskCompilerSections.ts`
-  - remove `buildCompletionCriteria(...)`
-  - remove `buildRequiredWorkflow(...)`
-  - remove `buildOptionalWorkflow(...)`
-  - drop tests that only pin dead sections
-- `lib/task/taskProgress.ts`
-  - keep the rule-based `CONSTRAINTS` reader simple and explicit
-
-Primary files:
-
-- `lib/task/taskIntent.ts`
-- `lib/task/taskIntentFallback.ts`
-- `lib/task/taskProgress.ts`
-- `lib/task/taskCompiler.ts`
-- `lib/task/taskCompilerSections.ts`
-
-Reference:
-
-- `docs/refactor-roadmap.md`
-
-## Reconfirmed Development Principles
-
-These should be treated as operational constraints, not suggestions.
-
-### 1. Structure first, symptom second
-
-Before editing any bug:
-
-1. what is the canonical authority?
-2. where is it produced?
-3. which outputs derive from it?
-4. which outputs are just envelopes or projections?
-
-If those are unclear, implementation should pause.
-
-### 2. Shared tools over near-duplicate systems
-
-When two paths do similar work, prefer:
-
-- one shared lower-level helper
-- one canonical model
-- one authority contract
-
-Do not allow parallel versions of:
-
-- summary rules
-- cleanup rules
-- protocol wrappers
-- stored-document text shaping
-
-unless the divergence is explicit and justified.
-
-### 3. Do not trust the nearest file
-
-The file where the bug is visible is often not the file that owns the bug.
-
-Before editing:
-
-- trace upstream authority
-- search repo-wide
-- identify active runtime path vs compatibility path
-
-### 4. Docs must reflect the real guardrails
-
-If the same mistake happens more than once, it should become a prominently documented rule.
-
-That rule should then be reflected in:
-
-- architecture docs
-- pipeline docs
-- roadmap / maintenance docs
-- handoff docs
-
-### 5. Common mistake pattern to avoid
-
-Never do this sequence again:
-
-1. "I see the bug"
-2. "I found the spot"
-3. patch one surface
-4. discover a second surface still broken
-5. patch that too
-
-This is exactly the pattern that wasted time in this session.
-
-## Recommended Next-Session Order
-
-1. read `docs/repository-review-2026-04-25.md`
-2. run verification before editing
-3. continue task-runtime decomposition only where a focused regression test can
-   preserve the current Kin-transfer behavior, or revisit Drive/ingest only if
-   new duplication appears
-4. keep the fixed library-ingest authority under watch while moving only proven
-   shared post-request behavior into helpers
-5. keep `transformIntent.ts` as the public facade while moving only stable
-   directive sections behind tests
-6. keep remaining protocol/task-payload `responseMode` naming under
-   maintenance-watch
-7. keep the new domain folders stable; add new helpers to the nearest existing
-   folder instead of returning files to root directories
-
-## Maintenance Update Cadence
-
-Whenever maintenance-watch code is touched:
-
-1. rerun verification first
-2. update `README.md`, `docs/refactor-roadmap.md`, `docs/next-session.md`, and the latest dated handoff together
-3. reclassify touched boundaries as `active refactor`, `maintenance-watch`, or `stabilized`
-4. add or move one narrow regression test with the structural change
-
-Reference:
-
-- `docs/maintenance-checklist.md`
+- send-to-GPT request/finalize/gate boundaries are split and should stay
+  orchestration-oriented
+- page/controller/panel composition is in regrowth-watch, not active teardown
+
+## Latest Implemented Slice
+
+Library / Kin protocol work is in a good implementation stopping state, with
+one manual retest still recommended.
+
+Implemented:
+
+- collapsible library operation area with compact bulk display / bulk Kin-send
+- shared library aggregation for `Index`, `Summary`, and `Summary + Detail`
+- ordinary library sends use `SYS_INFO`
+- task-time library requests use `SYS_LIBRARY_DATA_REQUEST / RESPONSE`
+- retired `LIBRARY_INDEX/ITEM` and `FILE_SAVE` blocks are no longer active
+  parser inputs
+- Draft Preparation, Draft Modification, and File Saving protocols are wired
+- File Saving uses generated library summaries and validates active length
+  constraints before saving
+- latest-draft resolution tolerates `DOCUMENT_ID: Unknown` and blank
+  `DOCUMENT_ID` in full modification responses
+- Kin communication retry SYS input can auto-send again after the input was
+  cleared
+- memory fact extraction now picks fairly from meaningful chat-visible content
+  and filters system/noise messages
+
+## First Manual Retest
+
+Start the next live Kin test here:
+
+1. run a task that creates a draft
+2. trigger `DRAFT_MODIFICATION`
+3. force or observe a length failure if possible
+4. request another modification and resubmission
+5. trigger `FILE_SAVING`
+6. confirm the saved library card has a generated summary and real
+   `DOCUMENT_ID`
+7. confirm `SYS_TASK_DONE` reports the same document id
+
+If it fails, trace this order before patching:
+
+1. GPT prompt for the protocol response
+2. raw GPT response
+3. parsed event from `taskProtocolParser.ts`
+4. `draftDocumentResolver.ts`
+5. `sendToGptPreparedGateHandlers.ts`
+6. resulting library card / task done output
+
+## Current Watch Items
+
+- Keep protocol/task-payload `responseMode` naming under watch. Do not confuse
+  it with the removed UI/settings reasoning-mode path.
+- Keep ingest authority and ingest token accounting under watch when new
+  ingest-adjacent behavior is added.
+- Keep `sendToGptFlow.ts` orchestration-only; new policy should live in the
+  focused request/gate/finalize helpers.
+- Keep page/controller/panel composition from regrowing no-op pass-through glue.
+- Keep old `SYS_LIBRARY_INDEX/ITEM` and `SYS_FILE_SAVE` aliases retired unless a
+  real migration need appears.
+- Keep draft/file-saving resolution centralized in `draftDocumentResolver.ts`
+  and `sendToGptPreparedGateHandlers.ts`; do not add a second local latest-draft
+  heuristic near UI code.
 
 ## Files To Review First Next Time
 
-1. `docs/repository-review-2026-04-25.md`
-2. `components/panels/gpt/GptDrawerRouter.tsx`
-3. `components/panels/gpt/GptDrawerRouterHelpers.ts`
-4. `components/panels/gpt/GptSettingsSearchState.ts`
-5. `components/panels/gpt/GptSettingsDrawer.tsx`
-6. `components/panels/gpt/GptSettingsDrawerSections.tsx`
-7. `components/panels/gpt/GptSettingsApprovalState.ts`
-8. `components/panels/gpt/GptSettingsApprovalCards.tsx`
-9. `components/panels/gpt/GptSettingsRuleCards.tsx`
-10. `components/panels/gpt/GptSettingsWorkspace.tsx`
-11. `components/panels/gpt/TaskProgressPanel.tsx`
-12. `components/panels/gpt/TaskProgressPanelHelpers.ts`
-13. `components/panels/gpt/TaskProgressPanelParts.tsx`
-14. `lib/app/task-runtime/transformIntent.ts`
-15. `lib/app/task-runtime/transformIntentParser.ts`
-16. `lib/app/task-runtime/transformIntentRuntime.ts`
-17. `lib/app/task-runtime/transformIntentChunking.ts`
-18. `hooks/useGoogleDrivePicker.ts`
-19. `hooks/googleDrivePickerBuilders.ts`
-20. `lib/app/google-drive/googleDriveApi.ts`
-21. `lib/app/ingest/ingestDocumentModel.ts`
-22. `lib/app/send-to-gpt/sendToGptFlow.ts`
-23. `app/page.tsx`
-24. `docs/refactor-roadmap.md`
-25. `docs/HANDOFF-2026-04-25.md`
+1. `docs/protocol-actions.md`
+2. `docs/maintenance-checklist.md`
+3. `lib/app/send-to-gpt/draftDocumentResolver.ts`
+4. `lib/app/send-to-gpt/sendToGptPreparedGateHandlers.ts`
+5. `lib/app/send-to-gpt/sendToGptProtocolBuilders.ts`
+6. `lib/task/taskProtocolParser.ts`
+7. `lib/app/kin-protocol/sendToKinFlow.ts`
+8. `lib/app/kin-protocol/sendToKinFlowState.ts`
+9. `lib/app/kin-protocol/kinMultipart.ts`
+10. `lib/app/reference-library/libraryItemAggregation.ts`
+11. `hooks/useProtocolAutomationEffects.ts`
+12. `components/panels/gpt/LibraryDrawerControls.tsx`
+13. `lib/app/memory-interpreter/memoryInterpreterFactExtraction.ts`
+14. `lib/app/send-to-gpt/sendToGptFlow.ts`
+15. `app/page.tsx`
 
 ## Verification Commands
 
 ```bash
 npx tsc --noEmit
+```
+
+```bash
+npm run lint
 ```
 
 ```bash
@@ -838,3 +133,4 @@ npm test
 ```bash
 npm run build
 ```
+

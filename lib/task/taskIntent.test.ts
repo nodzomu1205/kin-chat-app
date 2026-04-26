@@ -586,7 +586,7 @@ describe("formatIntentCandidateDraftText", () => {
         count: 1,
         rule: "up_to",
       })
-    ).toBe("Request up to 1 library index entry.");
+    ).toBe("Request up to 1 library data response.");
 
     expect(
       formatIntentCandidateDraftText({
@@ -594,7 +594,7 @@ describe("formatIntentCandidateDraftText", () => {
         count: 2,
         rule: "at_least",
       })
-    ).toBe("Request at least 2 library content items.");
+    ).toBe("Request at least 2 library data responses.");
 
     expect(
       formatIntentCandidateDraftText({

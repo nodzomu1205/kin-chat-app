@@ -90,4 +90,20 @@ describe("taskCompiler", () => {
     expect(prompt).toContain("Candidate YouTube videos shortlisted for transcript fetch.");
     expect(prompt).toContain("CHANNEL: Example channel");
   });
+
+  it("emits draft preparation, modification, and file saving examples for essay tasks", () => {
+    const prompt = compileKinTaskPrompt({
+      taskId: "288763",
+      title: "AI competition summary",
+      intent: createIntent({
+        allowYoutubeTranscriptRequest: false,
+        youtubeTranscriptRequestCount: undefined,
+      }),
+    });
+
+    expect(prompt).toContain("<<SYS_DRAFT_PREPARATION_REQUEST>>");
+    expect(prompt).toContain("<<SYS_DRAFT_MODIFICATION_REQUEST>>");
+    expect(prompt).toContain("<<SYS_FILE_SAVING_REQUEST>>");
+    expect(prompt).toContain("DOCUMENT ID: DOC-288763-001");
+  });
 });

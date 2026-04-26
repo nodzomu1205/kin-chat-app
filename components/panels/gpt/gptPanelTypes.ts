@@ -23,6 +23,7 @@ import type {
   TaskExecutionStatus,
   UserFacingTaskRequest,
 } from "@/types/taskProtocol";
+import type { LibraryBulkActionMode } from "@/lib/app/reference-library/libraryItemAggregation";
 
 export type GptInstructionMode =
   | "normal"
@@ -222,14 +223,16 @@ export type GptPanelReferenceProps = {
   onStartAskAiModeSearch: (query: string) => void | Promise<void>;
   onImportYouTubeTranscript: (source: SourceItem) => void | Promise<void>;
   onSendYouTubeTranscriptToKin: (source: SourceItem) => void | Promise<void>;
-  onSaveStoredDocument: (
-    documentId: string,
-    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
-  ) => void;
-  onShowLibraryItemInChat: (itemId: string) => void;
-  onSendLibraryItemToKin: (itemId: string) => void | Promise<void>;
-  onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
-};
+    onSaveStoredDocument: (
+      documentId: string,
+      patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
+    ) => void;
+    onShowLibraryItemInChat: (itemId: string) => void;
+    onSendLibraryItemToKin: (itemId: string) => void | Promise<void>;
+    onShowAllLibraryItemsInChat: (mode: LibraryBulkActionMode) => void | Promise<void>;
+    onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
+    onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
+  };
 
 export type GptPanelSettingsProps = {
   currentTopic?: string;

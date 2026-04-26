@@ -33,6 +33,7 @@ function buildWorkspaceStateUi(args: ChatPageWorkspaceStateUi) {
     kinMessages: args.kinMessages,
     pendingKinInjectionBlocks: args.pendingKinInjectionBlocks,
     pendingKinInjectionIndex: args.pendingKinInjectionIndex,
+    pendingKinInjectionPurpose: args.pendingKinInjectionPurpose,
   } satisfies ChatPageWorkspaceStateUi;
 }
 

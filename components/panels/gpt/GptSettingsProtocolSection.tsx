@@ -79,30 +79,43 @@ function ProtocolEditorSection(props: {
   protocolRulebook: string;
   onChangeProtocolPrompt: (value: string) => void;
   onChangeProtocolRulebook: (value: string) => void;
+  onResetProtocolDefaults: () => void;
+  onSaveProtocolDefaults: () => void;
+  onSetProtocolRulebookToKinDraft: () => void | Promise<void>;
+  onSendProtocolRulebookToKin: () => void | Promise<void>;
 }) {
   return (
-    <>
-      <div style={sectionCard}>
-        <div style={labelStyle}>{GPT_PROTOCOL_SETTINGS_TEXT.promptLabel}</div>
-        <textarea
-          value={props.protocolPrompt}
-          onChange={(e) => props.onChangeProtocolPrompt(e.target.value)}
-          style={{ ...textAreaStyle, minHeight: 120 }}
-        />
-      </div>
-
-      <div style={sectionCard}>
-        <div style={labelStyle}>{GPT_PROTOCOL_SETTINGS_TEXT.rulebookLabel}</div>
-        <textarea
-          value={props.protocolRulebook}
-          onChange={(e) => props.onChangeProtocolRulebook(e.target.value)}
-          style={{ ...textAreaStyle, minHeight: 260 }}
-        />
-        <div style={{ ...helpTextStyle, marginTop: 8 }}>
-          {GPT_PROTOCOL_SETTINGS_TEXT.rulebookHelp}
+    <div style={sectionCard}>
+      <div style={{ display: "grid", gap: 12 }}>
+        <div>
+          <div style={labelStyle}>{GPT_PROTOCOL_SETTINGS_TEXT.promptLabel}</div>
+          <textarea
+            value={props.protocolPrompt}
+            onChange={(e) => props.onChangeProtocolPrompt(e.target.value)}
+            style={{ ...textAreaStyle, minHeight: 120 }}
+          />
         </div>
+
+        <div>
+          <div style={labelStyle}>{GPT_PROTOCOL_SETTINGS_TEXT.rulebookLabel}</div>
+          <textarea
+            value={props.protocolRulebook}
+            onChange={(e) => props.onChangeProtocolRulebook(e.target.value)}
+            style={{ ...textAreaStyle, minHeight: 260 }}
+          />
+          <div style={{ ...helpTextStyle, marginTop: 8 }}>
+            {GPT_PROTOCOL_SETTINGS_TEXT.rulebookHelp}
+          </div>
+        </div>
+
+        <ProtocolActionSection
+          onResetProtocolDefaults={props.onResetProtocolDefaults}
+          onSaveProtocolDefaults={props.onSaveProtocolDefaults}
+          onSetProtocolRulebookToKinDraft={props.onSetProtocolRulebookToKinDraft}
+          onSendProtocolRulebookToKin={props.onSendProtocolRulebookToKin}
+        />
       </div>
-    </>
+    </div>
   );
 }
 
@@ -198,8 +211,6 @@ export function ProtocolSettingsSection(props: {
         protocolRulebook={props.protocolRulebook}
         onChangeProtocolPrompt={props.onChangeProtocolPrompt}
         onChangeProtocolRulebook={props.onChangeProtocolRulebook}
-      />
-      <ProtocolActionSection
         onResetProtocolDefaults={props.onResetProtocolDefaults}
         onSaveProtocolDefaults={props.onSaveProtocolDefaults}
         onSetProtocolRulebookToKinDraft={props.onSetProtocolRulebookToKinDraft}

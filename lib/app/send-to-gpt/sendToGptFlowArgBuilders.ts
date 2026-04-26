@@ -130,6 +130,7 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
       setKinInput: args.setKinInput,
       setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
       setActiveTabToKin: args.focusKinPanel,
     },
     requestArgs: {
@@ -137,6 +138,7 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
       gptLoading: args.gptLoading,
       instructionMode: "normal",
       processMultipartTaskDoneText: args.processMultipartTaskDoneText,
+      currentTaskCharConstraint: args.getCurrentTaskCharConstraint() ?? undefined,
       reasoningMode: args.reasoningMode,
       recordIngestedDocument: args.recordIngestedDocument,
     },

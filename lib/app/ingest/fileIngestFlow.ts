@@ -16,6 +16,7 @@ import type {
 import type { Message } from "@/types/chat";
 import type { KinMemoryState } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import {
   buildIngestedDocumentFilename,
 } from "@/lib/app/ingest/ingestDocumentModel";
@@ -47,6 +48,9 @@ type IngestFlowArgs = {
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
+  setPendingKinInjectionPurpose?: Dispatch<
+    SetStateAction<PendingKinInjectionPurpose>
+  >;
   setKinInput: Dispatch<SetStateAction<string>>;
   setUploadKind: Dispatch<SetStateAction<UploadKind>>;
   setGptInput: Dispatch<SetStateAction<string>>;
@@ -121,6 +125,7 @@ export async function runFileIngestFlow({
   setGptMessages,
   setPendingKinInjectionBlocks,
   setPendingKinInjectionIndex,
+  setPendingKinInjectionPurpose,
   setKinInput,
   setUploadKind,
   setGptInput,
@@ -212,14 +217,18 @@ export async function runFileIngestFlow({
     }
 
     if (autoCopyFileIngestSysInfoToKin) {
-      setPendingKinInjectionBlocks(blocks);
+      setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
       setPendingKinInjectionIndex(0);
+      setPendingKinInjectionPurpose?.(
+        blocks.length > 1 ? "info_share" : "none"
+      );
       setKinInput(blocks[0]);
       setUploadKind(resolvedKind);
       setGptInput("");
     } else {
       setPendingKinInjectionBlocks([]);
       setPendingKinInjectionIndex(0);
+      setPendingKinInjectionPurpose?.("none");
     }
 
     const storedDocument = preparedDocument.storedDocument;

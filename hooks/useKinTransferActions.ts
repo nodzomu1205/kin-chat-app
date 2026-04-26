@@ -20,6 +20,7 @@ export function useKinTransferActions(
   const clearPendingKinInjection = () => {
     args.setPendingKinInjectionBlocks([]);
     args.setPendingKinInjectionIndex(0);
+    args.setPendingKinInjectionPurpose?.("none");
   };
 
   const mergePendingIntentCandidates = createPendingIntentCandidateMerger(args);
@@ -39,6 +40,7 @@ export function useKinTransferActions(
       setKinLoading: args.setKinLoading,
       pendingKinInjectionBlocks: args.pendingKinInjectionBlocks,
       pendingKinInjectionIndex: args.pendingKinInjectionIndex,
+      pendingKinInjectionPurpose: args.pendingKinInjectionPurpose,
       setKinMessages: args.setKinMessages,
       setKinInput: args.setKinInput,
       ingestProtocolMessage: args.ingestProtocolMessage,

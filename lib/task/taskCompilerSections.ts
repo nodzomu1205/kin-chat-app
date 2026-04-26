@@ -1,5 +1,31 @@
 import type { TaskIntent } from "@/types/taskProtocol";
 
+const DOCUMENT_OUTPUT_TYPES = new Set([
+  "essay",
+  "presentation",
+  "summary",
+  "analysis",
+  "reply",
+  "bullet_list",
+  "comparison",
+]);
+
+function isDocumentOutput(intent: TaskIntent) {
+  return DOCUMENT_OUTPUT_TYPES.has(intent.output.type);
+}
+
+function allowsDraftPreparation(intent: TaskIntent) {
+  return isDocumentOutput(intent) || intent.workflow?.allowDraftPreparation;
+}
+
+function allowsDraftModification(intent: TaskIntent) {
+  return isDocumentOutput(intent) || intent.workflow?.allowDraftModification;
+}
+
+function allowsFileSaving(intent: TaskIntent) {
+  return isDocumentOutput(intent) || intent.workflow?.allowFileSaving;
+}
+
 export function buildRuleLines(intent: TaskIntent): string[] {
   const lines = [
     "- Use ACTION_ID for every request or dependency you create.",
@@ -64,19 +90,39 @@ export function buildRuleLines(intent: TaskIntent): string[] {
   }
 
   if (intent.workflow?.allowLibraryReference) {
-    lines.push("- Use <<SYS_LIBRARY_INDEX_REQUEST>> when you want GPT to provide a compact library list.");
+    lines.push("- Use <<SYS_LIBRARY_DATA_REQUEST>> when you want GPT to provide stored library reference data.");
     lines.push(
-      "- GPT should answer <<SYS_LIBRARY_INDEX_REQUEST>> with <<SYS_LIBRARY_INDEX_RESPONSE>> using the same TASK_ID and ACTION_ID."
+      "- GPT should answer <<SYS_LIBRARY_DATA_REQUEST>> with <<SYS_LIBRARY_DATA_RESPONSE>> using the same TASK_ID and ACTION_ID."
     );
-    lines.push("- Use <<SYS_LIBRARY_ITEM_REQUEST>> when you want GPT to provide one specific library item.");
+  }
+
+  if (allowsDraftPreparation(intent)) {
     lines.push(
-      "- GPT should answer <<SYS_LIBRARY_ITEM_REQUEST>> with <<SYS_LIBRARY_ITEM_RESPONSE>> using the same TASK_ID and ACTION_ID."
+      "- Use <<SYS_DRAFT_PREPARATION_REQUEST>> when a draft should be shaped by GPT from Kin's text or from a GPT-produced artifact."
     );
     lines.push(
-      "- Both library index requests and library item requests consume the same library-reference allowance for the task."
+      "- GPT should answer <<SYS_DRAFT_PREPARATION_REQUEST>> with <<SYS_DRAFT_PREPARATION_RESPONSE>> and assign a DOCUMENT_ID."
+    );
+  }
+
+  if (allowsDraftModification(intent)) {
+    lines.push(
+      "- Use <<SYS_DRAFT_MODIFICATION_REQUEST>> with DOCUMENT_ID when an existing draft needs edits. Use DOCUMENT_ID: Unknown only for the latest full draft."
     );
     lines.push(
-      "- Use <<SYS_LIBRARY_INDEX_REQUEST>> first when you need to discover available stored items, and <<SYS_LIBRARY_ITEM_REQUEST>> when you already know the ITEM_ID to inspect."
+      "- Set RESPONSE_MODE to full or partial. GPT should answer with <<SYS_DRAFT_MODIFICATION_RESPONSE>> using the resolved DOCUMENT_ID."
+    );
+  }
+
+  if (allowsFileSaving(intent)) {
+    lines.push(
+      "- Use <<SYS_FILE_SAVING_REQUEST>> with DOCUMENT ID when GPT should save a document to the library. If the document is unknown, set DOCUMENT ID: Unknown so GPT can use the latest full draft."
+    );
+    lines.push(
+      "- GPT should answer with <<SYS_FILE_SAVING_RESPONSE>> using the saved DOCUMENT_ID."
+    );
+    lines.push(
+      "- In the final <<SYS_TASK_DONE>>, include ARTIFACTS with the completed DOCUMENT_ID whenever a draft or saved document is part of the result."
     );
   }
 
@@ -219,41 +265,111 @@ BODY:
   }
 
   if (intent.workflow?.allowLibraryReference) {
-    blocks.push(wrapExample("LIBRARY_INDEX_REQUEST", `<<SYS_LIBRARY_INDEX_REQUEST>>
+    blocks.push(wrapExample("LIBRARY_DATA_REQUEST", `<<SYS_LIBRARY_DATA_REQUEST>>
 TASK_ID: ${taskId}
 ACTION_ID: L001
-BODY: Send a compact library list with ITEM_ID, TYPE, TITLE, and SHORT_SUMMARY.
-<<END_SYS_LIBRARY_INDEX_REQUEST>>`));
+BODY: Send the available library data with index, summaries, and detail excerpts.
+<<END_SYS_LIBRARY_DATA_REQUEST>>`));
 
-    blocks.push(wrapExample("LIBRARY_INDEX_RESPONSE", `<<SYS_LIBRARY_INDEX_RESPONSE>>
+    blocks.push(wrapExample("LIBRARY_DATA_RESPONSE", `<<SYS_LIBRARY_DATA_RESPONSE>>
 TASK_ID: ${taskId}
 ACTION_ID: L001
+TITLE: Library Data
 BODY:
-- ITEM_ID: LIB-001 | TYPE: search | TITLE: Example search result | SHORT_SUMMARY: Short summary here.
-- ITEM_ID: LIB-002 | TYPE: kin_created | TITLE: Example Kin document | SHORT_SUMMARY: Short summary here.
-<<END_SYS_LIBRARY_INDEX_RESPONSE>>`));
+Library Data
+Mode: detail
+Items: 2
 
-    blocks.push(wrapExample("LIBRARY_ITEM_REQUEST", `<<SYS_LIBRARY_ITEM_REQUEST>>
-TASK_ID: ${taskId}
-ACTION_ID: L002
-ITEM_ID: LIB-002
-BODY: Send the requested library item in the configured detail level.
-<<END_SYS_LIBRARY_ITEM_REQUEST>>`));
+1. Example search result [search]
 
-    blocks.push(wrapExample("LIBRARY_ITEM_RESPONSE", `<<SYS_LIBRARY_ITEM_RESPONSE>>
-TASK_ID: ${taskId}
-ACTION_ID: L002
-ITEM_ID: LIB-002
-OUTPUT_MODE: summary | summary_plus_raw
-SUMMARY: Short item digest here.
-RAW_EXCERPT: Key item excerpt here.
-<<END_SYS_LIBRARY_ITEM_RESPONSE>>`));
+Summary: Short summary here.
+
+Detail:
+Key item excerpt here.
+<<END_SYS_LIBRARY_DATA_RESPONSE>>`));
   }
+
+  if (allowsDraftPreparation(intent)) {
+    blocks.push(wrapExample("DRAFT_PREPARATION_REQUEST", `<<SYS_DRAFT_PREPARATION_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: D001
+SOURCE: kin_text | gpt_artifact
+TITLE: Draft title here
+BODY: Draft source text or preparation request here.
+<<END_SYS_DRAFT_PREPARATION_REQUEST>>`));
+
+    blocks.push(wrapExample("DRAFT_PREPARATION_RESPONSE", `<<SYS_DRAFT_PREPARATION_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: D001
+DOCUMENT_ID: DOC-${taskId}-001
+TITLE: Draft title here
+BODY: Full prepared draft here.
+<<END_SYS_DRAFT_PREPARATION_RESPONSE>>`));
+  }
+
+  if (allowsDraftModification(intent)) {
+    blocks.push(wrapExample("DRAFT_MODIFICATION_REQUEST", `<<SYS_DRAFT_MODIFICATION_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: D002
+DOCUMENT_ID: DOC-${taskId}-001
+RESPONSE_MODE: full | partial
+BODY: Edit instructions here.
+<<END_SYS_DRAFT_MODIFICATION_REQUEST>>`));
+
+    blocks.push(wrapExample("DRAFT_MODIFICATION_REQUEST latest draft", `<<SYS_DRAFT_MODIFICATION_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: D003
+DOCUMENT_ID: Unknown
+RESPONSE_MODE: full
+BODY: Edit the latest full draft here.
+<<END_SYS_DRAFT_MODIFICATION_REQUEST>>`));
+
+    blocks.push(wrapExample("DRAFT_MODIFICATION_RESPONSE", `<<SYS_DRAFT_MODIFICATION_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: D002
+DOCUMENT_ID: DOC-${taskId}-001
+RESPONSE_MODE: partial
+BODY: Changed section or full revised draft here.
+<<END_SYS_DRAFT_MODIFICATION_RESPONSE>>`));
+  }
+
+  if (allowsFileSaving(intent)) {
+    blocks.push(wrapExample("FILE_SAVING_REQUEST", `<<SYS_FILE_SAVING_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: F001
+DOCUMENT ID: DOC-${taskId}-001
+BODY: Save this document to the library.
+<<END_SYS_FILE_SAVING_REQUEST>>`));
+
+    blocks.push(wrapExample("FILE_SAVING_REQUEST latest draft", `<<SYS_FILE_SAVING_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: F002
+DOCUMENT ID: Unknown
+BODY: Save the latest full draft to the library.
+<<END_SYS_FILE_SAVING_REQUEST>>`));
+
+    blocks.push(wrapExample("FILE_SAVING_RESPONSE", `<<SYS_FILE_SAVING_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: F001
+DOCUMENT_ID: DOC-${taskId}-001
+STATUS: SAVED
+BODY: Saved to library.
+<<END_SYS_FILE_SAVING_RESPONSE>>`));
+  }
+
+  const doneArtifactLines =
+    allowsDraftPreparation(intent) ||
+    allowsDraftModification(intent) ||
+    allowsFileSaving(intent)
+      ? `
+ARTIFACTS:
+- DOCUMENT_ID: DOC-${taskId}-001`
+      : "";
 
   blocks.push(wrapExample("TASK_DONE", `<<SYS_TASK_DONE>>
 TASK_ID: ${taskId}
 STATUS: DONE
-SUMMARY: Summarize what was completed here.
+SUMMARY: Summarize what was completed here.${doneArtifactLines}
 <<END_SYS_TASK_DONE>>`));
 
   return blocks;

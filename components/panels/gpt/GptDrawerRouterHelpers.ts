@@ -242,6 +242,8 @@ export function buildLibraryDrawerProps({
     onSaveStoredDocument: references.onSaveStoredDocument,
     onShowLibraryItemInChat: references.onShowLibraryItemInChat,
     onSendLibraryItemToKin: references.onSendLibraryItemToKin,
+    onShowAllLibraryItemsInChat: references.onShowAllLibraryItemsInChat,
+    onSendAllLibraryItemsToKin: references.onSendAllLibraryItemsToKin,
     onUploadLibraryItemToGoogleDrive: references.onUploadLibraryItemToGoogleDrive,
     onOpenGoogleDriveFolder: settings.onOpenGoogleDriveFolder,
     onImportGoogleDriveFile: settings.onImportGoogleDriveFile,

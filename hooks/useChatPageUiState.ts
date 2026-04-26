@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { usePanelLayout } from "@/hooks/usePanelLayout";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { Message } from "@/types/chat";
 
 export function useChatPageUiState(mobileBreakpoint: number) {
@@ -15,6 +16,8 @@ export function useChatPageUiState(mobileBreakpoint: number) {
     string[]
   >([]);
   const [pendingKinInjectionIndex, setPendingKinInjectionIndex] = useState(0);
+  const [pendingKinInjectionPurpose, setPendingKinInjectionPurpose] =
+    useState<PendingKinInjectionPurpose>("none");
   const [, setCurrentSessionId] = useState<string | null>(null);
 
   const {
@@ -50,6 +53,8 @@ export function useChatPageUiState(mobileBreakpoint: number) {
     setPendingKinInjectionBlocks,
     pendingKinInjectionIndex,
     setPendingKinInjectionIndex,
+    pendingKinInjectionPurpose,
+    setPendingKinInjectionPurpose,
     setCurrentSessionId,
     isSinglePanelLayout,
     activePanelTab,

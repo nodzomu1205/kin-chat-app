@@ -143,4 +143,58 @@ BODY: fetch both
       ],
     });
   });
+
+  it("extracts document protocol fields", () => {
+    const events = extractTaskProtocolEvents(`<<SYS_DRAFT_MODIFICATION_REQUEST>>
+TASK_ID: 1
+ACTION_ID: D002
+DOCUMENT ID: DOC-001
+RESPONSE_MODE: partial_response
+BODY: Tighten the introduction.
+<<END_SYS_DRAFT_MODIFICATION_REQUEST>>`);
+
+    expect(events[0]).toMatchObject({
+      type: "draft_modification_request",
+      taskId: "1",
+      actionId: "D002",
+      documentId: "DOC-001",
+      responseMode: "partial",
+      body: "Tighten the introduction.",
+    });
+  });
+
+  it("normalizes file saving protocol fields", () => {
+    const events = extractTaskProtocolEvents(`<<SYS_FILE_SAVING_REQUEST>>
+TASK_ID: 1
+ACTION_ID: F001
+DOCUMENT ID: DOC-001
+BODY: Save it.
+<<END_SYS_FILE_SAVING_REQUEST>>`);
+
+    expect(events[0]).toMatchObject({
+      type: "file_save_request",
+      taskId: "1",
+      actionId: "F001",
+      documentId: "DOC-001",
+      body: "Save it.",
+    });
+  });
+
+  it("does not accept retired library and file saving aliases as active events", () => {
+    const events = extractTaskProtocolEvents(`<<SYS_LIBRARY_INDEX_REQUEST>>
+TASK_ID: 1
+ACTION_ID: L001
+<<END_SYS_LIBRARY_INDEX_REQUEST>>
+<<SYS_LIBRARY_ITEM_REQUEST>>
+TASK_ID: 1
+ACTION_ID: L002
+<<END_SYS_LIBRARY_ITEM_REQUEST>>
+<<SYS_FILE_SAVE_REQUEST>>
+TASK_ID: 1
+ACTION_ID: F001
+DOCUMENT_ID: DOC-001
+<<END_SYS_FILE_SAVE_REQUEST>>`);
+
+    expect(events).toEqual([]);
+  });
 });

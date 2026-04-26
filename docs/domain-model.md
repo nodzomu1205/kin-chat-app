@@ -97,30 +97,44 @@ Current protocol blocks:
 - `SYS_TASK_PROGRESS`
 - `SYS_SEARCH_REQUEST / RESPONSE`
 - `SYS_YOUTUBE_TRANSCRIPT_REQUEST / RESPONSE`
+- `SYS_LIBRARY_DATA_REQUEST / RESPONSE`
+- `SYS_DRAFT_PREPARATION_REQUEST / RESPONSE`
+- `SYS_DRAFT_MODIFICATION_REQUEST / RESPONSE`
+- `SYS_FILE_SAVING_REQUEST / RESPONSE`
 - `SYS_GPT_RESPONSE`
 - `SYS_INFO`
 
-Planned protocol concepts for the next product slice:
+Current document protocol concepts:
 
 - Draft Preparation
-  - Kin asks GPT to create a draft artifact and GPT returns it with a draft id
+  - Kin asks GPT to create a draft artifact and GPT returns it with a
+    `DOCUMENT_ID`
 - Draft Modification
-  - Kin asks GPT to revise a draft by id, returning either a local patch/context
-    response or the full revised draft
+  - Kin asks GPT to revise a draft by id
+  - `DOCUMENT_ID: Unknown` resolves to the latest full draft
+  - blank `DOCUMENT_ID` in a full modification response is treated as the
+    previous full draft id by the shared resolver
 - File Saving
-  - Kin asks GPT to save a draft or Kin-authored content into the library;
-    single-message content can save directly, while multipart content should
-    save only after final part aggregation
+  - Kin asks GPT to save a draft into the library
+  - the local gate validates active length constraints before saving
+  - saved library cards use generated summaries through the shared summary path
 
-These names are design placeholders until the protocol text, parser behavior,
-and runtime/storage ownership are tested. Do not implement side effects before
-the protocol contract is documented and covered.
+Retired protocol inputs:
+
+- `SYS_LIBRARY_INDEX_*`
+- `SYS_LIBRARY_ITEM_*`
+- `SYS_FILE_SAVE_*`
+
+These are intentionally no longer active parser inputs. Keep the retirement
+covered by parser tests unless a real compatibility need appears.
 
 Current main files:
 
 - [`lib/task/taskRuntimeProtocol.ts`](../lib/task/taskRuntimeProtocol.ts)
 - [`lib/app/kin-protocol/kinProtocolDefaults.ts`](../lib/app/kin-protocol/kinProtocolDefaults.ts)
 - [`lib/app/kin-protocol/kinMultipart.ts`](../lib/app/kin-protocol/kinMultipart.ts)
+- [`lib/app/send-to-gpt/draftDocumentResolver.ts`](../lib/app/send-to-gpt/draftDocumentResolver.ts)
+- [`lib/app/send-to-gpt/sendToGptPreparedGateHandlers.ts`](../lib/app/send-to-gpt/sendToGptPreparedGateHandlers.ts)
 
 ### Search
 
@@ -152,14 +166,14 @@ Current main files:
 - [`hooks/useReferenceLibrary.ts`](../hooks/useReferenceLibrary.ts)
 - [`hooks/useStoredDocuments.ts`](../hooks/useStoredDocuments.ts)
 
-Next planned library workflow changes:
+Current library workflow notes:
 
-- remove the category switcher from the library tab
-- add collapsible bulk library actions for screen display and Kin send
-- support aggregation modes: `Index`, `Index + Summary`, and
-  `Index + Summary + Detail`
-- route library-card and bulk-library Kin sends through the same multipart
-  transport owner
+- bulk display and Kin send live in the collapsible library operation area
+- aggregation modes are `Index`, `Summary`, and `Summary + Detail`
+- library-card and bulk-library Kin sends should continue using the shared
+  multipart/SYS_INFO transport owner
+- task-time library requests should continue using
+  `SYS_LIBRARY_DATA_REQUEST / RESPONSE`
 
 ### Ingest
 

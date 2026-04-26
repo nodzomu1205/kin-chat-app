@@ -10,6 +10,7 @@ import type {
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchEngine } from "@/types/task";
 import type { TaskRuntimeState } from "@/types/taskProtocol";
+import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 
 type PreparedFinalRequestDerivedContext = {
   parsedInput: PreparedRequestContextSource["parsedInput"];
@@ -22,6 +23,10 @@ type PreparedFinalRequestDerivedContext = {
   effectiveSearchLocation: string;
   libraryIndexRequestEvent?: PreparedRequestContextSource["searchRequestEvent"];
   libraryItemRequestEvent?: PreparedRequestContextSource["searchRequestEvent"];
+  draftPreparationRequestEvent?: PreparedRequestContextSource["draftPreparationRequestEvent"];
+  draftModificationRequestEvent?: PreparedRequestContextSource["draftModificationRequestEvent"];
+  fileSaveRequestEvent?: PreparedRequestContextSource["fileSaveRequestEvent"];
+  recentMessages?: Message[];
 };
 
 export function buildPreparedRequestArtifactBase(params: {
@@ -41,6 +46,8 @@ export function buildPreparedRequestArtifactBase(params: {
   libraryIndexResponseCount: number;
   createUserMessage: (rawText: string) => Message;
   buildLibraryReferenceContext: () => string;
+  recentMessages?: Message[];
+  currentTaskCharConstraint?: TaskCharConstraint;
   buildLimitViolation: () => string | null;
 }) {
   const taskContext = resolveInjectedTaskContext({
@@ -53,6 +60,7 @@ export function buildPreparedRequestArtifactBase(params: {
   return {
     ...params.derivedContext,
     userMsg: params.createUserMessage(params.rawText),
+    currentTaskCharConstraint: params.currentTaskCharConstraint,
     limitViolation: params.buildLimitViolation(),
     finalRequestText: buildPreparedFinalRequestText({
       rawText: params.rawText,
@@ -61,6 +69,7 @@ export function buildPreparedRequestArtifactBase(params: {
       derivedContext: params.derivedContext,
       referenceLibraryItems: params.referenceLibraryItems,
       libraryIndexResponseCount: params.libraryIndexResponseCount,
+      recentMessages: params.recentMessages,
     }),
     libraryReferenceContext: params.buildLibraryReferenceContext(),
     effectiveDocumentReferenceContext: "",
@@ -76,6 +85,8 @@ export function buildPreparedRequestGateFields(
     limitViolation: preparedRequest.limitViolation,
     userMsg: preparedRequest.userMsg,
     youtubeTranscriptRequestEvent: preparedRequest.youtubeTranscriptRequestEvent,
+    fileSaveRequestEvent: preparedRequest.fileSaveRequestEvent,
+    currentTaskCharConstraint: preparedRequest.currentTaskCharConstraint,
   };
 }
 
@@ -96,6 +107,9 @@ export function buildPreparedRequestExecutionFields(
     effectiveSearchEngines: preparedRequest.effectiveSearchEngines,
     effectiveSearchLocation: preparedRequest.effectiveSearchLocation,
     askGptEvent: preparedRequest.askGptEvent,
+    draftPreparationRequestEvent: preparedRequest.draftPreparationRequestEvent,
+    draftModificationRequestEvent: preparedRequest.draftModificationRequestEvent,
+    fileSaveRequestEvent: preparedRequest.fileSaveRequestEvent,
     requestToAnswer: preparedRequest.requestToAnswer,
     requestAnswerBody: preparedRequest.requestAnswerBody,
   };
@@ -125,6 +139,7 @@ export function buildPreparedFinalRequestText(params: {
   derivedContext: PreparedFinalRequestDerivedContext;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  recentMessages?: Message[];
 }) {
   return buildFinalRequestText({
     rawText: params.rawText,
@@ -139,8 +154,14 @@ export function buildPreparedFinalRequestText(params: {
     effectiveSearchLocation: params.derivedContext.effectiveSearchLocation,
     libraryIndexRequestEvent: params.derivedContext.libraryIndexRequestEvent,
     libraryItemRequestEvent: params.derivedContext.libraryItemRequestEvent,
+    draftPreparationRequestEvent:
+      params.derivedContext.draftPreparationRequestEvent,
+    draftModificationRequestEvent:
+      params.derivedContext.draftModificationRequestEvent,
+    fileSaveRequestEvent: params.derivedContext.fileSaveRequestEvent,
     referenceLibraryItems: params.referenceLibraryItems,
     libraryIndexResponseCount: params.libraryIndexResponseCount,
+    recentMessages: params.recentMessages,
     taskContext: params.taskContext,
   });
 }

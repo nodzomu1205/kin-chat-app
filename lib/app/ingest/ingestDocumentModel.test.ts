@@ -6,7 +6,6 @@ import {
   buildIngestedDocumentFilename,
   buildIngestedDocumentRecord,
   buildIngestedStoredDocument,
-  buildKinStoredDocument,
   buildLibraryFilenameWithCharCount,
   buildReferenceLibraryDocumentItem,
   buildReferenceLibrarySearchItem,
@@ -149,21 +148,6 @@ describe("ingestDocumentModel", () => {
       summary: "",
     });
 
-    expect(
-      buildKinStoredDocument({
-        id: "asm-1",
-        filename: "result.txt",
-        assembledText: "Task result body.",
-        isComplete: true,
-        totalParts: 1,
-        parts: [{ index: 1, text: "Task result body." }],
-        updatedAt: "2026-04-18T00:00:00.000Z",
-      })
-    ).toMatchObject({
-      id: "kin:asm-1",
-      sourceType: "kin_created",
-      summary: "Task result body.",
-    });
   });
 
   it("applies overrides and builds compact document-library items", () => {

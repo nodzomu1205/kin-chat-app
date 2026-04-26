@@ -85,6 +85,20 @@ describe("gptMemoryStateHelpers", () => {
     });
   });
 
+  it("drops internal compaction labels from persisted facts", () => {
+    const trimmed = trimMemoryState(
+      buildMemory({
+        facts: [
+          "User is researching cotton traceability.",
+          "[Conversation compaction]",
+        ],
+      }),
+      DEFAULT_MEMORY_SETTINGS
+    );
+
+    expect(trimmed.facts).toEqual(["User is researching cotton traceability."]);
+  });
+
   it("detects meaningful memory state", () => {
     expect(hasMeaningfulMemoryState(buildMemory())).toBe(false);
     expect(

@@ -24,15 +24,15 @@ Current state:
 - quality gate recovery: complete
 - major hub splitting: mostly complete
 - remaining work: library-ingest authority watch, protocol/task payload naming
-  watch after the `reasoningMode` runtime cleanup, regrowth prevention, and
-  narrow regression coverage
+  watch after the `reasoningMode` runtime cleanup, draft/file-saving manual
+  retest watch, regrowth prevention, and narrow regression coverage
 
 Working estimate:
 
 - maintainability program overall: `late-stage maintenance-watch`
 - still open before we call it complete: `device/Drive ingest convergence when
   new duplication appears`, `token accounting watch`, `protocol responseMode
-  naming watch`, `maintenance-watch discipline`
+  naming watch`, `draft/file-saving manual retest`, `maintenance-watch discipline`
 - memory lifecycle now has explicit `stable / task-scoped / displayed-context`
   naming; treat new memory fields as incomplete until that classification is
   explicit too
@@ -59,6 +59,15 @@ Latest status update:
   focused task payload tests.
 - Active-code mojibake search currently finds only regression-test patterns,
   not user-facing owner files.
+- Library reference protocol is now intentionally consolidated on
+  `SYS_LIBRARY_DATA_REQUEST / RESPONSE`; retired `LIBRARY_INDEX/ITEM` blocks
+  are rejected by parser coverage.
+- Draft Preparation, Draft Modification, and File Saving are implemented with
+  local file-save gating, generated library summaries, length validation, and
+  latest-draft fallback coverage.
+- Full verification on 2026-04-26 passed:
+  `npx tsc --noEmit`, `npm run lint`, `npm test` (`166 files / 739 tests`),
+  and `npm run build`.
 
 ## Exit Checklist
 
@@ -107,6 +116,8 @@ Treat the maintainability program as complete only when every item below is
 - every touched maintenance-watch boundary has a narrow regression test
 - helper/builder test files stay diagnosable and are split when failures become hard to localize
 - no high-risk boundary depends only on broad end-to-end manual testing
+- LLM/protocol flows that depend on Kin behavior have both focused unit
+  coverage and a named manual retest path before being called fully settled
 
 ### F. Docs / Handoff Hygiene
 

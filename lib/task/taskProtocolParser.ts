@@ -22,14 +22,22 @@ export function normalizeTaskProtocolEventType(
       return "youtube_transcript_request";
     case "YOUTUBE_TRANSCRIPT_RESPONSE":
       return "youtube_transcript_response";
-    case "LIBRARY_INDEX_REQUEST":
+    case "LIBRARY_DATA_REQUEST":
       return "library_index_request";
-    case "LIBRARY_INDEX_RESPONSE":
+    case "LIBRARY_DATA_RESPONSE":
       return "library_index_response";
-    case "LIBRARY_ITEM_REQUEST":
-      return "library_item_request";
-    case "LIBRARY_ITEM_RESPONSE":
-      return "library_item_response";
+    case "DRAFT_PREPARATION_REQUEST":
+      return "draft_preparation_request";
+    case "DRAFT_PREPARATION_RESPONSE":
+      return "draft_preparation_response";
+    case "DRAFT_MODIFICATION_REQUEST":
+      return "draft_modification_request";
+    case "DRAFT_MODIFICATION_RESPONSE":
+      return "draft_modification_response";
+    case "FILE_SAVING_REQUEST":
+      return "file_save_request";
+    case "FILE_SAVING_RESPONSE":
+      return "file_save_response";
     case "USER_QUESTION":
       return "user_question";
     case "MATERIAL_REQUEST":
@@ -49,9 +57,9 @@ export function parseProtocolBlockFields(body: string) {
 
   for (const rawLine of body.replace(/\r\n/g, "\n").split("\n")) {
     const line = rawLine.trimEnd();
-    const match = line.match(/^([A-Z_]+)\s*:\s*(.*)$/);
+    const match = line.match(/^([A-Z_ ]+)\s*:\s*(.*)$/);
     if (match) {
-      currentKey = match[1];
+      currentKey = match[1].trim().replace(/\s+/g, "_");
       fields[currentKey] = match[2].trim();
       continue;
     }
@@ -107,6 +115,15 @@ export function parseProtocolUrls(value: string | undefined) {
     .filter(Boolean);
 }
 
+function parseProtocolResponseMode(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "full" || normalized === "full_response") return "full";
+  if (normalized === "partial" || normalized === "partial_response") {
+    return "partial";
+  }
+  return undefined;
+}
+
 export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
   if (!text.trim()) return [];
 
@@ -141,6 +158,9 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
       outputMode: parseProtocolSearchOutputMode(fields.OUTPUT_MODE),
       rawResultId: fields.RAW_RESULT_ID || undefined,
       libraryItemId: fields.LIBRARY_ITEM_ID || undefined,
+      documentId: fields.DOCUMENT_ID || undefined,
+      sourceDocumentId: fields.SOURCE_DOCUMENT_ID || undefined,
+      responseMode: parseProtocolResponseMode(fields.RESPONSE_MODE),
       partIndex: parsedPart.partIndex,
       totalParts: parsedPart.totalParts,
       characters: fields.CHARACTERS

@@ -70,6 +70,8 @@ export function useChatPageWorkspaceDomainInputs(
       setPendingKinInjectionBlocks: chatUi.setPendingKinInjectionBlocks,
       pendingKinInjectionIndex: chatUi.pendingKinInjectionIndex,
       setPendingKinInjectionIndex: chatUi.setPendingKinInjectionIndex,
+      pendingKinInjectionPurpose: chatUi.pendingKinInjectionPurpose,
+      setPendingKinInjectionPurpose: chatUi.setPendingKinInjectionPurpose,
     },
     taskDraft: {
       currentTaskDraft: taskDraftWorkspace.currentTaskDraft,
@@ -161,10 +163,12 @@ export function useChatPageWorkspaceDomainInputs(
       onSelectTaskLibraryItem: referenceDomain.setSelectedTaskLibraryItemId,
       onChangeLibraryItemMode: referenceDomain.setLibraryItemModeOverride,
       onSaveStoredDocument: referenceDomain.updateStoredDocument,
-      onShowLibraryItemInChat: referenceDomain.showLibraryItemInChat,
-      onSendLibraryItemToKin: referenceDomain.sendLibraryItemToKin,
-      onUploadLibraryItemToGoogleDrive:
-        referenceDomain.uploadLibraryItemToGoogleDrive,
+        onShowLibraryItemInChat: referenceDomain.showLibraryItemInChat,
+        onSendLibraryItemToKin: referenceDomain.sendLibraryItemToKin,
+        onShowAllLibraryItemsInChat: referenceDomain.showAllLibraryItemsInChat,
+        onSendAllLibraryItemsToKin: referenceDomain.sendAllLibraryItemsToKin,
+        onUploadLibraryItemToGoogleDrive:
+          referenceDomain.uploadLibraryItemToGoogleDrive,
       onChangeAutoLibraryReferenceEnabled:
         referenceDomain.setAutoLibraryReferenceEnabled,
       onChangeLibraryReferenceMode: referenceDomain.setLibraryReferenceMode,

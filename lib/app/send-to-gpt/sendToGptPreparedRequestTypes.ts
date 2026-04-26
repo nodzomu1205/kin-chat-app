@@ -1,6 +1,7 @@
 import type { Message } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
+import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import type {
   ParsedInputLike,
   PendingRequestLike,
@@ -14,6 +15,8 @@ export type PreparedRequestGateContext = {
   limitViolation: string | null;
   userMsg: Message;
   youtubeTranscriptRequestEvent?: TaskProtocolEvent & { url?: string };
+  fileSaveRequestEvent?: ProtocolTaskEventLike;
+  currentTaskCharConstraint?: TaskCharConstraint;
 };
 
 export type PreparedRequestExecutionContext = {
@@ -30,6 +33,9 @@ export type PreparedRequestExecutionContext = {
   effectiveSearchEngines: SearchEngine[];
   effectiveSearchLocation: string;
   askGptEvent?: ProtocolTaskEventLike;
+  draftPreparationRequestEvent?: ProtocolTaskEventLike;
+  draftModificationRequestEvent?: ProtocolTaskEventLike;
+  fileSaveRequestEvent?: ProtocolTaskEventLike;
   requestToAnswer?: PendingRequestLike | null;
   requestAnswerBody?: string;
 };
@@ -50,6 +56,9 @@ export type PreparedRequestContextSource = PreparedRequestGateContext & {
   effectiveSearchEngines: SearchEngine[];
   effectiveSearchLocation: string;
   askGptEvent?: ProtocolTaskEventLike;
+  draftPreparationRequestEvent?: ProtocolTaskEventLike;
+  draftModificationRequestEvent?: ProtocolTaskEventLike;
+  fileSaveRequestEvent?: ProtocolTaskEventLike;
   requestToAnswer?: PendingRequestLike | null;
   requestAnswerBody?: string;
 };

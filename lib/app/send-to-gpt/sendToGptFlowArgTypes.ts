@@ -7,6 +7,8 @@ import type { Message } from "@/types/chat";
 import type { ReferenceLibraryItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 import type { TaskProtocolEvent, TaskRuntimeState } from "@/types/taskProtocol";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
+import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import type { MutableRefObject, Dispatch, SetStateAction } from "react";
 import type {
   ParsedInputLike,
@@ -82,6 +84,9 @@ export type SendToGptFlowUiArgs = {
   setKinInput: Dispatch<SetStateAction<string>>;
   setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
+  setPendingKinInjectionPurpose?: Dispatch<
+    SetStateAction<PendingKinInjectionPurpose>
+  >;
   setActiveTabToKin?: () => void;
 };
 
@@ -94,6 +99,7 @@ export type SendToGptFlowRequestArgs = {
     text: string,
     options?: { setGptTab?: boolean }
   ) => { handled: boolean; accepted: boolean } | null;
+  currentTaskCharConstraint?: TaskCharConstraint;
   recordIngestedDocument: (document: {
     title: string;
     filename: string;

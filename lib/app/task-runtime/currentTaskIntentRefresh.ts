@@ -5,6 +5,7 @@ import {
   buildCurrentTaskIntentRefreshApplyArgs,
   buildCurrentTaskIntentRefreshResolverArgs,
 } from "@/lib/app/task-runtime/currentTaskIntentRefreshBuilders";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
 import type { TaskIntent } from "@/types/taskProtocol";
 
@@ -40,6 +41,7 @@ export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
   }) => void;
   setPendingKinInjectionBlocks: (blocks: string[]) => void;
   setPendingKinInjectionIndex: (index: number) => void;
+  setPendingKinInjectionPurpose?: (purpose: PendingKinInjectionPurpose) => void;
   setKinInput: (value: string) => void;
 };
 
@@ -85,6 +87,7 @@ function applyCurrentTaskIntentRefresh(args: {
   syncTaskDraftFromProtocol: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["syncTaskDraftFromProtocol"];
   setPendingKinInjectionBlocks: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionBlocks"];
   setPendingKinInjectionIndex: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionIndex"];
+  setPendingKinInjectionPurpose: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionPurpose"];
   setKinInput: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setKinInput"];
 }) {
   const applyArgs = buildCurrentTaskIntentRefreshApplyArgs(args);
@@ -105,6 +108,7 @@ export async function syncApprovedIntentPhrasesToCurrentTaskFlow(
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
   });
 }

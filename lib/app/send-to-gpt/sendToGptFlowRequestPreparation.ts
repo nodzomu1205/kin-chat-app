@@ -15,6 +15,7 @@ import type {
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 import type { TaskRuntimeState } from "@/types/taskProtocol";
+import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import {
   buildPreparedFinalRequestText as buildPreparedFinalRequestTextFromBuilder,
   buildPreparedRequestArtifactBase,
@@ -41,6 +42,8 @@ export function prepareSendToGptRequest(params: {
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
   buildLibraryReferenceContext: () => string;
+  recentMessages?: Message[];
+  currentTaskCharConstraint?: TaskCharConstraint;
   createUserMessage: (rawText: string) => Message;
 }) {
   const derivedContext = deriveProtocolSearchContext({
@@ -62,6 +65,8 @@ export function prepareSendToGptRequest(params: {
     referenceLibraryItems: params.referenceLibraryItems,
     libraryIndexResponseCount: params.libraryIndexResponseCount,
     buildLibraryReferenceContext: params.buildLibraryReferenceContext,
+    recentMessages: params.recentMessages,
+    currentTaskCharConstraint: params.currentTaskCharConstraint,
     createUserMessage: params.createUserMessage,
     getProtocolLimitViolation: params.getProtocolLimitViolation,
     derivedContext,
@@ -76,6 +81,8 @@ export function buildPreparedRequestArtifacts(params: {
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
   buildLibraryReferenceContext: () => string;
+  recentMessages?: Message[];
+  currentTaskCharConstraint?: TaskCharConstraint;
   createUserMessage: (rawText: string) => Message;
   getProtocolLimitViolation: Parameters<typeof resolveProtocolLimitViolation>[0]["getProtocolLimitViolation"];
   derivedContext: DerivedProtocolSearchContext;
@@ -91,6 +98,8 @@ export function buildPreparedRequestArtifacts(params: {
     libraryIndexResponseCount: params.libraryIndexResponseCount,
     createUserMessage: params.createUserMessage,
     buildLibraryReferenceContext: params.buildLibraryReferenceContext,
+    recentMessages: params.recentMessages,
+    currentTaskCharConstraint: params.currentTaskCharConstraint,
     buildLimitViolation: () =>
       resolvePreparedRequestLimitViolation({
         derivedContext: params.derivedContext,
@@ -205,6 +214,7 @@ export function buildPreparedFinalRequestText(params: {
   derivedContext: DerivedProtocolSearchContext;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  recentMessages?: Message[];
 }) {
   return buildPreparedFinalRequestTextFromBuilder(params);
 }

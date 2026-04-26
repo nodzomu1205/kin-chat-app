@@ -15,6 +15,7 @@ import type {
 } from "@/lib/task/taskIntent";
 import type { ChatBridgeSettings } from "@/types/taskProtocol";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { SearchContext, SearchEngine, TaskDraft } from "@/types/task";
 
 export type TaskProtocolView = ReturnType<typeof useTaskProtocolProjection>;
@@ -41,6 +42,7 @@ export type ChatPageControllerCompositionArgs = {
     kinMessages: Message[];
     pendingKinInjectionBlocks: string[];
     pendingKinInjectionIndex: number;
+    pendingKinInjectionPurpose?: PendingKinInjectionPurpose;
     setKinInput: React.Dispatch<React.SetStateAction<string>>;
     setGptInput: React.Dispatch<React.SetStateAction<string>>;
     setKinMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -50,6 +52,9 @@ export type ChatPageControllerCompositionArgs = {
     setIngestLoading: React.Dispatch<React.SetStateAction<boolean>>;
     setPendingKinInjectionBlocks: React.Dispatch<React.SetStateAction<string[]>>;
     setPendingKinInjectionIndex: React.Dispatch<React.SetStateAction<number>>;
+    setPendingKinInjectionPurpose?: React.Dispatch<
+      React.SetStateAction<PendingKinInjectionPurpose>
+    >;
   };
   task: {
     currentTaskDraft: TaskDraft;

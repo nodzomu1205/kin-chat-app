@@ -1,4 +1,5 @@
 import { buildKinSysInfoBlock } from "@/lib/app/kin-protocol/kinStructuredProtocol";
+import { applyKinSysInfoInjection } from "@/lib/app/kin-protocol/kinInfoInjection";
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
 import { findLatestTransferableGptMessage } from "@/lib/app/task-support/latestGptMessage";
 import { buildKinDirectiveLines } from "@/lib/app/task-runtime/transformIntent";
@@ -28,6 +29,7 @@ export async function sendLatestGptContentToKinFlow({
   setGptMessages,
   setPendingKinInjectionBlocks,
   setPendingKinInjectionIndex,
+  setPendingKinInjectionPurpose,
   setKinInput,
   setGptInput,
   getTaskSlotLabel,
@@ -89,6 +91,7 @@ export async function sendLatestGptContentToKinFlow({
         compiledTaskPrompt: started.compiledTaskPrompt,
         setPendingKinInjectionBlocks,
         setPendingKinInjectionIndex,
+        setPendingKinInjectionPurpose,
         setKinInput,
       });
       setGptInput("");
@@ -124,7 +127,14 @@ export async function sendLatestGptContentToKinFlow({
       directiveLines,
     });
 
-    setKinInput(block);
+    applyKinSysInfoInjection({
+      text: block,
+      setKinInput,
+      setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex,
+      setPendingKinInjectionPurpose,
+      purpose: "info_share",
+    });
     setGptInput("");
     appendKinTransferInfoMessage({
       setGptMessages,

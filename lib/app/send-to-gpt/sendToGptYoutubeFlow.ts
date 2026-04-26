@@ -16,6 +16,7 @@ import {
 import type { Memory } from "@/lib/memory-domain/memory";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { MemoryResultLike } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { Message } from "@/types/chat";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
@@ -40,6 +41,9 @@ export async function handleYoutubeTranscriptFlow(args: {
   setKinInput: Dispatch<SetStateAction<string>>;
   setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
+  setPendingKinInjectionPurpose?: Dispatch<
+    SetStateAction<PendingKinInjectionPurpose>
+  >;
   setActiveTabToKin?: () => void;
   recordIngestedDocument: (document: {
     title: string;
@@ -147,6 +151,9 @@ export async function handleYoutubeTranscriptFlow(args: {
     args.setKinInput(kinBlocks[0] || "");
     args.setPendingKinInjectionBlocks(kinBlocks.length > 1 ? kinBlocks : []);
     args.setPendingKinInjectionIndex(0);
+    args.setPendingKinInjectionPurpose?.(
+      kinBlocks.length > 1 ? "task_context" : "none"
+    );
     args.setActiveTabToKin?.();
 
     const memoryContext = resolveMemoryUpdateContext({
@@ -187,6 +194,7 @@ export async function handleYoutubeTranscriptFlow(args: {
     args.ingestProtocolMessage(failureState.failureText, "gpt_to_kin");
     args.setPendingKinInjectionBlocks([]);
     args.setPendingKinInjectionIndex(0);
+    args.setPendingKinInjectionPurpose?.("none");
     args.setKinInput(failureState.retryBlock);
     args.setActiveTabToKin?.();
   } finally {
@@ -209,6 +217,9 @@ export async function runYoutubeTranscriptRequestItemFlow(args: {
   setKinInput: Dispatch<SetStateAction<string>>;
   setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
+  setPendingKinInjectionPurpose?: Dispatch<
+    SetStateAction<PendingKinInjectionPurpose>
+  >;
   focusKinPanel: () => void;
   recordIngestedDocument: (document: {
     title: string;
@@ -310,6 +321,9 @@ export async function runYoutubeTranscriptRequestItemFlow(args: {
       finalizedArtifacts.kinBlocks.length > 1 ? finalizedArtifacts.kinBlocks : []
     );
     args.setPendingKinInjectionIndex(0);
+    args.setPendingKinInjectionPurpose?.(
+      finalizedArtifacts.kinBlocks.length > 1 ? "task_context" : "none"
+    );
     args.focusKinPanel();
 
     args.setGptMessages((prev) => [...prev, assistantMsg]);
@@ -341,6 +355,7 @@ export async function runYoutubeTranscriptRequestItemFlow(args: {
     args.ingestProtocolMessage(failureState.failureText, "gpt_to_kin");
     args.setPendingKinInjectionBlocks([]);
     args.setPendingKinInjectionIndex(0);
+    args.setPendingKinInjectionPurpose?.("none");
     args.setKinInput(failureState.retryBlock);
     args.focusKinPanel();
   } finally {

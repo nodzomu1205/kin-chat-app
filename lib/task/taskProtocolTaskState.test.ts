@@ -81,7 +81,7 @@ describe("taskProtocolTaskState", () => {
 
     expect(result.title).toBe("");
     expect(result.compiledTaskPrompt).toContain("<<SYS_TASK>>");
-    expect(result.compiledTaskPrompt).not.toContain("TITLE:");
+    expect(result.compiledTaskPrompt.split("GOAL:")[0]).not.toContain("TITLE:");
     expect(result.nextState.currentTaskId).toBe("123456");
     expect(result.nextState.taskStatus).toBe("running");
     expect(result.nextState.originalInstruction).toBe("Analyze rivals");

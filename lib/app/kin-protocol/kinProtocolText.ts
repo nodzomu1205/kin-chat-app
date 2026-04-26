@@ -65,8 +65,16 @@ CONTENT:
 - After a usable transcript arrives, continue the task using the transcript as evidence.
 -
 - Library flow:
-- Use <<SYS_LIBRARY_INDEX_REQUEST>> when you want GPT to list stored items first.
-- Use <<SYS_LIBRARY_ITEM_REQUEST>> when you already know the ITEM_ID you want.
-- GPT replies with <<SYS_LIBRARY_INDEX_RESPONSE>> or <<SYS_LIBRARY_ITEM_RESPONSE>>.
-- Prefer library items over repeating the same web search when the needed evidence is already stored.
+- Use <<SYS_LIBRARY_DATA_REQUEST>> when you want GPT to send stored library reference data.
+- GPT replies with <<SYS_LIBRARY_DATA_RESPONSE>> containing the available index, summaries, and detail excerpts together.
+-
+- Draft and document flow:
+- Use <<SYS_DRAFT_PREPARATION_REQUEST>> when a draft should be shaped by GPT from your own text or from a GPT-produced artifact.
+- GPT replies with <<SYS_DRAFT_PREPARATION_RESPONSE>> and assigns DOCUMENT_ID.
+- Use <<SYS_DRAFT_MODIFICATION_REQUEST>> with DOCUMENT_ID to edit an existing draft. If the target is the latest full draft, DOCUMENT_ID may be Unknown.
+- Set RESPONSE_MODE to full when you need the complete revised draft, or partial when only changed sections are needed.
+- GPT replies with <<SYS_DRAFT_MODIFICATION_RESPONSE>> using the resolved DOCUMENT_ID.
+- Use <<SYS_FILE_SAVING_REQUEST>> with DOCUMENT ID when GPT should save that document to the library. If unknown, write DOCUMENT ID: Unknown and GPT will use the latest full draft.
+- GPT replies with <<SYS_FILE_SAVING_RESPONSE>> using the saved DOCUMENT_ID.
+- In final <<SYS_TASK_DONE>>, include ARTIFACTS with the completed DOCUMENT_ID whenever a draft or saved document is part of the result.
 <<END_SYS_INFO>>`;

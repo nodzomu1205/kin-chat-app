@@ -26,13 +26,20 @@ export function resolveCurrentTaskCharConstraint(
 ): TaskCharConstraint {
   const constraints = currentTaskIntentConstraints || [];
   for (const item of constraints) {
-    let match = item.match(/exactly\s+(\d+)\s+Japanese characters/i);
+    const normalized = item.normalize("NFKC");
+    let match = normalized.match(/exactly\s+(\d+)\s+(?:Japanese\s+)?characters/i);
     if (match) return { rule: "exact", limit: Number(match[1]) };
-    match = item.match(/at or above\s+(\d+)\s+Japanese characters/i);
+    match = normalized.match(/(?:at or above|at least|minimum|no less than|not less than)\s+(\d+)\s+(?:Japanese\s+)?characters/i);
     if (match) return { rule: "at_least", limit: Number(match[1]) };
-    match = item.match(/at or under\s+(\d+)\s+Japanese characters/i);
+    match = normalized.match(/(\d+)\s*(?:characters?|文字)\s*(?:以上|or more)/i);
+    if (match) return { rule: "at_least", limit: Number(match[1]) };
+    match = normalized.match(/(?:at or under|up to|within|at most|no more than|not more than)\s+(\d+)\s+(?:Japanese\s+)?characters/i);
     if (match) return { rule: "up_to", limit: Number(match[1]) };
-    match = item.match(/around\s+(\d+)\s+Japanese characters/i);
+    match = normalized.match(/(\d+)\s*(?:characters?|文字)\s*(?:以内|以下|まで|or less)/i);
+    if (match) return { rule: "up_to", limit: Number(match[1]) };
+    match = normalized.match(/(?:around|about|approximately)\s+(\d+)\s+(?:Japanese\s+)?characters/i);
+    if (match) return { rule: "around", limit: Number(match[1]) };
+    match = normalized.match(/(\d+)\s*(?:characters?|文字)\s*(?:前後|程度|くらい)/i);
     if (match) return { rule: "around", limit: Number(match[1]) };
   }
   return null;

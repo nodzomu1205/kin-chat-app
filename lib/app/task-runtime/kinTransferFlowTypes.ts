@@ -1,4 +1,5 @@
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { TransformIntent } from "@/lib/app/task-runtime/transformIntent";
 import type { BucketUsageOptions, normalizeUsage } from "@/lib/shared/tokenStats";
 import type { ApprovedIntentPhrase, PendingIntentCandidate } from "@/lib/task/taskIntent";
@@ -60,6 +61,7 @@ export type SendLatestGptContentToKinArgs = {
   setGptMessages: (updater: (prev: Message[]) => Message[]) => void;
   setPendingKinInjectionBlocks: (value: string[]) => void;
   setPendingKinInjectionIndex: (value: number) => void;
+  setPendingKinInjectionPurpose?: (value: PendingKinInjectionPurpose) => void;
   setKinInput: (value: string) => void;
   setGptInput: (value: string) => void;
   getTaskSlotLabel: () => string;
@@ -113,6 +115,7 @@ export type SendCurrentTaskContentToKinArgs = {
   setGptMessages: (updater: (prev: Message[]) => Message[]) => void;
   setPendingKinInjectionBlocks: (value: string[]) => void;
   setPendingKinInjectionIndex: (value: number) => void;
+  setPendingKinInjectionPurpose?: (value: PendingKinInjectionPurpose) => void;
   setKinInput: (value: string) => void;
   setGptInput: (value: string) => void;
   getTaskSlotLabel: () => string;

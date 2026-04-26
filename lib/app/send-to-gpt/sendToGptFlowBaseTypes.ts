@@ -46,6 +46,9 @@ export type ProtocolTaskEventLike = {
   searchEngine?: string;
   searchLocation?: string;
   outputMode?: string;
+  documentId?: string;
+  responseMode?: "full" | "partial";
+  sourceDocumentId?: string;
 };
 
 export type SearchResponseEventLike = {

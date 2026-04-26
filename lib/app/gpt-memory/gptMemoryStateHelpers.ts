@@ -27,6 +27,10 @@ function uniqueTrimmed(items: unknown, max: number): string[] {
   return Array.from(new Set(next)).slice(-max);
 }
 
+function isInternalMemoryFact(item: string) {
+  return /^\[(?:Conversation compaction|Memory compaction)\]$/i.test(item.trim());
+}
+
 function trimWorksByEntity(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return undefined;
@@ -81,6 +85,7 @@ export function trimMemoryState(memory: Memory, settings: MemorySettings): Memor
     facts: Array.from(
       new Set(
         uniqueTrimmed(memory.facts, settings.maxFacts * 2).map((item) => normalizeText(item))
+          .filter((item) => !isInternalMemoryFact(item))
       )
     ).slice(-settings.maxFacts),
     preferences: Array.from(

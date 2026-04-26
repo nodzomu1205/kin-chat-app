@@ -199,11 +199,19 @@ export const GPT_PROTOCOL_DRAWER_TEXT = {
 } as const;
 
 export const GPT_LIBRARY_DRAWER_TEXT = {
-  tabs: {
-    all: "すべて",
-    kin: "Kin作成文書",
-    ingest: "取込文書",
-    search: "検索データ",
+  actions: {
+    toggle: "ライブラリ操作",
+    collapse: "閉じる",
+    expand: "開く",
+    showAll: "画面に一括表示",
+    sendAllToKin: "Kinに一括送信",
+    pending: "次の実装で有効化します",
+    modeLabel: "mode",
+    modes: {
+      index: "Index",
+      summary: "Summary",
+      detail: "Summary + Detail",
+    },
   },
   typeLabels: {
     search: "検索データ",
@@ -211,7 +219,6 @@ export const GPT_LIBRARY_DRAWER_TEXT = {
     ingested_file: "取込文書",
   },
   emptyAll: "まだライブラリ項目はありません。",
-  emptyFiltered: "このグループの項目はまだありません。",
   refPrefix: "Ref",
   taskSelected: "タスク選択中",
   moveUpTitle: "上へ移動",

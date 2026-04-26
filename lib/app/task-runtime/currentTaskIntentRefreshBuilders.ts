@@ -30,6 +30,7 @@ export function buildCurrentTaskIntentRefreshApplyArgs(args: {
   syncTaskDraftFromProtocol: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["syncTaskDraftFromProtocol"];
   setPendingKinInjectionBlocks: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionBlocks"];
   setPendingKinInjectionIndex: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionIndex"];
+  setPendingKinInjectionPurpose?: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionPurpose"];
   setKinInput: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setKinInput"];
 }) {
   return {
@@ -44,6 +45,7 @@ export function buildCurrentTaskIntentRefreshApplyArgs(args: {
       compiledTaskPrompt: args.replacedTask.compiledTaskPrompt,
       setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
       setKinInput: args.setKinInput,
     },
   };

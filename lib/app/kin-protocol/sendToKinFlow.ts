@@ -1,10 +1,13 @@
 import type { Dispatch, SetStateAction } from "react";
 import { generateId } from "@/lib/shared/uuid";
 import type { Message } from "@/types/chat";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { KinConnectionState } from "@/hooks/useKinManager";
 import {
+  buildContinueTaskAfterMultipartReceiptBlock,
   resolveKinFollowupInput,
   resolvePendingKinInjectionAction,
+  shouldPromptKinToContinueAfterPendingInfoDelivery,
 } from "@/lib/app/kin-protocol/sendToKinFlowState";
 
 type RunSendKinMessageFlowArgs = {
@@ -15,6 +18,7 @@ type RunSendKinMessageFlowArgs = {
   setKinLoading: Dispatch<SetStateAction<boolean>>;
   pendingKinInjectionBlocks: string[];
   pendingKinInjectionIndex: number;
+  pendingKinInjectionPurpose?: PendingKinInjectionPurpose;
   setKinMessages: Dispatch<SetStateAction<Message[]>>;
   setKinInput: Dispatch<SetStateAction<string>>;
   ingestProtocolMessage: (
@@ -39,6 +43,7 @@ export async function runSendKinMessageFlow({
   setKinLoading,
   pendingKinInjectionBlocks,
   pendingKinInjectionIndex,
+  pendingKinInjectionPurpose = "none",
   setKinMessages,
   setKinInput,
   ingestProtocolMessage,
@@ -102,6 +107,15 @@ export async function runSendKinMessageFlow({
     } else if (pendingAction.type === "complete") {
       clearPendingKinInjection();
       await onPendingKinAck?.();
+      const shouldContinueTask =
+        pendingKinInjectionPurpose === "task_context" || Boolean(onPendingKinAck);
+      if (
+        shouldContinueTask &&
+        pendingAction.finalReplyNeedsTaskContinuation &&
+        shouldPromptKinToContinueAfterPendingInfoDelivery(replyText)
+      ) {
+        setKinInput(buildContinueTaskAfterMultipartReceiptBlock());
+      }
     }
 
     if (pendingKinInjectionBlocks.length === 0) {

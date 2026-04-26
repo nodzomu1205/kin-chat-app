@@ -72,6 +72,27 @@ function includesAnyKeyword(text: string, keywords: string[]) {
   return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
 }
 
+const DRAFT_PREPARATION_HINT_KEYWORDS = [
+  "draft preparation",
+  "prepare draft",
+  "create draft",
+  "document number",
+  "document id",
+];
+const DRAFT_MODIFICATION_HINT_KEYWORDS = [
+  "draft modification",
+  "modify draft",
+  "edit draft",
+  "partial response",
+  "full response",
+];
+const FILE_SAVE_HINT_KEYWORDS = [
+  "file saving",
+  "save file",
+  "save document",
+  "save to library",
+];
+
 function extractFirstPositiveNumber(text: string) {
   const match = text.match(/(\d+)/);
   return match?.[1] ? Number(match[1]) : undefined;
@@ -149,6 +170,16 @@ function applyConstraintWorkflowHints(intent: TaskIntent): TaskIntent {
       next.workflow!.libraryReferenceCount =
         count ?? next.workflow!.libraryReferenceCount;
       next.workflow!.libraryReferenceCountRule = rule;
+    } else if (
+      includesAnyKeyword(normalized, DRAFT_PREPARATION_HINT_KEYWORDS)
+    ) {
+      next.workflow!.allowDraftPreparation = true;
+    } else if (
+      includesAnyKeyword(normalized, DRAFT_MODIFICATION_HINT_KEYWORDS)
+    ) {
+      next.workflow!.allowDraftModification = true;
+    } else if (includesAnyKeyword(normalized, FILE_SAVE_HINT_KEYWORDS)) {
+      next.workflow!.allowFileSaving = true;
     } else if (includesAnyKeyword(normalized, USER_HINT_KEYWORDS)) {
       next.workflow!.askUserCount = count ?? next.workflow!.askUserCount;
       next.workflow!.askUserCountRule = rule;

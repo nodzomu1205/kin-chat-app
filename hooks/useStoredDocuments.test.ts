@@ -8,7 +8,7 @@ function createDocument(
 ): StoredDocument {
   return {
     id,
-    sourceType: "kin_created",
+    sourceType: "ingested_file",
     title: `${id}-title`,
     filename: `${id}.txt`,
     text: `${id}-text`,
@@ -34,25 +34,19 @@ describe("sanitizeDocumentOrder", () => {
 
 describe("buildAllStoredDocuments", () => {
   it("applies overrides before sorting and ordering", () => {
-    const kinDocuments = [
-      createDocument("kin-1", {
-        title: "Before title",
-        text: "Before text",
-        updatedAt: "2026-04-15T00:00:00.000Z",
-      }),
-    ];
     const ingestedDocuments = [
       createDocument("ingest-1", {
         sourceType: "ingested_file",
+        title: "Before title",
+        text: "Before text",
         updatedAt: "2026-04-14T00:00:00.000Z",
       }),
     ];
 
     const result = buildAllStoredDocuments({
-      kinDocuments,
       ingestedDocuments,
       documentOverrides: {
-        "kin-1": {
+        "ingest-1": {
           title: "After title",
           text: "After text body",
           updatedAt: "2026-04-16T00:00:00.000Z",
@@ -61,9 +55,9 @@ describe("buildAllStoredDocuments", () => {
       documentOrder: [],
     });
 
-    expect(result.documentOrder).toEqual(["kin-1", "ingest-1"]);
+    expect(result.documentOrder).toEqual(["ingest-1"]);
     expect(result.allDocuments[0]).toMatchObject({
-      id: "kin-1",
+      id: "ingest-1",
       title: "After title",
       text: "After text body",
       updatedAt: "2026-04-16T00:00:00.000Z",
@@ -79,8 +73,7 @@ describe("buildAllStoredDocuments", () => {
     ];
 
     const result = buildAllStoredDocuments({
-      kinDocuments: documents,
-      ingestedDocuments: [],
+      ingestedDocuments: documents,
       documentOverrides: {},
       documentOrder: ["missing", "doc-3", "doc-1"],
     });
@@ -91,7 +84,6 @@ describe("buildAllStoredDocuments", () => {
 
   it("normalizes timestamp-heavy ingested documents loaded from storage", () => {
     const result = buildAllStoredDocuments({
-      kinDocuments: [],
       ingestedDocuments: [
         createDocument("ingest-1", {
           sourceType: "ingested_file",

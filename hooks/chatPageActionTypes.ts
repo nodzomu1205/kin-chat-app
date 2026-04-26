@@ -38,6 +38,7 @@ import type {
   GptMemoryRuntime,
   GptMemorySettingsControls,
 } from "@/lib/app/ui-state/chatPageGptMemoryControls";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 import type { ParsedTaskInput } from "@/lib/task/taskInputParser";
 import type { MemorySettings } from "@/lib/memory-domain/memory";
@@ -74,6 +75,7 @@ export type ChatPageUiStateArgs = {
   kinMessages: Message[];
   pendingKinInjectionBlocks: string[];
   pendingKinInjectionIndex: number;
+  pendingKinInjectionPurpose?: PendingKinInjectionPurpose;
   setKinInput: React.Dispatch<React.SetStateAction<string>>;
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
   setKinMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -83,6 +85,9 @@ export type ChatPageUiStateArgs = {
   setIngestLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setPendingKinInjectionBlocks: React.Dispatch<React.SetStateAction<string[]>>;
   setPendingKinInjectionIndex: React.Dispatch<React.SetStateAction<number>>;
+  setPendingKinInjectionPurpose?: React.Dispatch<
+    React.SetStateAction<PendingKinInjectionPurpose>
+  >;
 };
 
 export type ChatPageTaskArgs = {
@@ -228,7 +233,8 @@ export type UseGptMessageActionsArgs = Pick<
   | "currentTaskDraft"
   | "getAskAiModeLinkForQuery"
   | "getContinuationTokenForSeries"
-    | "gptInput"
+  | "getCurrentTaskCharConstraint"
+  | "gptInput"
     | "gptLoading"
     | "gptMemoryRuntime"
     | "focusGptPanel"
@@ -251,6 +257,7 @@ export type UseGptMessageActionsArgs = Pick<
   | "setKinInput"
   | "setPendingKinInjectionBlocks"
   | "setPendingKinInjectionIndex"
+  | "setPendingKinInjectionPurpose"
   | "taskProtocol"
 >;
 
@@ -272,6 +279,7 @@ export type UseKinTransferActionsArgs = Pick<
   | "pendingIntentCandidates"
   | "pendingKinInjectionBlocks"
   | "pendingKinInjectionIndex"
+  | "pendingKinInjectionPurpose"
   | "processMultipartTaskDoneText"
   | "rejectedIntentCandidateSignatures"
   | "reasoningMode"
@@ -285,6 +293,7 @@ export type UseKinTransferActionsArgs = Pick<
   | "setPendingIntentCandidates"
   | "setPendingKinInjectionBlocks"
   | "setPendingKinInjectionIndex"
+  | "setPendingKinInjectionPurpose"
   | "syncTaskDraftFromProtocol"
   | "taskProtocol"
 >;
@@ -328,6 +337,7 @@ export type UseTaskProtocolActionsArgs = Pick<
   | "setPendingIntentCandidates"
   | "setPendingKinInjectionBlocks"
   | "setPendingKinInjectionIndex"
+  | "setPendingKinInjectionPurpose"
   | "setProtocolPrompt"
   | "setProtocolRulebook"
   | "setRejectedIntentCandidateSignatures"
@@ -355,6 +365,7 @@ export type UseFileIngestActionsArgs = Pick<
   | "setKinInput"
   | "setPendingKinInjectionBlocks"
   | "setPendingKinInjectionIndex"
+  | "setPendingKinInjectionPurpose"
   | "setUploadKind"
 >;
 

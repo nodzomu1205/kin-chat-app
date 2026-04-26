@@ -11,13 +11,16 @@ import type { ParsedInputLike } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTyp
 import type { PreparedRequestGateContext } from "@/lib/app/send-to-gpt/sendToGptPreparedRequestTypes";
 import {
   handleProtocolLimitViolationGate,
+  handleFileSaveRequestGate,
   handleTaskDirectiveOnlyGate,
   handleYoutubeTranscriptGate,
 } from "@/lib/app/send-to-gpt/sendToGptPreparedGateHandlers";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 
 export {
   handleProtocolLimitViolationGate,
+  handleFileSaveRequestGate,
   handleTaskDirectiveOnlyGate,
   handleYoutubeTranscriptGate,
 } from "@/lib/app/send-to-gpt/sendToGptPreparedGateHandlers";
@@ -41,6 +44,9 @@ export async function runPreparedRequestGates(args: {
   setKinInput: Dispatch<SetStateAction<string>>;
   setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
+  setPendingKinInjectionPurpose?: Dispatch<
+    SetStateAction<PendingKinInjectionPurpose>
+  >;
   setActiveTabToKin?: () => void;
   recordIngestedDocument: (document: {
     title: string;
@@ -111,6 +117,21 @@ export async function runPreparedRequestGates(args: {
     return true;
   }
 
+  if (
+    await handleFileSaveRequestGate({
+      fileSaveRequestEvent: args.preparedRequest.fileSaveRequestEvent,
+      userMsg: args.preparedRequest.userMsg,
+      gptStateRef: args.gptStateRef,
+      currentTaskCharConstraint: args.preparedRequest.currentTaskCharConstraint,
+      recordIngestedDocument: args.recordIngestedDocument,
+      applyIngestUsage: args.applyIngestUsage,
+      setGptMessages: args.setGptMessages,
+      setGptInput: args.setGptInput,
+    })
+  ) {
+    return true;
+  }
+
   if (gateDecision.type !== "youtube_transcript") {
     return false;
   }
@@ -125,6 +146,7 @@ export async function runPreparedRequestGates(args: {
     setKinInput: args.setKinInput,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setActiveTabToKin: args.setActiveTabToKin,
     recordIngestedDocument: args.recordIngestedDocument,
     ingestProtocolMessage: args.ingestProtocolMessage,

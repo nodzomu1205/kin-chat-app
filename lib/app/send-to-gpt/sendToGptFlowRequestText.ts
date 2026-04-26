@@ -1,5 +1,8 @@
 import {
   buildAskGptRequestBlock,
+  buildDraftModificationRequestBlock,
+  buildDraftPreparationRequestBlock,
+  buildFileSaveRequestBlock,
   buildLibraryIndexResponseDraft,
   buildLibraryItemResponseDraft,
   buildSearchRequestInstruction,
@@ -11,7 +14,11 @@ import type {
   PendingRequestLike,
   ProtocolTaskEventLike,
 } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
-import type { ReferenceLibraryItem } from "@/types/chat";
+import type { Message, ReferenceLibraryItem } from "@/types/chat";
+import {
+  extractDraftDocumentFromMessages,
+  resolveDraftDocumentId,
+} from "@/lib/app/send-to-gpt/draftDocumentResolver";
 
 export function buildFinalRequestText(params: {
   rawText: string;
@@ -26,8 +33,12 @@ export function buildFinalRequestText(params: {
   effectiveSearchLocation: string;
   libraryIndexRequestEvent?: ProtocolTaskEventLike;
   libraryItemRequestEvent?: ProtocolTaskEventLike;
+  draftPreparationRequestEvent?: ProtocolTaskEventLike;
+  draftModificationRequestEvent?: ProtocolTaskEventLike;
+  fileSaveRequestEvent?: ProtocolTaskEventLike;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  recentMessages?: Message[];
   taskContext?: string;
 }) {
   const protocolOverrideText = buildProtocolOverrideRequestText({
@@ -40,9 +51,13 @@ export function buildFinalRequestText(params: {
     effectiveSearchLocation: params.effectiveSearchLocation,
     libraryIndexRequestEvent: params.libraryIndexRequestEvent,
     libraryItemRequestEvent: params.libraryItemRequestEvent,
+    draftPreparationRequestEvent: params.draftPreparationRequestEvent,
+    draftModificationRequestEvent: params.draftModificationRequestEvent,
+    fileSaveRequestEvent: params.fileSaveRequestEvent,
     rawText: params.rawText,
     referenceLibraryItems: params.referenceLibraryItems,
     libraryIndexResponseCount: params.libraryIndexResponseCount,
+    recentMessages: params.recentMessages,
     defaultText: buildNormalizedRequestText({
       rawText: params.rawText,
       parsedInput: params.parsedInput,
@@ -67,9 +82,13 @@ export function buildProtocolOverrideRequestText(params: {
   effectiveSearchLocation: string;
   libraryIndexRequestEvent?: ProtocolTaskEventLike;
   libraryItemRequestEvent?: ProtocolTaskEventLike;
+  draftPreparationRequestEvent?: ProtocolTaskEventLike;
+  draftModificationRequestEvent?: ProtocolTaskEventLike;
+  fileSaveRequestEvent?: ProtocolTaskEventLike;
   rawText: string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  recentMessages?: Message[];
   defaultText: string;
 }) {
   if (params.askGptEvent) {
@@ -121,6 +140,58 @@ export function buildProtocolOverrideRequestText(params: {
       actionId: params.libraryItemRequestEvent.actionId || "",
       rawText: params.rawText,
       referenceLibraryItems: params.referenceLibraryItems,
+    });
+  }
+
+  if (params.draftPreparationRequestEvent) {
+    return buildDraftPreparationRequestBlock({
+      taskId:
+        params.draftPreparationRequestEvent.taskId || params.currentTaskId || "",
+      actionId: params.draftPreparationRequestEvent.actionId || "",
+      body:
+        params.draftPreparationRequestEvent.body ||
+        params.draftPreparationRequestEvent.summary ||
+        params.rawText,
+    });
+  }
+
+  if (params.draftModificationRequestEvent) {
+    const recentMessages = params.recentMessages || [];
+    const documentId = resolveDraftDocumentId({
+      requestedDocumentId: params.draftModificationRequestEvent.documentId,
+      messages: recentMessages,
+    });
+    const document = documentId
+      ? extractDraftDocumentFromMessages({
+          messages: recentMessages,
+          documentId,
+        })
+      : null;
+
+    return buildDraftModificationRequestBlock({
+      taskId:
+        params.draftModificationRequestEvent.taskId || params.currentTaskId || "",
+      actionId: params.draftModificationRequestEvent.actionId || "",
+      documentId,
+      responseMode: params.draftModificationRequestEvent.responseMode,
+      body:
+        params.draftModificationRequestEvent.body ||
+        params.draftModificationRequestEvent.summary ||
+        params.rawText,
+      documentTitle: document?.title,
+      documentText: document?.text,
+    });
+  }
+
+  if (params.fileSaveRequestEvent) {
+    return buildFileSaveRequestBlock({
+      taskId: params.fileSaveRequestEvent.taskId || params.currentTaskId || "",
+      actionId: params.fileSaveRequestEvent.actionId || "",
+      documentId: params.fileSaveRequestEvent.documentId || "",
+      body:
+        params.fileSaveRequestEvent.body ||
+        params.fileSaveRequestEvent.summary ||
+        params.rawText,
     });
   }
 

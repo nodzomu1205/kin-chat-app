@@ -6,6 +6,7 @@ import { normalizeUsage } from "@/lib/shared/tokenStats";
 import type { BucketUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { TaskIntent } from "@/types/taskProtocol";
 
 type StartedTask = {
@@ -48,6 +49,7 @@ type StartKinTaskArgs = {
   }) => void;
   setPendingKinInjectionBlocks: (value: string[]) => void;
   setPendingKinInjectionIndex: (value: number) => void;
+  setPendingKinInjectionPurpose?: (value: PendingKinInjectionPurpose) => void;
   setKinInput: (value: string) => void;
   setGptInput: (value: string) => void;
   setGptLoading: (value: boolean) => void;
@@ -67,6 +69,7 @@ export async function runStartKinTaskFlow({
   syncTaskDraftFromProtocol,
   setPendingKinInjectionBlocks,
   setPendingKinInjectionIndex,
+  setPendingKinInjectionPurpose,
   setKinInput,
   setGptInput,
   setGptLoading,
@@ -114,6 +117,7 @@ export async function runStartKinTaskFlow({
       compiledTaskPrompt: started.compiledTaskPrompt,
       setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex,
+      setPendingKinInjectionPurpose,
       setKinInput,
     });
     setGptInput("");

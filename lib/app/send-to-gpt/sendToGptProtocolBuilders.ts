@@ -1,4 +1,5 @@
 import type { ReferenceLibraryItem, SourceItem } from "@/types/chat";
+import { buildLibraryItemsAggregateText } from "@/lib/app/reference-library/libraryItemAggregation";
 import type { SearchRecord } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
 import {
   buildProtocolBlock,
@@ -48,6 +49,100 @@ export function buildUserResponseRequestBlock(params: {
   ].join("\n");
 }
 
+export function buildDraftPreparationRequestBlock(params: {
+  taskId: string;
+  actionId: string;
+  body: string;
+  title?: string;
+}) {
+  return [
+    "You are responding to a Kindroid SYS_DRAFT_PREPARATION_REQUEST.",
+    "Prepare a polished draft and assign a stable DOCUMENT_ID. Return only this exact block format:",
+    "<<SYS_DRAFT_PREPARATION_RESPONSE>>",
+    `TASK_ID: ${params.taskId}`,
+    `ACTION_ID: ${params.actionId}`,
+    "DOCUMENT_ID: DOC-<task-or-topic>-001",
+    params.title ? `TITLE: ${params.title}` : "TITLE: <draft title>",
+    "BODY:",
+    "<full prepared draft>",
+    "<<END_SYS_DRAFT_PREPARATION_RESPONSE>>",
+    "",
+    "Request/source:",
+    params.body,
+  ].join("\n");
+}
+
+export function buildDraftModificationRequestBlock(params: {
+  taskId: string;
+  actionId: string;
+  documentId: string;
+  responseMode?: "full" | "partial";
+  body: string;
+  documentTitle?: string;
+  documentText?: string;
+}) {
+  const responseMode = params.responseMode || "full";
+  const documentId =
+    params.documentId.trim() || `DOC-${params.taskId || "draft"}-001`;
+  const documentContext = params.documentText?.trim()
+    ? [
+        "",
+        "Current document:",
+        `DOCUMENT_ID: ${documentId}`,
+        params.documentTitle ? `TITLE: ${params.documentTitle}` : "",
+        "BODY:",
+        params.documentText,
+      ].filter(Boolean)
+    : [
+        "",
+        "Current document:",
+        `DOCUMENT_ID: ${documentId}`,
+        "BODY: <referenced document was not found in recent draft responses>",
+      ];
+
+  return [
+    "You are responding to a Kindroid SYS_DRAFT_MODIFICATION_REQUEST.",
+    "Edit the referenced document according to the instruction. Return only this exact block format:",
+    `Use exactly this DOCUMENT_ID in the response: ${documentId}. Never leave DOCUMENT_ID blank or Unknown.`,
+    "<<SYS_DRAFT_MODIFICATION_RESPONSE>>",
+    `TASK_ID: ${params.taskId}`,
+    `ACTION_ID: ${params.actionId}`,
+    `DOCUMENT_ID: ${documentId}`,
+    `RESPONSE_MODE: ${responseMode}`,
+    "BODY:",
+    responseMode === "partial"
+      ? "<only the changed section(s)>"
+      : "<complete revised draft>",
+    "<<END_SYS_DRAFT_MODIFICATION_RESPONSE>>",
+    "",
+    "Edit instruction:",
+    params.body,
+    ...documentContext,
+  ].join("\n");
+}
+
+export function buildFileSaveRequestBlock(params: {
+  taskId: string;
+  actionId: string;
+  documentId: string;
+  body: string;
+}) {
+  return [
+    "You are responding to a Kindroid SYS_FILE_SAVING_REQUEST.",
+    "Save the referenced document into the library when available, and return only this exact block format:",
+    "<<SYS_FILE_SAVING_RESPONSE>>",
+    `TASK_ID: ${params.taskId}`,
+    `ACTION_ID: ${params.actionId}`,
+    `DOCUMENT_ID: ${params.documentId}`,
+    "STATUS: SAVED | NEED_DOCUMENT",
+    "BODY: <short save result>",
+    "<<END_SYS_FILE_SAVING_RESPONSE>>",
+    "",
+    "Save instruction:",
+    params.body,
+  ].join("\n");
+}
+
 export function buildSearchRequestInstruction(params: {
   taskId: string;
   actionId: string;
@@ -89,35 +184,45 @@ export function buildSearchRequestInstruction(params: {
   ].join("\n");
 }
 
+export function buildLibraryDataResponseDraft(params: {
+  taskId: string;
+  actionId: string;
+  referenceLibraryItems: ReferenceLibraryItem[];
+}) {
+  const lines = [
+    buildProtocolLine("TASK_ID", params.taskId),
+    buildProtocolLine("ACTION_ID", params.actionId),
+    "TITLE: Library Data",
+    "BODY:",
+  ];
+
+  if (params.referenceLibraryItems.length === 0) {
+    lines.push("- No library items are currently available.");
+  } else {
+    lines.push(
+      buildLibraryItemsAggregateText({
+        items: params.referenceLibraryItems,
+        mode: "detail",
+      })
+    );
+  }
+
+  return buildProtocolBlock({
+    name: "SYS_LIBRARY_DATA_RESPONSE",
+    lines,
+  });
+}
+
 export function buildLibraryIndexResponseDraft(params: {
   taskId: string;
   actionId: string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
 }) {
-  const lines = [
-    buildProtocolLine("TASK_ID", params.taskId),
-    buildProtocolLine("ACTION_ID", params.actionId),
-    "BODY:",
-  ];
-
-  const compactItems = params.referenceLibraryItems.slice(
-    0,
-    Math.max(1, params.libraryIndexResponseCount || 1)
-  );
-  if (compactItems.length === 0) {
-    lines.push("- No library items are currently available.");
-  } else {
-    compactItems.forEach((item) => {
-      lines.push(
-        `- ITEM_ID: ${item.id} | TYPE: ${item.itemType} | TITLE: ${item.title} | SHORT_SUMMARY: ${item.summary}`
-      );
-    });
-  }
-
-  return buildProtocolBlock({
-    name: "SYS_LIBRARY_INDEX_RESPONSE",
-    lines,
+  return buildLibraryDataResponseDraft({
+    taskId: params.taskId,
+    actionId: params.actionId,
+    referenceLibraryItems: params.referenceLibraryItems,
   });
 }
 
@@ -127,38 +232,10 @@ export function buildLibraryItemResponseDraft(params: {
   rawText: string;
   referenceLibraryItems: ReferenceLibraryItem[];
 }) {
-  const itemIdMatch = params.rawText.match(/ITEM_ID:\s*([A-Za-z0-9:_-]+)/i);
-  const requestedItemId = itemIdMatch?.[1]?.trim() || "";
-  const requestedModeMatch = params.rawText.match(
-    /OUTPUT_MODE:\s*(summary|summary_plus_raw|raw)/i
-  );
-  const requestedMode = requestedModeMatch?.[1]?.trim().toLowerCase() || "summary";
-  const item = params.referenceLibraryItems.find(
-    (candidate) => candidate.id === requestedItemId
-  );
-
-  const lines = [
-    buildProtocolLine("TASK_ID", params.taskId),
-    buildProtocolLine("ACTION_ID", params.actionId),
-    buildProtocolLine("ITEM_ID", requestedItemId || item?.id || ""),
-    buildProtocolLine(
-      "OUTPUT_MODE",
-      requestedMode === "raw" ? "summary_plus_raw" : requestedMode
-    ),
-  ];
-
-  if (!item) {
-    lines.push("SUMMARY: Requested library item was not found.");
-  } else {
-    lines.push(`SUMMARY: ${item.summary}`);
-    if (requestedMode !== "summary" && item.excerptText.trim()) {
-      lines.push(`RAW_EXCERPT: ${item.excerptText.trim().slice(0, 1400)}`);
-    }
-  }
-
-  return buildProtocolBlock({
-    name: "SYS_LIBRARY_ITEM_RESPONSE",
-    lines,
+  return buildLibraryDataResponseDraft({
+    taskId: params.taskId,
+    actionId: params.actionId,
+    referenceLibraryItems: params.referenceLibraryItems,
   });
 }
 

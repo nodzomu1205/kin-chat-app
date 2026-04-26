@@ -3,8 +3,6 @@ import type {
   GptPanelSettingsProps,
 } from "@/components/panels/gpt/gptPanelTypes";
 
-export type LibraryTab = "all" | "kin" | "ingest" | "search";
-
 export type LibraryDrawerProps = Pick<
   GptPanelReferenceProps,
   | "multipartAssemblies"
@@ -24,6 +22,8 @@ export type LibraryDrawerProps = Pick<
   | "onSaveStoredDocument"
   | "onShowLibraryItemInChat"
   | "onSendLibraryItemToKin"
+  | "onShowAllLibraryItemsInChat"
+  | "onSendAllLibraryItemsToKin"
   | "onUploadLibraryItemToGoogleDrive"
 > &
   Pick<
@@ -35,7 +35,6 @@ export type LibraryDrawerProps = Pick<
     | "onIndexGoogleDriveFolder"
     | "onImportGoogleDriveFolder"
   > & {
-    initialTab?: LibraryTab;
     isMobile?: boolean;
     onImportDeviceFile: (file: File) => void | Promise<void>;
     deviceImportAccept: string;

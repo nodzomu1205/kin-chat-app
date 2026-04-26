@@ -63,6 +63,10 @@ CONTENT:
     expect(migrated).toContain("<<KIN_RESPONSE>>");
     expect(migrated).toContain("Core task flow:");
     expect(migrated).toContain("Library flow:");
+    expect(migrated).toContain("Use <<SYS_LIBRARY_DATA_REQUEST>> when you want GPT to send stored library reference data.");
+    expect(migrated).toContain("GPT replies with <<SYS_LIBRARY_DATA_RESPONSE>> containing the available index, summaries, and detail excerpts together.");
+    expect(migrated).not.toContain("Do not request library index");
+    expect(migrated).not.toContain("Prefer library items");
     expect(migrated).not.toContain("Means GPT's detailed response for one specific stored library item.");
     expect(migrated).toContain("Every SYS block you send must end with the matching <<END_SYS_...>> line.");
   });

@@ -44,6 +44,7 @@ function shouldResetToNormalizedRulebook(text: string) {
   return (
     text.startsWith(LEGACY_DEFAULT_RULEBOOK_PREFIX) &&
     (text.includes("LIBRARY_ITEM_RESPONSE") ||
+      text.includes("LIBRARY_INDEX_REQUEST") ||
       text.includes("For youtube_search, review SOURCES") ||
       text.includes("Means a task requested by the user.") ||
       text.includes("<<SYS_KIN_RESPONSE>>"))

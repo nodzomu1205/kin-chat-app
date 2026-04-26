@@ -50,6 +50,9 @@ export type ProtocolInteractionContext = {
   youtubeTranscriptRequestEvent?: TaskProtocolEvent & { url?: string };
   libraryIndexRequestEvent?: SearchResponseEventLike;
   libraryItemRequestEvent?: SearchResponseEventLike;
+  draftPreparationRequestEvent?: ProtocolTaskEventLike;
+  draftModificationRequestEvent?: ProtocolTaskEventLike;
+  fileSaveRequestEvent?: ProtocolTaskEventLike;
   userQuestionEvent?: ProtocolTaskEventLike;
   requestToAnswer?: PendingRequestLike | null;
   requestAnswerBody?: string;

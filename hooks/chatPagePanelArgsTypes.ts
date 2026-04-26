@@ -94,12 +94,16 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     onSelectTaskLibraryItem: (itemId: string) => void;
     onChangeLibraryItemMode: BuildGptPanelArgs["references"]["onChangeLibraryItemMode"];
     onSaveStoredDocument: BuildGptPanelArgs["references"]["onSaveStoredDocument"];
-    onShowLibraryItemInChat:
-      BuildGptPanelArgs["references"]["onShowLibraryItemInChat"];
-    onSendLibraryItemToKin:
-      BuildGptPanelArgs["references"]["onSendLibraryItemToKin"];
-    onUploadLibraryItemToGoogleDrive:
-      BuildGptPanelArgs["references"]["onUploadLibraryItemToGoogleDrive"];
+      onShowLibraryItemInChat:
+        BuildGptPanelArgs["references"]["onShowLibraryItemInChat"];
+      onSendLibraryItemToKin:
+        BuildGptPanelArgs["references"]["onSendLibraryItemToKin"];
+      onShowAllLibraryItemsInChat:
+        BuildGptPanelArgs["references"]["onShowAllLibraryItemsInChat"];
+      onSendAllLibraryItemsToKin:
+        BuildGptPanelArgs["references"]["onSendAllLibraryItemsToKin"];
+      onUploadLibraryItemToGoogleDrive:
+        BuildGptPanelArgs["references"]["onUploadLibraryItemToGoogleDrive"];
   };
   settings: Omit<
     BuildGptPanelArgs["settings"],

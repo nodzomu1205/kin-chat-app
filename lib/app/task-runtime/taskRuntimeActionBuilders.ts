@@ -59,6 +59,7 @@ export function buildTaskProtocolIntentSyncArgs(
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
   };
 }
@@ -108,6 +109,7 @@ export function buildStartKinTaskFlowArgs(
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
     setGptInput: args.setGptInput,
     setGptLoading: args.setGptLoading,
@@ -148,6 +150,7 @@ export function buildSendLatestGptContentToKinFlowArgs(
     setGptMessages: args.setGptMessages,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
     setGptInput: args.setGptInput,
     getTaskSlotLabel: args.getTaskSlotLabel,
@@ -190,6 +193,7 @@ export function buildSendCurrentTaskContentToKinFlowArgs(
     setGptMessages: args.setGptMessages,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
     setGptInput: args.setGptInput,
     getTaskSlotLabel: args.getTaskSlotLabel,

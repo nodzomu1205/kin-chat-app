@@ -112,6 +112,8 @@ export function useChatPageGptPanelArgs(
       onSaveStoredDocument: args.references.onSaveStoredDocument,
       onShowLibraryItemInChat: args.references.onShowLibraryItemInChat,
       onSendLibraryItemToKin: args.references.onSendLibraryItemToKin,
+      onShowAllLibraryItemsInChat: args.references.onShowAllLibraryItemsInChat,
+      onSendAllLibraryItemsToKin: args.references.onSendAllLibraryItemsToKin,
       onUploadLibraryItemToGoogleDrive:
         args.references.onUploadLibraryItemToGoogleDrive,
     },

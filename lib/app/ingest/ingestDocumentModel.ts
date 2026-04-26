@@ -2,11 +2,7 @@ import {
   cleanImportedDocumentText,
   cleanImportSummarySource,
 } from "@/lib/app/ingest/importSummaryText";
-import type {
-  MultipartAssembly,
-  ReferenceLibraryItem,
-  StoredDocument,
-} from "@/types/chat";
+import type { ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 
 type ResolveCanonicalDocumentTextArgs = {
   selectedText?: string;
@@ -254,25 +250,6 @@ export function normalizeStoredDocument(item: StoredDocument): StoredDocument {
         : ""),
     charCount: cleanedText.length,
   };
-}
-
-export function buildKinStoredDocument(item: MultipartAssembly): StoredDocument {
-  return normalizeStoredDocument({
-    id: `kin:${item.id}`,
-    sourceType: "kin_created",
-    artifactType: item.artifactType,
-    title: item.filename,
-    filename: item.filename,
-    text: item.assembledText,
-    summary: item.summary,
-    taskId: item.taskId,
-    taskTitle: item.taskTitle,
-    kinName: item.kinName,
-    completedAt: item.completedAt,
-    charCount: item.assembledText.length,
-    createdAt: item.updatedAt,
-    updatedAt: item.updatedAt,
-  });
 }
 
 export function buildIngestedStoredDocument(args: {

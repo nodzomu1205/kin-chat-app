@@ -33,6 +33,7 @@ function buildWorkspaceActionsUi(args: ChatPageWorkspaceActionsUi) {
     setIngestLoading: args.setIngestLoading,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
   } satisfies ChatPageWorkspaceActionsUi;
 }
 
@@ -88,6 +89,8 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onSaveStoredDocument: args.onSaveStoredDocument,
     onShowLibraryItemInChat: args.onShowLibraryItemInChat,
     onSendLibraryItemToKin: args.onSendLibraryItemToKin,
+    onShowAllLibraryItemsInChat: args.onShowAllLibraryItemsInChat,
+    onSendAllLibraryItemsToKin: args.onSendAllLibraryItemsToKin,
     onUploadLibraryItemToGoogleDrive: args.onUploadLibraryItemToGoogleDrive,
     onChangeAutoLibraryReferenceEnabled: args.onChangeAutoLibraryReferenceEnabled,
     onChangeLibraryReferenceMode: args.onChangeLibraryReferenceMode,

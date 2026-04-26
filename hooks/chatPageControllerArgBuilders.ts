@@ -42,6 +42,7 @@ export function buildChatPageControllerUiStateArgs(
     kinMessages: args.ui.kinMessages,
     pendingKinInjectionBlocks: args.ui.pendingKinInjectionBlocks,
     pendingKinInjectionIndex: args.ui.pendingKinInjectionIndex,
+    pendingKinInjectionPurpose: args.ui.pendingKinInjectionPurpose,
     setKinInput: args.ui.setKinInput,
     setGptInput: args.ui.setGptInput,
     setKinMessages: args.ui.setKinMessages,
@@ -51,6 +52,7 @@ export function buildChatPageControllerUiStateArgs(
     setIngestLoading: args.ui.setIngestLoading,
     setPendingKinInjectionBlocks: args.ui.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.ui.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.ui.setPendingKinInjectionPurpose,
   };
 }
 
@@ -149,6 +151,9 @@ export function buildChatPageProtocolAutomationArgs(
     gptMessages: args.ui.gptMessages,
     setGptInput: args.ui.setGptInput,
     setKinInput: args.ui.setKinInput,
+    setPendingKinInjectionBlocks: args.ui.setPendingKinInjectionBlocks,
+    setPendingKinInjectionIndex: args.ui.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.ui.setPendingKinInjectionPurpose,
     focusKinPanel: args.app.focusKinPanel,
     focusGptPanel: args.app.focusGptPanel,
   };
@@ -187,6 +192,7 @@ export function buildGptMessageActionArgs(
     currentTaskDraft: groups.task.currentTaskDraft,
     getAskAiModeLinkForQuery: groups.search.getAskAiModeLinkForQuery,
     getContinuationTokenForSeries: groups.search.getContinuationTokenForSeries,
+    getCurrentTaskCharConstraint: groups.task.getCurrentTaskCharConstraint,
     gptInput: groups.uiState.gptInput,
     gptLoading: groups.uiState.gptLoading,
     gptMemoryRuntime: groups.services.gptMemoryRuntime,
@@ -210,6 +216,8 @@ export function buildGptMessageActionArgs(
     setKinInput: groups.uiState.setKinInput,
     setPendingKinInjectionBlocks: groups.uiState.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: groups.uiState.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose:
+      groups.uiState.setPendingKinInjectionPurpose,
     taskProtocol: groups.protocol.taskProtocol,
   };
 }
@@ -234,6 +242,7 @@ export function buildKinTransferActionArgs(
     pendingIntentCandidates: groups.protocol.pendingIntentCandidates,
     pendingKinInjectionBlocks: groups.uiState.pendingKinInjectionBlocks,
     pendingKinInjectionIndex: groups.uiState.pendingKinInjectionIndex,
+    pendingKinInjectionPurpose: groups.uiState.pendingKinInjectionPurpose,
     processMultipartTaskDoneText: groups.search.processMultipartTaskDoneText,
     rejectedIntentCandidateSignatures:
       groups.protocol.rejectedIntentCandidateSignatures,
@@ -248,6 +257,8 @@ export function buildKinTransferActionArgs(
     setPendingIntentCandidates: groups.protocol.setPendingIntentCandidates,
     setPendingKinInjectionBlocks: groups.uiState.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: groups.uiState.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose:
+      groups.uiState.setPendingKinInjectionPurpose,
     syncTaskDraftFromProtocol: groups.task.syncTaskDraftFromProtocol,
     taskProtocol: groups.protocol.taskProtocol,
   };
@@ -297,6 +308,8 @@ export function buildTaskProtocolActionArgs(
     setPendingIntentCandidates: groups.protocol.setPendingIntentCandidates,
     setPendingKinInjectionBlocks: groups.uiState.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: groups.uiState.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose:
+      groups.uiState.setPendingKinInjectionPurpose,
     setProtocolPrompt: groups.protocol.setProtocolPrompt,
     setProtocolRulebook: groups.protocol.setProtocolRulebook,
     setRejectedIntentCandidateSignatures:
@@ -330,6 +343,8 @@ export function buildFileIngestActionArgs(
     setKinInput: groups.uiState.setKinInput,
     setPendingKinInjectionBlocks: groups.uiState.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: groups.uiState.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose:
+      groups.uiState.setPendingKinInjectionPurpose,
     setUploadKind: groups.services.setUploadKind,
   };
 }

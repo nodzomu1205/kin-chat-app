@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import type { MultipartAssembly, StoredDocument } from "@/types/chat";
+import type { StoredDocument } from "@/types/chat";
 import {
   applyStoredDocumentOverride,
   buildIngestedStoredDocument,
-  buildKinStoredDocument,
   normalizeStoredDocument,
 } from "@/lib/app/ingest/ingestDocumentModel";
 
 const INGESTED_DOCUMENTS_KEY = "ingested_documents";
 const DOCUMENT_ORDER_KEY = "stored_document_order";
 const DOCUMENT_OVERRIDES_KEY = "stored_document_overrides";
-
-function toKinStoredDocument(item: MultipartAssembly): StoredDocument {
-  return buildKinStoredDocument(item);
-}
 
 function parseStoredDocuments(value: string | null): StoredDocument[] {
   if (!value) return [];
@@ -70,12 +65,11 @@ export function sanitizeDocumentOrder(
 }
 
 export function buildAllStoredDocuments(args: {
-  kinDocuments: StoredDocument[];
   ingestedDocuments: StoredDocument[];
   documentOverrides: Record<string, Partial<StoredDocument>>;
   documentOrder: string[];
 }) {
-  const defaultDocuments = [...args.kinDocuments, ...args.ingestedDocuments]
+  const defaultDocuments = args.ingestedDocuments
     .map(normalizeStoredDocument)
     .map((item) => applyStoredDocumentOverride(item, args.documentOverrides[item.id]))
     .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
@@ -104,7 +98,7 @@ export function buildAllStoredDocuments(args: {
   };
 }
 
-export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
+export function useStoredDocuments() {
   const [ingestedDocuments, setIngestedDocuments] = useState<StoredDocument[]>(() =>
     typeof window === "undefined"
       ? []
@@ -123,14 +117,6 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
       : parseDocumentOrder(window.localStorage.getItem(DOCUMENT_ORDER_KEY))
   );
 
-  const kinDocuments = useMemo(
-    () =>
-      multipartAssemblies
-        .filter((item) => item.isComplete && item.assembledText.trim().length > 0)
-        .map(toKinStoredDocument),
-    [multipartAssemblies]
-  );
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
@@ -141,12 +127,9 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const nextOrder = sanitizeDocumentOrder(documentOrder, [
-      ...kinDocuments,
-      ...ingestedDocuments,
-    ]);
+    const nextOrder = sanitizeDocumentOrder(documentOrder, ingestedDocuments);
     window.localStorage.setItem(DOCUMENT_ORDER_KEY, JSON.stringify(nextOrder));
-  }, [documentOrder, ingestedDocuments, kinDocuments]);
+  }, [documentOrder, ingestedDocuments]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -156,12 +139,11 @@ export function useStoredDocuments(multipartAssemblies: MultipartAssembly[]) {
   const { allDocuments, documentOrder: effectiveDocumentOrder } = useMemo(
     () =>
       buildAllStoredDocuments({
-        kinDocuments,
         ingestedDocuments,
         documentOverrides,
         documentOrder,
       }),
-    [documentOrder, documentOverrides, ingestedDocuments, kinDocuments]
+    [documentOrder, documentOverrides, ingestedDocuments]
   );
 
   const getStoredDocument = (documentId: string) =>

@@ -276,12 +276,12 @@ export function formatIntentCandidateDraftText(candidate: {
     return formatCountInstruction("Fetch", "YouTube transcript", "YouTube transcripts");
   }
   if (candidate.kind === "library_index_request") {
-    return formatCountInstruction("Request", "library index entry", "library index entries");
+    return formatCountInstruction("Request", "library data response", "library data responses");
   }
   if (candidate.kind === "library_item_request") {
-    return formatCountInstruction("Request", "library content item", "library content items");
+    return formatCountInstruction("Request", "library data response", "library data responses");
   }
-  return formatCountInstruction("Request", "library content item", "library content items");
+  return formatCountInstruction("Request", "library data response", "library data responses");
 }
 
 export function parseIntentCandidateDraftText(

@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `163 files / 703 tests`
+- test status: `166 files / 739 tests`
 
 This roadmap should now be read together with:
 
@@ -37,17 +37,17 @@ Primary review points:
 - `lib/app/kin-protocol/kinMultipart.ts`
 
 Current cleanup priority:
-1. boundary-specific maintenance only where the next product request touches a
+1. manually retest the new draft/file-saving protocol chain after Kin/browser
+   state is fresh
+2. boundary-specific maintenance only where the next product request touches a
    watch area
-2. Drive/device ingest authority and token accounting watch as new
+3. Drive/device ingest authority and token accounting watch as new
    ingest-adjacent flows are added
-3. large hook/UI-surface decomposition follow-up only where live behavior is
+4. large hook/UI-surface decomposition follow-up only where live behavior is
    actively growing again
-4. repo-wide `strict` / `creative` / `responseMode` maintenance-watch, now
+5. repo-wide `strict` / `creative` / `responseMode` maintenance-watch, now
    mostly limited to protocol/task payload naming
-5. page/controller/panel composition regrow prevention
-6. continued task-runtime decomposition only where focused behavior coverage is
-   preserved
+6. page/controller/panel composition regrow prevention
 7. mojibake cleanup in still-active owner files
 8. user-facing text drift outside owner files
 
@@ -82,9 +82,11 @@ high-signal review points before and after changes.
   library, GPT chat, and Kin protocol surfaces
 - remaining builder reshaping across controller/panel composition
 - future user-facing copy drift outside the text-owner files
-- task-intent/task-progress/compiler boundaries after the residue cleanup, until the
-  remaining response-mode carry-through is fully audited
-- repo-wide `strict` / `creative` / `responseMode` carry-through after the UI simplifications
+- task-intent/task-progress/compiler boundaries after the residue cleanup
+- protocol/task-payload `responseMode` naming, distinct from the removed
+  UI/settings reasoning-mode path
+- draft/file-saving protocol runtime sequencing until the next manual Kin test
+  confirms the full `DRAFT_MODIFICATION -> FILE_SAVING -> TASK_DONE` loop
 
 ### Deletion Principle
 
@@ -167,39 +169,44 @@ Before editing:
 4. add or move one narrow regression test for the touched boundary
 5. verify with focused tests and the full baseline
 
-### Next Product Slice: Library Bulk Actions And Kin Protocol Redesign
+### Latest Product Slice: Library Bulk Actions And Kin Protocol Redesign
 
-The next requested work should touch three product boundaries:
+This slice is now implemented enough to move from active build to
+manual-verification watch.
 
-1. library drawer layout and action controls
-2. library-card / bulk-library Kin sending
-3. Kin draft and file-saving protocol design
+Completed product changes:
 
-Planned product changes:
-
-- remove the library category switcher (`すべて`, `Kin作成文書`, `取込文書`,
-  `検索データ`)
 - expand the Google Drive / device import tile area into a collapsible library
   action area
 - add bulk display and bulk Kin-send actions with aggregation modes:
-  `Index`, `Index + Summary`, `Index + Summary + Detail`
+  `Index`, `Summary`, `Summary + Detail`
 - unify library-card Kin sends with the existing multipart-capable SYS send
   path
-- make SYS task protocol rule inclusion constraint-aware instead of appending
-  unrelated protocol guidance by default
-- design Draft Preparation, Draft Modification, and File Saving protocols before
-  implementation
+- route ordinary library sends through `SYS_INFO`
+- consolidate library reference protocol on `SYS_LIBRARY_DATA_REQUEST` /
+  `SYS_LIBRARY_DATA_RESPONSE`
+- add Draft Preparation, Draft Modification, and File Saving protocol handling
+- save protocol-created documents through the shared library-summary generation
+  path
+- validate length constraints before saving protocol-created documents
+- make latest-draft resolution tolerate `DOCUMENT_ID: Unknown` and blank
+  `DOCUMENT_ID` in a full modification response
+- keep old `SYS_LIBRARY_INDEX/ITEM` and `SYS_FILE_SAVE` blocks out of active
+  parser input
 
-Maintenance rules for this slice:
+Maintenance watch for this slice:
 
-- remove obsolete library filter state if the removed switcher is its only live
-  owner
 - keep library aggregation pure and tested outside the drawer renderer
 - use one multipart Kin transport owner; do not implement another split/send
   path for library cards
-- keep constraint parsing and protocol-rule selection pure and directly tested
-- write protocol docs/examples before adding runtime side effects for draft
-  storage or library saving
+- keep draft-document resolution in `draftDocumentResolver.ts`; do not add a
+  second latest-draft heuristic near the save gate
+- keep File Saving as the library-persistence authority for protocol-created
+  drafts; do not revive automatic Kin-output library saving as a side route
+- keep protocol parser incompatibility with retired `LIBRARY_INDEX/ITEM` and
+  `FILE_SAVE` blocks unless a real migration need appears
+- next manual test should cover `DRAFT_MODIFICATION -> FILE_SAVING ->
+  TASK_DONE` after a failed length check and resubmission
 
 ## Immediate Action Plan
 

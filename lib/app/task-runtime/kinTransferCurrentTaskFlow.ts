@@ -3,6 +3,7 @@ import {
   buildKinSysTaskBlock,
   summarizeTaskContentForKinInfo,
 } from "@/lib/app/kin-protocol/kinStructuredProtocol";
+import { applyKinSysInfoInjection } from "@/lib/app/kin-protocol/kinInfoInjection";
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
 import { buildKinDirectiveLines } from "@/lib/app/task-runtime/transformIntent";
 import {
@@ -34,6 +35,7 @@ export async function sendCurrentTaskContentToKinFlow({
   setGptMessages,
   setPendingKinInjectionBlocks,
   setPendingKinInjectionIndex,
+  setPendingKinInjectionPurpose,
   setKinInput,
   setGptInput,
   getTaskSlotLabel,
@@ -86,6 +88,7 @@ export async function sendCurrentTaskContentToKinFlow({
         compiledTaskPrompt: started.compiledTaskPrompt,
         setPendingKinInjectionBlocks,
         setPendingKinInjectionIndex,
+        setPendingKinInjectionPurpose,
         setKinInput,
       });
       setGptInput("");
@@ -148,6 +151,7 @@ export async function sendCurrentTaskContentToKinFlow({
         compiledTaskPrompt: started.compiledTaskPrompt,
         setPendingKinInjectionBlocks,
         setPendingKinInjectionIndex,
+        setPendingKinInjectionPurpose,
         setKinInput,
       });
       setGptInput("");
@@ -190,7 +194,21 @@ export async function sendCurrentTaskContentToKinFlow({
             directiveLines,
           });
 
-    setKinInput(block);
+    if (intent.mode === "sys_info") {
+      applyKinSysInfoInjection({
+        text: block,
+        setKinInput,
+        setPendingKinInjectionBlocks,
+        setPendingKinInjectionIndex,
+        setPendingKinInjectionPurpose,
+        purpose: "info_share",
+      });
+    } else {
+      setPendingKinInjectionBlocks([]);
+      setPendingKinInjectionIndex(0);
+      setPendingKinInjectionPurpose?.("none");
+      setKinInput(block);
+    }
     setGptInput("");
     appendKinTransferInfoMessage({
       setGptMessages,

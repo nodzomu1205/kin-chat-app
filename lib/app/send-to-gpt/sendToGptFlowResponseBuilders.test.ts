@@ -264,7 +264,7 @@ describe("sendToGptFlow response builders", () => {
         referenceLibraryItems: [],
         libraryIndexResponseCount: 3,
       })
-    ).toContain("<<SYS_LIBRARY_INDEX_RESPONSE>>");
+    ).toContain("<<SYS_LIBRARY_DATA_RESPONSE>>");
 
     expect(
       buildLibraryItemResponseDraft({
@@ -281,7 +281,7 @@ describe("sendToGptFlow response builders", () => {
           } as never,
         ],
       })
-    ).toContain("<<END_SYS_LIBRARY_ITEM_RESPONSE>>");
+    ).toContain("<<END_SYS_LIBRARY_DATA_RESPONSE>>");
 
     expect(
       buildSearchResponseBlock({

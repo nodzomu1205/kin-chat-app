@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import { generateId } from "@/lib/shared/uuid";
 import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtube-transcript/youtubeTranscriptKinBlocks";
 import { cleanYouTubeTranscriptText } from "@/lib/app/youtube-transcript/youtubeTranscriptText";
@@ -132,6 +133,9 @@ export async function runSendYouTubeTranscriptToKinFlow(
     setKinInput: Dispatch<SetStateAction<string>>;
     setPendingKinInjectionBlocks: Dispatch<SetStateAction<string[]>>;
     setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
+    setPendingKinInjectionPurpose?: Dispatch<
+      SetStateAction<PendingKinInjectionPurpose>
+    >;
     focusKinPanel: () => boolean;
   }
 ) {
@@ -164,6 +168,9 @@ export async function runSendYouTubeTranscriptToKinFlow(
     args.setKinInput(blocks[0] || "");
     args.setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
     args.setPendingKinInjectionIndex(0);
+    args.setPendingKinInjectionPurpose?.(
+      blocks.length > 1 ? "info_share" : "none"
+    );
     args.focusKinPanel();
   } catch (error) {
     console.error(error);

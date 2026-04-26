@@ -315,6 +315,52 @@ describe("sendToGptFlowHelpers", () => {
     ).toContain("TASK CONTEXT\n\nYou are responding to a Kindroid SYS_ASK_GPT request.");
   });
 
+  it("includes the referenced draft body for draft modification requests", () => {
+    const requestText = buildFinalRequestText({
+      rawText: `<<SYS_DRAFT_MODIFICATION_REQUEST>>
+TASK_ID: TASK-1
+ACTION_ID: D002
+DOCUMENT ID: Unknown
+RESPONSE_MODE: full
+BODY: Tighten the conclusion.
+<<END_SYS_DRAFT_MODIFICATION_REQUEST>>`,
+      parsedInput: {
+        freeText: "",
+      },
+      effectiveParsedSearchQuery: "",
+      draftModificationRequestEvent: {
+        taskId: "TASK-1",
+        actionId: "D002",
+        documentId: "Unknown",
+        responseMode: "full",
+        body: "Tighten the conclusion.",
+      },
+      effectiveSearchEngines: ["google_search"],
+      effectiveSearchLocation: "Japan",
+      referenceLibraryItems: [],
+      libraryIndexResponseCount: 10,
+      recentMessages: [
+        {
+          id: "draft-1",
+          role: "gpt",
+          text: `<<SYS_DRAFT_PREPARATION_RESPONSE>>
+TASK_ID: TASK-1
+ACTION_ID: D001
+DOCUMENT_ID: DOC-TASK-1-001
+TITLE: Market memo
+BODY: Existing full draft body.
+<<END_SYS_DRAFT_PREPARATION_RESPONSE>>`,
+        },
+      ],
+    });
+
+    expect(requestText).toContain("<<SYS_DRAFT_MODIFICATION_RESPONSE>>");
+    expect(requestText).toContain("DOCUMENT_ID: DOC-TASK-1-001");
+    expect(requestText).toContain("Current document:");
+    expect(requestText).toContain("TITLE: Market memo");
+    expect(requestText).toContain("Existing full draft body.");
+  });
+
   it("builds prepared final request text from derived request context", () => {
     expect(
       buildPreparedFinalRequestText({

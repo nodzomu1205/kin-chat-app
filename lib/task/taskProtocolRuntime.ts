@@ -35,7 +35,13 @@ export function resolveTaskExecutionStatus(
     event.type === "search_request" ||
     event.type === "search_response" ||
     event.type === "youtube_transcript_request" ||
-    event.type === "youtube_transcript_response"
+    event.type === "youtube_transcript_response" ||
+    event.type === "draft_preparation_request" ||
+    event.type === "draft_preparation_response" ||
+    event.type === "draft_modification_request" ||
+    event.type === "draft_modification_response" ||
+    event.type === "file_save_request" ||
+    event.type === "file_save_response"
   ) {
     return "running";
   }

@@ -70,6 +70,9 @@ export default function ChatApp() {
     getCurrentTaskCharConstraint: () =>
       taskProtocolDomain.getCurrentTaskCharConstraint() as TaskCharConstraint | null,
     setKinInput: chatUi.setKinInput,
+    setPendingKinInjectionBlocks: chatUi.setPendingKinInjectionBlocks,
+    setPendingKinInjectionIndex: chatUi.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: chatUi.setPendingKinInjectionPurpose,
     setGptInput: chatUi.setGptInput,
     gptMessages: chatUi.gptMessages,
     setGptMessages: chatUi.setGptMessages,

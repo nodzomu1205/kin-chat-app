@@ -7,6 +7,7 @@ export function applyCompiledTaskPromptToKinInput(args: {
   compiledTaskPrompt: string;
   setPendingKinInjectionBlocks: (blocks: string[]) => void;
   setPendingKinInjectionIndex: (index: number) => void;
+  setPendingKinInjectionPurpose?: (purpose: "none" | "task_context") => void;
   setKinInput: (value: string) => void;
 }) {
   const allBlocks = buildPendingKinInjectionBlocks(args.compiledTaskPrompt, {
@@ -16,6 +17,9 @@ export function applyCompiledTaskPromptToKinInput(args: {
 
   args.setPendingKinInjectionBlocks(allBlocks.length > 1 ? allBlocks : []);
   args.setPendingKinInjectionIndex(0);
+  args.setPendingKinInjectionPurpose?.(
+    allBlocks.length > 1 ? "task_context" : "none"
+  );
   args.setKinInput(firstBlock);
 
   return {

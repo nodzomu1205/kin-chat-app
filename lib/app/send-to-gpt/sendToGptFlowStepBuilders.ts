@@ -67,6 +67,8 @@ export function buildPreparedSendToGptRequestBundle(args: {
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
     libraryIndexResponseCount: args.flowArgs.libraryIndexResponseCount,
     buildLibraryReferenceContext: args.flowArgs.buildLibraryReferenceContext,
+    recentMessages: args.flowArgs.gptStateRef.current.recentMessages || [],
+    currentTaskCharConstraint: args.flowArgs.currentTaskCharConstraint,
     createUserMessage: (text) => ({
       id: generateId(),
       role: "user",
@@ -102,6 +104,8 @@ export function buildSendToGptPreparedRequestGateArgs(args: {
     setKinInput: args.flowArgs.setKinInput,
     setPendingKinInjectionBlocks: args.flowArgs.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.flowArgs.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose:
+      args.flowArgs.setPendingKinInjectionPurpose,
     setActiveTabToKin: args.flowArgs.setActiveTabToKin,
     recordIngestedDocument: args.flowArgs.recordIngestedDocument,
     ingestProtocolMessage: args.flowArgs.ingestProtocolMessage,

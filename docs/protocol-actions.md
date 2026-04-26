@@ -1,6 +1,6 @@
 # Protocol Actions
 
-Updated: 2026-04-17
+Updated: 2026-04-26
 
 ## Purpose
 This document defines the current authority boundaries for protocol-related user actions.
@@ -30,6 +30,13 @@ Kin input / multipart boundary:
 - `lib/app/task-support/kinTaskInjection.ts`
 - `lib/app/task-runtime/kinTransferFlows.ts`
 - `lib/app/task-runtime/kinTaskFlow.ts`
+
+Library / draft protocol boundary:
+- `lib/app/reference-library/libraryItemAggregation.ts`
+- `lib/app/kin-protocol/kinMultipart.ts`
+- `lib/app/send-to-gpt/draftDocumentResolver.ts`
+- `lib/app/send-to-gpt/sendToGptPreparedGateHandlers.ts`
+- `lib/app/send-to-gpt/sendToGptProtocolBuilders.ts`
 
 ## Action Categories
 
@@ -120,6 +127,37 @@ Should not do:
 - decide whether a phrase is approved
 - choose original instruction fallback order
 
+## 5. Library / draft / file-saving protocol
+
+Examples:
+- `SYS_LIBRARY_DATA_REQUEST`
+- `SYS_DRAFT_PREPARATION_REQUEST`
+- `SYS_DRAFT_MODIFICATION_REQUEST`
+- `SYS_FILE_SAVING_REQUEST`
+
+Owned by:
+- `libraryItemAggregation.ts` for library payload formatting
+- `kinMultipart.ts` for multipart `SYS_INFO` delivery
+- `draftDocumentResolver.ts` for latest-draft and document-id resolution
+- `sendToGptPreparedGateHandlers.ts` for local file-saving gate side effects
+- `sendToGptProtocolBuilders.ts` for GPT-facing protocol response prompts
+
+Should do:
+- keep library reference on the single `SYS_LIBRARY_DATA_REQUEST / RESPONSE`
+  path
+- save protocol-created documents only through File Saving
+- validate active length constraints before saving
+- generate library-card summaries through the shared library-summary path
+- tolerate `DOCUMENT_ID: Unknown` and blank full-modification document ids via
+  the shared resolver
+
+Should not do:
+- revive automatic Kin-output-to-library saving as a side route
+- accept retired `SYS_LIBRARY_INDEX/ITEM` or `SYS_FILE_SAVE` blocks as active
+  protocol inputs
+- add a second latest-draft heuristic near the save gate
+- add another multipart splitting implementation for library sends
+
 ## Source Of Truth Rules
 
 For task refresh and resend, the source instruction priority is:
@@ -159,5 +197,8 @@ When you need to change a protocol action:
 2. If the change is about task runtime state shape, start in `useKinTaskProtocol.ts`.
 3. If the change is about recompile/re-sync behavior, start in `currentTaskIntentRefresh.ts`.
 4. If the change is about Kin input / multipart delivery, start in `task-support/kinTaskInjection.ts` or Kin transfer flows.
+5. If the change is about library/draft/file-saving protocol, start from the
+   shared resolver/gate/builder files listed above, not from the visible chat
+   message alone.
 
 If a change seems to require editing all of them at once, stop and split the work by boundary.

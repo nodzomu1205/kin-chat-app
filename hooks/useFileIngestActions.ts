@@ -32,6 +32,7 @@ function buildRunFileIngestFlowArgs(
     setGptMessages: args.setGptMessages,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
     setUploadKind: args.setUploadKind,
     setGptInput: args.setGptInput,

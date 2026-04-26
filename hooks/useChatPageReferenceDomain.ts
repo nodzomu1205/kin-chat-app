@@ -8,6 +8,7 @@ import { useStoredDocuments } from "@/hooks/useStoredDocuments";
 import { useStoredDocumentUiActions } from "@/hooks/useStoredDocumentUiActions";
 import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
 import type { GptMemoryRuntime } from "@/lib/app/ui-state/chatPageGptMemoryControls";
+import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
@@ -29,6 +30,11 @@ type UseChatPageReferenceDomainArgs = {
   currentKinDisplayLabel?: string | null;
   getCurrentTaskCharConstraint: () => TaskCharConstraint | null;
   setKinInput: React.Dispatch<React.SetStateAction<string>>;
+  setPendingKinInjectionBlocks: React.Dispatch<React.SetStateAction<string[]>>;
+  setPendingKinInjectionIndex: React.Dispatch<React.SetStateAction<number>>;
+  setPendingKinInjectionPurpose: React.Dispatch<
+    React.SetStateAction<PendingKinInjectionPurpose>
+  >;
   setGptInput: React.Dispatch<React.SetStateAction<string>>;
   gptMessages: Message[];
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
@@ -65,7 +71,7 @@ export function useChatPageReferenceDomain(
     deleteStoredDocument,
     moveStoredDocument,
     getStoredDocument,
-  } = useStoredDocuments(multipartAssemblies);
+  } = useStoredDocuments();
 
   const {
     libraryItems,
@@ -158,15 +164,21 @@ export function useChatPageReferenceDomain(
   const {
     showLibraryItemInChat,
     sendLibraryItemToKin,
+    showAllLibraryItemsInChat,
+    sendAllLibraryItemsToKin,
     uploadLibraryItemToGoogleDrive,
     importGoogleDriveFile,
     indexGoogleDriveFolder,
     importGoogleDriveFolder,
   } = useReferenceLibraryUiActions({
+    libraryItems,
     getLibraryItemById,
     gptMessages: args.gptMessages,
     setGptMessages: args.setGptMessages,
     setKinInput: args.setKinInput,
+    setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
+    setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+    setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     focusGptPanel: args.focusGptPanel,
     focusKinPanel: args.focusKinPanel,
     gptMemoryRuntime: args.gptMemoryRuntime,
@@ -218,6 +230,8 @@ export function useChatPageReferenceDomain(
     downloadStoredDocument,
     showLibraryItemInChat,
     sendLibraryItemToKin,
+    showAllLibraryItemsInChat,
+    sendAllLibraryItemsToKin,
     uploadLibraryItemToGoogleDrive,
     importGoogleDriveFile,
     indexGoogleDriveFolder,

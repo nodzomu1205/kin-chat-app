@@ -31,6 +31,17 @@ describe("taskDraftActionBuilders", () => {
         "exactly 400 Japanese characters",
       ])
     ).toEqual({ rule: "exact", limit: 400 });
+
+    expect(
+      resolveCurrentTaskCharConstraint([
+        "Please keep the final output at least 2000 characters.",
+      ])
+    ).toEqual({ rule: "at_least", limit: 2000 });
+
+    expect(resolveCurrentTaskCharConstraint(["2000文字以上"])).toEqual({
+      rule: "at_least",
+      limit: 2000,
+    });
   });
 
   it("builds draft patches and prefixed-task updates through shared helpers", () => {

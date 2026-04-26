@@ -44,6 +44,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
       setKinInput: args.setKinInput,
       setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
       focusKinPanel: args.focusKinPanel,
       recordIngestedDocument: args.recordIngestedDocument,
       ingestProtocolMessage: args.ingestProtocolMessage,
@@ -161,6 +162,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
       setKinInput: args.setKinInput,
       setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
       setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
       focusKinPanel: args.focusKinPanel,
     });
   };

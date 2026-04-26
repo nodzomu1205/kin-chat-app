@@ -29,6 +29,7 @@ export type ChatPageWorkspaceCompositionState = {
     | "setIngestLoading"
     | "setPendingKinInjectionBlocks"
     | "setPendingKinInjectionIndex"
+    | "setPendingKinInjectionPurpose"
     | "kinBottomRef"
     | "gptBottomRef"
   >;
@@ -110,6 +111,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "setIngestLoading"
     | "setPendingKinInjectionBlocks"
     | "setPendingKinInjectionIndex"
+    | "setPendingKinInjectionPurpose"
   >;
   task: Pick<
     ChatPageWorkspaceViewTaskArgs,
@@ -154,10 +156,12 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onMoveLibraryItem"
     | "onSelectTaskLibraryItem"
     | "onChangeLibraryItemMode"
-    | "onSaveStoredDocument"
-    | "onShowLibraryItemInChat"
-    | "onSendLibraryItemToKin"
-    | "onUploadLibraryItemToGoogleDrive"
+      | "onSaveStoredDocument"
+      | "onShowLibraryItemInChat"
+      | "onSendLibraryItemToKin"
+      | "onShowAllLibraryItemsInChat"
+      | "onSendAllLibraryItemsToKin"
+      | "onUploadLibraryItemToGoogleDrive"
     | "onChangeAutoLibraryReferenceEnabled"
     | "onChangeLibraryReferenceMode"
     | "onChangeLibraryIndexResponseCount"

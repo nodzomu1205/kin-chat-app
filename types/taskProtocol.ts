@@ -35,6 +35,9 @@ export type TaskIntent = {
     allowSearchRequest?: boolean;
     allowYoutubeTranscriptRequest?: boolean;
     allowLibraryReference?: boolean;
+    allowDraftPreparation?: boolean;
+    allowDraftModification?: boolean;
+    allowFileSaving?: boolean;
     finalizationPolicy?:
       | "auto_when_ready"
       | "wait_for_user_confirm"
@@ -110,6 +113,12 @@ export type TaskProtocolEventType =
   | "library_index_response"
   | "library_item_request"
   | "library_item_response"
+  | "draft_preparation_request"
+  | "draft_preparation_response"
+  | "draft_modification_request"
+  | "draft_modification_response"
+  | "file_save_request"
+  | "file_save_response"
   | "user_question"
   | "material_request"
   | "task_done"
@@ -131,6 +140,9 @@ export type TaskProtocolEvent = {
   outputMode?: SearchResultMode;
   rawResultId?: string;
   libraryItemId?: string;
+  documentId?: string;
+  responseMode?: "full" | "partial";
+  sourceDocumentId?: string;
   partIndex?: number;
   totalParts?: number;
   characters?: number;

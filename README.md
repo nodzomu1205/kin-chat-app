@@ -39,6 +39,10 @@ The current product direction is:
   - `SYS_TASK_PROGRESS`
   - `SYS_SEARCH_REQUEST / RESPONSE`
   - `SYS_YOUTUBE_TRANSCRIPT_REQUEST / RESPONSE`
+  - `SYS_LIBRARY_DATA_REQUEST / RESPONSE`
+  - `SYS_DRAFT_PREPARATION_REQUEST / RESPONSE`
+  - `SYS_DRAFT_MODIFICATION_REQUEST / RESPONSE`
+  - `SYS_FILE_SAVING_REQUEST / RESPONSE`
   - `SYS_GPT_RESPONSE`
   - `SYS_INFO`
 - Multipart protocol delivery for long structured messages
@@ -107,7 +111,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `163 files / 703 tests`
+- current test count: `166 files / 739 tests`
 
 Current maintenance status:
 
@@ -232,6 +236,17 @@ Recent regression fixes and maintainability wins include:
 - `chatPagePanelCompositionBuilders.ts` now stays as the public panel-composition facade while section-level panel arg shaping lives in `chatPagePanelSectionBuilders.ts` and task snapshot persistence lives in `chatPageTaskSnapshot.ts`
 - `chatPagePanelCompositionTypes.ts` now stays as a public type facade while panel arg contracts live in `chatPagePanelArgsTypes.ts` and workspace-view section contracts live in `chatPageWorkspaceViewTypes.ts`
 - workspace reference/Drive view contracts now live in `chatPageWorkspaceReferenceTypes.ts`, keeping `chatPageWorkspaceViewTypes.ts` focused on the remaining page-view sections
+- library action controls are now collapsible, and bulk display / bulk Kin-send
+  use shared library aggregation modes
+- library-card and bulk-library Kin sends now route through the same multipart
+  SYS_INFO transport shape used by protocol sends
+- task protocol guidance now includes the current draft/file-saving protocols
+  and keeps library reference on the single `SYS_LIBRARY_DATA_*` flow
+- Draft Preparation, Draft Modification, and File Saving now have parser,
+  request-shaping, local save-gate, generated-summary, length-constraint, and
+  latest-draft fallback coverage
+- memory fact extraction now uses fair, content-based pickup across meaningful
+  chat-visible responses while filtering system/noise messages
 
 Current caution after the latest task/constraint stabilization:
 
@@ -242,6 +257,12 @@ Current caution after the latest task/constraint stabilization:
 - library-ingest authority should stay under watch, especially when adding new ingest-adjacent flows or token accounting paths
 - active mojibake cleanup is much smaller than before, but touched text-owner and
   parser files should still be reviewed carefully when edited
+- new draft/file-saving protocol behavior has focused coverage and live partial
+  testing, but `DRAFT_MODIFICATION -> FILE_SAVING -> TASK_DONE` should be
+  rechecked in the next manual Kin session after Kin/browser state is fresh
+- old library `INDEX/ITEM` request blocks and old `FILE_SAVE` blocks are no
+  longer active parser inputs; keep this intentional incompatibility pinned by
+  parser tests unless a real compatibility need appears
 
 The current goal is not a rewrite. The goal is to keep shipping while shrinking hidden coupling and reducing future regressions.
 
@@ -254,6 +275,7 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Memory Lifecycle](./docs/memory-lifecycle.md)
 - [Repository Review 2026-04-25](./docs/repository-review-2026-04-25.md)
 - [Next Session Handover](./docs/next-session.md)
+- [Handoff 2026-04-26](./docs/HANDOFF-2026-04-26.md)
 - [Handoff 2026-04-25](./docs/HANDOFF-2026-04-25.md)
 - [Handoff 2026-04-18](./docs/HANDOFF-2026-04-18.md)
 - [Handoff 2026-04-16](./docs/HANDOFF-2026-04-16.md)
@@ -299,33 +321,31 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. keep remaining protocol/task-payload `responseMode` names under watch, but treat the dead UI/settings and LLM strict/creative carry-through cleanup as stabilized
-2. keep library-ingest and Drive/device ingest authority under watch; extract only proven shared post-request behavior when new duplication appears
-3. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
-4. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
-5. continue opportunistic mojibake cleanup in still-active owner files when those boundaries are touched
-6. continue adding narrow regression tests around the next touched boundary instead of broad rewrites
+1. manually retest `DRAFT_MODIFICATION -> FILE_SAVING -> TASK_DONE`, including
+   the case where a draft response omits `DOCUMENT_ID`
+2. keep protocol/task-payload `responseMode` names under watch, but treat the
+   dead UI/settings and LLM strict/creative carry-through cleanup as stabilized
+3. keep library-ingest and Drive/device ingest authority under watch; extract
+   only proven shared post-request behavior when new duplication appears
+4. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in
+   request-text / shortcut / finalize surfaces
+5. keep page/controller/panel composition in maintenance-watch mode instead of
+   letting no-op pass-through glue regrow
+6. continue adding narrow regression tests around the next touched boundary
+   instead of broad rewrites
 
 `hooks/useGptMemory.ts` and `lib/app/memory-interpreter/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
 
-For the GPT settings surface, the next step is not just helper extraction. We expect a broader section-level reorganization so that search, memory, protocol, and ingest controls are easier to scan and maintain.
-
 ## Next Planned Product Work
 
-The next product slice should focus on the library tab and Kin protocol flow:
+The next product slice should start after the manual protocol retest. Good
+candidates:
 
-1. remove the library category switcher and reclaim space
-2. replace the current Drive/device import tiles with a collapsible action area
-   that supports bulk display and bulk Kin send
-3. route library-card and bulk-library Kin sends through the same multipart
-   transport used by SYS-format sends
-4. make SYS task protocol guidance constraint-aware instead of appending every
-   protocol rule by default
-5. design Draft Preparation, Draft Modification, and File Saving protocols
-   before implementation
-
-Related maintenance work:
-
-- remove dead library filter state if no live caller remains
-- keep library aggregation and Kin multipart transport as shared, tested helpers
-- update protocol/domain docs when new protocol names and examples are finalized
+1. polish any UX rough edge found during the draft/file-saving retest
+2. add a small E2E-style harness for protocol round trips if manual testing
+   keeps finding state-sequencing bugs
+3. continue library/ingest improvements only from a concrete user-facing need,
+   not from broad refactor pressure
+4. review old dated handoff docs only when they are actively used; the current
+   source of truth is `README.md`, `docs/next-session.md`,
+   `docs/refactor-roadmap.md`, and `docs/maintenance-checklist.md`

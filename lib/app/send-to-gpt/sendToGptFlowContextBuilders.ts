@@ -43,6 +43,15 @@ export function buildProtocolInteractionContext(params: {
     libraryItemRequestEvent: protocolEvents.find(
       (event) => event.type === "library_item_request"
     ),
+    draftPreparationRequestEvent: protocolEvents.find(
+      (event) => event.type === "draft_preparation_request"
+    ),
+    draftModificationRequestEvent: protocolEvents.find(
+      (event) => event.type === "draft_modification_request"
+    ),
+    fileSaveRequestEvent: protocolEvents.find(
+      (event) => event.type === "file_save_request"
+    ),
     userQuestionEvent: protocolEvents.find(
       (event) => event.type === "user_question"
     ),
