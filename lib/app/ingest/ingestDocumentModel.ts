@@ -163,6 +163,7 @@ export function buildCanonicalSummarySource(text: string) {
 
 export function cleanSearchLibraryDisplayText(text: string) {
   return cleanImportedDocumentText(text)
+    .replace(/^\s*Google AI Mode\s*\n+/iu, "")
     .replace(/(?:^|\n)#{1,6}\s*References\s*\n[\s\S]*$/iu, "")
     .replace(/\s*\[refs?:\s*[\d,\s-]+\]/giu, "")
     .replace(/\n{3,}/g, "\n\n")

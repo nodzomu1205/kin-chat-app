@@ -262,7 +262,7 @@ describe("ingestDocumentModel", () => {
       createdAt: "2026-04-18T00:00:00.000Z",
     });
 
-    expect(item.excerptText).toContain("Google AI Mode");
+    expect(item.excerptText).not.toContain("Google AI Mode");
     expect(item.excerptText).toContain("- 自動化できます。");
     expect(item.excerptText).not.toContain("### References");
     expect(item.excerptText).not.toContain("[0] [OpenAI API]");

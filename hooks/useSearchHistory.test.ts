@@ -29,6 +29,28 @@ describe("useSearchHistory helpers", () => {
     });
   });
 
+  it("omits the Google AI Mode engine label from library-summary input", () => {
+    expect(
+      buildSearchContextLibrarySummaryRequest(
+        createSearchContext({
+          query: "OpenAI API",
+          rawText: [
+            "Google AI Mode",
+            "",
+            "### Code Interpreter",
+            "- Python code can run in a sandbox. [refs: 1, 2]",
+            "",
+            "### References",
+            "[0] [OpenAI API](https://example.com)",
+          ].join("\n"),
+        })
+      )
+    ).toEqual({
+      title: "OpenAI API",
+      text: "### Code Interpreter\n- Python code can run in a sandbox.",
+    });
+  });
+
   it("returns null when there is no usable search evidence", () => {
     expect(
       buildSearchContextLibrarySummaryRequest(
