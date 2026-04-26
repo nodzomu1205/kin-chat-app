@@ -107,7 +107,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `158 files / 683 tests`
+- current test count: `159 files / 687 tests`
 
 Current maintenance status:
 
@@ -181,6 +181,9 @@ Recent regression fixes and maintainability wins include:
 - YouTube transcript batch request shaping now lives in `sendToGptYoutubeFlowBuilders.ts`, keeping queue splitting and transcript request bodies out of `useGptMessageActions.ts`
 - queued YouTube transcript request execution now lives in `sendToGptYoutubeFlow.ts`, keeping transcript fetch/storage/Kin handoff side effects out of `useGptMessageActions.ts`
 - YouTube transcript library import and send-to-Kin execution now live in `youtubeTranscriptLibraryFlows.ts`, keeping transcript fetch/storage/Kin side effects out of `useGptMessageActions.ts`
+- GPT panel utility actions such as Ask AI Mode search, latest-Kin draft copy,
+  receive-last-Kin, and latest-GPT transfer notices now live in
+  `gptMessageActionFlows.ts`
 - search-history localStorage load/save now lives in `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search settings out of `useSearchHistory.ts`
 - `transformIntent.ts` is now a small public facade plus Kin directive assembly; rule-based directive parsing, API intent resolving, type definitions, text transformation runtime, and Kin chunk splitting live in focused task-runtime modules with a facade regression test
 - `kinTransferFlows.ts` now delegates task-usage accumulation and Kin transfer status-message shaping to `kinTransferFlowBuilders.ts`, keeping the flow closer to orchestration-only

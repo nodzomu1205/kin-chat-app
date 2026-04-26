@@ -86,7 +86,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `158 files / 683 tests`
+- current test count: `159 files / 687 tests`
 
 Latest maintenance movement:
 
@@ -285,6 +285,9 @@ Current maintenance remaining:
 - YouTube transcript library import and send-to-Kin execution now live in
   `youtubeTranscriptLibraryFlows.ts`, keeping transcript fetch/storage/Kin side
   effects out of `useGptMessageActions.ts`
+- GPT panel utility actions such as Ask AI Mode search, latest-Kin draft copy,
+  receive-last-Kin, and latest-GPT transfer notices now live in
+  `gptMessageActionFlows.ts`
 - search-history localStorage load/save now lives in
   `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search
   settings out of `useSearchHistory.ts`

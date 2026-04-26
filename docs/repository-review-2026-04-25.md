@@ -37,7 +37,7 @@ Verification baseline from the latest completed check:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test status: `158 files / 683 tests`
+- current test status: `159 files / 687 tests`
 
 ## What Not To Do Next
 
@@ -131,6 +131,9 @@ Status:
   including transcript fetch, document storage, Kin handoff, and memory updates
 - `youtubeTranscriptLibraryFlows.ts` owns YouTube transcript library import and
   send-to-Kin execution used by `useGptMessageActions.ts`
+- `gptMessageActionFlows.ts` owns GPT panel utility actions such as Ask AI Mode
+  search, latest-Kin draft copy, receive-last-Kin, and latest-GPT transfer
+  notices
 - `searchHistoryStorage.ts` owns persisted search-history settings and
   localStorage load/save helpers used by `useSearchHistory.ts`
 - `lib/app/google-drive/googleDriveApi.ts` owns Drive HTTP fetch/upload/listing

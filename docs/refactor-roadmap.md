@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `158 files / 683 tests`
+- test status: `159 files / 687 tests`
 
 This roadmap should now be read together with:
 
@@ -331,6 +331,9 @@ Recent progress:
 - YouTube transcript library import and send-to-Kin execution now live in
   `youtubeTranscriptLibraryFlows.ts`, keeping transcript fetch/storage/Kin side
   effects out of `useGptMessageActions.ts`
+- GPT panel utility actions such as Ask AI Mode search, latest-Kin draft copy,
+  receive-last-Kin, and latest-GPT transfer notices now live in
+  `gptMessageActionFlows.ts`
 - search-history localStorage load/save now lives in
   `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search
   settings out of `useSearchHistory.ts`
