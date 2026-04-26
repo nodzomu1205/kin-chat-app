@@ -86,7 +86,7 @@ The repository is in a good stopping state.
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `159 files / 687 tests`
+- current test count: `160 files / 693 tests`
 
 Latest maintenance movement:
 
@@ -288,6 +288,9 @@ Current maintenance remaining:
 - GPT panel utility actions such as Ask AI Mode search, latest-Kin draft copy,
   receive-last-Kin, and latest-GPT transfer notices now live in
   `gptMessageActionFlows.ts`
+- Google AI Mode continuation now uses compact markers such as `(#1)`,
+  sends `continuable=true`, keeps location out of the query text, and preserves
+  reconstructed markdown/code/table content from SerpAPI responses
 - search-history localStorage load/save now lives in
   `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search
   settings out of `useSearchHistory.ts`

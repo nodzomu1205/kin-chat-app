@@ -107,7 +107,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `159 files / 687 tests`
+- current test count: `160 files / 693 tests`
 
 Current maintenance status:
 
@@ -184,6 +184,9 @@ Recent regression fixes and maintainability wins include:
 - GPT panel utility actions such as Ask AI Mode search, latest-Kin draft copy,
   receive-last-Kin, and latest-GPT transfer notices now live in
   `gptMessageActionFlows.ts`
+- Google AI Mode continuation now uses compact markers such as `(#1)`,
+  sends `continuable=true`, keeps location out of the query text, and preserves
+  reconstructed markdown/code/table content from SerpAPI responses
 - search-history localStorage load/save now lives in `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search settings out of `useSearchHistory.ts`
 - `transformIntent.ts` is now a small public facade plus Kin directive assembly; rule-based directive parsing, API intent resolving, type definitions, text transformation runtime, and Kin chunk splitting live in focused task-runtime modules with a facade regression test
 - `kinTransferFlows.ts` now delegates task-usage accumulation and Kin transfer status-message shaping to `kinTransferFlowBuilders.ts`, keeping the flow closer to orchestration-only

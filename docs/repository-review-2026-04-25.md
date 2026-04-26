@@ -37,7 +37,7 @@ Verification baseline from the latest completed check:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test status: `159 files / 687 tests`
+- current test status: `160 files / 693 tests`
 
 ## What Not To Do Next
 
@@ -134,6 +134,9 @@ Status:
 - `gptMessageActionFlows.ts` owns GPT panel utility actions such as Ask AI Mode
   search, latest-Kin draft copy, receive-last-Kin, and latest-GPT transfer
   notices
+- Google AI Mode continuation uses compact markers such as `(#1)`, sends
+  `continuable=true`, keeps location out of the query text, and preserves
+  reconstructed markdown/code/table content from SerpAPI responses
 - `searchHistoryStorage.ts` owns persisted search-history settings and
   localStorage load/save helpers used by `useSearchHistory.ts`
 - `lib/app/google-drive/googleDriveApi.ts` owns Drive HTTP fetch/upload/listing
