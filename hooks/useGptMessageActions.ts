@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { generateId } from "@/lib/shared/uuid";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
-import { receiveLastKinResponseFlow } from "@/lib/app/task-runtime/kinTaskFlow";
-import { extractPreferredKinTransferText } from "@/lib/app/kin-protocol/kinStructuredProtocol";
+import {
+  appendLastGptToKinInfoMessage,
+  runReceiveLastKinResponseToGptInputFlow,
+  runSendLastKinToGptDraftFlow,
+  runStartAskAiModeSearchFlow,
+} from "@/lib/app/send-to-gpt/gptMessageActionFlows";
 import { resolveYoutubeTranscriptBatchRequest } from "@/lib/app/send-to-gpt/sendToGptYoutubeFlowBuilders";
 import { runYoutubeTranscriptRequestItemFlow } from "@/lib/app/send-to-gpt/sendToGptYoutubeFlow";
 import {
@@ -128,16 +131,11 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   };
 
   const startAskAiModeSearch = async (query: string) => {
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery) return;
-
-    await runSendToGptFlow({
-      ...buildCommonFlowArgs(),
-      gptInput: `讀懃ｴ｢: ${trimmedQuery}`,
-      searchMode: "ai",
-      searchEngines: ["google_ai_mode"],
+    await runStartAskAiModeSearchFlow({
+      query,
       searchLocation: args.searchLocation,
-      instructionMode: "normal",
+      buildCommonFlowArgs,
+      runSendToGpt: runSendToGptFlow,
     });
   };
 
@@ -168,38 +166,27 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   };
 
   const sendLastKinToGptDraft = () => {
-    const last = [...args.kinMessages].reverse().find((m) => m.role === "kin");
-    if (!last) return;
-
-    args.setGptInput(extractPreferredKinTransferText(last.text));
-    args.focusGptPanel();
+    runSendLastKinToGptDraftFlow({
+      kinMessages: args.kinMessages,
+      setGptInput: args.setGptInput,
+      focusGptPanel: args.focusGptPanel,
+    });
   };
 
   const receiveLastKinResponseToGptInput = () => {
-    receiveLastKinResponseFlow({
+    runReceiveLastKinResponseToGptInputFlow({
       kinMessages: args.kinMessages,
       processMultipartTaskDoneText: args.processMultipartTaskDoneText,
       setGptInput: args.setGptInput,
-      appendGptMessage: (message) => args.setGptMessages((prev) => [...prev, message]),
-      setActiveTabToGpt: () => {
-        args.focusGptPanel();
-      },
+      setGptMessages: args.setGptMessages,
+      focusGptPanel: args.focusGptPanel,
     });
   };
 
   const sendLastGptToKinInfo = () => {
-    args.setGptMessages((prev) => [
-      ...prev,
-      {
-        id: generateId(),
-        role: "gpt",
-        text: "The latest GPT response is ready to transfer to Kin.",
-        meta: {
-          kind: "task_info",
-          sourceType: "gpt_chat",
-        },
-      },
-    ]);
+    appendLastGptToKinInfoMessage({
+      setGptMessages: args.setGptMessages,
+    });
   };
 
   return {
