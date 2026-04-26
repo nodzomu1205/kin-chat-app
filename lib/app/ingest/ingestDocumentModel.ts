@@ -161,6 +161,14 @@ export function buildCanonicalSummarySource(text: string) {
   return cleanImportSummarySource(text).trim();
 }
 
+export function cleanSearchLibraryDisplayText(text: string) {
+  return cleanImportedDocumentText(text)
+    .replace(/(?:^|\n)#{1,6}\s*References\s*\n[\s\S]*$/iu, "")
+    .replace(/\s*\[refs?:\s*[\d,\s-]+\]/giu, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export function buildCanonicalDocumentSummary(
   text: string,
   fallbackTitle: string
@@ -369,7 +377,7 @@ export function buildReferenceLibrarySearchItem(args: {
   sources?: ReferenceLibraryItem["sources"];
   askAiModeItems?: ReferenceLibraryItem["askAiModeItems"];
 }): ReferenceLibraryItem {
-  const cleanedRawText = cleanImportedDocumentText(args.rawText || "");
+  const cleanedRawText = cleanSearchLibraryDisplayText(args.rawText || "");
   const cleanedSummary = args.summary
     ? cleanImportSummarySource(args.summary).trim()
     : "";

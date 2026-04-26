@@ -19,7 +19,10 @@ import {
 } from "@/lib/app/search-history/searchHistoryStorage";
 import { requestGeneratedLibrarySummary } from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
-import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
+import {
+  buildCanonicalSummarySource,
+  cleanSearchLibraryDisplayText,
+} from "@/lib/app/ingest/ingestDocumentModel";
 import { normalizeLibrarySummaryIngestUsage } from "@/lib/app/ingest/ingestUsage";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
 import type { SearchContext, SearchEngine, SearchMode } from "@/types/task";
@@ -37,7 +40,9 @@ export function buildSearchContextLibrarySummaryRequest(
     return null;
   }
 
-  const text = buildCanonicalSummarySource(context.rawText || "");
+  const text = buildCanonicalSummarySource(
+    cleanSearchLibraryDisplayText(context.rawText || "")
+  );
   if (!text) return null;
 
   return {

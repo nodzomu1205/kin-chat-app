@@ -145,4 +145,27 @@ describe("normalizerBuilders", () => {
     expect(payload.rawText).toContain("print('hello')");
     expect(payload.rawText).toContain("Use code with caution.");
   });
+
+  it("does not duplicate text blocks when reconstructed markdown is present", () => {
+    const payload = buildAiModePayload({
+      request: { query: "openai api" },
+      aiSummary: "OpenAI API summary",
+      textBlocks: [
+        {
+          type: "heading",
+          snippet: "APIを使うメリット",
+        },
+        {
+          type: "list",
+          list: [{ snippet: "自動化できます。" }],
+        },
+      ],
+      fullText: "### APIを使うメリット\n\n- 自動化できます。",
+      fallbackSources: [],
+      aiTables: [],
+      engine: "google_ai_mode",
+    });
+
+    expect((payload.rawText || "").match(/自動化できます。/g)).toHaveLength(1);
+  });
 });

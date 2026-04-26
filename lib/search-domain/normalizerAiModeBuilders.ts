@@ -193,6 +193,10 @@ export function buildAiModeRawBlock(blocks: AiModeTextBlock[], fullText?: string
     lines.push("", trimmedFullText);
   }
 
+  if (trimmedFullText) {
+    return lines.join("\n").trim();
+  }
+
   blocks.forEach((block) => pushAiModeBlock(lines, block));
 
   return lines.join("\n").trim();

@@ -241,4 +241,32 @@ describe("ingestDocumentModel", () => {
       excerptText: "alpha beta gamma",
     });
   });
+
+  it("cleans AI Mode references from reference-library search display text", () => {
+    const item = buildReferenceLibrarySearchItem({
+      rawResultId: "RAW-AI",
+      query: "OpenAI API",
+      summary: "",
+      rawText: [
+        "Google AI Mode",
+        "",
+        "## APIを使うメリット",
+        "- 自動化できます。 [refs: 3, 0, 22]",
+        "",
+        "### References",
+        "[0] [OpenAI API](https://example.com/very-long-url) — long excerpt",
+        "",
+        "## APIを使うメリット",
+        "- 自動化できます。 [refs: 3, 0, 22]",
+      ].join("\n"),
+      createdAt: "2026-04-18T00:00:00.000Z",
+    });
+
+    expect(item.excerptText).toContain("Google AI Mode");
+    expect(item.excerptText).toContain("- 自動化できます。");
+    expect(item.excerptText).not.toContain("### References");
+    expect(item.excerptText).not.toContain("[0] [OpenAI API]");
+    expect(item.excerptText).not.toContain("[refs:");
+    expect(item.summary).not.toContain("References");
+  });
 });
