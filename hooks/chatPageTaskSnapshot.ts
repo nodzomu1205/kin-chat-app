@@ -2,14 +2,13 @@ import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelComposition
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
 import {
-  normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
 } from "@/lib/app/reference-library/librarySummaryClient";
+import { normalizeLibrarySummaryIngestUsage } from "@/lib/app/ingest/ingestUsage";
 import {
   buildStoredDocumentFromTaskDraft,
   buildTaskDraftLibrarySummarySource,
 } from "@/lib/app/task-draft/taskDraftLibrary";
-import { normalizeUsage } from "@/lib/shared/tokenStats";
 
 export function buildChatPageTaskSnapshotDocument(
   args: Pick<ChatPageWorkspaceViewArgs, "task">
@@ -39,7 +38,7 @@ export async function saveChatPageTaskSnapshot(
         generatedSummary = cleanImportSummarySource(summaryResult.summary).trim();
       }
       args.usage.applyIngestUsage(
-        normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+        normalizeLibrarySummaryIngestUsage(summaryResult.usage)
       );
     } catch (error) {
       console.warn("Task snapshot summary generation failed", error);

@@ -1,9 +1,9 @@
 import {
-  normalizeLibrarySummaryUsage,
   requestGeneratedLibrarySummary,
 } from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
+import { normalizeLibrarySummaryIngestUsage } from "@/lib/app/ingest/ingestUsage";
 import { addUsage, normalizeUsage } from "@/lib/shared/tokenStats";
 
 type NormalizedUsage = ReturnType<typeof normalizeUsage>;
@@ -40,7 +40,7 @@ export async function resolveGeneratedImportSummary(args: {
     }
     totalUsage = addUsage(
       totalUsage,
-      normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+      normalizeLibrarySummaryIngestUsage(summaryResult.usage)
     );
   } catch (error) {
     args.onError?.(error);

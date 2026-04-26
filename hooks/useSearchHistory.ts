@@ -7,12 +7,10 @@ import {
   resolveSelectedSearchResultId,
   resolveTaskSearchContext,
 } from "@/lib/app/search-history/searchHistoryState";
-import {
-  normalizeLibrarySummaryUsage,
-  requestGeneratedLibrarySummary,
-} from "@/lib/app/reference-library/librarySummaryClient";
+import { requestGeneratedLibrarySummary } from "@/lib/app/reference-library/librarySummaryClient";
 import { cleanImportSummarySource } from "@/lib/app/ingest/importSummaryText";
 import { buildCanonicalSummarySource } from "@/lib/app/ingest/ingestDocumentModel";
+import { normalizeLibrarySummaryIngestUsage } from "@/lib/app/ingest/ingestUsage";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
 import { normalizeStoredSearchMode } from "@/lib/search-domain/presets";
 import type { SearchContext, SearchEngine, SearchMode } from "@/types/task";
@@ -358,7 +356,7 @@ export function useSearchHistory(params?: {
         applySearchContextLibrarySummary(context, generatedSummary)
       );
       params?.applyIngestUsage?.(
-        normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+        normalizeLibrarySummaryIngestUsage(summaryResult.usage)
       );
     } catch (error) {
       console.warn("Search summary generation failed", error);
