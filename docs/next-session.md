@@ -59,24 +59,20 @@ Instead, the next session should default to:
    maintenance-watch; the dead GPT settings/persistence carry-through has been
    removed, and controller/task/transfer/send-to-GPT request boundaries now use
    `reasoningMode`
-2. continuing ingest authority and ingest token-accounting cleanup, starting
-   with the Google Drive picker/import boundary if no product bug is higher
-   priority
+2. keeping ingest authority and ingest token-accounting under watch as new
+   ingest-adjacent behavior is added
 3. keeping mojibake cleanup opportunistic in still-active owner files
 4. maintaining `sendToGpt` / page-composition boundaries without regrowth
 
-This is now a better default next step than touching broader UI or feature work.
+This is now a better default posture than touching broader UI or feature work.
 
 Concrete next default item:
 
-1. continue the Drive/device ingest boundary from `hooks/useGoogleDrivePicker.ts`
-2. check for unused Drive/import residue before each follow-up edit
-3. split only a low-risk boundary such as picker state or import execution if
-   the live references support it
-4. keep Drive HTTP operations in `lib/app/google-drive/googleDriveApi.ts` and
-   importability/Picker action/summary/stored-text/UI-feedback message shaping in
-   `googleDrivePickerBuilders.ts`
-5. run focused Drive picker tests plus the full verification baseline
+1. start from the next product or bug boundary, not a default broad refactor
+2. classify the touched boundary before editing
+3. split only when live duplication or regrowth is observed
+4. keep existing owner modules intact unless the change proves a better owner
+5. run focused boundary tests plus the full verification baseline
 
 Latest Drive maintenance progress:
 
@@ -255,9 +251,11 @@ boundaries:
 
 Current maintenance remaining:
 
-- overall maintainability is late-stage watch, roughly `85-90%` complete
+- overall maintainability is late-stage watch; broad rescue refactor is no
+  longer the default posture
 - the biggest remaining product-authority watch is Drive/device ingest
-  convergence and ingest token accounting
+  convergence and ingest token accounting when new ingest-adjacent behavior is
+  added
 - the biggest regrowth risks are large UI/hook surfaces such as
   `useGoogleDrivePicker.ts`, `useGptMessageActions.ts`, `GptPanel.tsx`,
   `useSearchHistory.ts`, and `useReferenceLibrary.ts`

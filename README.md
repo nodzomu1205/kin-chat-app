@@ -107,17 +107,20 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `160 files / 696 tests`
+- current test count: `163 files / 703 tests`
 
 Current maintenance status:
 
-- the repository is in late-stage maintenance-watch, roughly `85-90%` complete
+- the repository is in late-stage maintenance-watch; the major rescue work is
+  complete, and remaining work should be boundary-specific rather than broad
+  refactor by default
 - send-to-GPT hub splitting is no longer the default next target; keep it in
   regrowth-watch mode
-- the next default maintenance slice remains the Drive/device ingest boundary,
-  now after Drive UI-feedback message, Picker document-action, runtime, and
-  file-import execution extraction; preserve the existing `googleDriveApi.ts`
-  / `googleDrivePickerBuilders.ts` ownership split
+- Drive/device ingest is now mostly a watch boundary after Drive UI-feedback
+  message, Picker construction, selected-document dispatch, and import/upload
+  execution extraction; preserve the existing `googleDriveApi.ts` /
+  `googleDrivePickerRuntime.ts` / `googleDriveImportExecution.ts` /
+  `googleDrivePickerBuilders.ts` ownership split
 
 Recent regression fixes and maintainability wins include:
 
@@ -151,6 +154,9 @@ Recent regression fixes and maintainability wins include:
 - task-intent approval wording is now deterministic and rule-aware (`up_to` / `exact` / `at_least` / `around`) instead of relying on drifting fallback prose
 - response-mode cleanup now removes the dead settings/persistence carry-through from GPT options and page/panel workspace builders, and the controller/service boundary now names the fixed runtime value `reasoningMode`
 - task-intent fallback, current-task intent refresh, Kin task start, Kin transfer, transform-intent, and send-to-GPT request internals now use `reasoningMode` for the LLM strict/creative runtime value; remaining `responseMode` references are protocol/task payload semantics such as structured results or ack modes
+- app-side send-to-GPT payload boundaries now type `reasoningMode` as the
+  shared `ReasoningMode` instead of a free string, while server entrypoints
+  still normalize unknown request input
 - file import and Drive import now share generated library-summary handling through `lib/app/ingest/importSummaryGeneration.ts`, so summary fallback, summary cleanup, and ingest usage aggregation have one post-request helper
 - file import and Drive import now also share stored ingested-document record construction through `buildIngestedDocumentRecord`, keeping text cleanup, char count, and timestamps aligned
 - file import and Drive import now share stored-document preparation through `lib/app/ingest/ingestStoredDocumentPreparation.ts`, keeping generated-summary usage and record construction on one post-request path
@@ -178,6 +184,9 @@ Recent regression fixes and maintainability wins include:
 - Drive picker maintenance now keeps picker/open-folder orchestration in `useGoogleDrivePicker.ts`, script/token readiness in `googleDrivePickerRuntime.ts`, Drive file/folder import and library upload execution in `googleDriveImportExecution.ts`, Drive HTTP operations in `lib/app/google-drive/googleDriveApi.ts`, and importability/Picker action/summary/stored-text/UI-feedback message shaping in `googleDrivePickerBuilders.ts`
 - Drive folder index/import execution also lives in `googleDriveImportExecution.ts`, keeping folder traversal, index message posting, and importable-file filtering out of `useGoogleDrivePicker.ts`
 - Drive library-item upload execution also lives in `googleDriveImportExecution.ts`, keeping child-folder listing, destination selection, upload execution, and upload feedback out of `useGoogleDrivePicker.ts`
+- Google Picker construction now lives in `openGoogleDrivePicker`, and selected
+  Drive document dispatch now lives in `runDrivePickedDocumentsImport`, leaving
+  `useGoogleDrivePicker.ts` as a thin orchestration hook
 - YouTube transcript batch request shaping now lives in `sendToGptYoutubeFlowBuilders.ts`, keeping queue splitting and transcript request bodies out of `useGptMessageActions.ts`
 - queued YouTube transcript request execution now lives in `sendToGptYoutubeFlow.ts`, keeping transcript fetch/storage/Kin handoff side effects out of `useGptMessageActions.ts`
 - YouTube transcript library import and send-to-Kin execution now live in `youtubeTranscriptLibraryFlows.ts`, keeping transcript fetch/storage/Kin side effects out of `useGptMessageActions.ts`
@@ -288,13 +297,12 @@ npm test
 
 Before large new features, continue maintainability work in this order:
 
-1. keep the remaining protocol/task-payload `responseMode` names under maintenance-watch, but treat the dead UI/settings and LLM strict/creative carry-through cleanup as substantially complete
-2. keep the fixed library-ingest authority under watch while extracting any proven shared device/Drive post-request helpers
-3. continue shrinking remaining device-file vs Drive ingest post-request divergence after the now-shared ingest authority model
-4. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
-5. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
-6. continue opportunistic mojibake cleanup in still-active owner files when those boundaries are touched
-7. continue adding narrow regression tests around the next touched boundary instead of broad rewrites
+1. keep remaining protocol/task-payload `responseMode` names under watch, but treat the dead UI/settings and LLM strict/creative carry-through cleanup as stabilized
+2. keep library-ingest and Drive/device ingest authority under watch; extract only proven shared post-request behavior when new duplication appears
+3. keep `sendToGptFlow.ts` orchestration-only while watching for regrowth in request-text / shortcut / finalize surfaces
+4. keep page/controller/panel composition in maintenance-watch mode instead of letting no-op pass-through glue regrow
+5. continue opportunistic mojibake cleanup in still-active owner files when those boundaries are touched
+6. continue adding narrow regression tests around the next touched boundary instead of broad rewrites
 
 `hooks/useGptMemory.ts` and `lib/app/memory-interpreter/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
 

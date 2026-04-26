@@ -29,10 +29,10 @@ Current state:
 
 Working estimate:
 
-- maintainability program overall: `85-90% complete`
-- still open before we call it complete: `device/Drive ingest convergence`,
-  `token accounting watch`, `protocol responseMode naming watch`,
-  `maintenance-watch discipline`
+- maintainability program overall: `late-stage maintenance-watch`
+- still open before we call it complete: `device/Drive ingest convergence when
+  new duplication appears`, `token accounting watch`, `protocol responseMode
+  naming watch`, `maintenance-watch discipline`
 - memory lifecycle now has explicit `stable / task-scoped / displayed-context`
   naming; treat new memory fields as incomplete until that classification is
   explicit too
@@ -43,7 +43,19 @@ Working estimate:
   / Kin transfer / transform-intent / send-to-GPT request internals now consume
   that `reasoningMode` name directly, and remaining cleanup is centered on
   protocol/task payload `responseMode` naming watch and ingest
-  authority/token-accounting work
+  authority/token-accounting watch
+
+Latest status update:
+
+- Drive picker/import responsibilities are now split across
+  `useGoogleDrivePicker.ts`, `googleDrivePickerRuntime.ts`,
+  `googleDriveImportExecution.ts`, `googleDrivePickerBuilders.ts`, and
+  `lib/app/google-drive/googleDriveApi.ts`.
+- App-side send-to-GPT request boundaries now type `reasoningMode` as the
+  shared `ReasoningMode`; server request normalization remains the trust
+  boundary for unknown input.
+- Active-code mojibake search currently finds only regression-test patterns,
+  not user-facing owner files.
 
 ## Exit Checklist
 
@@ -235,12 +247,12 @@ Use this short template at the end of future maintenance sessions:
 If no higher-priority product bug appears first, the next development item after
 this checklist setup should be:
 
-1. inspect `hooks/useGoogleDrivePicker.ts`, check unused Drive/import residue,
-   and split only one low-risk boundary such as UI feedback / picker state /
-   import execution
-2. keep remaining protocol/task-payload `responseMode` naming under
-   maintenance-watch and only rename those fields with direct boundary tests
-3. keep library-ingest authority and ingest token accounting under watch
+1. start from the boundary being changed by the next product request, not from a
+   default broad refactor target
+2. keep remaining protocol/task-payload `responseMode` names under watch; do
+   not rename payload fields without direct boundary tests
+3. keep library-ingest / Drive-device ingest authority and ingest token
+   accounting under watch as new ingest-adjacent flows are added
 4. keep send-to-GPT and page composition in regrowth-watch mode rather than
    active hub-splitting mode
 5. keep opportunistic mojibake cleanup limited to still-active owner files

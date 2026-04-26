@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `160 files / 696 tests`
+- test status: `163 files / 703 tests`
 
 This roadmap should now be read together with:
 
@@ -37,17 +37,19 @@ Primary review points:
 - `lib/app/kin-protocol/kinMultipart.ts`
 
 Current cleanup priority:
-1. Drive/device ingest authority watch, continuing from the first
-   `hooks/useGoogleDrivePicker.ts` UI-feedback message, Picker action, runtime,
-   and file-import execution extraction
-2. large hook/UI-surface decomposition follow-up only where live behavior is
+1. boundary-specific maintenance only where the next product request touches a
+   watch area
+2. Drive/device ingest authority and token accounting watch as new
+   ingest-adjacent flows are added
+3. large hook/UI-surface decomposition follow-up only where live behavior is
    actively growing again
-3. repo-wide `strict` / `creative` / `responseMode` maintenance-watch
-4. page/controller/panel composition regrow prevention
-5. continued task-runtime decomposition only where focused behavior coverage is
+4. repo-wide `strict` / `creative` / `responseMode` maintenance-watch, now
+   mostly limited to protocol/task payload naming
+5. page/controller/panel composition regrow prevention
+6. continued task-runtime decomposition only where focused behavior coverage is
    preserved
-6. mojibake cleanup in still-active owner files
-7. user-facing text drift outside owner files
+7. mojibake cleanup in still-active owner files
+8. user-facing text drift outside owner files
 
 ## Maintenance Checkpoint
 
@@ -151,17 +153,19 @@ Reference:
 
 ### Next Default Slice
 
-If no higher-priority product bug appears first, continue at the Drive/device
-ingest boundary around `hooks/useGoogleDrivePicker.ts`.
+If no higher-priority product bug appears first, do not continue broad splitting
+by default. Start from the next boundary that product work actually touches.
+Drive/device ingest remains under watch, but the obvious low-risk extraction
+slices have already been completed.
 
 Before editing:
 
-1. check Drive/import live references and unused residue
-2. keep `googleDriveApi.ts` as the Drive HTTP owner
-3. keep `googleDrivePickerBuilders.ts` as importability/Picker
-   action/summary/stored-text and Drive UI-feedback message shaping owner
-4. choose one low-risk follow-up split such as picker state or import execution
-5. verify with focused Drive picker tests and the full baseline
+1. classify the touched boundary as `active refactor`, `maintenance-watch`, or
+   `stabilized`
+2. check live references and unused residue before moving code
+3. keep existing owner modules intact unless new duplication proves otherwise
+4. add or move one narrow regression test for the touched boundary
+5. verify with focused tests and the full baseline
 
 ## Immediate Action Plan
 
