@@ -37,7 +37,7 @@ Verification baseline from the latest completed check:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test status: `160 files / 693 tests`
+- current test status: `160 files / 695 tests`
 
 ## What Not To Do Next
 
@@ -137,6 +137,8 @@ Status:
 - Google AI Mode continuation uses compact markers such as `(#1)`, sends
   `continuable=true`, keeps location out of the query text, and preserves
   reconstructed markdown/code/table content from SerpAPI responses
+- Search library entries suppress AI Mode `References` sections and inline
+  `[refs: ...]` markers from display and generated library summaries
 - `searchHistoryStorage.ts` owns persisted search-history settings and
   localStorage load/save helpers used by `useSearchHistory.ts`
 - `lib/app/google-drive/googleDriveApi.ts` owns Drive HTTP fetch/upload/listing

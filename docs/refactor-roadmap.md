@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `160 files / 693 tests`
+- test status: `160 files / 695 tests`
 
 This roadmap should now be read together with:
 
@@ -337,6 +337,8 @@ Recent progress:
 - Google AI Mode continuation now uses compact markers such as `(#1)`,
   sends `continuable=true`, keeps location out of the query text, and preserves
   reconstructed markdown/code/table content from SerpAPI responses
+- Search library entries now suppress AI Mode `References` sections and inline
+  `[refs: ...]` markers from display and generated library summaries
 - search-history localStorage load/save now lives in
   `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search
   settings out of `useSearchHistory.ts`
