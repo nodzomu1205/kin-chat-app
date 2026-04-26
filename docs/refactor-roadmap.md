@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `155 files / 677 tests`
+- test status: `156 files / 679 tests`
 
 This roadmap should now be read together with:
 
@@ -322,6 +322,12 @@ Recent progress:
 - library-summary usage normalization for ingest accounting now flows through
   `lib/app/ingest/ingestUsage.ts`, keeping file/Drive/search/task-snapshot
   summary usage on one ingest-bucket conversion path
+- YouTube transcript batch request shaping now lives in
+  `sendToGptYoutubeFlowBuilders.ts`, keeping queue splitting and transcript
+  request bodies out of `useGptMessageActions.ts`
+- search-history localStorage load/save now lives in
+  `lib/app/search-history/searchHistoryStorage.ts`, keeping persisted search
+  settings out of `useSearchHistory.ts`
 - app-side ingest modules now live under `lib/app/ingest/`
 - send-to-GPT app-side modules now live under `lib/app/send-to-gpt/`
 - memory-interpreter app-side modules now live under

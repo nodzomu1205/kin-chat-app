@@ -37,7 +37,7 @@ Verification baseline from the latest completed check:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test status: `155 files / 677 tests`
+- current test status: `156 files / 679 tests`
 
 ## What Not To Do Next
 
@@ -125,6 +125,10 @@ Status:
 - `ingestUsage.ts` owns library-summary usage normalization before ingest
   bucket accounting, shared by file/Drive import summaries, search summaries,
   and task-snapshot summaries
+- `sendToGptYoutubeFlowBuilders.ts` owns YouTube transcript batch request
+  shaping and transcript request bodies used by `useGptMessageActions.ts`
+- `searchHistoryStorage.ts` owns persisted search-history settings and
+  localStorage load/save helpers used by `useSearchHistory.ts`
 - `lib/app/google-drive/googleDriveApi.ts` owns Drive HTTP fetch/upload/listing
 - `googleDrivePickerBuilders.ts` owns Drive importability, folder index text,
   Picker selected-document action resolution, upload destination prompts, Drive
