@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `157 files / 681 tests`
+- test status: `158 files / 683 tests`
 
 This roadmap should now be read together with:
 
@@ -325,6 +325,9 @@ Recent progress:
 - YouTube transcript batch request shaping now lives in
   `sendToGptYoutubeFlowBuilders.ts`, keeping queue splitting and transcript
   request bodies out of `useGptMessageActions.ts`
+- queued YouTube transcript request execution now lives in
+  `sendToGptYoutubeFlow.ts`, keeping transcript fetch/storage/Kin handoff side
+  effects out of `useGptMessageActions.ts`
 - YouTube transcript library import and send-to-Kin execution now live in
   `youtubeTranscriptLibraryFlows.ts`, keeping transcript fetch/storage/Kin side
   effects out of `useGptMessageActions.ts`
