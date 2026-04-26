@@ -155,7 +155,8 @@ export default function LibraryItemCardHeader({
           style={iconButton("danger")}
           title={GPT_LIBRARY_DRAWER_TEXT.deleteTitle}
         >
-          ﾃ・        </button>
+          ×
+        </button>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import {
 import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
 import {
   buildFileIngestBridgeState as buildFileIngestBridgeStateFromBuilders,
+  buildFileIngestSavedInfoMessage,
   buildIngestKinInjectionBlocks as buildIngestKinInjectionBlocksFromBuilders,
   resolveIngestExtractionArtifacts as resolveIngestExtractionArtifactsFromBuilders,
 } from "@/lib/app/ingest/fileIngestFlowBuilders";
@@ -232,10 +233,10 @@ export async function runFileIngestFlow({
     recordIngestedDocument(storedDocument);
     appendInfo(
       setGptMessages,
-      [
-        `繝輔ぃ繧､繝ｫ繧偵Λ繧､繝悶Λ繝ｪ縺ｫ菫晏ｭ倥＠縺ｾ縺励◆: ${fileTitle}`,
-        `謚ｽ蜃ｺ譁・ｭ玲焚: ${storedDocumentText.length.toLocaleString("ja-JP")} chars`,
-      ].join("\n")
+      buildFileIngestSavedInfoMessage({
+        fileTitle,
+        storedDocumentCharCount: storedDocumentText.length,
+      })
     );
 
     const chatContextBody = buildSummaryPrefixedContent(

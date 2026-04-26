@@ -19,6 +19,10 @@ import {
   formatTaskFlowErrorMessage,
   startTaskFlowRequest,
 } from "@/lib/app/task-draft/taskDraftFlowShared";
+import {
+  buildLibraryTaskAttachIntent,
+  buildLibraryTaskFormationIntent,
+} from "@/lib/app/task-draft/taskDraftIntentText";
 import type { AttachSearchResultToTaskFlowArgs } from "@/lib/app/task-draft/taskDraftActionFlowTypes";
 import type { Message } from "@/types/chat";
 import {
@@ -128,7 +132,9 @@ export async function runAttachSearchResultToTaskFlow(
         gptStateRef: args.gptStateRef,
         requestRecentMessages,
         chatRecentLimit: args.chatRecentLimit,
-        lastUserIntent: `郢晢ｽｩ郢ｧ・､郢晄じﾎ帷ｹ晢ｽｪ郢ｧ・｢郢ｧ・､郢昴・ﾎ堤ｸｲ繝ｻ{taskLibraryItem?.title || resolvedTitle}邵ｲ髦ｪ・定ｭ・ｽｰ髫穂ｸ翫■郢ｧ・ｹ郢ｧ・ｯ邵ｺ・ｫ陷ｿ蜀ｶ・ｾ・ｼ`,
+        lastUserIntent: buildLibraryTaskFormationIntent(
+          taskLibraryItem?.title || resolvedTitle
+        ),
         activeReference: {
           title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
           kind: taskLibraryItem?.itemType || "library",
@@ -227,7 +233,9 @@ export async function runAttachSearchResultToTaskFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `郢晢ｽｩ郢ｧ・､郢晄じﾎ帷ｹ晢ｽｪ郢ｧ・｢郢ｧ・､郢昴・ﾎ堤ｸｲ繝ｻ{taskLibraryItem?.title || resolvedTitle}邵ｲ髦ｪ・堤ｹｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ邵ｺ・ｫ驍ｨ・ｱ陷ｷ繝ｻ`,
+      lastUserIntent: buildLibraryTaskAttachIntent(
+        taskLibraryItem?.title || resolvedTitle
+      ),
       activeReference: {
         title: taskLibraryItem?.title || taskSearchContext?.query || resolvedTitle,
         kind: taskLibraryItem?.itemType || "library",

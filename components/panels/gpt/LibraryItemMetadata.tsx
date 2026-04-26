@@ -20,7 +20,7 @@ export default function LibraryItemMetadata({
     <div style={{ display: "grid", gap: 6, fontSize: 13, color: "#334155" }}>
       {item.filename ? (
         <div>
-          <strong>繝輔ぃ繧､繝ｫ蜷・</strong> {item.filename}
+          <strong>{GPT_LIBRARY_DRAWER_TEXT.fields.filename}:</strong> {item.filename}
         </div>
       ) : null}
       <div>

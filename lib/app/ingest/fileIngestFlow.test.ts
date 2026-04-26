@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFileIngestBridgeState,
+  buildFileIngestSavedInfoMessage,
   buildIngestKinInjectionBlocks,
   resolveIngestExtractionArtifacts,
   buildStoredDocumentSummary,
 } from "@/lib/app/ingest/fileIngestFlowBuilders";
+
+const MOJIBAKE_PATTERN = /[繧縺譁荳蜿邵蝨郢陷隴驛髫鬮隰闖]/u;
 
 describe("fileIngestFlow helpers", () => {
   it("builds stored document summary through the builder module", () => {
@@ -14,6 +17,18 @@ describe("fileIngestFlow helpers", () => {
         "Notes"
       )
     ).toContain("alpha.");
+  });
+
+  it("builds saved info messages without mojibake", () => {
+    const result = buildFileIngestSavedInfoMessage({
+      fileTitle: "日本起業戦略メモ",
+      storedDocumentCharCount: 12345,
+    });
+
+    expect(result).toBe(
+      "ファイルをライブラリに保存しました: 日本起業戦略メモ\n抽出文字数: 12,345 chars"
+    );
+    expect(result).not.toMatch(MOJIBAKE_PATTERN);
   });
 
   it("resolves extraction artifacts from selected lines", () => {

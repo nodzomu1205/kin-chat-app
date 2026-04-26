@@ -12,6 +12,7 @@ import {
   formatTaskFlowErrorMessage,
   startTaskFlowRequest,
 } from "@/lib/app/task-draft/taskDraftFlowShared";
+import { buildTaskDeepenIntent } from "@/lib/app/task-draft/taskDraftIntentText";
 import type { DeepenTaskFromLastFlowArgs } from "@/lib/app/task-draft/taskDraftActionFlowTypes";
 import type { Message } from "@/types/chat";
 import {
@@ -111,7 +112,7 @@ export async function runDeepenTaskFromLastFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `郢ｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ雎ｺ・ｱ隰怜･・・ ${resolvedTitle}`,
+      lastUserIntent: buildTaskDeepenIntent(resolvedTitle),
       applyChatUsage: args.applyChatUsage,
       applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,

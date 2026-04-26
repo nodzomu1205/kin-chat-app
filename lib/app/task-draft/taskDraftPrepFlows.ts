@@ -20,6 +20,11 @@ import {
   formatTaskFlowErrorMessage,
   startTaskFlowRequest,
 } from "@/lib/app/task-draft/taskDraftFlowShared";
+import {
+  buildLatestGptTaskUpdateIntent,
+  buildTaskFormationIntent,
+  buildTaskUpdateIntent,
+} from "@/lib/app/task-draft/taskDraftIntentText";
 import { findLatestTransferableGptMessage } from "@/lib/app/task-support/latestGptMessage";
 import {
   mergeTaskTitleInstructions,
@@ -111,7 +116,7 @@ export async function runPrepTaskFromInputFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `郢ｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ隰ｨ・ｴ騾・・ ${resolvedTitle}`,
+      lastUserIntent: buildTaskFormationIntent(resolvedTitle),
       applyChatUsage: args.applyChatUsage,
       applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,
@@ -242,7 +247,7 @@ export async function runUpdateTaskFromInputFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `郢ｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ隴厄ｽｴ隴・ｽｰ: ${resolvedTitle}`,
+      lastUserIntent: buildTaskUpdateIntent(resolvedTitle),
       applyChatUsage: args.applyChatUsage,
       applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,
@@ -370,7 +375,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       gptStateRef: args.gptStateRef,
       requestRecentMessages,
       chatRecentLimit: args.chatRecentLimit,
-      lastUserIntent: `隴崢隴・ｽｰGPT郢晢ｽｬ郢ｧ・ｹ邵ｺ荵晢ｽ臥ｹｧ・ｿ郢ｧ・ｹ郢ｧ・ｯ隴厄ｽｴ隴・ｽｰ: ${resolvedTitle}`,
+      lastUserIntent: buildLatestGptTaskUpdateIntent(resolvedTitle),
       applyChatUsage: args.applyChatUsage,
       applyCompressionUsage: args.applyCompressionUsage,
       handleGptMemory: args.handleGptMemory,

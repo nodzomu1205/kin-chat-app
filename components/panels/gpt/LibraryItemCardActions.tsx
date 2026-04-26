@@ -152,7 +152,7 @@ export default function LibraryItemCardActions({
           title={GPT_GOOGLE_DRIVE_TEXT.cardActions.showInChat}
           aria-label={GPT_GOOGLE_DRIVE_TEXT.cardActions.showInChat}
         >
-          町
+          見
         </button>
         <button
           type="button"
@@ -161,7 +161,7 @@ export default function LibraryItemCardActions({
           title={GPT_GOOGLE_DRIVE_TEXT.cardActions.sendToKin}
           aria-label={GPT_GOOGLE_DRIVE_TEXT.cardActions.sendToKin}
         >
-          鐙
+          送
         </button>
         <button
           type="button"
@@ -170,7 +170,8 @@ export default function LibraryItemCardActions({
           title={GPT_GOOGLE_DRIVE_TEXT.cardActions.uploadToDrive}
           aria-label={GPT_GOOGLE_DRIVE_TEXT.cardActions.uploadToDrive}
         >
-          笘・        </button>
+          保
+        </button>
       </div>
     </div>
   );

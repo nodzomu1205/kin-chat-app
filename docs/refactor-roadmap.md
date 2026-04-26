@@ -887,6 +887,15 @@ Next:
   search preview, and stored-document editing to local components. The unused
   `SearchRawDrawer.tsx` wrapper was removed, and the library drawer component
   test now runs in the default Vitest baseline
+- Library drawer user-facing mojibake in item metadata and right-side card
+  action glyphs was repaired in the local text owner/components, with
+  `LibraryDrawer.test.tsx` now pinning the visible labels and the card action
+  button text (`↑`, `↓`, `×`, `見`, `送`, `保`)
+- Memory-facing mojibake from ingest/task flows was repaired at the source:
+  task draft last-intent labels now live in `taskDraftIntentText.ts`, file
+  ingest saved info text is built/tested through `fileIngestFlowBuilders.ts`,
+  and YouTube transcript cleanup regexes were restored to readable
+  Japanese-safe punctuation/music-marker handling
 - `GptDrawerRouter.tsx` now delegates pure device-import option shaping,
   meta/task/library/settings drawer prop bundles, and memory-settings
   reset/save shaping to `GptDrawerRouterHelpers.ts`, with focused helper

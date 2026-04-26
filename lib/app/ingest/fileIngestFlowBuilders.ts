@@ -47,6 +47,16 @@ export function buildStoredDocumentSummary(text: string, fallbackTitle: string) 
   return summary.length > 220 ? `${summary.slice(0, 220).trimEnd()}...` : summary;
 }
 
+export function buildFileIngestSavedInfoMessage(params: {
+  fileTitle: string;
+  storedDocumentCharCount: number;
+}) {
+  return [
+    `ファイルをライブラリに保存しました: ${params.fileTitle}`,
+    `抽出文字数: ${params.storedDocumentCharCount.toLocaleString("ja-JP")} chars`,
+  ].join("\n");
+}
+
 export function resolveIngestExtractionArtifacts(params: {
   data: IngestResult;
   fileName: string;

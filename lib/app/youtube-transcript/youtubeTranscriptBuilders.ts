@@ -2,9 +2,9 @@ import { buildKinSysInfoBlock } from "@/lib/app/kin-protocol/kinStructuredProtoc
 import { buildYouTubeTranscriptResponseBlock } from "@/lib/app/send-to-gpt/sendToGptProtocolBuilders";
 import { splitTextIntoKinChunks } from "@/lib/app/task-runtime/transformIntent";
 
-const CJK_CHAR = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}繝ｼ]/u;
-const SENTENCE_END = /[縲ゑｼ・ｼ・?縲阪擾ｼ・]$/u;
-const OPENING_PUNCT = /^[縲後趣ｼ・]/u;
+const CJK_CHAR = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]/u;
+const SENTENCE_END = /[。．.!?！？、，…]$/u;
+const OPENING_PUNCT = /^[「『（(［[]/u;
 
 function shouldJoinWithoutSpace(previous: string, next: string) {
   const previousEnd = previous.slice(-1);
@@ -30,7 +30,7 @@ function normalizeTranscriptLine(line: string) {
     .replace(/^\[[^\]]+\]\s*/g, "")
     .replace(/^\d{1,2}:\d{2}(?::\d{2})?\s+/g, "")
     .replace(
-      /\[(?:髻ｳ讌ｽ|諡肴焔|隨代＞|音楽|BGM|Music|Applause|Laughter)\]/gi,
+      /\[(?:音楽|拍手|歓声|笑い|BGM|Music|Applause|Laughter)\]/gi,
       ""
     )
     .replace(/[ \t]+/g, " ")
@@ -52,9 +52,10 @@ function joinTranscriptLines(lines: string[]) {
   }
 
   return output
-    .replace(/\s+([縲√ゑｼ・ｼ・?])/gu, "$1")
-    .replace(/([縲後趣ｼ・])\s+/gu, "$1")
-    .replace(/\s+([縲阪擾ｼ・])/gu, "$1")
+    .replace(/\s+([、。．.!?！？])/gu, "$1")
+    .replace(/\s+([「『（(［[])/gu, "$1")
+    .replace(/([「『（(［[])\s+/gu, "$1")
+    .replace(/\s+([」』）)］\]])/gu, "$1")
     .replace(/\s{2,}/g, " ")
     .trim();
 }

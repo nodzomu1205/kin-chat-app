@@ -227,6 +227,7 @@ export const GPT_LIBRARY_DRAWER_TEXT = {
   edit: "編集",
   previewTitle: "プレビュー",
   fields: {
+    filename: "ファイル名",
     type: "種別",
     summary: "Summary",
     none: "なし",

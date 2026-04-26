@@ -14,6 +14,15 @@ describe("youtubeTranscriptBuilders", () => {
     expect(buildYouTubeTranscriptExcerpt(cleaned, 5)).toBe("hello...");
   });
 
+  it("cleans Japanese transcript punctuation without mojibake", () => {
+    const cleaned = cleanYouTubeTranscriptText(
+      "[音楽]\n00:00 日本語\n00:02 の動画です 。\n00:04 「 起業 」について"
+    );
+
+    expect(cleaned).toBe("日本語の動画です。「起業」について");
+    expect(cleaned).not.toMatch(/[繧縺譁荳蜿邵蝨郢陷隴驛髫鬮隰闖]/u);
+  });
+
   it("builds kin blocks from a transcript", () => {
     const blocks = buildYouTubeTranscriptKinBlocks({
       cleanTranscript: "hello world",

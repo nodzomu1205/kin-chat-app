@@ -104,6 +104,16 @@ Latest maintenance movement:
   item header/actions/metadata, search preview, and stored-document editing to
   local components; the unused `SearchRawDrawer.tsx` wrapper is gone, and the
   library drawer render test is part of the default Vitest baseline
+- Library drawer user-facing mojibake in item metadata and right-side card
+  action glyphs was repaired in the local text owner/components
+  (`gptUiText.ts`, `LibraryItemMetadata.tsx`, `LibraryItemCardHeader.tsx`,
+  `LibraryItemCardActions.tsx`), with `LibraryDrawer.test.tsx` pinning the
+  visible labels and icon text
+- Memory-facing mojibake from ingest/task flows was repaired at the source:
+  task draft last-intent labels now come from `taskDraftIntentText.ts`,
+  file-ingest saved info text is covered in `fileIngestFlowBuilders.ts`, and
+  YouTube transcript punctuation/music-marker cleanup uses readable
+  Japanese-safe regexes
 - `GptDrawerRouter.tsx` now keeps drawer selection in the router while
   delegating device-import option shaping, meta/task/library/settings drawer prop
   bundles, and memory-settings reset/save value shaping to
