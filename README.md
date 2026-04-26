@@ -154,6 +154,8 @@ Recent regression fixes and maintainability wins include:
 - task-intent approval wording is now deterministic and rule-aware (`up_to` / `exact` / `at_least` / `around`) instead of relying on drifting fallback prose
 - response-mode cleanup now removes the dead settings/persistence carry-through from GPT options and page/panel workspace builders, and the controller/service boundary now names the fixed runtime value `reasoningMode`
 - task-intent fallback, current-task intent refresh, Kin task start, Kin transfer, transform-intent, and send-to-GPT request internals now use `reasoningMode` for the LLM strict/creative runtime value; remaining `responseMode` references are protocol/task payload semantics such as structured results or ack modes
+- `TaskResponseMode` now only allows the live `STRUCTURED_RESULT` payload
+  mode; the unused task-side silent result mode was removed
 - app-side send-to-GPT payload boundaries now type `reasoningMode` as the
   shared `ReasoningMode` instead of a free string, while server entrypoints
   still normalize unknown request input

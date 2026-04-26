@@ -105,6 +105,9 @@ Latest Drive maintenance progress:
   `sendToGptApiTypes.ts`, `sendToGptFlowArtifactTypes.ts`, and
   `sendToGptFlowRequestPayload.ts`. The new request-payload test pins the
   payload shape while keeping server-side unknown normalization intact.
+- Task payload `TaskResponseMode` now only allows the live
+  `STRUCTURED_RESULT` mode; the unused silent result variant was removed after
+  focused task client/server payload tests.
 
 ## Current Verification State
 

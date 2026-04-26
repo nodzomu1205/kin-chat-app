@@ -11,7 +11,7 @@ export type TaskPriority = "HIGH" | "MID" | "LOW";
 
 export type TaskVisibility = "INTERNAL" | "USER_VISIBLE";
 
-export type TaskResponseMode = "SILENT_RESULT" | "STRUCTURED_RESULT";
+export type TaskResponseMode = "STRUCTURED_RESULT";
 
 export type TaskRequest = {
   type: TaskType;

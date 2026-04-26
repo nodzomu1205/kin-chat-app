@@ -54,6 +54,9 @@ Latest status update:
 - App-side send-to-GPT request boundaries now type `reasoningMode` as the
   shared `ReasoningMode`; server request normalization remains the trust
   boundary for unknown input.
+- Task payload `TaskResponseMode` now only allows the live
+  `STRUCTURED_RESULT` mode; the unused silent result variant was removed with
+  focused task payload tests.
 - Active-code mojibake search currently finds only regression-test patterns,
   not user-facing owner files.
 

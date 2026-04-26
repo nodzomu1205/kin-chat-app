@@ -948,6 +948,9 @@ Next:
 - App-side send-to-GPT chat payload boundaries now type `reasoningMode` as the
   shared `ReasoningMode` instead of a free `string`, with focused payload
   coverage in `sendToGptFlowRequestPayload.test.ts`
+- Task payload `TaskResponseMode` now only allows the live
+  `STRUCTURED_RESULT` mode, removing the unused silent result variant while
+  keeping task client/server payload tests pinned
 - `ReceivedDocsDrawer.tsx` was renamed to `LibraryDrawer.tsx`; it now delegates
   import controls, tabs, library item shell, item header/actions/metadata,
   search preview, and stored-document editing to local components. The unused
