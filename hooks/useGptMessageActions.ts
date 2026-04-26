@@ -1,14 +1,8 @@
-import { generateId } from "@/lib/shared/uuid";
 import { useState } from "react";
+import { generateId } from "@/lib/shared/uuid";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
 import { receiveLastKinResponseFlow } from "@/lib/app/task-runtime/kinTaskFlow";
-import {
-  extractPreferredKinTransferText,
-} from "@/lib/app/kin-protocol/kinStructuredProtocol";
-import {
-  cleanYouTubeTranscriptText,
-} from "@/lib/app/youtube-transcript/youtubeTranscriptText";
-import { buildYouTubeTranscriptKinBlocks } from "@/lib/app/youtube-transcript/youtubeTranscriptKinBlocks";
+import { extractPreferredKinTransferText } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import {
   buildYoutubeTranscriptAssistantMessage,
   buildYoutubeTranscriptDocumentRecord,
@@ -20,6 +14,10 @@ import {
   buildYoutubeTranscriptSuccessArtifacts,
   extractYouTubeVideoIdFromUrl,
 } from "@/lib/app/send-to-gpt/sendToGptTranscriptHelpers";
+import {
+  runImportYouTubeTranscriptFlow,
+  runSendYouTubeTranscriptToKinFlow,
+} from "@/lib/app/send-to-gpt/youtubeTranscriptLibraryFlows";
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { UseGptMessageActionsArgs } from "@/hooks/chatPageActionTypes";
 import {
@@ -31,14 +29,11 @@ import type { Message, SourceItem } from "@/types/chat";
 
 export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   const [pendingYoutubeTranscriptQueue, setPendingYoutubeTranscriptQueue] =
-    useState<
-      | {
-          taskId: string;
-          outputMode: string;
-          items: Array<{ url: string; actionId: string }>;
-        }
-      | null
-    >(null);
+    useState<{
+      taskId: string;
+      outputMode: string;
+      items: Array<{ url: string; actionId: string }>;
+    } | null>(null);
 
   const fetchAndPrepareYoutubeTranscript = async (params: {
     transcriptUrl: string;
@@ -246,7 +241,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
 
     await runSendToGptFlow({
       ...buildCommonFlowArgs(),
-      gptInput: `検索: ${trimmedQuery}`,
+      gptInput: `讀懃ｴ｢: ${trimmedQuery}`,
       searchMode: "ai",
       searchEngines: ["google_ai_mode"],
       searchLocation: args.searchLocation,
@@ -255,152 +250,29 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   };
 
   const importYouTubeTranscript = async (source: SourceItem) => {
-    const videoId = source.videoId?.trim();
-    if (!videoId) return;
-
-    args.setGptLoading(true);
-    try {
-      const response = await fetch("/api/youtube-transcript", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          videoId,
-          title: source.title,
-          channelName: source.channelName,
-          duration: source.duration,
-          generateSummary: args.autoGenerateFileImportSummary,
-        }),
-      });
-
-      const data = (await response.json()) as {
-        title?: string;
-        filename?: string;
-        summary?: string;
-        text?: string;
-        cleanText?: string;
-        usage?: {
-          inputTokens: number;
-          outputTokens: number;
-          totalTokens: number;
-        };
-        error?: string;
-      };
-
-      if (!response.ok || !data.text) {
-        throw new Error(data.error || "transcript import failed");
-      }
-      args.applyIngestUsage(normalizeUsage(data.usage));
-
-      args.recordIngestedDocument({
-        title: data.title || `${source.title} [Transcript]`,
-        filename: data.filename || `youtube-${videoId}.txt`,
-        text: cleanYouTubeTranscriptText(data.cleanText || data.text),
-        summary: data.summary || "",
-        taskId: args.currentTaskDraft.taskId || undefined,
-        charCount: cleanYouTubeTranscriptText(data.cleanText || data.text).length,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-
-      args.setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: `YouTube の文字起こしをライブラリに保存しました: ${data.title || source.title}`,
-          meta: {
-            kind: "task_info",
-            sourceType: "file_ingest",
-          },
-        },
-      ]);
-    } catch (error) {
-      console.error(error);
-      args.setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "YouTube の文字起こし取込に失敗しました。",
-          meta: {
-            kind: "task_info",
-            sourceType: "file_ingest",
-          },
-        },
-      ]);
-    } finally {
-      args.setGptLoading(false);
-    }
+    await runImportYouTubeTranscriptFlow({
+      source,
+      autoGenerateSummary: args.autoGenerateFileImportSummary,
+      currentTaskId: args.currentTaskDraft.taskId,
+      setGptLoading: args.setGptLoading,
+      setGptMessages: args.setGptMessages,
+      applyIngestUsage: args.applyIngestUsage,
+      recordIngestedDocument: args.recordIngestedDocument,
+    });
   };
 
   const sendYouTubeTranscriptToKin = async (source: SourceItem) => {
-    const videoId = source.videoId?.trim();
-    if (!videoId) return;
-
-    args.setGptLoading(true);
-    try {
-      const response = await fetch("/api/youtube-transcript", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          videoId,
-          title: source.title,
-          channelName: source.channelName,
-          duration: source.duration,
-          generateSummary: args.autoGenerateFileImportSummary,
-        }),
-      });
-
-      const data = (await response.json()) as {
-        title?: string;
-        text?: string;
-        cleanText?: string;
-        usage?: {
-          inputTokens: number;
-          outputTokens: number;
-          totalTokens: number;
-        };
-        error?: string;
-      };
-
-      if (!response.ok || !(data.cleanText || data.text)) {
-        throw new Error(data.error || "transcript kin transfer failed");
-      }
-      args.applyIngestUsage(normalizeUsage(data.usage));
-
-      const cleanTranscript = cleanYouTubeTranscriptText(data.cleanText || data.text || "");
-      const blocks = buildYouTubeTranscriptKinBlocks({
-        cleanTranscript,
-        title: source.title,
-        channelName: source.channelName,
-        url: source.link,
-      });
-
-      args.setKinInput(blocks[0] || "");
-      args.setPendingKinInjectionBlocks(blocks.length > 1 ? blocks : []);
-      args.setPendingKinInjectionIndex(0);
-      args.focusKinPanel();
-    } catch (error) {
-      console.error(error);
-      args.setGptMessages((prev) => [
-        ...prev,
-        {
-          id: generateId(),
-          role: "gpt",
-          text: "YouTube の文字起こしを Kin 送付用に整形できませんでした。",
-          meta: {
-            kind: "task_info",
-            sourceType: "manual",
-          },
-        },
-      ]);
-    } finally {
-      args.setGptLoading(false);
-    }
+    await runSendYouTubeTranscriptToKinFlow({
+      source,
+      autoGenerateSummary: args.autoGenerateFileImportSummary,
+      setGptLoading: args.setGptLoading,
+      setGptMessages: args.setGptMessages,
+      applyIngestUsage: args.applyIngestUsage,
+      setKinInput: args.setKinInput,
+      setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
+      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      focusKinPanel: args.focusKinPanel,
+    });
   };
 
   const sendLastKinToGptDraft = () => {
@@ -449,5 +321,3 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     sendLastGptToKinInfo,
   };
 }
-
-
