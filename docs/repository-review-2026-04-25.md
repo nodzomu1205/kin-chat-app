@@ -37,7 +37,7 @@ Verification baseline from the latest completed check:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test status: `156 files / 679 tests`
+- current test status: `157 files / 681 tests`
 
 ## What Not To Do Next
 
@@ -127,6 +127,8 @@ Status:
   and task-snapshot summaries
 - `sendToGptYoutubeFlowBuilders.ts` owns YouTube transcript batch request
   shaping and transcript request bodies used by `useGptMessageActions.ts`
+- `youtubeTranscriptLibraryFlows.ts` owns YouTube transcript library import and
+  send-to-Kin execution used by `useGptMessageActions.ts`
 - `searchHistoryStorage.ts` owns persisted search-history settings and
   localStorage load/save helpers used by `useSearchHistory.ts`
 - `lib/app/google-drive/googleDriveApi.ts` owns Drive HTTP fetch/upload/listing
