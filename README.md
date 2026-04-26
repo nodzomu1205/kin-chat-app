@@ -309,3 +309,23 @@ Before large new features, continue maintainability work in this order:
 `hooks/useGptMemory.ts` and `lib/app/memory-interpreter/memoryInterpreter.ts` are now in a much safer stopping state than before. They should still be reviewed carefully when touched, but they no longer need to be the default first refactor target.
 
 For the GPT settings surface, the next step is not just helper extraction. We expect a broader section-level reorganization so that search, memory, protocol, and ingest controls are easier to scan and maintain.
+
+## Next Planned Product Work
+
+The next product slice should focus on the library tab and Kin protocol flow:
+
+1. remove the library category switcher and reclaim space
+2. replace the current Drive/device import tiles with a collapsible action area
+   that supports bulk display and bulk Kin send
+3. route library-card and bulk-library Kin sends through the same multipart
+   transport used by SYS-format sends
+4. make SYS task protocol guidance constraint-aware instead of appending every
+   protocol rule by default
+5. design Draft Preparation, Draft Modification, and File Saving protocols
+   before implementation
+
+Related maintenance work:
+
+- remove dead library filter state if no live caller remains
+- keep library aggregation and Kin multipart transport as shared, tested helpers
+- update protocol/domain docs when new protocol names and examples are finalized

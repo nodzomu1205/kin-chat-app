@@ -167,6 +167,40 @@ Before editing:
 4. add or move one narrow regression test for the touched boundary
 5. verify with focused tests and the full baseline
 
+### Next Product Slice: Library Bulk Actions And Kin Protocol Redesign
+
+The next requested work should touch three product boundaries:
+
+1. library drawer layout and action controls
+2. library-card / bulk-library Kin sending
+3. Kin draft and file-saving protocol design
+
+Planned product changes:
+
+- remove the library category switcher (`すべて`, `Kin作成文書`, `取込文書`,
+  `検索データ`)
+- expand the Google Drive / device import tile area into a collapsible library
+  action area
+- add bulk display and bulk Kin-send actions with aggregation modes:
+  `Index`, `Index + Summary`, `Index + Summary + Detail`
+- unify library-card Kin sends with the existing multipart-capable SYS send
+  path
+- make SYS task protocol rule inclusion constraint-aware instead of appending
+  unrelated protocol guidance by default
+- design Draft Preparation, Draft Modification, and File Saving protocols before
+  implementation
+
+Maintenance rules for this slice:
+
+- remove obsolete library filter state if the removed switcher is its only live
+  owner
+- keep library aggregation pure and tested outside the drawer renderer
+- use one multipart Kin transport owner; do not implement another split/send
+  path for library cards
+- keep constraint parsing and protocol-rule selection pure and directly tested
+- write protocol docs/examples before adding runtime side effects for draft
+  storage or library saving
+
 ## Immediate Action Plan
 
 This is the practical maintainability plan to follow next.

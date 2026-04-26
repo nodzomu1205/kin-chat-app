@@ -100,6 +100,22 @@ Current protocol blocks:
 - `SYS_GPT_RESPONSE`
 - `SYS_INFO`
 
+Planned protocol concepts for the next product slice:
+
+- Draft Preparation
+  - Kin asks GPT to create a draft artifact and GPT returns it with a draft id
+- Draft Modification
+  - Kin asks GPT to revise a draft by id, returning either a local patch/context
+    response or the full revised draft
+- File Saving
+  - Kin asks GPT to save a draft or Kin-authored content into the library;
+    single-message content can save directly, while multipart content should
+    save only after final part aggregation
+
+These names are design placeholders until the protocol text, parser behavior,
+and runtime/storage ownership are tested. Do not implement side effects before
+the protocol contract is documented and covered.
+
 Current main files:
 
 - [`lib/task/taskRuntimeProtocol.ts`](../lib/task/taskRuntimeProtocol.ts)
@@ -135,6 +151,15 @@ Current main files:
 
 - [`hooks/useReferenceLibrary.ts`](../hooks/useReferenceLibrary.ts)
 - [`hooks/useStoredDocuments.ts`](../hooks/useStoredDocuments.ts)
+
+Next planned library workflow changes:
+
+- remove the category switcher from the library tab
+- add collapsible bulk library actions for screen display and Kin send
+- support aggregation modes: `Index`, `Index + Summary`, and
+  `Index + Summary + Detail`
+- route library-card and bulk-library Kin sends through the same multipart
+  transport owner
 
 ### Ingest
 

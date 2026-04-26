@@ -74,6 +74,154 @@ Concrete next default item:
 4. keep existing owner modules intact unless the change proves a better owner
 5. run focused boundary tests plus the full verification baseline
 
+## Next Requested Product Work
+
+The next session should start from the library / Kin protocol product changes
+below. Treat these as product work with maintenance guardrails, not as another
+broad rescue refactor.
+
+### 1. Simplify library tabs
+
+Remove the library tab filter switcher:
+
+- `すべて`
+- `Kin作成文書`
+- `取込文書`
+- `検索データ`
+
+Goal:
+
+- recover vertical space in the library tab
+- keep filtering logic only if a live caller still needs it elsewhere
+
+Maintenance guardrail:
+
+- inspect `LibraryDrawer.tsx` and local library drawer components before editing
+- remove dead filter state/routes if the switcher was the only live owner
+- update `LibraryDrawer.test.tsx` to pin the simplified layout
+
+### 2. Expand and collapse library import/action tiles
+
+Expand the current library action tiles:
+
+- `Google Drive参照`
+- `Google Driveからインポート`
+- `デバイスからインポート`
+
+Target compact layout:
+
+1. row 1: existing three buttons
+2. row 2: `画面に一括表示` + mode dropdown
+3. row 3: `Kinに一括送信` + mode dropdown
+
+Dropdown modes:
+
+- `Index`
+- `Index + Summary`
+- `Index + Summary + Detail`
+
+The tile group must be collapsible so the expanded actions do not permanently
+consume library space.
+
+Maintenance guardrail:
+
+- keep UI text in the appropriate text-owner file
+- keep library-card aggregation separate from rendering
+- add focused tests for collapsed/expanded actions and selected aggregation mode
+
+### 3. Unify library-card Kin sending with multipart delivery
+
+Known issue:
+
+- sending a library card to Kin from the card action does not currently use the
+  same multipart delivery path as SYS-format sending
+- large sends can therefore fail from the library-card route while SYS-format
+  routes split correctly
+
+Next-session approach:
+
+1. inventory all Kin send routes from library cards, bulk library actions,
+   SYS_INFO / SYS_TASK flows, and task transfer flows
+2. identify the single multipart owner, likely under the existing Kin protocol /
+   multipart boundary
+3. route library-card and bulk-library Kin sends through that owner
+4. keep presentation-specific formatting outside the transport owner
+
+Maintenance guardrail:
+
+- do not add a second splitting implementation
+- pin a large-library-card send test that proves multipart behavior is shared
+- keep latest-GPT / task transfer behavior unchanged
+
+### 4. Make task SYS protocol rules constraint-aware
+
+Current issue:
+
+- SYS-format task sends append all protocol rules by default
+- unrelated protocol guidance can confuse Kin
+
+Target:
+
+- include only protocol guidance relevant to the task constraints
+- derive the selected rule set from `CONSTRAINTS` and task intent data
+
+Maintenance guardrail:
+
+- do not mutate the stable task constraint behavior
+- add a pure helper for constraint -> protocol-rule selection
+- test at least:
+  - no relevant constraint
+  - search-related constraint
+  - file/library/output-related constraint
+  - multiple matching constraints
+
+### 5. Redesign draft / file-saving protocol
+
+Current issue:
+
+- Kin-authored final output is saved to the library when multipart `PART x/y`
+  messages are received and the final part arrives
+- non-PART final output does not go through the same save flow
+- the current operation should be replaced by explicit draft and file-saving
+  protocols
+
+Planned protocol concepts:
+
+- Draft Preparation protocol
+  - Kin asks GPT to create a document or future artifact such as JSON or image
+  - GPT creates the draft and returns it with a GPT-issued draft number
+- Draft Modification protocol
+  - Kin specifies a draft number and asks GPT to revise it
+  - Kin can request either local patch/context-only response or full revised
+    draft
+  - if unspecified, partial response is the default
+- File Saving protocol
+  - Kin specifies a draft number and asks GPT to save that draft as a library
+    file
+  - Kin-authored content can also include this protocol; single-message content
+    saves directly, multipart content saves after final part aggregation
+
+Maintenance guardrail:
+
+- design protocol names and examples before implementation
+- keep draft registry/storage separate from library file persistence
+- keep multipart aggregation as transport/input assembly, not as the file-saving
+  authority
+- add parser/runtime tests before UI wiring
+- update `docs/domain-model.md` and Kin protocol docs when protocol names are
+  finalized
+
+Recommended implementation order:
+
+1. library tab simplification
+2. collapsible library action tile UI without bulk side effects
+3. shared library aggregation helper for `Index` / `Summary` / `Detail`
+4. unified Kin multipart send path for card and bulk sends
+5. constraint-aware SYS task protocol rule selection
+6. protocol design doc for Draft Preparation / Draft Modification / File Saving
+7. parser/runtime implementation for the new protocols
+8. library save integration for explicit File Saving protocol
+
 Latest Drive maintenance progress:
 
 - Drive GPT status message shaping now routes through
