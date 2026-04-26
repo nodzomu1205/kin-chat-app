@@ -60,6 +60,9 @@ describe("engineRequestBuilders", () => {
       location: "Cape Town, South Africa",
       num: 4,
       subsequent_request_token: "TOKEN-1",
+      extraParams: {
+        continuable: "true",
+      },
     });
     expect(buildYoutubeSearchRequest(request)).toEqual({
       engine: "youtube",
@@ -68,5 +71,22 @@ describe("engineRequestBuilders", () => {
         search_query: "coffee shops",
       },
     });
+  });
+
+  it("does not append location to Google AI Mode q", () => {
+    expect(
+      buildGoogleAiModeRequest({
+        query: "ロシアの経済状況について教えて下さい。",
+        location: "Japan",
+      } as SearchRequest)
+    ).toEqual(
+      expect.objectContaining({
+        q: "ロシアの経済状況について教えて下さい。",
+        location: "Japan",
+        extraParams: {
+          continuable: "true",
+        },
+      })
+    );
   });
 });

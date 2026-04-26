@@ -42,12 +42,13 @@ export function buildGoogleAiModeRequest(request: SearchRequest) {
   return {
     engine: "google_ai_mode" as const,
     serpapiLink: request.askAiModeLink,
-    q: request.continuationToken
-      ? request.query.trim()
-      : buildLocationAwareQuery(request.query, request.location),
+    q: request.query.trim(),
     location: request.location,
     num: request.maxResults ?? 5,
     subsequent_request_token: request.continuationToken,
+    extraParams: {
+      continuable: "true",
+    },
   };
 }
 

@@ -1,4 +1,5 @@
 import type { SearchContext } from "@/types/task";
+import { normalizeContinuationSeriesId } from "@/lib/search-domain/continuations";
 
 type AskAiModeCandidate = {
   question?: string;
@@ -85,7 +86,7 @@ export function getContinuationTokenFromSearchHistory(params: {
   visibleSearchHistory: SearchContext[];
   lastSearchContext: SearchContext | null;
 }) {
-  const normalizedSeriesId = params.seriesId.trim();
+  const normalizedSeriesId = normalizeContinuationSeriesId(params.seriesId);
   if (!normalizedSeriesId) return "";
 
   const pool = [
@@ -99,7 +100,7 @@ export function getContinuationTokenFromSearchHistory(params: {
         : typeof item.metadata?.seriesId === "string"
           ? String(item.metadata?.seriesId)
           : "";
-    return itemSeriesId === normalizedSeriesId;
+    return normalizeContinuationSeriesId(itemSeriesId) === normalizedSeriesId;
   });
 
   if (!matched) return "";

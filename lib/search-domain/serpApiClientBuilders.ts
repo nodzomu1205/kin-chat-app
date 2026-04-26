@@ -10,6 +10,18 @@ type SerpApiRequest = {
   extraParams?: Record<string, string | number | undefined>;
 };
 
+function applyExtraParams(
+  url: URL,
+  extraParams?: Record<string, string | number | undefined>
+) {
+  Object.entries(extraParams || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    const normalized = String(value).trim();
+    if (!normalized) return;
+    url.searchParams.set(key, normalized);
+  });
+}
+
 export function buildSerpApiUrl(params: SerpApiRequest, apiKey: string) {
   if (!apiKey) {
     throw new Error("SERP_API_KEY is not set");
@@ -20,6 +32,7 @@ export function buildSerpApiUrl(params: SerpApiRequest, apiKey: string) {
     if (!url.searchParams.get("api_key")) {
       url.searchParams.set("api_key", apiKey);
     }
+    applyExtraParams(url, params.extraParams);
     return url.toString();
   }
 
@@ -47,12 +60,7 @@ export function buildSerpApiUrl(params: SerpApiRequest, apiKey: string) {
       params.subsequent_request_token.trim()
     );
   }
-  Object.entries(params.extraParams || {}).forEach(([key, value]) => {
-    if (value === undefined || value === null) return;
-    const normalized = String(value).trim();
-    if (!normalized) return;
-    url.searchParams.set(key, normalized);
-  });
+  applyExtraParams(url, params.extraParams);
 
   return url.toString();
 }

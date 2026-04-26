@@ -122,4 +122,27 @@ describe("normalizerBuilders", () => {
     expect(payload.rawText).toContain("Result Table");
     expect(payload.rawText).toContain("Supporting links");
   });
+
+  it("keeps AI mode reconstructed markdown and code blocks", () => {
+    const payload = buildAiModePayload({
+      request: { query: "python example" },
+      aiSummary: "Python example",
+      textBlocks: [
+        {
+          type: "code_block",
+          language: "python",
+          code: "print('hello')",
+        },
+      ],
+      fullText:
+        "1. API利用の準備\n\n```python\nprint('hello')\n```\n\nUse code with caution.",
+      fallbackSources: [],
+      aiTables: [],
+      engine: "google_ai_mode",
+    });
+
+    expect(payload.rawText).toContain("```python");
+    expect(payload.rawText).toContain("print('hello')");
+    expect(payload.rawText).toContain("Use code with caution.");
+  });
 });

@@ -54,6 +54,7 @@ CONTENT:
 - Required: QUERY.
 - Optional when useful: ENGINE, LOCATION, SEARCH_GOAL, OUTPUT_MODE.
 - ENGINE may be google_search, google_ai_mode, google_news, google_local, or youtube_search.
+- For google_ai_mode continuation, append the same marker such as (#1) to QUERY on every related follow-up. Use (#2), (#3), etc. for separate threads.
 - GPT replies with <<SYS_SEARCH_RESPONSE>> using the same TASK_ID and ACTION_ID.
 - If youtube_search returns candidate videos, choose the exact video URL before sending <<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>.
 -

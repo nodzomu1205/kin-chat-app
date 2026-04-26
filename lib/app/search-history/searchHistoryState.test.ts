@@ -120,6 +120,22 @@ describe("searchHistoryState", () => {
     ).toBe("NEXT-DIRECT");
   });
 
+  it("matches continuation series ids with or without a leading hash", () => {
+    expect(
+      getContinuationTokenFromSearchHistory({
+        seriesId: "#1",
+        visibleSearchHistory: [
+          {
+            ...makeSearchContext("a"),
+            seriesId: "1",
+            continuationToken: "NEXT-1",
+          },
+        ],
+        lastSearchContext: null,
+      })
+    ).toBe("NEXT-1");
+  });
+
   it("prefers serpapi ask-ai links before generic links", () => {
     expect(
       getAskAiModeLinkFromSearchHistory({

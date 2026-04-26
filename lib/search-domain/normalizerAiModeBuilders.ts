@@ -15,12 +15,27 @@ export type AskAiModeItem = {
 
 type AiModeListItem = {
   snippet?: string;
+  text_blocks?: AiModeTextBlock[];
+  code_block?: {
+    language?: string;
+    code?: string;
+  };
 };
 
 export type AiModeTextBlock = {
   type?: string;
   snippet?: string;
   list?: AiModeListItem[];
+  text_blocks?: AiModeTextBlock[];
+  table?: unknown[];
+  formatted?: unknown;
+  language?: string;
+  code?: string;
+  code_block?: {
+    language?: string;
+    code?: string;
+  };
+  title?: string;
   reference_indexes?: number[];
 };
 
@@ -64,17 +79,99 @@ function normalizeComparableText(text: string) {
 }
 
 export function buildAiModeSummary(blocks: AiModeTextBlock[]) {
-  const snippets = blocks.flatMap((block) => {
+  const snippets = blocks.flatMap((block): string[] => {
     if (block.type === "list" && Array.isArray(block.list)) {
-      return block.list
-        .map((item) => item.snippet?.trim())
-        .filter(Boolean) as string[];
+      return block.list.flatMap((item) => [
+        ...(item.snippet?.trim() ? [item.snippet.trim()] : []),
+        ...(item.text_blocks ? buildAiModeSummary(item.text_blocks).split("\n").filter(Boolean) : []),
+      ]);
     }
     return block.snippet?.trim() ? [block.snippet.trim()] : [];
   });
 
   if (snippets.length === 0) return "";
   return snippets.join("\n");
+}
+
+function formatCodeBlock(args: { language?: string; code?: string }) {
+  const code = args.code?.trim();
+  if (!code) return [];
+  const language = args.language?.trim() || "";
+  return ["", `\`\`\`${language}`, code, "```"];
+}
+
+function pushFormattedTable(lines: string[], block: AiModeTextBlock) {
+  const formattedRows = Array.isArray(block.table)
+    ? formatTableRows(block.table)
+    : Array.isArray(block.formatted)
+      ? formatTableRows(block.formatted)
+      : "";
+  if (!formattedRows) return false;
+
+  lines.push("", formattedRows);
+  return true;
+}
+
+function pushAiModeBlock(lines: string[], block: AiModeTextBlock) {
+  const refSuffix = formatReferenceIndexes(block.reference_indexes);
+
+  if (block.type === "heading" && block.snippet?.trim()) {
+    lines.push("", `## ${block.snippet.trim()}${refSuffix}`);
+    return;
+  }
+
+  if (block.type === "code_block" || block.code?.trim()) {
+    lines.push(...formatCodeBlock({ language: block.language, code: block.code }));
+    return;
+  }
+
+  if (block.code_block?.code?.trim()) {
+    lines.push(
+      ...formatCodeBlock({
+        language: block.code_block.language,
+        code: block.code_block.code,
+      })
+    );
+    return;
+  }
+
+  if (block.type === "table" && pushFormattedTable(lines, block)) {
+    return;
+  }
+
+  if (block.type === "chart_block") {
+    const title = block.title?.trim() || block.snippet?.trim();
+    if (title) lines.push("", `> **${title}${refSuffix}**`);
+    return;
+  }
+
+  if (block.type === "list" && Array.isArray(block.list) && block.list.length > 0) {
+    lines.push("");
+    block.list.forEach((item) => {
+      const text = item.snippet?.trim();
+      if (text) {
+        lines.push(`- ${text}${refSuffix}`);
+      }
+      if (item.code_block?.code?.trim()) {
+        lines.push(
+          ...formatCodeBlock({
+            language: item.code_block.language,
+            code: item.code_block.code,
+          })
+        );
+      }
+      item.text_blocks?.forEach((nestedBlock) =>
+        pushAiModeBlock(lines, nestedBlock)
+      );
+    });
+    return;
+  }
+
+  if (block.snippet?.trim()) {
+    lines.push("", `${block.snippet.trim()}${refSuffix}`);
+  }
+
+  block.text_blocks?.forEach((nestedBlock) => pushAiModeBlock(lines, nestedBlock));
 }
 
 export function buildAiModeRawBlock(blocks: AiModeTextBlock[], fullText?: string) {
@@ -96,29 +193,7 @@ export function buildAiModeRawBlock(blocks: AiModeTextBlock[], fullText?: string
     lines.push("", trimmedFullText);
   }
 
-  blocks.forEach((block) => {
-    const refSuffix = formatReferenceIndexes(block.reference_indexes);
-
-    if (block.type === "heading" && block.snippet?.trim()) {
-      lines.push("", `## ${block.snippet.trim()}${refSuffix}`);
-      return;
-    }
-
-    if (block.type === "list" && Array.isArray(block.list) && block.list.length > 0) {
-      lines.push("");
-      block.list.forEach((item) => {
-        const text = item.snippet?.trim();
-        if (text) {
-          lines.push(`- ${text}${refSuffix}`);
-        }
-      });
-      return;
-    }
-
-    if (block.snippet?.trim()) {
-      lines.push("", `${block.snippet.trim()}${refSuffix}`);
-    }
-  });
+  blocks.forEach((block) => pushAiModeBlock(lines, block));
 
   return lines.join("\n").trim();
 }

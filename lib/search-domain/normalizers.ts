@@ -124,6 +124,7 @@ export function normalizeEngineResult(
   const aiData = result.raw as {
     ai_mode_result?: { text?: string; snippet?: string };
     answer_box?: { answer?: string; snippet?: string };
+    reconstructed_markdown?: string;
     text_blocks?: unknown;
     organic_results?: unknown;
   };
@@ -143,6 +144,7 @@ export function normalizeEngineResult(
   );
 
   const aiFullText =
+    aiData.reconstructed_markdown?.trim() ||
     aiData.ai_mode_result?.text?.trim() ||
     aiData.answer_box?.answer?.trim() ||
     aiData.answer_box?.snippet?.trim() ||

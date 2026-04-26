@@ -37,7 +37,7 @@ export function buildRuleLines(intent: TaskIntent): string[] {
       "- Use LOCATION in natural place form such as Japan or Johannesburg, South Africa; GPT will resolve locale details such as gl/hl if needed."
     );
     lines.push(
-      "- When ENGINE is google_ai_mode and you are continuing the same research thread, keep the same query wording as much as possible so GPT can reuse prior AI-mode continuity."
+      "- When ENGINE is google_ai_mode and you are continuing the same research thread, append the same continuation marker such as (#1) to QUERY. Use a different marker such as (#2) for a separate AI-mode thread."
     );
     lines.push(
       "- GPT should answer <<SYS_SEARCH_REQUEST>> with <<SYS_SEARCH_RESPONSE>> using the same TASK_ID and ACTION_ID."

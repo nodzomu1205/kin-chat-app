@@ -21,15 +21,17 @@ describe("serpApiClientBuilders", () => {
   });
 
   it("adds api_key to fallback serpapi links", () => {
-    expect(
-      buildSerpApiUrl(
-        {
-          engine: "google",
-          serpapiLink: "https://serpapi.com/search.json?engine=google&q=test",
-        },
-        "test-key"
-      )
-    ).toContain("api_key=test-key");
+    const url = buildSerpApiUrl(
+      {
+        engine: "google",
+        serpapiLink: "https://serpapi.com/search.json?engine=google&q=test",
+        extraParams: { continuable: "true" },
+      },
+      "test-key"
+    );
+
+    expect(url).toContain("api_key=test-key");
+    expect(url).toContain("continuable=true");
   });
 
   it("builds a request error message", () => {
