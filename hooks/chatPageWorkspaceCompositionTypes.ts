@@ -80,7 +80,7 @@ export type ChatPageWorkspaceCompositionState = {
     | "compactCharLimit"
     | "simpleImageCharLimit"
     | "fileReadPolicy"
-    | "driveImportAutoSummary"
+    | "autoGenerateLibrarySummary"
     | "defaultMemorySettings"
   >;
   bridge: Pick<ChatPageWorkspaceViewBridgeArgs, "autoBridgeSettings">;
@@ -181,7 +181,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeCompactCharLimit"
     | "onChangeSimpleImageCharLimit"
     | "onChangeFileReadPolicy"
-    | "onChangeDriveImportAutoSummary"
+    | "onChangeAutoGenerateLibrarySummary"
   >;
   bridge: Pick<
     ChatPageWorkspaceViewBridgeArgs,

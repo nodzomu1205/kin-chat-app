@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 import type {
@@ -143,15 +143,15 @@ export function IngestSettingsSection(props: {
 }
 
 export function LibraryCardSummarySettingsSection(props: {
-  driveImportAutoSummary: boolean;
-  onChangeDriveImportAutoSummary: (value: boolean) => void;
+  autoGenerateLibrarySummary: boolean;
+  onChangeAutoGenerateLibrarySummary: (value: boolean) => void;
 }) {
   return (
     <div style={sectionCard}>
       <ToggleButtons
         label={GPT_INGEST_SETTINGS_TEXT.autoSummaryLabel}
-        checked={props.driveImportAutoSummary}
-        onChange={props.onChangeDriveImportAutoSummary}
+        checked={props.autoGenerateLibrarySummary}
+        onChange={props.onChangeAutoGenerateLibrarySummary}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, describe, expect, it, vi } from "vitest";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
 import {
   buildNormalizedRequestText as buildEffectiveRequestText,
@@ -54,6 +54,7 @@ describe("runSendToGptFlow", () => {
     await runSendToGptFlow({
       gptInput: inputValue,
       gptLoading: false,
+      autoGenerateLibrarySummary: true,
       processMultipartTaskDoneText: () => null,
       taskProtocolRuntime: {
         currentTaskId: null,
@@ -163,6 +164,7 @@ describe("runSendToGptFlow", () => {
     await runSendToGptFlow({
       gptInput: inputValue,
       gptLoading: false,
+      autoGenerateLibrarySummary: true,
       processMultipartTaskDoneText: () => null,
       taskProtocolRuntime: {
         currentTaskId: null,
@@ -687,6 +689,7 @@ BODY: Existing full draft body.
       searchMode: "ai",
       searchEngines: ["google_ai_mode"],
       searchLocation: "Japan",
+      generateSearchSummary: true,
       instructionMode: "normal",
       reasoningMode: "strict",
     });

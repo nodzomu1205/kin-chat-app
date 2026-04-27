@@ -122,6 +122,9 @@ function toSearchLibraryItem(item: SearchContext): ReferenceLibraryItem {
 
   return buildReferenceLibrarySearchItem({
     rawResultId: item.rawResultId,
+    mode: item.mode,
+    engine: item.engine,
+    engines: item.engines,
     query: item.query,
     summary: item.summaryText || "",
     rawText: item.rawText || "",

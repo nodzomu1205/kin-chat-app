@@ -2,6 +2,7 @@ import {
   buildProtocolSourceLines,
   buildSearchResponseBlock,
 } from "@/lib/app/send-to-gpt/sendToGptProtocolBuilders";
+import { buildReferenceLibrarySearchItem } from "@/lib/app/ingest/ingestDocumentModel";
 import type {
   SearchSource,
 } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
@@ -12,11 +13,90 @@ function resolveProtocolSearchSummaryText(
   params: Pick<ProtocolSearchResponseArtifactsArgs, "wrappedSearchResponse" | "data">
 ) {
   return (
+    params.data.searchSummaryText?.trim() ||
     params.wrappedSearchResponse?.summary ||
     (typeof params.data.reply === "string" && params.data.reply.trim()
       ? params.data.reply.trim()
       : "Search completed, but no summary text was returned.")
   );
+}
+
+function resolveProtocolSearchAnswerText(
+  params: Pick<ProtocolSearchResponseArtifactsArgs, "wrappedSearchResponse" | "data">
+) {
+  return (
+    params.wrappedSearchResponse?.summary?.trim() ||
+    (typeof params.data.reply === "string" && params.data.reply.trim()
+      ? params.data.reply.trim()
+      : "")
+  );
+}
+
+function normalizeComparableText(text: string) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function buildKinSearchSummaryText(
+  params: Pick<
+    ProtocolSearchResponseArtifactsArgs,
+    "wrappedSearchResponse" | "data" | "searchRequestEvent"
+  > & {
+    librarySummaryText: string;
+  }
+) {
+  const librarySummary = params.librarySummaryText;
+  const answerText = resolveProtocolSearchAnswerText(params);
+  const hasGoal = !!(
+    params.searchRequestEvent.body?.trim() ||
+    params.searchRequestEvent.summary?.trim()
+  );
+
+  if (!hasGoal || !answerText.trim()) {
+    return librarySummary;
+  }
+
+  if (
+    !librarySummary.trim() ||
+    normalizeComparableText(answerText) === normalizeComparableText(librarySummary)
+  ) {
+    return answerText;
+  }
+
+  return ["ANSWER:", answerText, "", "LIBRARY_SUMMARY:", librarySummary].join("\n");
+}
+
+function buildProtocolSearchLibraryItem(args: {
+  params: ProtocolSearchResponseArtifactsArgs;
+  normalizedSources: SourceItem[];
+  recordedSearch: { rawResultId: string } | null;
+}) {
+  if (!args.recordedSearch) return null;
+  const query =
+    args.params.wrappedSearchResponse?.query ||
+    args.params.searchRequestEvent.query ||
+    (typeof args.params.data.searchQuery === "string"
+      ? args.params.data.searchQuery
+      : "") ||
+    "";
+  const rawText =
+    typeof args.params.data.searchEvidence === "string"
+      ? args.params.data.searchEvidence
+      : "";
+
+  return buildReferenceLibrarySearchItem({
+    rawResultId: args.recordedSearch.rawResultId,
+    mode: args.params.effectiveSearchMode,
+    engines: args.params.effectiveSearchEngines,
+    query,
+    summary: resolveProtocolSearchSummaryText(args.params),
+    rawText,
+    createdAt: new Date().toISOString(),
+    taskId:
+      args.params.searchRequestEvent.taskId ||
+      args.params.currentTaskId ||
+      undefined,
+    sources: args.normalizedSources,
+  });
 }
 
 export function buildSourceItems(sources?: SearchSource[]): SourceItem[] {
@@ -111,17 +191,18 @@ export function buildProtocolSearchMessageParts(args: {
   requestedMode: string;
   recordedSearch: { rawResultId: string } | null;
 }) {
-  const summaryText = resolveProtocolSearchSummaryText(args.params);
-  const rawExcerpt =
-    args.params.wrappedSearchResponse?.rawExcerpt ||
-    (typeof args.params.data.searchEvidence === "string" &&
-    args.params.data.searchEvidence.trim()
-      ? args.params.data.searchEvidence
-          .trim()
-          .slice(0, args.requestedMode === "raw" ? 2400 : 1200)
-      : "");
+  const libraryItem = buildProtocolSearchLibraryItem(args);
+  const summaryText = buildKinSearchSummaryText({
+    ...args.params,
+    librarySummaryText:
+      libraryItem?.summary || resolveProtocolSearchSummaryText(args.params),
+  });
+  const rawDetailText = libraryItem?.excerptText.trim() || "";
+  const rawExcerpt = rawDetailText
+    ? rawDetailText.slice(0, args.requestedMode === "raw" ? 2400 : 1200)
+    : "";
   const sourceLines = buildProtocolSourceLines(
-    args.normalizedSources,
+    libraryItem ? libraryItem.sources || [] : args.normalizedSources,
     args.params.searchRequestEvent.searchEngine ||
       args.params.effectiveSearchEngines[0] ||
       ""

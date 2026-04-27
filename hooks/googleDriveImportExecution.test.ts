@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   runDriveFileImport,
   runDriveFolderImport,
@@ -138,7 +138,7 @@ describe("runDriveFileImport", () => {
       },
       ensureAccessToken: vi.fn(async () => "token-1"),
       ingestOptions,
-      autoSummarizeImports: true,
+      autoGenerateLibrarySummary: true,
       currentTaskId: "task-1",
       recordIngestedDocument,
       appendUiMessage,
@@ -197,7 +197,7 @@ describe("runDriveFileImport", () => {
       },
       ensureAccessToken: vi.fn(async () => "token-2"),
       ingestOptions,
-      autoSummarizeImports: true,
+      autoGenerateLibrarySummary: true,
       recordIngestedDocument,
       appendUiMessage,
       applyIngestUsage,

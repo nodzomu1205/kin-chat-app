@@ -13,7 +13,9 @@ export const IMAGE_DETAIL_KEY = "gpt_image_detail";
 export const FILE_READ_POLICY_KEY = "gpt_file_read_policy";
 export const COMPACT_CHAR_LIMIT_KEY = "gpt_compact_char_limit";
 export const SIMPLE_IMAGE_CHAR_LIMIT_KEY = "gpt_simple_image_char_limit";
-export const DRIVE_IMPORT_AUTO_SUMMARY_KEY =
+export const AUTO_GENERATE_LIBRARY_SUMMARY_KEY =
+  "gpt_auto_generate_library_summary";
+export const LEGACY_DRIVE_IMPORT_AUTO_SUMMARY_KEY =
   "gpt_drive_import_auto_summary";
 
 export type PersistedGptOptionsState = {
@@ -23,7 +25,7 @@ export type PersistedGptOptionsState = {
   compactCharLimit: number;
   simpleImageCharLimit: number;
   fileReadPolicy: FileReadPolicy;
-  driveImportAutoSummary: boolean;
+  autoGenerateLibrarySummary: boolean;
 };
 
 export function getDefaultPersistedGptOptionsState(): PersistedGptOptionsState {
@@ -34,7 +36,7 @@ export function getDefaultPersistedGptOptionsState(): PersistedGptOptionsState {
     compactCharLimit: 500,
     simpleImageCharLimit: 500,
     fileReadPolicy: "text_and_layout",
-    driveImportAutoSummary: true,
+    autoGenerateLibrarySummary: true,
   };
 }
 
@@ -94,13 +96,13 @@ export function loadPersistedGptOptionsState(
     initialState.fileReadPolicy = savedFileReadPolicy;
   }
 
-  const savedDriveImportAutoSummary = storage.getItem(
-    DRIVE_IMPORT_AUTO_SUMMARY_KEY
-  );
-  if (savedDriveImportAutoSummary === "true") {
-    initialState.driveImportAutoSummary = true;
-  } else if (savedDriveImportAutoSummary === "false") {
-    initialState.driveImportAutoSummary = false;
+  const savedAutoGenerateLibrarySummary =
+    storage.getItem(AUTO_GENERATE_LIBRARY_SUMMARY_KEY) ??
+    storage.getItem(LEGACY_DRIVE_IMPORT_AUTO_SUMMARY_KEY);
+  if (savedAutoGenerateLibrarySummary === "true") {
+    initialState.autoGenerateLibrarySummary = true;
+  } else if (savedAutoGenerateLibrarySummary === "false") {
+    initialState.autoGenerateLibrarySummary = false;
   }
 
   const savedCompactCharLimit = Number(storage.getItem(COMPACT_CHAR_LIMIT_KEY));

@@ -1,6 +1,6 @@
 # Next Session Handover
 
-Updated: 2026-04-26
+Updated: 2026-04-27
 
 ## Stop Rule
 
@@ -23,8 +23,9 @@ not call a path removed or fixed from a nearby helper read alone.
 Closeout verification passed:
 
 - `npx tsc --noEmit`
+- `npm run check:utf8`
 - `npm run lint`
-- `npm test` (`166 files / 739 tests`)
+- `npm test` (`166 files / 750 tests`)
 - `npm run build`
 
 The repository is in `late-stage maintenance-watch`, not active rescue.
@@ -98,25 +99,234 @@ If it fails, trace this order before patching:
   and `sendToGptPreparedGateHandlers.ts`; do not add a second local latest-draft
   heuristic near UI code.
 
+## Next Product Slice: Task Registration Workspace
+
+The next session should implement a task-registration workflow that separates
+task drafting, task sharing, and response sharing more clearly.
+
+### 1. GPT Kin Tab Button Changes
+
+Remove the existing `レス受信` button and delete the feature path behind it. It
+has not been used and should not remain as hidden UI or dead action glue.
+
+Add a new `タスク登録` button in that location.
+
+Expected behavior:
+
+- The user writes a natural-language task instruction in the GPT input area.
+- Pressing `タスク登録` should shape that instruction into the same kind of
+  `SYS_TASK` draft currently produced by the old `タスク送信` route.
+- The output target is not the Kin send input. It should populate the new Task
+  tab subtab `タスク登録` as an editable draft.
+- Existing automatic constraint/protocol selection behavior should be preserved.
+- Newly detected constraint patterns should still go through the approval flow
+  and update approved patterns after user approval.
+- When a new draft is created, the Task tab should flash/blink to notify the
+  user.
+
+Rename the current `タスク送信` button to `タスク共有`.
+
+New `タスク共有` meaning:
+
+- It is dedicated to sharing the currently selected/formed task from the Task
+  tab to Kin as `SYS_INFO`.
+- It should reproduce the current `INFO:` prefixed behavior without requiring
+  the user to type the prefix.
+- If GPT input contains text, treat it as user instruction for the SYS_INFO
+  share, such as "only share X" or "write it in English".
+- If GPT input is empty, share the current task content as-is.
+
+Rename `レス送信` to `レス共有`.
+
+New `レス共有` meaning:
+
+- Keep the existing response-sharing behavior.
+- Treat GPT input text as user instruction for the share.
+
+### 2. Task Tab: New `タスク登録` Subtab
+
+Add a new subtab between `タスク形成` and `タスク進捗`:
+
+```text
+タスク形成 / タスク登録 / タスク進捗
+```
+
+The new `タスク登録` subtab should contain:
+
+1. Registered task list at the top
+2. Large SYS task draft editor
+3. Task-time library reference settings
+4. Recurrence settings
+5. `この内容で登録` button at the bottom
+
+#### SYS Task Draft Editor
+
+The draft editor should display the shaped SYS task text created by the Kin tab
+`タスク登録` button or by `SYS_TASK_PROPOSAL`.
+
+This should be a relocation of the old direct-to-Kin SYS task draft path, not a
+second task compiler. Keep the existing constraint/protocol selection authority
+and approval flow.
+
+#### Task-Time Library Reference Settings
+
+Add task-specific library reference settings below the SYS draft editor:
+
+- library reference enabled/disabled
+- reference mode: `summary only` / `summary + excerpt`
+- library reference count
+
+These settings apply only while the registered task is active:
+
+- start applying when the user presses `開始`
+- remain active while Kin is executing the task
+- restore the pre-task library settings after the task is fully complete
+- task completion means `<<SYS_TASK_DONE>>` is received and GPT accepts it after
+  length-constraint validation
+
+Clarify existing library setting wording:
+
+- Rename the ambiguous library `index` count setting to
+  `ライブラリカード上限数`.
+- Define it as the maximum number of library cards retained/registered in the
+  app, not the number of items shown when requesting an index.
+- The new task-registration subtab does not need UI for that maximum.
+- If task-time library reference count exceeds the current library-card maximum,
+  automatically raise the maximum to match the task-time count.
+
+Implementation note:
+
+- Preserve the user's previous library settings and restore them after task
+  completion.
+- Keep temporary task-time overrides separate from persisted library settings
+  until `開始` is pressed.
+
+#### Recurrence Settings
+
+Add a recurrence panel below the library settings:
+
+- mode: `単発` / `反復`
+- if `反復`, allow weekday checkboxes from Monday through Sunday
+- allow one or more send times via a `+` button
+
+Open implementation question:
+
+- Browser-only scheduling is reliable only while the app page is open.
+- Mobile background execution is likely not reliable without platform support
+  such as push/service-worker/background-sync constraints, and should be
+  confirmed before promising background recurrence.
+- First implementation should likely treat recurrence as "active while app is
+  open" unless a dedicated background delivery mechanism is designed.
+
+#### Register / Start / Edit
+
+At the bottom of the subtab, add `この内容で登録`.
+
+When pressed:
+
+- Add the current draft/settings to the registered task list at the top.
+- Show each registered task with:
+  - original user instruction
+  - registration timestamp
+  - `開始` button
+  - `編集` button
+
+`開始` behavior:
+
+- Send the registered SYS task format to the Kin send input.
+- Activate task-time library reference overrides.
+
+`編集` behavior:
+
+- Load the registered task back into the draft editor and settings panels.
+
+### 3. New Kin Protocol: `SYS_TASK_PROPOSAL`
+
+Add a Kin-to-GPT proposal protocol:
+
+```text
+<<SYS_TASK_PROPOSAL>>
+GOAL: 2000文字程度で事業計画の最新版を作ります。ライブラリデータ参照1回。検索5回迄、GPTへの依頼3回迄。
+<<END_SYS_TASK_PROPOSAL>>
+```
+
+Expected behavior:
+
+- GPT detects this block from Kin-side messages.
+- The proposal is converted into the same task-registration draft path used by
+  the user-facing `タスク登録` button.
+- The Task tab flashes/blinks.
+- The user reviews the draft, library reference settings, and recurrence
+  settings.
+- The user registers it, then presses `開始` when ready.
+
+Do not let `SYS_TASK_PROPOSAL` start execution automatically.
+
+### Suggested Implementation Order
+
+1. Rename/remove Kin tab actions at the UI/action type boundary:
+   - delete `レス受信`
+   - rename `レス送信` to `レス共有`
+   - rename old task sharing button path to `タスク共有`
+   - add `タスク登録`
+2. Extract the current "natural language -> SYS task draft" behavior into a
+   reusable task-registration draft builder/flow.
+3. Add Task tab subtab state and render the draft editor.
+4. Add registered task list and register/edit/start actions.
+5. Add task-time library reference override state with restore-on-completion.
+6. Add recurrence model/UI, but initially document runtime as app-open only
+   unless background delivery is explicitly designed.
+7. Add `SYS_TASK_PROPOSAL` parser/runtime event and route it into the same draft
+   registration flow.
+8. Update docs/tests around the renamed library-card maximum wording.
+
+### Maintenance To Do During This Slice
+
+- Keep task-registration draft state separate from active task runtime state.
+  Registered-but-not-started tasks should not mutate current task runtime.
+- Avoid adding another SYS task compiler. Reuse or extract the existing task
+  compiler/protocol-selection path.
+- Keep Kin input mutation in Kin transfer/injection helpers, not in Task tab
+  rendering components.
+- Keep the temporary library-reference override as a scoped task runtime overlay,
+  not as a direct mutation of persisted settings at draft time.
+- Add focused tests for:
+  - `SYS_TASK_PROPOSAL` parsing
+  - task draft creation from user natural language
+  - `タスク共有` with and without user instruction
+  - task-time library settings restore after accepted `SYS_TASK_DONE`
+  - recurrence model validation for weekdays/times
+- Consider adding a small action-name compatibility map only if old labels are
+  still referenced in tests. Do not keep dead `レス受信` behavior.
+
 ## Files To Review First Next Time
 
 1. `docs/protocol-actions.md`
 2. `docs/maintenance-checklist.md`
-3. `lib/app/send-to-gpt/draftDocumentResolver.ts`
-4. `lib/app/send-to-gpt/sendToGptPreparedGateHandlers.ts`
-5. `lib/app/send-to-gpt/sendToGptProtocolBuilders.ts`
-6. `lib/task/taskProtocolParser.ts`
-7. `lib/app/kin-protocol/sendToKinFlow.ts`
-8. `lib/app/kin-protocol/sendToKinFlowState.ts`
-9. `lib/app/kin-protocol/kinMultipart.ts`
-10. `lib/app/reference-library/libraryItemAggregation.ts`
-11. `hooks/useProtocolAutomationEffects.ts`
-12. `components/panels/gpt/LibraryDrawerControls.tsx`
-13. `lib/app/memory-interpreter/memoryInterpreterFactExtraction.ts`
-14. `lib/app/send-to-gpt/sendToGptFlow.ts`
-15. `app/page.tsx`
+3. `components/panels/gpt/GptSettingsWorkspaceViews.tsx`
+4. `components/panels/gpt/gptPanelTypes.ts`
+5. `hooks/chatPageActionTypes.ts`
+6. `hooks/chatPageControllerArgBuilders.ts`
+7. `hooks/useGptMessageActions.ts`
+8. `hooks/useKinTaskProtocol.ts`
+9. `hooks/useTaskProtocolActions.ts`
+10. `lib/task/taskCompilerSections.ts`
+11. `lib/task/taskProtocolParser.ts`
+12. `lib/app/task-runtime/currentTaskIntentRefresh.ts`
+13. `lib/app/task-support/kinTaskInjection.ts`
+14. `lib/app/task-runtime/kinTransferFlows.ts`
+15. `lib/app/kin-protocol/sendToKinFlow.ts`
+16. `lib/app/kin-protocol/sendToKinFlowState.ts`
+17. `lib/app/kin-protocol/kinMultipart.ts`
+18. `lib/app/send-to-gpt/sendToGptProtocolBuilders.ts`
+19. `lib/app/send-to-gpt/sendToGptPreparedGateHandlers.ts`
+20. `app/page.tsx`
 
 ## Verification Commands
+
+```bash
+npm run check:utf8
+```
 
 ```bash
 npx tsc --noEmit
@@ -133,4 +343,3 @@ npm test
 ```bash
 npm run build
 ```
-

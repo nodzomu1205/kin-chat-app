@@ -121,7 +121,7 @@ export function buildChatPageControllerServicesArgs(
     reasoningMode: "strict",
     autoCopyFileIngestSysInfoToKin:
       args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
-    autoGenerateFileImportSummary: args.gpt.driveImportAutoSummary,
+    autoGenerateLibrarySummary: args.gpt.autoGenerateLibrarySummary,
     gptMemoryRuntime: args.gpt.gptMemoryRuntime,
     setUploadKind: args.gpt.onChangeUploadKind,
     applySearchUsage: args.usage.applySearchUsage,
@@ -186,7 +186,7 @@ export function buildGptMessageActionArgs(
     applySearchUsage: groups.services.applySearchUsage,
     applyCompressionUsage: groups.services.applyCompressionUsage,
     applyIngestUsage: groups.services.applyIngestUsage,
-    autoGenerateFileImportSummary: groups.services.autoGenerateFileImportSummary,
+    autoGenerateLibrarySummary: groups.services.autoGenerateLibrarySummary,
     buildLibraryReferenceContext: groups.services.buildLibraryReferenceContext,
     chatBridgeSettings: groups.protocol.chatBridgeSettings,
     currentTaskDraft: groups.task.currentTaskDraft,
@@ -326,8 +326,8 @@ export function buildFileIngestActionArgs(
     applyIngestUsage: groups.services.applyIngestUsage,
     autoCopyFileIngestSysInfoToKin:
       groups.services.autoCopyFileIngestSysInfoToKin,
-    autoGenerateFileImportSummary:
-      groups.services.autoGenerateFileImportSummary,
+    autoGenerateLibrarySummary:
+      groups.services.autoGenerateLibrarySummary,
     currentTaskDraft: groups.task.currentTaskDraft,
     getResolvedTaskTitle: groups.task.getResolvedTaskTitle,
     getTaskBaseText: groups.task.getTaskBaseText,

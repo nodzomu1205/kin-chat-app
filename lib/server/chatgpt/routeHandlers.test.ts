@@ -129,4 +129,33 @@ describe("routeHandlers", () => {
       searchSummaryGenerated: true,
     });
   });
+
+  it("does not generate or return library summary text when search summary generation is disabled", async () => {
+    executeSearchRequest.mockResolvedValue({
+      searchPromptText: "generic search display",
+      searchEvidenceText: "Google Search\n- Source A\nSnippet: summary body",
+      returnedSearchContinuationToken: "",
+      sources: [{ title: "Source A", link: "https://example.com/a" }],
+      rawSources: [{ title: "Source A", link: "https://example.com/a" }],
+    });
+
+    const response = await handleChatRoute({
+      input: "search: russia economy",
+      memory: {},
+      recentMessages: [],
+      searchMode: "normal",
+      searchEngines: ["google_search"],
+      searchLocation: "Japan",
+      generateSearchSummary: false,
+    });
+
+    expect(generateLibrarySummary).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toMatchObject({
+      reply: "generic search display",
+      searchUsed: true,
+      searchQuery: "russia economy",
+      searchSummaryText: "",
+      searchSummaryGenerated: false,
+    });
+  });
 });

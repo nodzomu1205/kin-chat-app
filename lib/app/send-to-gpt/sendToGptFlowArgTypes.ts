@@ -38,6 +38,7 @@ export type SendToGptFlowSearchArgs = {
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
   searchLocation: string;
+  autoGenerateSearchLibrarySummary?: boolean;
   parseWrappedSearchResponse: (text: string) => WrappedSearchResponse;
   recordSearchContext: SearchContextRecorder;
   getContinuationTokenForSeries: (seriesId: string) => string;
@@ -95,6 +96,7 @@ export type SendToGptFlowRequestArgs = {
   gptLoading: boolean;
   instructionMode?: GptInstructionMode;
   reasoningMode: ReasoningMode;
+  autoGenerateLibrarySummary: boolean;
   processMultipartTaskDoneText: (
     text: string,
     options?: { setGptTab?: boolean }

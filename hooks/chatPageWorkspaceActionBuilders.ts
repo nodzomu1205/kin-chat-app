@@ -113,7 +113,7 @@ function buildWorkspaceActionsGpt(args: ChatPageWorkspaceActionsGpt) {
     onChangeCompactCharLimit: args.onChangeCompactCharLimit,
     onChangeSimpleImageCharLimit: args.onChangeSimpleImageCharLimit,
     onChangeFileReadPolicy: args.onChangeFileReadPolicy,
-    onChangeDriveImportAutoSummary: args.onChangeDriveImportAutoSummary,
+    onChangeAutoGenerateLibrarySummary: args.onChangeAutoGenerateLibrarySummary,
   } satisfies ChatPageWorkspaceActionsGpt;
 }
 

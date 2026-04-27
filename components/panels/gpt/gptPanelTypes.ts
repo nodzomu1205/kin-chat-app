@@ -243,7 +243,7 @@ export type GptPanelSettingsProps = {
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
   fileReadPolicy: FileReadPolicy;
-  driveImportAutoSummary: boolean;
+  autoGenerateLibrarySummary: boolean;
   compactCharLimit: number;
   simpleImageCharLimit: number;
   ingestLoading: boolean;
@@ -277,7 +277,7 @@ export type GptPanelSettingsProps = {
   onChangeCompactCharLimit: (value: number) => void;
   onChangeSimpleImageCharLimit: (value: number) => void;
   onChangeFileReadPolicy: (value: FileReadPolicy) => void;
-  onChangeDriveImportAutoSummary: (value: boolean) => void;
+  onChangeAutoGenerateLibrarySummary: (value: boolean) => void;
   onChangeSearchMode: (value: SearchMode) => void;
   onChangeSearchEngines: (value: SearchEngine[]) => void;
   onChangeSearchLocation: (value: string) => void;

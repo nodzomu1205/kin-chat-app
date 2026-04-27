@@ -94,7 +94,7 @@ function buildWorkspaceStateGpt(args: ChatPageWorkspaceStateGpt) {
     compactCharLimit: args.compactCharLimit,
     simpleImageCharLimit: args.simpleImageCharLimit,
     fileReadPolicy: args.fileReadPolicy,
-    driveImportAutoSummary: args.driveImportAutoSummary,
+    autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
     defaultMemorySettings: args.defaultMemorySettings,
   } satisfies ChatPageWorkspaceStateGpt;
 }

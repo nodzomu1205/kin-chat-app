@@ -26,7 +26,7 @@ type UseGoogleDrivePickerArgs = {
   folderLink: string;
   setFolderLink: (value: string) => void;
   ingestOptions: SharedIngestOptions;
-  autoSummarizeImports: boolean;
+  autoGenerateLibrarySummary: boolean;
   currentTaskId?: string;
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
@@ -56,7 +56,7 @@ export function useGoogleDrivePicker({
   folderLink,
   setFolderLink,
   ingestOptions,
-  autoSummarizeImports,
+  autoGenerateLibrarySummary,
   currentTaskId,
   recordIngestedDocument,
   setGptMessages,
@@ -80,7 +80,7 @@ export function useGoogleDrivePicker({
           file,
           ensureAccessToken,
           ingestOptions,
-          autoSummarizeImports,
+          autoGenerateLibrarySummary,
           currentTaskId,
           recordIngestedDocument,
           appendUiMessage: (text, sourceType) => {
@@ -102,7 +102,7 @@ export function useGoogleDrivePicker({
       recordIngestedDocument,
       setIngestLoading,
       setGptMessages,
-      autoSummarizeImports,
+      autoGenerateLibrarySummary,
     ]
   );
 

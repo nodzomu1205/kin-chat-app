@@ -38,6 +38,7 @@ describe("handleFileSaveRequestGate", () => {
         },
       },
       recordIngestedDocument,
+      autoGenerateLibrarySummary: true,
       generateLibrarySummary: vi.fn(async () => ({
         summary: "Generated library summary.",
       })),
@@ -107,6 +108,7 @@ describe("handleFileSaveRequestGate", () => {
         },
       },
       recordIngestedDocument,
+      autoGenerateLibrarySummary: true,
       generateLibrarySummary: vi.fn(async () => ({
         summary: "Generated revised summary.",
       })),
@@ -175,6 +177,7 @@ describe("handleFileSaveRequestGate", () => {
         },
       },
       recordIngestedDocument,
+      autoGenerateLibrarySummary: true,
       generateLibrarySummary: vi.fn(async () => ({
         summary: "Generated revised summary.",
       })),
@@ -187,6 +190,60 @@ describe("handleFileSaveRequestGate", () => {
       expect.objectContaining({
         filename: "DOC-TASK-1-001.txt",
         text: "Revised body from a response with a blank document id.",
+      })
+    );
+  });
+
+  it("does not generate a library summary for file saving when auto summary is disabled", async () => {
+    const recordIngestedDocument = vi.fn(() => ({ id: "stored-1" }));
+    const generateLibrarySummary = vi.fn(async () => ({
+      summary: "Should not be used.",
+    }));
+    const setGptMessages = vi.fn((updater: (prev: Message[]) => Message[]) =>
+      updater([])
+    );
+
+    const handled = await handleFileSaveRequestGate({
+      fileSaveRequestEvent: {
+        taskId: "TASK-1",
+        actionId: "F005",
+        body: "Save it.",
+        documentId: "DOC-TASK-1-001",
+      },
+      userMsg: { id: "u1", role: "user", text: "save" },
+      gptStateRef: {
+        current: {
+          recentMessages: [
+            {
+              id: "g1",
+              role: "gpt",
+              text: [
+                "<<SYS_DRAFT_PREPARATION_RESPONSE>>",
+                "TASK_ID: TASK-1",
+                "ACTION_ID: D001",
+                "DOCUMENT_ID: DOC-TASK-1-001",
+                "TITLE: Proposal",
+                "BODY: Full draft body.",
+                "<<END_SYS_DRAFT_PREPARATION_RESPONSE>>",
+              ].join("\n"),
+            },
+          ],
+        },
+      },
+      recordIngestedDocument,
+      autoGenerateLibrarySummary: false,
+      generateLibrarySummary,
+      setGptMessages: setGptMessages as never,
+      setGptInput: vi.fn(),
+    });
+
+    expect(handled).toBe(true);
+    expect(generateLibrarySummary).not.toHaveBeenCalled();
+    expect(recordIngestedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filename: "DOC-TASK-1-001.txt",
+        text: "Full draft body.",
+        summary: undefined,
       })
     );
   });
@@ -207,6 +264,7 @@ describe("handleFileSaveRequestGate", () => {
       userMsg: { id: "u1", role: "user", text: "save" },
       gptStateRef: { current: { recentMessages: [] } },
       recordIngestedDocument,
+      autoGenerateLibrarySummary: true,
       setGptMessages: setGptMessages as never,
       setGptInput: vi.fn(),
     });
@@ -253,6 +311,7 @@ describe("handleFileSaveRequestGate", () => {
       },
       currentTaskCharConstraint: { rule: "at_least", limit: 20 },
       recordIngestedDocument,
+      autoGenerateLibrarySummary: true,
       setGptMessages: setGptMessages as never,
       setGptInput: vi.fn(),
     });

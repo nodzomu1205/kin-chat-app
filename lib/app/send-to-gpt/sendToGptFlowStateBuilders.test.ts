@@ -104,6 +104,35 @@ describe("sendToGptFlow state builders", () => {
     });
   });
 
+  it("does not store the assistant reply as a library summary when none was generated", () => {
+    expect(
+      buildImplicitSearchRecordArgs({
+        data: {
+          reply: "Assistant-facing search answer",
+          searchUsed: true,
+          searchQuery: "tokyo housing",
+          searchEvidence: "raw evidence",
+          searchSummaryText: "",
+          searchSummaryGenerated: false,
+        },
+        effectiveSearchMode: "normal",
+        effectiveSearchEngines: ["google_search"],
+        effectiveSearchLocation: "Japan",
+        searchSeriesId: "",
+        cleanQuery: "clean query",
+        effectiveParsedSearchQuery: "parsed query",
+        finalRequestText: "request text",
+        applySearchUsage: () => undefined,
+        applyChatUsage: () => undefined,
+        recordSearchContext: () => ({ rawResultId: "RAW-1" }),
+      })
+    ).toMatchObject({
+      query: "tokyo housing",
+      summaryText: "",
+      rawText: "raw evidence",
+    });
+  });
+
   it("applies chat usage when no implicit search ran", () => {
     const calls: string[] = [];
 

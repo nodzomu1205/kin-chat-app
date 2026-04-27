@@ -87,6 +87,7 @@ export type GptAssistantRequestPayloadArgs = {
   effectiveSearchMode: SearchMode;
   effectiveSearchEngines: SearchEngine[];
   effectiveSearchLocation: string;
+  autoGenerateSearchLibrarySummary?: boolean;
   instructionMode: string;
   reasoningMode: ReasoningMode;
 };

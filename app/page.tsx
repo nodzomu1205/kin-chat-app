@@ -37,7 +37,7 @@ export default function ChatApp() {
 
   const searchDomain = useSearchHistory({
     applyIngestUsage: tokenUsage.applyIngestUsage,
-    autoGenerateLibrarySummaries: gptOptions.driveImportAutoSummary,
+    autoGenerateLibrarySummaries: gptOptions.autoGenerateLibrarySummary,
   });
   const taskProtocolDomain = useChatPageTaskProtocolDomain({
     currentKin: kinManager.currentKin,
@@ -63,7 +63,7 @@ export default function ChatApp() {
     fileReadPolicy: gptOptions.fileReadPolicy,
     compactCharLimit: gptOptions.compactCharLimit,
     simpleImageCharLimit: gptOptions.simpleImageCharLimit,
-    driveImportAutoSummary: gptOptions.driveImportAutoSummary,
+    autoGenerateLibrarySummary: gptOptions.autoGenerateLibrarySummary,
     currentTaskId: taskDraftWorkspace.currentTaskDraft.id || undefined,
     currentTaskTitle: taskProtocolDomain.taskProtocolView.currentTaskTitle,
     currentKinDisplayLabel,

@@ -108,6 +108,7 @@ export function buildSendToGptPreparedRequestGateArgs(args: {
       args.flowArgs.setPendingKinInjectionPurpose,
     setActiveTabToKin: args.flowArgs.setActiveTabToKin,
     recordIngestedDocument: args.flowArgs.recordIngestedDocument,
+    autoGenerateLibrarySummary: args.flowArgs.autoGenerateLibrarySummary,
     ingestProtocolMessage: args.flowArgs.ingestProtocolMessage,
     gptStateRef: args.flowArgs.gptStateRef,
     chatRecentLimit: args.flowArgs.chatRecentLimit,
@@ -145,6 +146,8 @@ export function buildSendToGptExecutionBundle(args: {
       requestMemory,
       recentMessages: memoryContext.recentWithUser,
       ...args.executionContext,
+      autoGenerateSearchLibrarySummary:
+        args.flowArgs.autoGenerateSearchLibrarySummary,
       instructionMode: args.flowArgs.instructionMode ?? "normal",
       reasoningMode: args.flowArgs.reasoningMode,
       parseWrappedSearchResponse: args.flowArgs.parseWrappedSearchResponse,

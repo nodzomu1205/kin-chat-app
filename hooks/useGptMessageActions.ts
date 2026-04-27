@@ -37,7 +37,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   }) => {
     await runYoutubeTranscriptRequestItemFlow({
       ...params,
-      generateSummary: args.autoGenerateFileImportSummary,
+      generateSummary: args.autoGenerateLibrarySummary,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
@@ -143,7 +143,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   const importYouTubeTranscript = async (source: SourceItem) => {
     await runImportYouTubeTranscriptFlow({
       source,
-      autoGenerateSummary: args.autoGenerateFileImportSummary,
+      autoGenerateSummary: args.autoGenerateLibrarySummary,
       currentTaskId: args.currentTaskDraft.taskId,
       setGptLoading: args.setGptLoading,
       setGptMessages: args.setGptMessages,
@@ -155,7 +155,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   const sendYouTubeTranscriptToKin = async (source: SourceItem) => {
     await runSendYouTubeTranscriptToKinFlow({
       source,
-      autoGenerateSummary: args.autoGenerateFileImportSummary,
+      autoGenerateSummary: args.autoGenerateLibrarySummary,
       setGptLoading: args.setGptLoading,
       setGptMessages: args.setGptMessages,
       applyIngestUsage: args.applyIngestUsage,

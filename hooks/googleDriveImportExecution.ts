@@ -86,7 +86,7 @@ export type RunDriveFileImportArgs = {
   file: DriveImportFile;
   ensureAccessToken: () => Promise<string>;
   ingestOptions: SharedIngestOptions;
-  autoSummarizeImports: boolean;
+  autoGenerateLibrarySummary: boolean;
   currentTaskId?: string;
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
@@ -103,7 +103,7 @@ export async function runDriveFileImport({
   file,
   ensureAccessToken,
   ingestOptions,
-  autoSummarizeImports,
+  autoGenerateLibrarySummary,
   currentTaskId,
   recordIngestedDocument,
   appendUiMessage,
@@ -151,10 +151,10 @@ export async function runDriveFileImport({
     filename: title,
     text: storedText,
     taskId: currentTaskId,
-    autoGenerateSummary: autoSummarizeImports,
+    autoGenerateSummary: autoGenerateLibrarySummary,
     currentUsage: totalIngestUsage,
     fallbackSummary:
-      autoSummarizeImports && rawTextForSummary
+      autoGenerateLibrarySummary && rawTextForSummary
         ? buildDriveImportSummary({
             result: data?.result,
             fallbackText: rawTextForSummary,

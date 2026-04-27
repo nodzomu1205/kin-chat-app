@@ -80,12 +80,12 @@ export type ChatPageWorkspaceViewGptArgs = {
   onChangeSimpleImageCharLimit:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeSimpleImageCharLimit"];
   fileReadPolicy: ChatPageGptPanelCompositionArgs["settings"]["fileReadPolicy"];
-  driveImportAutoSummary:
-    ChatPageGptPanelCompositionArgs["settings"]["driveImportAutoSummary"];
+  autoGenerateLibrarySummary:
+    ChatPageGptPanelCompositionArgs["settings"]["autoGenerateLibrarySummary"];
   onChangeFileReadPolicy:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeFileReadPolicy"];
-  onChangeDriveImportAutoSummary:
-    ChatPageGptPanelCompositionArgs["settings"]["onChangeDriveImportAutoSummary"];
+  onChangeAutoGenerateLibrarySummary:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoGenerateLibrarySummary"];
   defaultMemorySettings:
     ChatPageGptPanelCompositionArgs["settings"]["defaultMemorySettings"];
   gptMemorySettingsControls:

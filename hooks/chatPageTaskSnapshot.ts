@@ -28,7 +28,7 @@ export async function saveChatPageTaskSnapshot(
   );
   let generatedSummary = nextDocument.summary || "";
 
-  if (args.gpt?.driveImportAutoSummary !== false && summarySource.trim()) {
+  if (args.gpt?.autoGenerateLibrarySummary !== false && summarySource.trim()) {
     try {
       const summaryResult = await requestGeneratedLibrarySummary({
         title: nextDocument.title,

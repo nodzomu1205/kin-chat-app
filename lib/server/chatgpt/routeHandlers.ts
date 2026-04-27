@@ -50,6 +50,7 @@ export async function handleChatRoute(body: Record<string, unknown>) {
     searchMode,
     searchEngines,
     searchLocation,
+    generateSearchSummary,
   } = body;
 
   if (!input || typeof input !== "string") {
@@ -92,6 +93,7 @@ export async function handleChatRoute(body: Record<string, unknown>) {
   let searchSummaryUsage = { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   let searchSummaryUsageDetails: Record<string, unknown> | null = null;
 
+  const shouldGenerateSearchSummary = generateSearchSummary !== false;
   const buildSearchPayload = () =>
     buildChatSearchPayload({
       sources,
@@ -100,7 +102,7 @@ export async function handleChatRoute(body: Record<string, unknown>) {
       searchSeriesId: resolvedSearch.effectiveSeriesId,
       searchContinuationToken: returnedSearchContinuationToken,
       searchEvidence: searchEvidenceText,
-      searchSummaryText: generatedSearchSummary || searchPromptText,
+      searchSummaryText: searchSummaryGenerated ? generatedSearchSummary : "",
       searchSummaryGenerated,
     });
 
@@ -129,7 +131,7 @@ export async function handleChatRoute(body: Record<string, unknown>) {
       executedSearch.returnedSearchContinuationToken;
     sources = executedSearch.sources;
 
-    if (searchEvidenceText.trim()) {
+    if (shouldGenerateSearchSummary && searchEvidenceText.trim()) {
       try {
         const {
           text: summaryReply,

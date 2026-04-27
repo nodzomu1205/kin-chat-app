@@ -18,6 +18,7 @@ function createBaseFlowArgs(): RunSendToGptFlowArgs {
     searchLocation: "Japan",
     instructionMode: "normal",
     reasoningMode: "strict",
+    autoGenerateLibrarySummary: true,
     parseWrappedSearchResponse: vi.fn(),
     recordSearchContext: vi.fn(),
     getContinuationTokenForSeries: vi.fn(() => ""),

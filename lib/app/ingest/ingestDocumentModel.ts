@@ -161,6 +161,7 @@ export function cleanSearchLibraryDisplayText(text: string) {
   return cleanImportedDocumentText(text)
     .replace(/^\s*Google AI Mode\s*\n+/iu, "")
     .replace(/(?:^|\n)#{1,6}\s*References\s*\n[\s\S]*$/iu, "")
+    .replace(/(?:^|\n)Supporting links\s*\n[\s\S]*$/iu, "")
     .replace(/\s*\[refs?:\s*[\d,\s-]+\]/giu, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -347,6 +348,9 @@ export function buildReferenceLibraryDocumentItem(
 
 export function buildReferenceLibrarySearchItem(args: {
   rawResultId: string;
+  mode?: string;
+  engine?: string;
+  engines?: string[];
   query: string;
   summary: string;
   rawText: string;
@@ -373,14 +377,26 @@ export function buildReferenceLibrarySearchItem(args: {
       filename,
       title: args.query,
     }),
-    summary: cleanedSummary || buildCanonicalDocumentSummary(cleanedRawText, args.query),
+    summary: cleanedSummary,
     excerptText: cleanedRawText,
     createdAt: args.createdAt,
     updatedAt: args.createdAt,
     rawResultId: args.rawResultId,
     taskId: args.taskId,
-    sources: args.sources,
+    sources: isAiModeReferenceSearch(args) ? undefined : args.sources,
     askAiModeItems: args.askAiModeItems,
     filename,
   };
+}
+
+export function isAiModeReferenceSearch(args: {
+  mode?: string;
+  engine?: string;
+  engines?: string[];
+}) {
+  return (
+    args.mode === "ai" ||
+    args.engine === "google_ai_mode" ||
+    args.engines?.includes("google_ai_mode")
+  );
 }

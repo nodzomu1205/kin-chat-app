@@ -161,7 +161,8 @@ export function buildSearchRequestInstruction(params: {
 
   return [
     "You are responding to a Kindroid SYS_SEARCH_REQUEST.",
-    "Use the provided search evidence seriously and return only this exact block format:",
+    "Use the provided search evidence seriously and return only the goal-specific answer in this exact block format:",
+    "Do not include SOURCES, RAW_EXCERPT, RAW_RESULT_AVAILABLE, or RAW_RESULT_ID. The app will attach the same library Summary/Detail that the user can see.",
     "<<SYS_SEARCH_RESPONSE>>",
     `TASK_ID: ${params.taskId}`,
     `ACTION_ID: ${params.actionId}`,
@@ -170,11 +171,7 @@ export function buildSearchRequestInstruction(params: {
     `LOCATION: ${params.location}`,
     `OUTPUT_MODE: ${params.requestedMode}`,
     "SUMMARY:",
-    "<search summary here>",
-    "SOURCES:",
-    "- <title> | <url>",
-    "RAW_RESULT_AVAILABLE: YES",
-    "RAW_RESULT_ID: <raw result id here>",
+    "<answer for the search goal here>",
     "<<END_SYS_SEARCH_RESPONSE>>",
     "",
     modeInstruction,
@@ -275,14 +272,11 @@ export function buildSearchResponseBlock(params: {
   }
 
   const shouldIncludeSources =
-    params.requestedMode !== "summary" || params.engine === "youtube_search";
+    params.requestedMode !== "summary" && params.sourceLines.length > 0;
 
   if (shouldIncludeSources) {
     responseLines.push(
-      ...buildProtocolSection(
-        "SOURCES:",
-        params.sourceLines.length > 0 ? params.sourceLines : ["- none"]
-      )
+      ...buildProtocolSection("SOURCES:", params.sourceLines)
     );
   }
 

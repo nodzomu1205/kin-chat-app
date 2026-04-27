@@ -41,7 +41,7 @@ type IngestFlowArgs = {
   ingestLoading: boolean;
   currentTaskDraft: TaskDraft;
   autoCopyFileIngestSysInfoToKin: boolean;
-  autoGenerateFileImportSummary: boolean;
+  autoGenerateLibrarySummary: boolean;
   gptStateRef: MutableRefObject<KinMemoryState>;
   chatRecentLimit: number;
   setIngestLoading: Dispatch<SetStateAction<boolean>>;
@@ -118,7 +118,7 @@ export async function runFileIngestFlow({
   ingestLoading,
   currentTaskDraft,
   autoCopyFileIngestSysInfoToKin,
-  autoGenerateFileImportSummary,
+  autoGenerateLibrarySummary,
   gptStateRef,
   chatRecentLimit,
   setIngestLoading,
@@ -187,7 +187,7 @@ export async function runFileIngestFlow({
       filename: storedFilename,
       text: canonicalDocumentText,
       taskId: currentTaskDraft.id || undefined,
-      autoGenerateSummary: autoGenerateFileImportSummary,
+      autoGenerateSummary: autoGenerateLibrarySummary,
       currentUsage: totalIngestUsage,
       onSummaryError: (error) => {
         console.warn("File import summary generation failed", error);

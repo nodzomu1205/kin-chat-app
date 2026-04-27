@@ -69,7 +69,7 @@ describe("sendToGptFlow response builders", () => {
     expect(result).toBe(initial);
   });
 
-  it("builds search response artifacts for youtube search with source details", () => {
+  it("builds summary-only search response artifacts without inline source details", () => {
     const recordSearchContext = ({ query }: { query: string }) => ({
       rawResultId: `RAW-${query}`,
     });
@@ -77,6 +77,7 @@ describe("sendToGptFlow response builders", () => {
     const result = buildProtocolSearchResponseArtifacts({
       data: {
         reply: "Search summary here.",
+        searchSummaryText: "Library search summary here.",
         searchUsed: true,
         searchQuery: "popular female YouTubers",
         searchEvidence: "Long raw evidence text",
@@ -110,10 +111,9 @@ describe("sendToGptFlow response builders", () => {
     expect(result.normalizedSources).toHaveLength(1);
     expect(result.assistantText).toContain("<<SYS_SEARCH_RESPONSE>>");
     expect(result.assistantText).toContain("ENGINE: youtube_search");
-    expect(result.assistantText).toContain("SOURCES:");
-    expect(result.assistantText).toContain("Channel: Channel A");
-    expect(result.assistantText).toContain("Duration: 12:34");
-    expect(result.assistantText).toContain("12,345 views");
+    expect(result.assistantText).toContain("Library search summary here.");
+    expect(result.assistantText).not.toContain("SOURCES:");
+    expect(result.assistantText).not.toContain("Channel: Channel A");
   });
 
   it("builds source items and protocol search record args through response builders", () => {
@@ -217,6 +217,7 @@ describe("sendToGptFlow response builders", () => {
       params: {
         data: {
           reply: "Search summary here.",
+          searchSummaryText: "Library summary here.",
           searchUsed: true,
           searchQuery: "popular female YouTubers",
           searchEvidence: "Long raw evidence text",
@@ -250,10 +251,144 @@ describe("sendToGptFlow response builders", () => {
       recordedSearch: { rawResultId: "RAW-1" },
     });
 
-    expect(result.summaryText).toBe("Search summary here.");
+    expect(result.summaryText).toBe("Library summary here.");
     expect(result.rawExcerpt).toContain("Long raw evidence text");
     expect(result.assistantText).toContain("<<SYS_SEARCH_RESPONSE>>");
     expect(result.assistantText).toContain("RAW_RESULT_ID: RAW-1");
+  });
+
+  it("returns GPT goal answer plus library summary for Kin search requests with a goal", () => {
+    const result = buildProtocolSearchMessageParts({
+      params: {
+        data: {
+          reply: [
+            "<<SYS_SEARCH_RESPONSE>>",
+            "TASK_ID: 123456",
+            "ACTION_ID: S001",
+            "QUERY: ai mode examples",
+            "SUMMARY:",
+            "Goal-specific answer from GPT.",
+            "<<END_SYS_SEARCH_RESPONSE>>",
+          ].join("\n"),
+          searchSummaryText: "Reusable library summary.",
+          searchUsed: true,
+          searchQuery: "ai mode examples",
+          searchEvidence: "Google AI Mode\nDetail body\n\nSupporting links\n- Source A",
+        },
+        searchRequestEvent: {
+          taskId: "123456",
+          actionId: "S001",
+          query: "ai mode examples",
+          searchEngine: "google_ai_mode",
+          searchLocation: "Japan",
+          outputMode: "summary",
+          body: "Explain the result for Kin's current task.",
+        },
+        currentTaskId: "123456",
+        wrappedSearchResponse: {
+          query: "ai mode examples",
+          summary: "Goal-specific answer from GPT.",
+          outputMode: "summary",
+        },
+        effectiveSearchMode: "ai",
+        effectiveSearchEngines: ["google_ai_mode"],
+        effectiveSearchLocation: "Japan",
+        cleanQuery: "ai mode examples",
+        recordSearchContext: () => ({ rawResultId: "RAW-1" }),
+      },
+      normalizedSources: [{ title: "Source A", link: "https://example.com/a" }],
+      requestedMode: "summary",
+      recordedSearch: { rawResultId: "RAW-1" },
+    });
+
+    expect(result.summaryText).toContain("ANSWER:");
+    expect(result.summaryText).toContain("Goal-specific answer from GPT.");
+    expect(result.summaryText).toContain("LIBRARY_SUMMARY:");
+    expect(result.summaryText).toContain("Reusable library summary.");
+    expect(result.assistantText).not.toContain("SOURCES:");
+    expect(result.assistantText).not.toContain("Supporting links");
+  });
+
+  it("omits AI Mode sources from summary-plus-raw Kin search responses", () => {
+    const result = buildProtocolSearchMessageParts({
+      params: {
+        data: {
+          reply: "Goal-specific answer from GPT.",
+          searchSummaryText: "Reusable library summary.",
+          searchUsed: true,
+          searchQuery: "ai mode examples",
+          searchEvidence: "Google AI Mode\nDetail body\n\nSupporting links\n- Source A",
+        },
+        searchRequestEvent: {
+          taskId: "123456",
+          actionId: "S002",
+          query: "ai mode examples",
+          searchEngine: "google_ai_mode",
+          searchLocation: "Japan",
+          outputMode: "summary_plus_raw",
+          body: "Explain the result for Kin's current task.",
+        },
+        currentTaskId: "123456",
+        wrappedSearchResponse: {
+          query: "ai mode examples",
+          summary: "Goal-specific answer from GPT.",
+          outputMode: "summary_plus_raw",
+          rawExcerpt: "Bypass raw excerpt\nSupporting links\n- Source A",
+        },
+        effectiveSearchMode: "ai",
+        effectiveSearchEngines: ["google_ai_mode"],
+        effectiveSearchLocation: "Japan",
+        cleanQuery: "ai mode examples",
+        recordSearchContext: () => ({ rawResultId: "RAW-2" }),
+      },
+      normalizedSources: [{ title: "Source A", link: "https://example.com/a" }],
+      requestedMode: "summary_plus_raw",
+      recordedSearch: { rawResultId: "RAW-2" },
+    });
+
+    expect(result.assistantText).toContain("RAW_EXCERPT:");
+    expect(result.assistantText).toContain("Detail body");
+    expect(result.assistantText).not.toContain("Bypass raw excerpt");
+    expect(result.assistantText).not.toContain("SOURCES:");
+    expect(result.assistantText).not.toContain("- Source A | https://example.com/a");
+    expect(result.assistantText).not.toContain("Supporting links");
+  });
+
+  it("keeps non-AI search sources in summary-plus-raw Kin search responses", () => {
+    const result = buildProtocolSearchMessageParts({
+      params: {
+        data: {
+          reply: "Goal-specific answer from GPT.",
+          searchSummaryText: "Reusable library summary.",
+          searchUsed: true,
+          searchQuery: "regular search examples",
+          searchEvidence: "Google Search\n- Source A\nSnippet: Detail body",
+        },
+        searchRequestEvent: {
+          taskId: "123456",
+          actionId: "S003",
+          query: "regular search examples",
+          searchEngine: "google_search",
+          searchLocation: "Japan",
+          outputMode: "summary_plus_raw",
+          body: "Explain the result for Kin's current task.",
+        },
+        currentTaskId: "123456",
+        wrappedSearchResponse: null,
+        effectiveSearchMode: "normal",
+        effectiveSearchEngines: ["google_search"],
+        effectiveSearchLocation: "Japan",
+        cleanQuery: "regular search examples",
+        recordSearchContext: () => ({ rawResultId: "RAW-3" }),
+      },
+      normalizedSources: [{ title: "Source A", link: "https://example.com/a" }],
+      requestedMode: "summary_plus_raw",
+      recordedSearch: { rawResultId: "RAW-3" },
+    });
+
+    expect(result.assistantText).toContain("SOURCES:");
+    expect(result.assistantText).toContain("- Source A | https://example.com/a");
+    expect(result.assistantText).toContain("RAW_EXCERPT:");
   });
 
   it("builds protocol blocks with shared wrappers in sendToGptProtocolBuilders", () => {

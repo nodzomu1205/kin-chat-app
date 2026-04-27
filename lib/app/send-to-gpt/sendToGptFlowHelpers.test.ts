@@ -24,6 +24,7 @@ describe("sendToGptFlow step builders", () => {
         gptLoading: false,
         processMultipartTaskDoneText: () => null,
         reasoningMode: "strict",
+        autoGenerateLibrarySummary: true,
         taskProtocolRuntime: {} as never,
         currentTaskId: "TASK-1",
         findPendingRequest: () => null,
@@ -115,6 +116,7 @@ describe("sendToGptFlow step builders", () => {
       gptLoading: false,
       processMultipartTaskDoneText: () => null,
       reasoningMode: "strict",
+      autoGenerateLibrarySummary: true,
       taskProtocolRuntime: {} as never,
       currentTaskId: "TASK-1",
       findPendingRequest: () => null,
@@ -170,6 +172,7 @@ describe("sendToGptFlow step builders", () => {
         gptLoading: false,
         processMultipartTaskDoneText: () => null,
         reasoningMode: "strict",
+        autoGenerateLibrarySummary: true,
         taskProtocolRuntime: {
           currentTaskId: null,
           currentTaskTitle: "",
@@ -253,6 +256,7 @@ describe("sendToGptFlow step builders", () => {
       gptLoading: false,
       processMultipartTaskDoneText: () => null,
       reasoningMode: "strict",
+      autoGenerateLibrarySummary: true,
       taskProtocolRuntime: {
         currentTaskId: null,
         currentTaskTitle: "",
@@ -453,6 +457,7 @@ describe("sendToGptFlow step builders", () => {
       searchMode: "ai",
       searchEngines: ["google_ai_mode"],
       searchLocation: "Japan",
+      generateSearchSummary: true,
       instructionMode: "normal",
       reasoningMode: "strict",
     });

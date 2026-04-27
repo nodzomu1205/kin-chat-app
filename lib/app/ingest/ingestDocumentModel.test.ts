@@ -226,9 +226,24 @@ describe("ingestDocumentModel", () => {
     });
   });
 
+  it("leaves search library summary empty when no generated summary is provided", () => {
+    const item = buildReferenceLibrarySearchItem({
+      rawResultId: "RAW-NO-SUMMARY",
+      query: "Tokyo housing",
+      summary: "",
+      rawText: "alpha beta gamma",
+      createdAt: "2026-04-18T00:00:00.000Z",
+    });
+
+    expect(item.summary).toBe("");
+    expect(item.excerptText).toBe("alpha beta gamma");
+  });
+
   it("cleans AI Mode references from reference-library search display text", () => {
     const item = buildReferenceLibrarySearchItem({
       rawResultId: "RAW-AI",
+      mode: "ai",
+      engines: ["google_ai_mode"],
       query: "OpenAI API",
       summary: "",
       rawText: [
@@ -242,15 +257,39 @@ describe("ingestDocumentModel", () => {
         "",
         "## APIを使うメリット",
         "- 自動化できます。 [refs: 3, 0, 22]",
+        "",
+        "Supporting links",
+        "- Source A | https://example.com/source-a",
       ].join("\n"),
       createdAt: "2026-04-18T00:00:00.000Z",
+      sources: [{ title: "Source A", link: "https://example.com/source-a" }],
     });
 
     expect(item.excerptText).not.toContain("Google AI Mode");
     expect(item.excerptText).toContain("- 自動化できます。");
     expect(item.excerptText).not.toContain("### References");
     expect(item.excerptText).not.toContain("[0] [OpenAI API]");
+    expect(item.excerptText).not.toContain("Supporting links");
+    expect(item.excerptText).not.toContain("Source A");
     expect(item.excerptText).not.toContain("[refs:");
     expect(item.summary).not.toContain("References");
+    expect(item.sources).toBeUndefined();
+  });
+
+  it("keeps non-AI search sources on reference-library search items", () => {
+    const item = buildReferenceLibrarySearchItem({
+      rawResultId: "RAW-WEB",
+      mode: "normal",
+      engines: ["google_search"],
+      query: "OpenAI API",
+      summary: "Summary",
+      rawText: "Google Search\n- Source A",
+      createdAt: "2026-04-18T00:00:00.000Z",
+      sources: [{ title: "Source A", link: "https://example.com/source-a" }],
+    });
+
+    expect(item.sources).toEqual([
+      { title: "Source A", link: "https://example.com/source-a" },
+    ]);
   });
 });

@@ -1,6 +1,6 @@
 # Protocol Actions
 
-Updated: 2026-04-26
+Updated: 2026-04-27
 
 ## Purpose
 This document defines the current authority boundaries for protocol-related user actions.
@@ -134,6 +134,7 @@ Examples:
 - `SYS_DRAFT_PREPARATION_REQUEST`
 - `SYS_DRAFT_MODIFICATION_REQUEST`
 - `SYS_FILE_SAVING_REQUEST`
+- `SYS_TASK_PROPOSAL`
 
 Owned by:
 - `libraryItemAggregation.ts` for library payload formatting
@@ -150,6 +151,8 @@ Should do:
 - generate library-card summaries through the shared library-summary path
 - tolerate `DOCUMENT_ID: Unknown` and blank full-modification document ids via
   the shared resolver
+- route `SYS_TASK_PROPOSAL` into the same task-registration draft path as the
+  user-facing `タスク登録` button
 
 Should not do:
 - revive automatic Kin-output-to-library saving as a side route
@@ -157,6 +160,31 @@ Should not do:
   protocol inputs
 - add a second latest-draft heuristic near the save gate
 - add another multipart splitting implementation for library sends
+- start task execution directly from `SYS_TASK_PROPOSAL`
+
+## 6. Task Registration / Sharing Actions
+
+Next planned UI boundary:
+
+- `タスク登録`: build a task SYS draft from user natural language and place it in
+  the Task tab `タスク登録` subtab
+- `タスク共有`: share the currently selected/formed task to Kin as `SYS_INFO`
+- `レス共有`: keep the existing response-sharing behavior under the clearer name
+
+Should do:
+
+- keep task-registration drafts separate from active task runtime
+- reuse/extract the existing task compiler and constraint/protocol selection
+  path
+- keep Kin input mutation inside Kin transfer/injection helpers
+- treat GPT input text as user instruction for `タスク共有` / `レス共有`
+
+Should not do:
+
+- keep the unused `レス受信` feature as a hidden branch
+- compile SYS task text directly inside GPT panel components
+- mutate persisted library settings when editing an unstarted registered task
+- auto-start a task proposal received from Kin
 
 ## Source Of Truth Rules
 
@@ -200,5 +228,8 @@ When you need to change a protocol action:
 5. If the change is about library/draft/file-saving protocol, start from the
    shared resolver/gate/builder files listed above, not from the visible chat
    message alone.
+6. If the change is about task registration, first identify whether it is draft
+   creation, registered-task storage, Kin input injection, task runtime start, or
+   temporary library-reference override. Keep those boundaries separate.
 
 If a change seems to require editing all of them at once, stop and split the work by boundary.

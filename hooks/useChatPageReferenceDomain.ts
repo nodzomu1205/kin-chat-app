@@ -24,7 +24,7 @@ type UseChatPageReferenceDomainArgs = {
   fileReadPolicy: SharedIngestOptions["readPolicy"];
   compactCharLimit: number;
   simpleImageCharLimit: number;
-  driveImportAutoSummary: boolean;
+  autoGenerateLibrarySummary: boolean;
   currentTaskId?: string;
   currentTaskTitle?: string;
   currentKinDisplayLabel?: string | null;
@@ -125,7 +125,7 @@ export function useChatPageReferenceDomain(
       compactCharLimit: args.compactCharLimit,
       simpleImageCharLimit: args.simpleImageCharLimit,
     },
-    autoSummarizeImports: args.driveImportAutoSummary,
+    autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
     currentTaskId: args.currentTaskId,
     recordIngestedDocument,
     setGptMessages: args.setGptMessages,

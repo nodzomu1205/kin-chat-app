@@ -157,6 +157,7 @@ export async function handleFileSaveRequestGate(args: {
     createdAt: string;
     updatedAt: string;
   }) => { id: string };
+  autoGenerateLibrarySummary: boolean;
   generateLibrarySummary?: typeof requestGeneratedLibrarySummary;
   applyIngestUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
@@ -197,20 +198,22 @@ export async function handleFileSaveRequestGate(args: {
         "<<END_SYS_TASK_CONFIRM>>",
       ].join("\n");
     } else {
-      const generateSummary =
-        args.generateLibrarySummary ?? requestGeneratedLibrarySummary;
       let generatedSummary = "";
-      try {
-        const summaryResult = await generateSummary({
-          title: document.title,
-          text: document.text,
-        });
-        generatedSummary = summaryResult.summary?.trim() || "";
-        args.applyIngestUsage?.(
-          normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
-        );
-      } catch (error) {
-        console.warn("File saving summary generation failed", error);
+      if (args.autoGenerateLibrarySummary) {
+        const generateSummary =
+          args.generateLibrarySummary ?? requestGeneratedLibrarySummary;
+        try {
+          const summaryResult = await generateSummary({
+            title: document.title,
+            text: document.text,
+          });
+          generatedSummary = summaryResult.summary?.trim() || "";
+          args.applyIngestUsage?.(
+            normalizeUsage(normalizeLibrarySummaryUsage(summaryResult.usage))
+          );
+        } catch (error) {
+          console.warn("File saving summary generation failed", error);
+        }
       }
 
       args.recordIngestedDocument({

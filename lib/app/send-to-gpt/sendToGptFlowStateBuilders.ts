@@ -59,8 +59,6 @@ export function buildImplicitSearchRecordArgs(
       typeof params.data.searchSummaryText === "string" &&
       params.data.searchSummaryText.trim()
         ? params.data.searchSummaryText
-        : typeof params.data.reply === "string" && params.data.reply.trim()
-          ? params.data.reply
         : "",
     rawText:
       typeof params.data.searchEvidence === "string"

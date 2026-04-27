@@ -233,9 +233,9 @@ export function LibrarySettingsWorkspaceView(props: {
       />
 
       <LibraryCardSummarySettingsSection
-        driveImportAutoSummary={props.settings.driveImportAutoSummary}
-        onChangeDriveImportAutoSummary={
-          props.settings.onChangeDriveImportAutoSummary
+        autoGenerateLibrarySummary={props.settings.autoGenerateLibrarySummary}
+        onChangeAutoGenerateLibrarySummary={
+          props.settings.onChangeAutoGenerateLibrarySummary
         }
       />
 

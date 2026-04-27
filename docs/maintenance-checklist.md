@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-04-26
+Updated: 2026-04-27
 
 ## Purpose
 
@@ -65,9 +65,15 @@ Latest status update:
 - Draft Preparation, Draft Modification, and File Saving are implemented with
   local file-save gating, generated library summaries, length validation, and
   latest-draft fallback coverage.
-- Full verification on 2026-04-26 passed:
-  `npx tsc --noEmit`, `npm run lint`, `npm test` (`166 files / 739 tests`),
-  and `npm run build`.
+- Search, Kin search requests, file import, Drive import, YouTube transcript
+  import, task snapshots, and task file-saving now respect the shared
+  `autoGenerateLibrarySummary` setting, with Kin search as the only intentional
+  force-summary exception.
+- UTF-8 source validation is available as `npm run check:utf8` after a
+  PowerShell bulk-edit encoding regression was found and repaired.
+- Full verification on 2026-04-27 passed:
+  `npm run check:utf8`, `npx tsc --noEmit`, `npm run lint`,
+  `npm test` (`166 files / 750 tests`), and `npm run build`.
 
 ## Exit Checklist
 
@@ -80,6 +86,8 @@ Treat the maintainability program as complete only when every item below is
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
+- `npm run check:utf8` passes after any bulk text edit, especially when
+  Japanese UI/test strings may be touched
 - test count and verification state are synchronized across:
   - `README.md`
   - `docs/refactor-roadmap.md`
@@ -110,6 +118,10 @@ Treat the maintainability program as complete only when every item below is
 - split workspace builder modules stay shape-conversion only
 - no newly touched builder or section file silently becomes a mixed UI/policy hub
 - responsive heuristics stay separate from panel-focus or business policy
+- task-registration UI must not own SYS task compilation; keep compilation in
+  task/protocol builders and keep Kin input injection in transfer helpers
+- registered-but-not-started task drafts must stay separate from active task
+  runtime state
 
 ### E. Test Coverage
 
@@ -118,6 +130,9 @@ Treat the maintainability program as complete only when every item below is
 - no high-risk boundary depends only on broad end-to-end manual testing
 - LLM/protocol flows that depend on Kin behavior have both focused unit
   coverage and a named manual retest path before being called fully settled
+- next task-registration work should add focused tests for
+  `SYS_TASK_PROPOSAL`, task draft registration/edit/start, task-time library
+  setting restore, and recurrence validation
 
 ### F. Docs / Handoff Hygiene
 

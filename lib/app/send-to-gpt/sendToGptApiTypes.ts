@@ -46,6 +46,7 @@ export type ChatApiRequestPayload = {
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
   searchLocation: string;
+  generateSearchSummary?: boolean;
   instructionMode: string;
   reasoningMode: ReasoningMode;
 };

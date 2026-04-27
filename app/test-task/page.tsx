@@ -35,8 +35,8 @@ export default function TestTaskPage() {
     setSimpleImageCharLimit,
     fileReadPolicy,
     setFileReadPolicy,
-    driveImportAutoSummary,
-    setDriveImportAutoSummary,
+    autoGenerateLibrarySummary,
+    setAutoGenerateLibrarySummary,
   } = usePersistedGptOptions();
 
   const { tokenStats } = useTokenTracking();
@@ -162,7 +162,7 @@ export default function TestTaskPage() {
       ingestMode,
       imageDetail,
       fileReadPolicy,
-      driveImportAutoSummary,
+      autoGenerateLibrarySummary,
       compactCharLimit,
       simpleImageCharLimit,
       ingestLoading: false,
@@ -196,7 +196,7 @@ export default function TestTaskPage() {
       onChangeCompactCharLimit: setCompactCharLimit,
       onChangeSimpleImageCharLimit: setSimpleImageCharLimit,
       onChangeFileReadPolicy: setFileReadPolicy,
-      onChangeDriveImportAutoSummary: setDriveImportAutoSummary,
+      onChangeAutoGenerateLibrarySummary: setAutoGenerateLibrarySummary,
       onChangeSearchMode: noop,
       onChangeSearchEngines: noop,
       onChangeSearchLocation: noop,

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   COMPACT_CHAR_LIMIT_KEY,
-  DRIVE_IMPORT_AUTO_SUMMARY_KEY,
+  AUTO_GENERATE_LIBRARY_SUMMARY_KEY,
   IMAGE_DETAIL_KEY,
   INGEST_MODE_KEY,
+  LEGACY_DRIVE_IMPORT_AUTO_SUMMARY_KEY,
   SIMPLE_IMAGE_CHAR_LIMIT_KEY,
   loadPersistedGptOptionsState,
 } from "@/lib/app/ui-state/persistedGptOptionsState";
@@ -53,15 +54,27 @@ describe("persistedGptOptionsState", () => {
     });
   });
 
-  it("loads the Google Drive auto-summary toggle when persisted", () => {
+  it("loads the library auto-summary toggle when persisted", () => {
     expect(
       loadPersistedGptOptionsState(
         createStorage({
-          [DRIVE_IMPORT_AUTO_SUMMARY_KEY]: "false",
+          [AUTO_GENERATE_LIBRARY_SUMMARY_KEY]: "false",
         })
       )
     ).toMatchObject({
-      driveImportAutoSummary: false,
+      autoGenerateLibrarySummary: false,
+    });
+  });
+
+  it("loads the legacy Google Drive auto-summary toggle", () => {
+    expect(
+      loadPersistedGptOptionsState(
+        createStorage({
+          [LEGACY_DRIVE_IMPORT_AUTO_SUMMARY_KEY]: "false",
+        })
+      )
+    ).toMatchObject({
+      autoGenerateLibrarySummary: false,
     });
   });
 });

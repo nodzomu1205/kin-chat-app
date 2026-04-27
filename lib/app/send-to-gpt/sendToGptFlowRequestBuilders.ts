@@ -22,6 +22,7 @@ export function buildGptAssistantRequestArgs(
     effectiveSearchMode: args.effectiveSearchMode,
     effectiveSearchEngines: args.effectiveSearchEngines,
     effectiveSearchLocation: args.effectiveSearchLocation,
+    autoGenerateSearchLibrarySummary: args.autoGenerateSearchLibrarySummary,
     instructionMode: args.instructionMode,
     reasoningMode: args.reasoningMode,
   };
@@ -47,6 +48,8 @@ export function buildChatApiSearchRequestPayload(
     searchMode: args.effectiveSearchMode,
     searchEngines: args.effectiveSearchEngines,
     searchLocation: args.effectiveSearchLocation,
+    generateSearchSummary:
+      !!args.searchRequestEvent || args.autoGenerateSearchLibrarySummary !== false,
     instructionMode: args.instructionMode,
     reasoningMode: args.reasoningMode,
   });

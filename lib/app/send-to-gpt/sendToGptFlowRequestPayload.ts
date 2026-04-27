@@ -16,6 +16,7 @@ export function buildChatApiRequestPayload(params: {
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
   searchLocation: string;
+  generateSearchSummary?: boolean;
   instructionMode: string;
   reasoningMode: ReasoningMode;
 }) {
@@ -30,6 +31,7 @@ export function buildChatApiRequestPayload(params: {
     searchMode: params.searchMode,
     searchEngines: params.searchEngines,
     searchLocation: params.searchLocation,
+    generateSearchSummary: params.generateSearchSummary,
     instructionMode: params.instructionMode,
     reasoningMode: params.reasoningMode,
   };

@@ -177,7 +177,7 @@ export type ChatPageSearchArgs = {
 export type ChatPageServicesArgs = {
   reasoningMode: ReasoningMode;
   autoCopyFileIngestSysInfoToKin: boolean;
-  autoGenerateFileImportSummary: boolean;
+  autoGenerateLibrarySummary: boolean;
   gptMemoryRuntime: GptMemoryRuntime;
   setUploadKind: React.Dispatch<React.SetStateAction<UploadKind>>;
   applySearchUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
@@ -227,7 +227,7 @@ export type UseGptMessageActionsArgs = Pick<
   | "applySearchUsage"
   | "applyCompressionUsage"
   | "applyIngestUsage"
-  | "autoGenerateFileImportSummary"
+  | "autoGenerateLibrarySummary"
   | "buildLibraryReferenceContext"
   | "chatBridgeSettings"
   | "currentTaskDraft"
@@ -349,7 +349,7 @@ export type UseFileIngestActionsArgs = Pick<
   UseChatPageActionsArgs,
   | "applyIngestUsage"
   | "autoCopyFileIngestSysInfoToKin"
-  | "autoGenerateFileImportSummary"
+  | "autoGenerateLibrarySummary"
   | "currentTaskDraft"
   | "getResolvedTaskTitle"
   | "getTaskBaseText"

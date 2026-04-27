@@ -25,7 +25,7 @@ function buildRunFileIngestFlowArgs(
     ingestLoading: args.ingestLoading,
     currentTaskDraft: args.currentTaskDraft,
     autoCopyFileIngestSysInfoToKin: args.autoCopyFileIngestSysInfoToKin,
-    autoGenerateFileImportSummary: args.autoGenerateFileImportSummary,
+    autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
     gptStateRef: args.gptMemoryRuntime.gptStateRef,
     chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
     setIngestLoading: args.setIngestLoading,

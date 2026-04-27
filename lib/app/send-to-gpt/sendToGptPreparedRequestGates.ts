@@ -58,6 +58,7 @@ export async function runPreparedRequestGates(args: {
     createdAt: string;
     updatedAt: string;
   }) => { id: string };
+  autoGenerateLibrarySummary: boolean;
   ingestProtocolMessage: (
     text: string,
     direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
@@ -124,6 +125,7 @@ export async function runPreparedRequestGates(args: {
       gptStateRef: args.gptStateRef,
       currentTaskCharConstraint: args.preparedRequest.currentTaskCharConstraint,
       recordIngestedDocument: args.recordIngestedDocument,
+      autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
       applyIngestUsage: args.applyIngestUsage,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
