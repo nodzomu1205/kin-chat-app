@@ -8,7 +8,7 @@ export function extractTaskIdFromOutboundText(text: string): string | undefined 
   const directMatch = text.match(/TASK_ID:\s*([^\n\r]+)/);
   if (directMatch?.[1]?.trim()) return directMatch[1].trim();
 
-  const sysTaskMatch = text.match(/<<SYS_TASK>>[\s\S]*?#(\d{3,})/);
+  const sysTaskMatch = text.match(/<<SYS_TASK>>[\s\S]*?#([A-Za-z]?\d{3,})/);
   if (sysTaskMatch?.[1]) return sysTaskMatch[1];
 
   return undefined;

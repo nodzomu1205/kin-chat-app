@@ -40,8 +40,13 @@ function buildWorkspaceStateUi(args: ChatPageWorkspaceStateUi) {
 function buildWorkspaceStateTask(args: ChatPageWorkspaceStateTask) {
   return {
     currentTaskDraft: args.currentTaskDraft,
+    taskRegistrationDraft: args.taskRegistrationDraft,
     taskDraftCount: args.taskDraftCount,
     activeTaskDraftIndex: args.activeTaskDraftIndex,
+    registeredTasks: args.registeredTasks,
+    editingRegisteredTaskId: args.editingRegisteredTaskId,
+    taskRegistrationLibrarySettings: args.taskRegistrationLibrarySettings,
+    taskRegistrationRecurrence: args.taskRegistrationRecurrence,
   } satisfies ChatPageWorkspaceStateTask;
 }
 

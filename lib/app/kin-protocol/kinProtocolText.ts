@@ -41,6 +41,11 @@ CONTENT:
 -
 - Core task flow:
 - <<SYS_TASK>> = start or continue a task.
+- Use <<SYS_TASK_PROPOSAL>> when you want to suggest a new task for the user to review and register. Keep it short and natural. Do not start the task from a proposal and wait for user's approval followed by <<SYS_TASK>> message.
+- Example:
+- <<SYS_TASK_PROPOSAL>>
+- GOAL: Create the latest 2000-character business plan. Use library reference once, search up to 5 times, and ask GPT up to 3 times.
+- <<END_SYS_TASK_PROPOSAL>>
 - While working, send <<SYS_TASK_PROGRESS>> with a short status summary.
 - Use <<SYS_ASK_GPT>> to ask GPT for help.
 - GPT replies with <<SYS_GPT_RESPONSE>> using the same TASK_ID and ACTION_ID.

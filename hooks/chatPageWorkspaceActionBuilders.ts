@@ -45,6 +45,14 @@ function buildWorkspaceActionsTask(args: ChatPageWorkspaceActionsTask) {
     buildTaskRequestAnswerDraft: args.buildTaskRequestAnswerDraft,
     onSelectPreviousTaskDraft: args.onSelectPreviousTaskDraft,
     onSelectNextTaskDraft: args.onSelectNextTaskDraft,
+    registerCurrentTaskDraft: args.registerCurrentTaskDraft,
+    saveCurrentTaskDraftToRegisteredTask:
+      args.saveCurrentTaskDraftToRegisteredTask,
+    editRegisteredTask: args.editRegisteredTask,
+    deleteRegisteredTask: args.deleteRegisteredTask,
+    cancelTaskRegistrationEdit: args.cancelTaskRegistrationEdit,
+    setTaskRegistrationLibrarySettings: args.setTaskRegistrationLibrarySettings,
+    setTaskRegistrationRecurrence: args.setTaskRegistrationRecurrence,
   } satisfies ChatPageWorkspaceActionsTask;
 }
 

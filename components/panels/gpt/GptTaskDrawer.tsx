@@ -2,12 +2,13 @@
 
 import React, { useState } from "react";
 import GptTaskStatusDrawer from "@/components/panels/gpt/GptTaskStatusDrawer";
+import TaskRegistrationPanel from "@/components/panels/gpt/TaskRegistrationPanel";
 import TaskProgressPanel from "@/components/panels/gpt/TaskProgressPanel";
 import type { GptPanelTaskProps } from "@/components/panels/gpt/gptPanelTypes";
 import { sectionCardStyle } from "@/components/panels/gpt/gptDrawerShared";
 import { GPT_TASK_TEXT } from "@/components/panels/gpt/gptUiText";
 
-type TaskView = "draft" | "progress";
+type TaskView = "draft" | "registration" | "progress";
 
 function toggleStyle(active: boolean): React.CSSProperties {
   return {
@@ -24,11 +25,16 @@ function toggleStyle(active: boolean): React.CSSProperties {
 
 export default function GptTaskDrawer({
   currentTaskDraft,
+  taskRegistrationDraft,
   taskDraftCount,
   activeTaskDraftIndex,
   taskProgressView,
   taskProgressCount,
   activeTaskProgressIndex,
+  registeredTasks,
+  editingRegisteredTaskId,
+  taskRegistrationLibrarySettings,
+  taskRegistrationRecurrence,
   onChangeTaskTitle,
   onChangeTaskUserInstruction,
   onChangeTaskBody,
@@ -44,15 +50,28 @@ export default function GptTaskDrawer({
   onClearTaskProgress,
   onSelectPreviousTaskProgress,
   onSelectNextTaskProgress,
+  onRegisterCurrentTaskDraft,
+  onSaveCurrentTaskDraftToRegisteredTask,
+  onEditRegisteredTask,
+  onDeleteRegisteredTask,
+  onCancelTaskRegistrationEdit,
+  onStartRegisteredTask,
+  onChangeTaskRegistrationLibrarySettings,
+  onChangeTaskRegistrationRecurrence,
   isMobile = false,
 }: Pick<
   GptPanelTaskProps,
   | "currentTaskDraft"
+  | "taskRegistrationDraft"
   | "taskDraftCount"
   | "activeTaskDraftIndex"
   | "taskProgressView"
   | "taskProgressCount"
   | "activeTaskProgressIndex"
+  | "registeredTasks"
+  | "editingRegisteredTaskId"
+  | "taskRegistrationLibrarySettings"
+  | "taskRegistrationRecurrence"
   | "onChangeTaskTitle"
   | "onChangeTaskUserInstruction"
   | "onChangeTaskBody"
@@ -68,6 +87,14 @@ export default function GptTaskDrawer({
   | "onClearTaskProgress"
   | "onSelectPreviousTaskProgress"
   | "onSelectNextTaskProgress"
+  | "onRegisterCurrentTaskDraft"
+  | "onSaveCurrentTaskDraftToRegisteredTask"
+  | "onEditRegisteredTask"
+  | "onDeleteRegisteredTask"
+  | "onCancelTaskRegistrationEdit"
+  | "onStartRegisteredTask"
+  | "onChangeTaskRegistrationLibrarySettings"
+  | "onChangeTaskRegistrationRecurrence"
 > & {
   isMobile?: boolean;
 }) {
@@ -103,6 +130,13 @@ export default function GptTaskDrawer({
             </button>
             <button
               type="button"
+              onClick={() => setActiveView("registration")}
+              style={toggleStyle(activeView === "registration")}
+            >
+              {GPT_TASK_TEXT.registrationTab}
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveView("progress")}
               style={toggleStyle(activeView === "progress")}
             >
@@ -125,6 +159,29 @@ export default function GptTaskDrawer({
           onSelectNextTaskDraft={onSelectNextTaskDraft}
           onResetTaskContext={onResetTaskContext}
           isMobile={isMobile}
+        />
+      ) : activeView === "registration" ? (
+        <TaskRegistrationPanel
+          currentTaskDraft={currentTaskDraft}
+          taskRegistrationDraft={taskRegistrationDraft}
+          registeredTasks={registeredTasks}
+          editingRegisteredTaskId={editingRegisteredTaskId}
+          taskRegistrationLibrarySettings={taskRegistrationLibrarySettings}
+          taskRegistrationRecurrence={taskRegistrationRecurrence}
+          onRegisterCurrentTaskDraft={onRegisterCurrentTaskDraft}
+          onSaveCurrentTaskDraftToRegisteredTask={
+            onSaveCurrentTaskDraftToRegisteredTask
+          }
+          onEditRegisteredTask={onEditRegisteredTask}
+          onDeleteRegisteredTask={onDeleteRegisteredTask}
+          onCancelTaskRegistrationEdit={onCancelTaskRegistrationEdit}
+          onStartRegisteredTask={onStartRegisteredTask}
+          onChangeTaskRegistrationLibrarySettings={
+            onChangeTaskRegistrationLibrarySettings
+          }
+          onChangeTaskRegistrationRecurrence={
+            onChangeTaskRegistrationRecurrence
+          }
         />
       ) : (
         <TaskProgressPanel

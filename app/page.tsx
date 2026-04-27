@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useRef } from "react";
 import ChatAppShell from "@/components/layout/ChatAppShell";
 import { useKinManager } from "@/hooks/useKinManager";
 import { usePersistedGptOptions } from "@/hooks/usePersistedGptOptions";
@@ -19,6 +20,15 @@ import {
   resolveCurrentKinDisplayLabel,
 } from "@/lib/app/ui-state/chatPageDefaults";
 import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFlow";
+import type { RegisteredTask } from "@/lib/app/task-registration/taskRegistration";
+import type { LibraryReferenceMode } from "@/components/panels/gpt/gptPanelTypes";
+
+type LibraryRuntimeSnapshot = {
+  autoLibraryReferenceEnabled: boolean;
+  libraryReferenceMode: LibraryReferenceMode;
+  libraryReferenceCount: number;
+  libraryIndexResponseCount: number;
+};
 
 export default function ChatApp() {
   const chatUi = useChatPageUiState(CHAT_PAGE_MOBILE_BREAKPOINT);
@@ -86,6 +96,63 @@ export default function ChatApp() {
     setFinalizeReviewed: taskProtocolDomain.taskProtocolView.setFinalizeReviewed,
   });
 
+  const activeLibraryOverrideRef = useRef<{
+    taskId: string;
+    previous: LibraryRuntimeSnapshot;
+  } | null>(null);
+
+  const restoreLibraryRuntimeSettings = useCallback(() => {
+    const active = activeLibraryOverrideRef.current;
+    if (!active) return;
+    referenceDomain.setAutoLibraryReferenceEnabled(
+      active.previous.autoLibraryReferenceEnabled
+    );
+    referenceDomain.setLibraryReferenceMode(active.previous.libraryReferenceMode);
+    referenceDomain.setLibraryReferenceCount(active.previous.libraryReferenceCount);
+    referenceDomain.setLibraryIndexResponseCount(
+      active.previous.libraryIndexResponseCount
+    );
+    activeLibraryOverrideRef.current = null;
+  }, [referenceDomain]);
+
+  const applyRegisteredTaskRuntimeSettings = useCallback((task: RegisteredTask) => {
+    restoreLibraryRuntimeSettings();
+    activeLibraryOverrideRef.current = {
+      taskId: task.draft.taskId || task.id,
+      previous: {
+        autoLibraryReferenceEnabled: referenceDomain.autoLibraryReferenceEnabled,
+        libraryReferenceMode: referenceDomain.libraryReferenceMode,
+        libraryReferenceCount: referenceDomain.libraryReferenceCount,
+        libraryIndexResponseCount: referenceDomain.libraryIndexResponseCount,
+      },
+    };
+
+    referenceDomain.setAutoLibraryReferenceEnabled(task.librarySettings.enabled);
+    referenceDomain.setLibraryReferenceMode(task.librarySettings.mode);
+    referenceDomain.setLibraryReferenceCount(task.librarySettings.count);
+    if (task.librarySettings.count > referenceDomain.libraryIndexResponseCount) {
+      referenceDomain.setLibraryIndexResponseCount(task.librarySettings.count);
+    }
+  }, [referenceDomain, restoreLibraryRuntimeSettings]);
+
+  const currentRuntimeTaskId = taskProtocolDomain.taskProtocol.runtime.currentTaskId;
+  const currentRuntimeTaskStatus = taskProtocolDomain.taskProtocol.runtime.taskStatus;
+
+  useEffect(() => {
+    const active = activeLibraryOverrideRef.current;
+    if (!active) return;
+    if (
+      currentRuntimeTaskId === active.taskId &&
+      currentRuntimeTaskStatus === "completed"
+    ) {
+      restoreLibraryRuntimeSettings();
+    }
+  }, [
+    currentRuntimeTaskId,
+    currentRuntimeTaskStatus,
+    restoreLibraryRuntimeSettings,
+  ]);
+
   useArchiveCompletedTaskResults({
     documents: referenceDomain.allDocuments,
     progressViews: taskProtocolDomain.taskProtocolView.progressViews,
@@ -104,6 +171,7 @@ export default function ChatApp() {
       searchDomain,
       taskProtocolDomain,
       referenceDomain,
+      applyRegisteredTaskRuntimeSettings,
     });
 
   const { kinPanel, gptPanel } = useChatPagePanelsComposition({

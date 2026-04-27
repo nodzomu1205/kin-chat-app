@@ -21,6 +21,9 @@ type ChatPageWorkspaceDomainInputsArgs = {
   searchDomain: ReturnType<typeof useSearchHistory>;
   taskProtocolDomain: ReturnType<typeof useChatPageTaskProtocolDomain>;
   referenceDomain: ReturnType<typeof useChatPageReferenceDomain>;
+  applyRegisteredTaskRuntimeSettings?: (
+    task: import("@/lib/app/task-registration/taskRegistration").RegisteredTask
+  ) => void;
 };
 
 export function useChatPageWorkspaceDomainInputs(
@@ -75,11 +78,28 @@ export function useChatPageWorkspaceDomainInputs(
     },
     taskDraft: {
       currentTaskDraft: taskDraftWorkspace.currentTaskDraft,
+      taskRegistrationDraft: taskDraftWorkspace.taskRegistrationDraft,
       taskDraftCount: taskDraftWorkspace.taskDrafts.length,
       activeTaskDraftIndex: taskDraftWorkspace.activeTaskDraftIndex,
+      registeredTasks: taskDraftWorkspace.registeredTasks,
+      editingRegisteredTaskId: taskDraftWorkspace.editingRegisteredTaskId,
+      taskRegistrationLibrarySettings:
+        taskDraftWorkspace.taskRegistrationLibrarySettings,
+      taskRegistrationRecurrence: taskDraftWorkspace.taskRegistrationRecurrence,
       setCurrentTaskDraft: taskDraftWorkspace.setCurrentTaskDraft,
       resetCurrentTaskDraft: taskProtocolDomain.resetCurrentTaskDraft,
       updateTaskDraftFields: taskProtocolDomain.updateTaskDraftFields,
+      registerCurrentTaskDraft: taskDraftWorkspace.registerCurrentTaskDraft,
+      saveCurrentTaskDraftToRegisteredTask:
+        taskDraftWorkspace.saveCurrentTaskDraftToRegisteredTask,
+      editRegisteredTask: taskDraftWorkspace.editRegisteredTask,
+      deleteRegisteredTask: taskDraftWorkspace.deleteRegisteredTask,
+      cancelTaskRegistrationEdit:
+        taskDraftWorkspace.cancelTaskRegistrationEdit,
+      setTaskRegistrationLibrarySettings:
+        taskDraftWorkspace.setTaskRegistrationLibrarySettings,
+      setTaskRegistrationRecurrence:
+        taskDraftWorkspace.setTaskRegistrationRecurrence,
       onSelectPreviousTaskDraft: taskDraftWorkspace.selectPreviousTaskDraft,
       onSelectNextTaskDraft: taskDraftWorkspace.selectNextTaskDraft,
     },
@@ -89,6 +109,8 @@ export function useChatPageWorkspaceDomainInputs(
       resolveTaskTitleFromDraft: taskProtocolDomain.resolveTaskTitleFromDraft,
       getTaskSlotLabel: taskProtocolDomain.getTaskSlotLabel,
       syncTaskDraftFromProtocol: taskProtocolDomain.syncTaskDraftFromProtocol,
+      syncTaskRegistrationDraftFromProtocol:
+        taskDraftWorkspace.syncTaskRegistrationDraftFromProtocol,
       applyPrefixedTaskFieldsFromText:
         taskProtocolDomain.applyPrefixedTaskFieldsFromText,
       getCurrentTaskCharConstraint:
@@ -181,6 +203,8 @@ export function useChatPageWorkspaceDomainInputs(
       onIndexGoogleDriveFolder: referenceDomain.indexGoogleDriveFolder,
       onImportGoogleDriveFolder: referenceDomain.importGoogleDriveFolder,
       buildLibraryReferenceContext: referenceDomain.buildLibraryReferenceContext,
+      applyRegisteredTaskRuntimeSettings:
+        args.applyRegisteredTaskRuntimeSettings,
       getTaskLibraryItem: referenceDomain.getTaskLibraryItem,
     },
     gpt: {

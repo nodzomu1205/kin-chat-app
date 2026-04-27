@@ -2,7 +2,6 @@ import { useState } from "react";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
 import {
   appendLastGptToKinInfoMessage,
-  runReceiveLastKinResponseToGptInputFlow,
   runSendLastKinToGptDraftFlow,
   runStartAskAiModeSearchFlow,
 } from "@/lib/app/send-to-gpt/gptMessageActionFlows";
@@ -175,16 +174,6 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     });
   };
 
-  const receiveLastKinResponseToGptInput = () => {
-    runReceiveLastKinResponseToGptInputFlow({
-      kinMessages: args.kinMessages,
-      processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-      setGptInput: args.setGptInput,
-      setGptMessages: args.setGptMessages,
-      focusGptPanel: args.focusGptPanel,
-    });
-  };
-
   const sendLastGptToKinInfo = () => {
     appendLastGptToKinInfoMessage({
       setGptMessages: args.setGptMessages,
@@ -198,7 +187,6 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     importYouTubeTranscript,
     sendYouTubeTranscriptToKin,
     sendLastKinToGptDraft,
-    receiveLastKinResponseToGptInput,
     sendLastGptToKinInfo,
   };
 }

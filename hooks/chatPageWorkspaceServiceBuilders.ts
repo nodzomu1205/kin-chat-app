@@ -16,6 +16,8 @@ function buildWorkspaceServicesTask(args: ChatPageWorkspaceServicesTask) {
     resolveTaskTitleFromDraft: args.resolveTaskTitleFromDraft,
     getTaskSlotLabel: args.getTaskSlotLabel,
     syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
+    syncTaskRegistrationDraftFromProtocol:
+      args.syncTaskRegistrationDraftFromProtocol,
     applyPrefixedTaskFieldsFromText: args.applyPrefixedTaskFieldsFromText,
     getCurrentTaskCharConstraint: args.getCurrentTaskCharConstraint,
     taskProtocol: args.taskProtocol,
@@ -45,6 +47,8 @@ function buildWorkspaceServicesReferences(
 ) {
   return {
     buildLibraryReferenceContext: args.buildLibraryReferenceContext,
+    applyRegisteredTaskRuntimeSettings:
+      args.applyRegisteredTaskRuntimeSettings,
   } satisfies ChatPageWorkspaceServicesReferences;
 }
 

@@ -1,7 +1,6 @@
 import {
   buildKinSysInfoBlock,
   buildKinSysTaskBlock,
-  summarizeTaskContentForKinInfo,
 } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import { applyKinSysInfoInjection } from "@/lib/app/kin-protocol/kinInfoInjection";
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
@@ -113,10 +112,7 @@ export async function sendCurrentTaskContentToKinFlow({
       return;
     }
 
-    let content =
-      intent.mode === "sys_info"
-        ? summarizeTaskContentForKinInfo(sourceText, currentTaskTitle || "Current task")
-        : sourceText.trim();
+    let content = sourceText.trim();
 
     if (intent.mode === "sys_task") {
       const taskInstruction =

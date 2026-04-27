@@ -17,6 +17,10 @@ import type {
   GptPanelProtocolProps,
   GptPanelSettingsProps,
 } from "@/components/panels/gpt/gptPanelTypes";
+import {
+  createDefaultTaskRegistrationLibrarySettings,
+  createDefaultTaskRegistrationRecurrence,
+} from "@/lib/app/task-registration/taskRegistration";
 
 describe("GptDrawerRouterHelpers", () => {
   const noop = () => {};
@@ -158,8 +162,31 @@ describe("GptDrawerRouterHelpers", () => {
           sources: [],
           updatedAt: "",
         },
+        taskRegistrationDraft: {
+          id: "registration-1",
+          taskId: "R1",
+          slot: 0,
+          title: "Registration",
+          userInstruction: "",
+          body: "",
+          searchContext: null,
+          taskName: "Registration",
+          objective: "",
+          prepText: "",
+          deepenText: "",
+          mergedText: "",
+          kinTaskText: "",
+          status: "idle",
+          sources: [],
+          updatedAt: "",
+        },
         taskDraftCount: 2,
         activeTaskDraftIndex: 1,
+        registeredTasks: [],
+        editingRegisteredTaskId: null,
+        taskRegistrationLibrarySettings:
+          createDefaultTaskRegistrationLibrarySettings(),
+        taskRegistrationRecurrence: createDefaultTaskRegistrationRecurrence(),
         taskProgressCount: 0,
         activeTaskProgressIndex: 0,
         pendingInjectionCurrentPart: 0,
@@ -171,7 +198,6 @@ describe("GptDrawerRouterHelpers", () => {
         runAttachSearchResultToTask: noop,
         sendLatestGptContentToKin: noop,
         sendCurrentTaskContentToKin: noop,
-        receiveLastKinResponseToGptInput: noop,
         sendLastGptToKinDraft: noop,
         onChangeTaskTitle,
         onChangeTaskUserInstruction: noop,

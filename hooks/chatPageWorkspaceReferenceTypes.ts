@@ -32,6 +32,8 @@ export type ChatPageWorkspaceViewReferencesArgs = {
     ChatPageGptPanelCompositionArgs["references"]["onSaveStoredDocument"];
   buildLibraryReferenceContext:
     ChatPageControllerServicesSectionArgs["buildLibraryReferenceContext"];
+  applyRegisteredTaskRuntimeSettings:
+    ChatPageControllerServicesSectionArgs["applyRegisteredTaskRuntimeSettings"];
   autoLibraryReferenceEnabled:
     ChatPageGptPanelCompositionArgs["settings"]["autoLibraryReferenceEnabled"];
   onChangeAutoLibraryReferenceEnabled:

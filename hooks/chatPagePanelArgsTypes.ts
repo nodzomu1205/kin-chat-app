@@ -1,4 +1,5 @@
 import type { KinPanelProps } from "@/components/panels/kin/kinPanelTypes";
+import type React from "react";
 import type { TaskProtocolView } from "@/hooks/chatPageControllerCompositionTypes";
 import type { ChatPageControllerGroups } from "@/hooks/useChatPageController";
 import type { BuildGptPanelArgs } from "@/lib/app/ui-state/panelPropsBuilders";
@@ -13,6 +14,11 @@ import type {
 } from "@/lib/task/taskIntent";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import type { SearchContext, TaskDraft } from "@/types/task";
+import type {
+  RegisteredTask,
+  TaskRegistrationLibrarySettings,
+  TaskRegistrationRecurrence,
+} from "@/lib/app/task-registration/taskRegistration";
 
 export type ChatPagePanelBaseArgs = {
   app: {
@@ -62,10 +68,28 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
   };
   task: {
     currentTaskDraft: TaskDraft;
+    taskRegistrationDraft: TaskDraft;
     taskDraftCount: number;
     activeTaskDraftIndex: number;
+    registeredTasks: RegisteredTask[];
+    editingRegisteredTaskId: string | null;
+    taskRegistrationLibrarySettings: TaskRegistrationLibrarySettings;
+    taskRegistrationRecurrence: TaskRegistrationRecurrence;
     resetCurrentTaskDraft: () => void;
     updateTaskDraftFields: BuildGptPanelArgs["task"]["updateTaskDraftFields"];
+    registerCurrentTaskDraft: BuildGptPanelArgs["task"]["onRegisterCurrentTaskDraft"];
+    saveCurrentTaskDraftToRegisteredTask:
+      BuildGptPanelArgs["task"]["onSaveCurrentTaskDraftToRegisteredTask"];
+    editRegisteredTask: BuildGptPanelArgs["task"]["onEditRegisteredTask"];
+    deleteRegisteredTask: BuildGptPanelArgs["task"]["onDeleteRegisteredTask"];
+    cancelTaskRegistrationEdit:
+      BuildGptPanelArgs["task"]["onCancelTaskRegistrationEdit"];
+    setTaskRegistrationLibrarySettings: React.Dispatch<
+      React.SetStateAction<TaskRegistrationLibrarySettings>
+    >;
+    setTaskRegistrationRecurrence: React.Dispatch<
+      React.SetStateAction<TaskRegistrationRecurrence>
+    >;
     pendingRequests: BuildGptPanelArgs["task"]["pendingRequests"];
     buildTaskRequestAnswerDraft: BuildGptPanelArgs["task"]["buildTaskRequestAnswerDraft"];
     onSaveTaskSnapshot: () => void;

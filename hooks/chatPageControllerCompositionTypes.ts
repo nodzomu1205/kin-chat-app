@@ -58,6 +58,7 @@ export type ChatPageControllerCompositionArgs = {
   };
   task: {
     currentTaskDraft: TaskDraft;
+    taskRegistrationDraft: TaskDraft;
     setCurrentTaskDraft: React.Dispatch<React.SetStateAction<TaskDraft>>;
     getTaskBaseText: () => string;
     getTaskLibraryItem: () => ReferenceLibraryItem | null;
@@ -65,6 +66,8 @@ export type ChatPageControllerCompositionArgs = {
     resolveTaskTitleFromDraft: UseChatPageActionsArgs["resolveTaskTitleFromDraft"];
     getTaskSlotLabel: () => string;
     syncTaskDraftFromProtocol: UseChatPageActionsArgs["syncTaskDraftFromProtocol"];
+    syncTaskRegistrationDraftFromProtocol:
+      UseChatPageActionsArgs["syncTaskRegistrationDraftFromProtocol"];
     applyPrefixedTaskFieldsFromText: UseChatPageActionsArgs["applyPrefixedTaskFieldsFromText"];
     getCurrentTaskCharConstraint: UseChatPageActionsArgs["getCurrentTaskCharConstraint"];
     resetCurrentTaskDraft: () => void;
@@ -102,6 +105,8 @@ export type ChatPageControllerCompositionArgs = {
   services: {
     reasoningMode: UseChatPageActionsArgs["reasoningMode"];
     autoCopyFileIngestSysInfoToKin: boolean;
+    autoGenerateLibrarySummary: boolean;
+    applyRegisteredTaskRuntimeSettings?: UseChatPageActionsArgs["applyRegisteredTaskRuntimeSettings"];
     gptMemoryRuntime: GptMemoryRuntime;
     setUploadKind: UseChatPageActionsArgs["setUploadKind"];
     applySearchUsage: UseChatPageActionsArgs["applySearchUsage"];

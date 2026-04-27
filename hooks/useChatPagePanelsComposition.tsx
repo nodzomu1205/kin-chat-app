@@ -12,6 +12,7 @@ import { buildChatPageWorkspaceViewArgsWithRefs } from "@/hooks/chatPageWorkspac
 import { useChatPageControllerArgs } from "@/hooks/useChatPageControllerArgs";
 import { useChatPageGptPanelArgs } from "@/hooks/useChatPageGptPanelArgs";
 import { useChatPageKinPanelProps } from "@/hooks/useChatPageKinPanelProps";
+import { useRegisteredTaskScheduler } from "@/hooks/useRegisteredTaskScheduler";
 import type { ChatPageWorkspaceViewArgs } from "@/hooks/chatPagePanelCompositionTypes";
 import type { ChatPageWorkspaceCompositionInput } from "@/hooks/chatPageWorkspaceCompositionTypes";
 import { buildGptPanelProps } from "@/lib/app/ui-state/panelPropsBuilders";
@@ -30,6 +31,10 @@ export function useChatPagePanelsComposition(
   const controller = useChatPageController(
     useChatPageControllerArgs(workspaceViewArgs)
   );
+  useRegisteredTaskScheduler({
+    registeredTasks: workspaceViewArgs.task.registeredTasks,
+    onStartRegisteredTask: controller.kin.startRegisteredTask,
+  });
   const handleSaveTaskSnapshot = () => void saveChatPageTaskSnapshot(workspaceViewArgs);
 
   const kinPanelProps = useChatPageKinPanelProps(

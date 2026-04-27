@@ -180,6 +180,19 @@ BODY: Save it.
     });
   });
 
+  it("extracts task proposal blocks without starting task execution", () => {
+    const events = extractTaskProtocolEvents(`<<SYS_TASK_PROPOSAL>>
+GOAL: 2000文字程度で事業計画の最新版を作ります。ライブラリデータ参照1回。検索5回迄、GPTへの依頼3回迄。
+<<END_SYS_TASK_PROPOSAL>>`);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: "task_proposal",
+      body:
+        "2000文字程度で事業計画の最新版を作ります。ライブラリデータ参照1回。検索5回迄、GPTへの依頼3回迄。",
+    });
+  });
+
   it("does not accept retired library and file saving aliases as active events", () => {
     const events = extractTaskProtocolEvents(`<<SYS_LIBRARY_INDEX_REQUEST>>
 TASK_ID: 1

@@ -35,7 +35,14 @@ export type ChatPageWorkspaceCompositionState = {
   >;
   task: Pick<
     ChatPageWorkspaceViewTaskArgs,
-    "currentTaskDraft" | "taskDraftCount" | "activeTaskDraftIndex"
+    | "currentTaskDraft"
+    | "taskRegistrationDraft"
+    | "taskDraftCount"
+    | "activeTaskDraftIndex"
+    | "registeredTasks"
+    | "editingRegisteredTaskId"
+    | "taskRegistrationLibrarySettings"
+    | "taskRegistrationRecurrence"
   >;
   protocol: Pick<
     ChatPageWorkspaceViewProtocolArgs,
@@ -121,6 +128,13 @@ export type ChatPageWorkspaceCompositionActions = {
     | "buildTaskRequestAnswerDraft"
     | "onSelectPreviousTaskDraft"
     | "onSelectNextTaskDraft"
+    | "registerCurrentTaskDraft"
+    | "saveCurrentTaskDraftToRegisteredTask"
+    | "editRegisteredTask"
+    | "deleteRegisteredTask"
+    | "cancelTaskRegistrationEdit"
+    | "setTaskRegistrationLibrarySettings"
+    | "setTaskRegistrationRecurrence"
   >;
   protocol: Pick<
     ChatPageWorkspaceViewProtocolArgs,
@@ -215,6 +229,7 @@ export type ChatPageWorkspaceCompositionServices = {
     | "resolveTaskTitleFromDraft"
     | "getTaskSlotLabel"
     | "syncTaskDraftFromProtocol"
+    | "syncTaskRegistrationDraftFromProtocol"
     | "applyPrefixedTaskFieldsFromText"
     | "getCurrentTaskCharConstraint"
     | "taskProtocol"
@@ -233,7 +248,7 @@ export type ChatPageWorkspaceCompositionServices = {
   >;
   references: Pick<
     ChatPageWorkspaceViewReferencesArgs,
-    "buildLibraryReferenceContext"
+    "buildLibraryReferenceContext" | "applyRegisteredTaskRuntimeSettings"
   >;
   gpt: Pick<
     ChatPageWorkspaceViewGptArgs,

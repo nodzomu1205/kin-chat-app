@@ -27,10 +27,34 @@ export type ChatPageWorkspaceViewUiArgs = ChatPageControllerUiStateArgs & {
 };
 
 export type ChatPageWorkspaceViewTaskArgs = ChatPageControllerTaskArgs & {
+  taskRegistrationDraft:
+    ChatPageGptPanelCompositionArgs["task"]["taskRegistrationDraft"];
   taskDraftCount: ChatPageGptPanelCompositionArgs["task"]["taskDraftCount"];
   activeTaskDraftIndex: ChatPageGptPanelCompositionArgs["task"]["activeTaskDraftIndex"];
+  registeredTasks: ChatPageGptPanelCompositionArgs["task"]["registeredTasks"];
+  editingRegisteredTaskId:
+    ChatPageGptPanelCompositionArgs["task"]["editingRegisteredTaskId"];
+  taskRegistrationLibrarySettings:
+    ChatPageGptPanelCompositionArgs["task"]["taskRegistrationLibrarySettings"];
+  taskRegistrationRecurrence:
+    ChatPageGptPanelCompositionArgs["task"]["taskRegistrationRecurrence"];
   updateTaskDraftFields: ChatPageGptPanelCompositionArgs["task"]["updateTaskDraftFields"];
   buildTaskRequestAnswerDraft: ChatPageGptPanelCompositionArgs["task"]["buildTaskRequestAnswerDraft"];
+  syncTaskRegistrationDraftFromProtocol:
+    ChatPageControllerTaskArgs["syncTaskRegistrationDraftFromProtocol"];
+  registerCurrentTaskDraft:
+    ChatPageGptPanelCompositionArgs["task"]["registerCurrentTaskDraft"];
+  saveCurrentTaskDraftToRegisteredTask:
+    ChatPageGptPanelCompositionArgs["task"]["saveCurrentTaskDraftToRegisteredTask"];
+  editRegisteredTask: ChatPageGptPanelCompositionArgs["task"]["editRegisteredTask"];
+  deleteRegisteredTask:
+    ChatPageGptPanelCompositionArgs["task"]["deleteRegisteredTask"];
+  cancelTaskRegistrationEdit:
+    ChatPageGptPanelCompositionArgs["task"]["cancelTaskRegistrationEdit"];
+  setTaskRegistrationLibrarySettings:
+    ChatPageGptPanelCompositionArgs["task"]["setTaskRegistrationLibrarySettings"];
+  setTaskRegistrationRecurrence:
+    ChatPageGptPanelCompositionArgs["task"]["setTaskRegistrationRecurrence"];
   onSelectPreviousTaskDraft?: ChatPageGptPanelCompositionArgs["task"]["onSelectPreviousTaskDraft"];
   onSelectNextTaskDraft?: ChatPageGptPanelCompositionArgs["task"]["onSelectNextTaskDraft"];
 };

@@ -84,6 +84,30 @@ export function useKinTaskProtocol() {
     };
   }
 
+  function startRegisteredTaskRuntime(task: {
+    id: string;
+    originalInstruction: string;
+    draft: { taskId: string; title: string };
+    intent?: TaskIntent;
+  }) {
+    if (!task.intent) return null;
+    const taskId = task.draft.taskId || task.id;
+    const started = buildStartedTaskState({
+      prev: createEmptyTaskRuntime(),
+      taskId,
+      originalInstruction: task.originalInstruction,
+      intent: task.intent,
+      title: task.draft.title || task.originalInstruction,
+      now: Date.now(),
+    });
+    commitRuntimeState(started.nextState);
+    return {
+      taskId,
+      title: started.title,
+      compiledTaskPrompt: started.compiledTaskPrompt,
+    };
+  }
+
   function addPendingRequest(request: Omit<PendingExternalRequest, "createdAt" | "status">) {
     mutateRuntimeState((prev) => {
       const pending: PendingExternalRequest = {
@@ -237,6 +261,7 @@ export function useKinTaskProtocol() {
     progressViews,
     activeProgressIndex: progressSelection.activeIndex,
     startTask,
+    startRegisteredTaskRuntime,
     replaceCurrentTaskIntent,
     addPendingRequest,
     answerPendingRequest,

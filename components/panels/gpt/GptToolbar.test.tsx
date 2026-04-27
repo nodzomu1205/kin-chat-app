@@ -17,7 +17,7 @@ describe("GptToolbar", () => {
         onAttachSearchResult={() => {}}
         onSendLatestResponseToKin={() => {}}
         onSendCurrentTaskToKin={() => {}}
-        onReceiveKinResponse={() => {}}
+        onRegisterTask={() => {}}
         onTransfer={() => {}}
         onReset={() => {}}
       />
@@ -40,7 +40,7 @@ describe("GptToolbar", () => {
         onAttachSearchResult={() => {}}
         onSendLatestResponseToKin={() => {}}
         onSendCurrentTaskToKin={() => {}}
-        onReceiveKinResponse={() => {}}
+        onRegisterTask={() => {}}
         onTransfer={() => {}}
         onReset={() => {}}
       />

@@ -98,10 +98,26 @@ export function buildChatPageWorkspaceGptTask(args: {
 }): ChatPageGptPanelCompositionArgs["task"] {
   return {
     currentTaskDraft: args.workspace.task.currentTaskDraft,
+    taskRegistrationDraft: args.workspace.task.taskRegistrationDraft,
     taskDraftCount: args.workspace.task.taskDraftCount,
     activeTaskDraftIndex: args.workspace.task.activeTaskDraftIndex,
+    registeredTasks: args.workspace.task.registeredTasks,
+    editingRegisteredTaskId: args.workspace.task.editingRegisteredTaskId,
+    taskRegistrationLibrarySettings:
+      args.workspace.task.taskRegistrationLibrarySettings,
+    taskRegistrationRecurrence: args.workspace.task.taskRegistrationRecurrence,
     resetCurrentTaskDraft: args.workspace.task.resetCurrentTaskDraft,
     updateTaskDraftFields: args.workspace.task.updateTaskDraftFields,
+    registerCurrentTaskDraft: args.workspace.task.registerCurrentTaskDraft,
+    saveCurrentTaskDraftToRegisteredTask:
+      args.workspace.task.saveCurrentTaskDraftToRegisteredTask,
+    editRegisteredTask: args.workspace.task.editRegisteredTask,
+    deleteRegisteredTask: args.workspace.task.deleteRegisteredTask,
+    cancelTaskRegistrationEdit: args.workspace.task.cancelTaskRegistrationEdit,
+    setTaskRegistrationLibrarySettings:
+      args.workspace.task.setTaskRegistrationLibrarySettings,
+    setTaskRegistrationRecurrence:
+      args.workspace.task.setTaskRegistrationRecurrence,
     pendingRequests: args.workspace.task.taskProtocolView.pendingRequests,
     buildTaskRequestAnswerDraft: args.workspace.task.buildTaskRequestAnswerDraft,
     onSaveTaskSnapshot: args.onSaveTaskSnapshot,

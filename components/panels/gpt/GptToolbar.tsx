@@ -30,7 +30,7 @@ type Props = {
   onAttachSearchResult: () => void;
   onSendLatestResponseToKin: () => void;
   onSendCurrentTaskToKin: () => void;
-  onReceiveKinResponse: () => void;
+  onRegisterTask: () => void;
   onTransfer: () => void;
   onReset: () => void;
 };
@@ -90,7 +90,7 @@ function ActionRow({
   onAttachSearchResult,
   onSendLatestResponseToKin,
   onSendCurrentTaskToKin,
-  onReceiveKinResponse,
+  onRegisterTask,
   onTransfer,
   onReset,
 }: Omit<Props, "onChangeTab">) {
@@ -238,9 +238,9 @@ function ActionRow({
         <button
           type="button"
           style={tint(buttonTask, "#d8b4fe", "#faf5ff", "#7e22ce")}
-          onClick={onReceiveKinResponse}
+          onClick={onRegisterTask}
         >
-          {GPT_TOOLBAR_TEXT.receiveKinResponse}
+          {GPT_TOOLBAR_TEXT.registerTask}
         </button>
         <button
           type="button"

@@ -26,6 +26,7 @@ describe("taskDraftProjection", () => {
 
   it("builds a formatted draft projection from protocol data", () => {
     const result = buildTaskDraftProjectionFromProtocol(createEmptyTaskDraft(), {
+      taskId: "task-1",
       title: "Prepared task",
       goal: "Reduced goal",
       compiledTaskPrompt: "<<SYS_TASK>>\nBODY: Task body.\n<<END_SYS_TASK>>",
@@ -33,6 +34,7 @@ describe("taskDraftProjection", () => {
     });
 
     expect(result.title).toBe("Prepared task");
+    expect(result.taskId).toBe("task-1");
     expect(result.taskName).toBe("Prepared task");
     expect(result.userInstruction).toBe("Full user instruction");
     expect(result.body).toContain("<<SYS_TASK>>");

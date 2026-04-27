@@ -192,11 +192,16 @@ export function buildGptTaskDrawerProps(
 ): GptTaskDrawerProps {
   return {
     currentTaskDraft: task.currentTaskDraft,
+    taskRegistrationDraft: task.taskRegistrationDraft,
     taskDraftCount: task.taskDraftCount,
     activeTaskDraftIndex: task.activeTaskDraftIndex,
     taskProgressView: task.taskProgressView,
     taskProgressCount: task.taskProgressCount,
     activeTaskProgressIndex: task.activeTaskProgressIndex,
+    registeredTasks: task.registeredTasks,
+    editingRegisteredTaskId: task.editingRegisteredTaskId,
+    taskRegistrationLibrarySettings: task.taskRegistrationLibrarySettings,
+    taskRegistrationRecurrence: task.taskRegistrationRecurrence,
     onChangeTaskTitle: task.onChangeTaskTitle,
     onChangeTaskUserInstruction: task.onChangeTaskUserInstruction,
     onChangeTaskBody: task.onChangeTaskBody,
@@ -212,6 +217,16 @@ export function buildGptTaskDrawerProps(
     onClearTaskProgress: task.onClearTaskProgress,
     onSelectPreviousTaskProgress: task.onSelectPreviousTaskProgress,
     onSelectNextTaskProgress: task.onSelectNextTaskProgress,
+    onRegisterCurrentTaskDraft: task.onRegisterCurrentTaskDraft,
+    onSaveCurrentTaskDraftToRegisteredTask:
+      task.onSaveCurrentTaskDraftToRegisteredTask,
+    onEditRegisteredTask: task.onEditRegisteredTask,
+    onDeleteRegisteredTask: task.onDeleteRegisteredTask,
+    onCancelTaskRegistrationEdit: task.onCancelTaskRegistrationEdit,
+    onStartRegisteredTask: task.onStartRegisteredTask,
+    onChangeTaskRegistrationLibrarySettings:
+      task.onChangeTaskRegistrationLibrarySettings,
+    onChangeTaskRegistrationRecurrence: task.onChangeTaskRegistrationRecurrence,
     isMobile,
   };
 }

@@ -3,7 +3,6 @@ import {
   extractTaskGoalFromSysTaskBlock,
   getIntentCandidateSignature,
 } from "@/lib/app/ui-state/chatPageHelpers";
-import { looksLikeKinTaskStartInstruction } from "@/lib/app/task-support/kinTaskStartDetection";
 import { resolveTaskRecompileSourceInstruction } from "@/lib/task/taskProtocolTaskState";
 import {
   resolveTaskIntentWithFallback,
@@ -13,7 +12,10 @@ import {
   shouldTransformContent,
   transformTextWithIntent,
 } from "@/lib/app/task-runtime/transformIntent";
-import type { runStartKinTaskFlow } from "@/lib/app/task-runtime/kinTaskFlow";
+import type {
+  runRegisterTaskDraftFlow,
+  runStartKinTaskFlow,
+} from "@/lib/app/task-runtime/kinTaskFlow";
 import type {
   sendCurrentTaskContentToKinFlow,
   sendLatestGptContentToKinFlow,
@@ -43,24 +45,32 @@ export function buildTaskProtocolIntentSyncArgs(
   args: UseTaskProtocolActionsArgs,
   approvedIntentPhrases: ApprovedIntentPhrase[]
 ): Parameters<typeof syncApprovedIntentPhrasesToCurrentTaskFlow>[0] {
+  const hasActiveTask = Boolean(args.taskProtocol.runtime.currentTaskId);
+  const draftForRefresh = hasActiveTask
+    ? args.currentTaskDraft
+    : args.taskRegistrationDraft;
   return {
     approvedIntentPhrases,
     sourceInstruction: resolveTaskRecompileSourceInstruction({
       originalInstruction: args.taskProtocol.runtime.originalInstruction,
-      draftUserInstruction: args.currentTaskDraft.userInstruction,
+      draftUserInstruction: draftForRefresh.userInstruction,
       intentGoal: args.taskProtocol.runtime.currentTaskIntent?.goal,
     }),
     currentTaskId: args.taskProtocol.runtime.currentTaskId,
+    currentTaskDraftTaskId: draftForRefresh.taskId,
     currentTaskTitle: args.taskProtocol.runtime.currentTaskTitle,
-    currentTaskDraftTitle: args.currentTaskDraft.title,
+    currentTaskDraftTitle: draftForRefresh.title,
     reasoningMode: args.reasoningMode === "creative" ? "creative" : "strict",
     applyTaskUsage: args.applyTaskUsage,
     replaceCurrentTaskIntent: args.taskProtocol.replaceCurrentTaskIntent,
-    syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
+    syncTaskDraftFromProtocol: hasActiveTask
+      ? args.syncTaskDraftFromProtocol
+      : args.syncTaskRegistrationDraftFromProtocol,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
     setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
+    updateKinInput: hasActiveTask,
   };
 }
 
@@ -106,7 +116,7 @@ export function buildStartKinTaskFlowArgs(
     applyTaskUsage: args.applyTaskUsage,
     mergePendingIntentCandidates,
     startTask: args.taskProtocol.startTask,
-    syncTaskDraftFromProtocol: args.syncTaskDraftFromProtocol,
+    syncTaskDraftFromProtocol: args.syncTaskRegistrationDraftFromProtocol,
     setPendingKinInjectionBlocks: args.setPendingKinInjectionBlocks,
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
     setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
@@ -115,6 +125,27 @@ export function buildStartKinTaskFlowArgs(
     setGptLoading: args.setGptLoading,
     appendGptMessage: buildAppendGptMessage(args.setGptMessages),
     setActiveTabToKin: args.focusKinPanel,
+    extractTaskGoalFromSysTaskBlock,
+  };
+}
+
+export function buildRegisterTaskDraftFlowArgs(
+  args: UseKinTransferActionsArgs,
+  mergePendingIntentCandidates: (candidates: PendingIntentCandidate[]) => void
+): Parameters<typeof runRegisterTaskDraftFlow>[0] {
+  const reasoningMode = args.reasoningMode === "creative" ? "creative" : "strict";
+
+  return {
+    rawInput: args.gptInput,
+    approvedIntentPhrases: args.approvedIntentPhrases,
+    reasoningMode,
+    resolveIntent: resolveTaskIntentWithFallback,
+    applyTaskUsage: args.applyTaskUsage,
+    mergePendingIntentCandidates,
+    syncTaskDraftFromProtocol: args.syncTaskRegistrationDraftFromProtocol,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    appendGptMessage: buildAppendGptMessage(args.setGptMessages),
     extractTaskGoalFromSysTaskBlock,
   };
 }
@@ -129,11 +160,21 @@ export function buildSendLatestGptContentToKinFlowArgs(
     currentTaskSlot: args.currentTaskDraft.slot,
     currentTaskTitle: args.currentTaskDraft.title,
     approvedIntentPhrases: args.approvedIntentPhrases,
-    resolveTransformIntent: ({ input, defaultMode, reasoningMode }: {
+    resolveTransformIntent: async ({ input, defaultMode, reasoningMode }: {
       input: string;
       defaultMode: "sys_info" | "sys_task";
       reasoningMode: "strict" | "creative";
-    }) => resolveTransformIntent({ input, defaultMode, reasoningMode }),
+    }) => {
+      const resolved = await resolveTransformIntent({
+        input,
+        defaultMode,
+        reasoningMode,
+      });
+      return {
+        ...resolved,
+        intent: { ...resolved.intent, mode: "sys_info" as const },
+      };
+    },
     resolveTaskIntent: resolveTaskIntentWithFallback,
     mergePendingIntentCandidates,
     startTask: args.taskProtocol.startTask,
@@ -170,13 +211,23 @@ export function buildSendCurrentTaskContentToKinFlowArgs(
     currentTaskTitle: args.currentTaskDraft.title,
     currentTaskInstruction: args.currentTaskDraft.userInstruction,
     approvedIntentPhrases: args.approvedIntentPhrases,
-    looksLikeTaskInstruction: looksLikeKinTaskStartInstruction,
+    looksLikeTaskInstruction: () => false,
     runStartKinTaskFromInput,
-    resolveTransformIntent: ({ input, defaultMode, reasoningMode }: {
+    resolveTransformIntent: async ({ input, reasoningMode }: {
       input: string;
       defaultMode: "sys_info" | "sys_task";
       reasoningMode: "strict" | "creative";
-    }) => resolveTransformIntent({ input, defaultMode, reasoningMode }),
+    }) => {
+      const resolved = await resolveTransformIntent({
+        input,
+        defaultMode: "sys_info",
+        reasoningMode,
+      });
+      return {
+        ...resolved,
+        intent: { ...resolved.intent, mode: "sys_info" as const },
+      };
+    },
     resolveTaskIntent: resolveTaskIntentWithFallback,
     mergePendingIntentCandidates,
     startTask: args.taskProtocol.startTask,

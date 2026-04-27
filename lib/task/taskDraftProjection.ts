@@ -2,6 +2,7 @@ import type { TaskDraft } from "@/types/task";
 import { resolveTaskRecompileSourceInstruction } from "@/lib/task/taskProtocolTaskState";
 
 export type TaskDraftProtocolProjectionParams = {
+  taskId: string;
   title: string;
   goal: string;
   compiledTaskPrompt: string;
@@ -29,6 +30,7 @@ export function buildTaskDraftProjectionFromProtocol(
 
   return {
     ...draft,
+    taskId: params.taskId,
     title: params.title,
     taskName: params.title,
     userInstruction,

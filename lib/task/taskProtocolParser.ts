@@ -38,6 +38,8 @@ export function normalizeTaskProtocolEventType(
       return "file_save_request";
     case "FILE_SAVING_RESPONSE":
       return "file_save_response";
+    case "TASK_PROPOSAL":
+      return "task_proposal";
     case "USER_QUESTION":
       return "user_question";
     case "MATERIAL_REQUEST":
@@ -140,7 +142,7 @@ export function extractTaskProtocolEvents(text: string): TaskProtocolEvent[] {
     const parsedPart = parseProtocolPart(fields.PART);
     const parsedUrls = parseProtocolUrls(fields.URLS);
     const body =
-      fields.BODY || fields.SEARCH_GOAL || fields.SUMMARY || "";
+      fields.BODY || fields.SEARCH_GOAL || fields.SUMMARY || fields.GOAL || "";
 
     events.push({
       type: blockType,

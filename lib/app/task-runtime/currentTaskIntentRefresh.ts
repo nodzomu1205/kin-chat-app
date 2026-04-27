@@ -1,5 +1,6 @@
 import { resolveTaskIntentWithFallback, type ApprovedIntentPhrase } from "@/lib/task/taskIntent";
 import { applyCompiledTaskPromptToKinInput } from "@/lib/app/task-support/kinTaskInjection";
+import { compileKinTaskPrompt } from "@/lib/task/taskCompiler";
 import type { BucketUsageOptions } from "@/lib/shared/tokenStats";
 import {
   buildCurrentTaskIntentRefreshApplyArgs,
@@ -13,6 +14,7 @@ export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
   approvedIntentPhrases: ApprovedIntentPhrase[];
   sourceInstruction: string;
   currentTaskId: string | null;
+  currentTaskDraftTaskId?: string | null;
   currentTaskTitle: string;
   currentTaskDraftTitle: string;
   reasoningMode: ReasoningMode;
@@ -38,11 +40,13 @@ export type SyncApprovedIntentPhrasesToCurrentTaskFlowArgs = {
     goal: string;
     compiledTaskPrompt: string;
     originalInstruction?: string;
+    intent?: import("@/types/taskProtocol").TaskIntent;
   }) => void;
   setPendingKinInjectionBlocks: (blocks: string[]) => void;
   setPendingKinInjectionIndex: (index: number) => void;
   setPendingKinInjectionPurpose?: (purpose: PendingKinInjectionPurpose) => void;
   setKinInput: (value: string) => void;
+  updateKinInput?: boolean;
 };
 
 async function resolveCurrentTaskIntentRefresh(
@@ -61,18 +65,36 @@ async function resolveCurrentTaskIntentRefresh(
 
   args.applyTaskUsage(resolved.usage);
 
-  const replaced = resolverArgs.replaceCurrentTaskIntent({
-    intent: resolved.intent,
-    title: resolverArgs.currentTaskTitle || resolverArgs.currentTaskDraftTitle,
-    originalInstruction: resolverArgs.sourceInstruction,
-  });
+  const title = resolverArgs.currentTaskTitle || resolverArgs.currentTaskDraftTitle;
+  const replaced = resolverArgs.replaceCurrentTaskIntent
+    ? resolverArgs.replaceCurrentTaskIntent({
+        intent: resolved.intent,
+        title,
+        originalInstruction: resolverArgs.sourceInstruction,
+      })
+    : null;
+  const draftTaskId = args.currentTaskDraftTaskId?.trim() || "";
+  const replacedTask =
+    replaced ||
+    (draftTaskId
+      ? {
+          taskId: draftTaskId,
+          title: title || resolved.intent.goal,
+          compiledTaskPrompt: compileKinTaskPrompt({
+            taskId: draftTaskId,
+            title: title || resolved.intent.goal,
+            originalInstruction: resolverArgs.sourceInstruction,
+            intent: resolved.intent,
+          }),
+        }
+      : null);
 
-  if (!replaced) return null;
+  if (!replacedTask) return null;
 
   return {
     sourceInstruction: resolverArgs.sourceInstruction,
     resolvedIntent: resolved.intent,
-    replacedTask: replaced,
+    replacedTask,
   };
 }
 
@@ -89,10 +111,13 @@ function applyCurrentTaskIntentRefresh(args: {
   setPendingKinInjectionIndex: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionIndex"];
   setPendingKinInjectionPurpose: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setPendingKinInjectionPurpose"];
   setKinInput: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs["setKinInput"];
+  updateKinInput?: boolean;
 }) {
   const applyArgs = buildCurrentTaskIntentRefreshApplyArgs(args);
   args.syncTaskDraftFromProtocol(applyArgs.syncTaskDraftArgs);
-  applyCompiledTaskPromptToKinInput(applyArgs.kinInjectionArgs);
+  if (args.updateKinInput !== false) {
+    applyCompiledTaskPromptToKinInput(applyArgs.kinInjectionArgs);
+  }
 }
 
 export async function syncApprovedIntentPhrasesToCurrentTaskFlow(
@@ -110,5 +135,6 @@ export async function syncApprovedIntentPhrasesToCurrentTaskFlow(
     setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
     setPendingKinInjectionPurpose: args.setPendingKinInjectionPurpose,
     setKinInput: args.setKinInput,
+    updateKinInput: args.updateKinInput,
   });
 }

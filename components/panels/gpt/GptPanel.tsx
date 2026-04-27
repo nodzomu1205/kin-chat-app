@@ -583,7 +583,7 @@ export default function GptPanel(props: GptPanelProps) {
               onAttachSearchResult={() => void task.runAttachSearchResultToTask()}
               onSendLatestResponseToKin={() => void task.sendLatestGptContentToKin()}
               onSendCurrentTaskToKin={() => void task.sendCurrentTaskContentToKin()}
-              onReceiveKinResponse={() => void task.receiveLastKinResponseToGptInput()}
+              onRegisterTask={() => void task.onRegisterTaskDraft?.()}
               onTransfer={task.sendLastGptToKinDraft}
               onReset={chat.resetGptForCurrentKin}
             />

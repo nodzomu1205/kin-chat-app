@@ -61,6 +61,8 @@ export function buildChatPageControllerTaskArgs(
 ): ChatPageTaskArgs {
   return {
     currentTaskDraft: args.task.currentTaskDraft,
+    taskRegistrationDraft: args.task.taskRegistrationDraft,
+    registeredTasks: args.task.registeredTasks,
     currentTaskIntentConstraints: args.task.taskProtocolView.currentTaskIntentConstraints,
     setCurrentTaskDraft: args.task.setCurrentTaskDraft,
     getTaskBaseText: args.task.getTaskBaseText,
@@ -69,6 +71,8 @@ export function buildChatPageControllerTaskArgs(
     resolveTaskTitleFromDraft: args.task.resolveTaskTitleFromDraft,
     getTaskSlotLabel: args.task.getTaskSlotLabel,
     syncTaskDraftFromProtocol: args.task.syncTaskDraftFromProtocol,
+    syncTaskRegistrationDraftFromProtocol:
+      args.task.syncTaskRegistrationDraftFromProtocol,
     applyPrefixedTaskFieldsFromText: args.task.applyPrefixedTaskFieldsFromText,
     getCurrentTaskCharConstraint: args.task.getCurrentTaskCharConstraint,
     resetCurrentTaskDraft: args.task.resetCurrentTaskDraft,
@@ -122,6 +126,8 @@ export function buildChatPageControllerServicesArgs(
     autoCopyFileIngestSysInfoToKin:
       args.bridge.autoBridgeSettings.autoCopyFileIngestSysInfoToKin,
     autoGenerateLibrarySummary: args.gpt.autoGenerateLibrarySummary,
+    applyRegisteredTaskRuntimeSettings:
+      args.references.applyRegisteredTaskRuntimeSettings,
     gptMemoryRuntime: args.gpt.gptMemoryRuntime,
     setUploadKind: args.gpt.onChangeUploadKind,
     applySearchUsage: args.usage.applySearchUsage,
@@ -230,6 +236,9 @@ export function buildKinTransferActionArgs(
     approvedIntentPhrases: groups.protocol.approvedIntentPhrases,
     currentKin: groups.identity.currentKin,
     currentTaskDraft: groups.task.currentTaskDraft,
+    registeredTasks: groups.task.registeredTasks,
+    applyRegisteredTaskRuntimeSettings:
+      groups.services.applyRegisteredTaskRuntimeSettings,
     getTaskBaseText: groups.task.getTaskBaseText,
     getTaskSlotLabel: groups.task.getTaskSlotLabel,
     gptInput: groups.uiState.gptInput,
@@ -260,6 +269,8 @@ export function buildKinTransferActionArgs(
     setPendingKinInjectionPurpose:
       groups.uiState.setPendingKinInjectionPurpose,
     syncTaskDraftFromProtocol: groups.task.syncTaskDraftFromProtocol,
+    syncTaskRegistrationDraftFromProtocol:
+      groups.task.syncTaskRegistrationDraftFromProtocol,
     taskProtocol: groups.protocol.taskProtocol,
   };
 }
@@ -295,6 +306,7 @@ export function buildTaskProtocolActionArgs(
     applyTaskUsage: groups.services.applyTaskUsage,
     approvedIntentPhrases: groups.protocol.approvedIntentPhrases,
     currentTaskDraft: groups.task.currentTaskDraft,
+    taskRegistrationDraft: groups.task.taskRegistrationDraft,
     focusKinPanel: groups.identity.focusKinPanel,
     pendingIntentCandidates: groups.protocol.pendingIntentCandidates,
     promptDefaultKey: groups.protocol.promptDefaultKey,
@@ -315,6 +327,8 @@ export function buildTaskProtocolActionArgs(
     setRejectedIntentCandidateSignatures:
       groups.protocol.setRejectedIntentCandidateSignatures,
     syncTaskDraftFromProtocol: groups.task.syncTaskDraftFromProtocol,
+    syncTaskRegistrationDraftFromProtocol:
+      groups.task.syncTaskRegistrationDraftFromProtocol,
     taskProtocol: groups.protocol.taskProtocol,
   };
 }

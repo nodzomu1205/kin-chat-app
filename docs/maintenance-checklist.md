@@ -47,6 +47,17 @@ Working estimate:
 
 Latest status update:
 
+- Task registration workspace is implemented with separated task formation,
+  task registration, and Kin task progress roles.
+- Registered task progress runtime and task-time library overrides are triggered
+  by actual `SYS_TASK` sends to Kin, matched by `TASK_ID`, not by merely setting
+  Kin input.
+- App-open recurrence scheduling is implemented for registered repeat tasks.
+  Mobile background execution remains a separate platform/design question.
+- `SYS_TASK_PROPOSAL` is proposal-only, routes to task registration drafts, and
+  must not start task execution automatically.
+- `レス共有` and `タスク共有` are `SYS_INFO`-only sharing tools; do not
+  reintroduce `TASK:` / `INFO:` mode switching in those button paths.
 - Drive picker/import responsibilities are now split across
   `useGoogleDrivePicker.ts`, `googleDrivePickerRuntime.ts`,
   `googleDriveImportExecution.ts`, `googleDrivePickerBuilders.ts`, and

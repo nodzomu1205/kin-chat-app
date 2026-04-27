@@ -27,8 +27,13 @@ export function useChatPageGptPanelArgs(
     },
     task: {
       currentTaskDraft: args.task.currentTaskDraft,
+      taskRegistrationDraft: args.task.taskRegistrationDraft,
       taskDraftCount: args.task.taskDraftCount,
       activeTaskDraftIndex: args.task.activeTaskDraftIndex,
+      registeredTasks: args.task.registeredTasks,
+      editingRegisteredTaskId: args.task.editingRegisteredTaskId,
+      taskRegistrationLibrarySettings: args.task.taskRegistrationLibrarySettings,
+      taskRegistrationRecurrence: args.task.taskRegistrationRecurrence,
       taskProgressView: args.taskProtocolView.progressView,
       taskProgressCount: args.taskProtocolView.progressViews.length,
       activeTaskProgressIndex: args.taskProtocolView.activeProgressIndex,
@@ -41,8 +46,24 @@ export function useChatPageGptPanelArgs(
         args.controller.task.runAttachSearchResultToTask,
       sendLatestGptContentToKin: args.controller.kin.sendLatestGptContentToKin,
       sendCurrentTaskContentToKin: args.controller.kin.sendCurrentTaskContentToKin,
-      receiveLastKinResponseToGptInput:
-        args.controller.gpt.receiveLastKinResponseToGptInput,
+      onRegisterTaskDraft: args.controller.kin.registerTaskDraftFromInput,
+      onStartRegisteredTask: args.controller.kin.startRegisteredTask,
+      onRegisterCurrentTaskDraft: args.task.registerCurrentTaskDraft,
+      onSaveCurrentTaskDraftToRegisteredTask:
+        args.task.saveCurrentTaskDraftToRegisteredTask,
+      onEditRegisteredTask: args.task.editRegisteredTask,
+      onDeleteRegisteredTask: args.task.deleteRegisteredTask,
+      onCancelTaskRegistrationEdit: args.task.cancelTaskRegistrationEdit,
+      onChangeTaskRegistrationLibrarySettings: (patch) =>
+        args.task.setTaskRegistrationLibrarySettings((prev) => ({
+          ...prev,
+          ...patch,
+        })),
+      onChangeTaskRegistrationRecurrence: (patch) =>
+        args.task.setTaskRegistrationRecurrence((prev) => ({
+          ...prev,
+          ...patch,
+        })),
       sendLastGptToKinDraft: args.controller.kin.sendLastGptToKinDraft,
       onSaveTaskSnapshot: args.task.onSaveTaskSnapshot,
       onSelectPreviousTaskDraft: args.task.onSelectPreviousTaskDraft,

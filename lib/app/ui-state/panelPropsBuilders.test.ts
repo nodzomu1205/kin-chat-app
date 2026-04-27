@@ -7,6 +7,10 @@ import {
 import { DEFAULT_MEMORY_SETTINGS } from "@/lib/memory-domain/memory";
 import { DEFAULT_MEMORY_INTERPRETER_SETTINGS } from "@/lib/memory-domain/memoryInterpreterRules";
 import { createEmptyTaskDraft } from "@/types/task";
+import {
+  createDefaultTaskRegistrationLibrarySettings,
+  createDefaultTaskRegistrationRecurrence,
+} from "@/lib/app/task-registration/taskRegistration";
 
 describe("panelPropsBuilders", () => {
   it("resolves pending injection progress", () => {
@@ -69,8 +73,14 @@ describe("panelPropsBuilders", () => {
           ...createEmptyTaskDraft(),
           taskName: "Existing Task",
         },
+        taskRegistrationDraft: createEmptyTaskDraft(),
         taskDraftCount: 1,
         activeTaskDraftIndex: 0,
+        registeredTasks: [],
+        editingRegisteredTaskId: null,
+        taskRegistrationLibrarySettings:
+          createDefaultTaskRegistrationLibrarySettings(),
+        taskRegistrationRecurrence: createDefaultTaskRegistrationRecurrence(),
         taskProgressView: undefined,
         taskProgressCount: 0,
         activeTaskProgressIndex: 0,
@@ -81,7 +91,6 @@ describe("panelPropsBuilders", () => {
         runAttachSearchResultToTask: vi.fn(),
         sendLatestGptContentToKin: vi.fn(),
         sendCurrentTaskContentToKin: vi.fn(),
-        receiveLastKinResponseToGptInput: vi.fn(),
         sendLastGptToKinDraft: vi.fn(),
         onPrepareTaskRequestAck: vi.fn(),
         onPrepareTaskSync: vi.fn(),

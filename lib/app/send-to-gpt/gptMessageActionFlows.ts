@@ -1,4 +1,3 @@
-import { receiveLastKinResponseFlow } from "@/lib/app/task-runtime/kinTaskFlow";
 import { extractPreferredKinTransferText } from "@/lib/app/kin-protocol/kinStructuredProtocol";
 import type { RunSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import { generateId } from "@/lib/shared/uuid";
@@ -40,28 +39,6 @@ export function runSendLastKinToGptDraftFlow(args: {
 
   args.setGptInput(extractPreferredKinTransferText(last.text));
   args.focusGptPanel();
-}
-
-export function runReceiveLastKinResponseToGptInputFlow(args: {
-  kinMessages: Message[];
-  processMultipartTaskDoneText: (
-    text: string,
-    options?: { setGptTab?: boolean }
-  ) => { handled: boolean; accepted: boolean } | null;
-  setGptInput: (value: string) => void;
-  setGptMessages: Dispatch<SetStateAction<Message[]>>;
-  focusGptPanel: () => void;
-}) {
-  receiveLastKinResponseFlow({
-    kinMessages: args.kinMessages,
-    processMultipartTaskDoneText: args.processMultipartTaskDoneText,
-    setGptInput: args.setGptInput,
-    appendGptMessage: (message) =>
-      args.setGptMessages((prev) => [...prev, message]),
-    setActiveTabToGpt: () => {
-      args.focusGptPanel();
-    },
-  });
 }
 
 export function appendLastGptToKinInfoMessage(args: {

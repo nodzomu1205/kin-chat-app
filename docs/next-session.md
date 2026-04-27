@@ -41,11 +41,46 @@ Stable enough to avoid broad refactor by default:
 
 ## Latest Implemented Slice
 
-Library / Kin protocol work is in a good implementation stopping state, with
-one manual retest still recommended.
+Task registration / Kin scheduling work is in a good implementation stopping
+state, with one live mobile-open recurrence test still recommended.
 
 Implemented:
 
+- Kin tab task actions are separated:
+  - response share and task share both send `SYS_INFO`
+  - task registration creates a registration draft instead of mutating task
+    formation or Kin input
+  - the unused response receive action has been removed from the UI/action path
+- Task tab now has a task-registration subtab:
+  - multiple registered tasks
+  - start / edit / delete
+  - new registration / overwrite save / cancel
+  - draft and settings panels are hidden when no registration draft is active
+  - registered task rows show single/repeat summary
+- Registered task start behavior:
+  - pressing start sets the registered `SYS_TASK` into Kin input
+  - progress runtime starts only after that `SYS_TASK` is actually sent to Kin
+  - runtime startup matches by `TASK_ID`
+- Recurrence scheduling:
+  - app-open browser scheduler checks registered repeat tasks every 30 seconds
+  - when due, it sets the task into Kin input
+  - existing auto-send Kin SYS input can send it onward if enabled
+  - mobile background execution is not guaranteed and is intentionally out of
+    scope for this first scheduler
+- Task-time library settings:
+  - stored per registered task
+  - applied only after the registered `SYS_TASK` is actually sent to Kin
+  - previous library reference settings are restored when the active task
+    reaches `completed`
+- `SYS_TASK_PROPOSAL`:
+  - parsed from Kin replies
+  - converted into the same registration draft path as the user-facing task
+    registration button
+  - ignored by task-progress runtime ingestion so proposals do not start tasks
+- Protocol rulebook now tells Kin to use `SYS_TASK_PROPOSAL` for task ideas and
+  wait for user approval followed by `SYS_TASK`
+- Task sharing now sends full task-formation content as `SYS_INFO`; it no
+  longer auto-summarizes to only overview/key points
 - collapsible library operation area with compact bulk display / bulk Kin-send
 - shared library aggregation for `Index`, `Summary`, and `Summary + Detail`
 - ordinary library sends use `SYS_INFO`
@@ -65,6 +100,18 @@ Implemented:
 ## First Manual Retest
 
 Start the next live Kin test here:
+
+1. create a registered repeat task one or two minutes in the future
+2. keep the app open on the phone
+3. confirm the scheduler sets the task into Kin input at the scheduled minute
+4. with `autoSendKinSysInput` enabled, confirm the SYS task is actually sent to
+   Kin
+5. confirm the task-progress tab starts only after send, not merely after Kin
+   input is populated
+6. confirm task-time library reference settings apply after send and restore
+   after completion
+
+Then run the existing draft/file-saving live test:
 
 1. run a task that creates a draft
 2. trigger `DRAFT_MODIFICATION`
@@ -99,10 +146,13 @@ If it fails, trace this order before patching:
   and `sendToGptPreparedGateHandlers.ts`; do not add a second local latest-draft
   heuristic near UI code.
 
-## Next Product Slice: Task Registration Workspace
+## Completed Product Slice: Task Registration Workspace
 
-The next session should implement a task-registration workflow that separates
-task drafting, task sharing, and response sharing more clearly.
+The task-registration workflow below has been implemented. Keep it as the
+authority summary for future maintenance; do not treat the implementation order
+as pending work unless a regression is found.
+
+This workflow separates task drafting, task sharing, and response sharing.
 
 ### 1. GPT Kin Tab Button Changes
 

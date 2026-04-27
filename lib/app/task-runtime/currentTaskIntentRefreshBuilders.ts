@@ -5,7 +5,9 @@ export function buildCurrentTaskIntentRefreshResolverArgs(
   args: SyncApprovedIntentPhrasesToCurrentTaskFlowArgs
 ) {
   const sourceInstruction = args.sourceInstruction.trim();
-  if (!sourceInstruction || !args.currentTaskId || !args.replaceCurrentTaskIntent) {
+  const hasActiveTask = Boolean(args.currentTaskId && args.replaceCurrentTaskIntent);
+  const hasDraftTask = Boolean(args.currentTaskDraftTaskId?.trim());
+  if (!sourceInstruction || (!hasActiveTask && !hasDraftTask)) {
     return null;
   }
 
@@ -15,7 +17,9 @@ export function buildCurrentTaskIntentRefreshResolverArgs(
     reasoningMode: args.reasoningMode,
     currentTaskTitle: args.currentTaskTitle,
     currentTaskDraftTitle: args.currentTaskDraftTitle,
-    replaceCurrentTaskIntent: args.replaceCurrentTaskIntent,
+    replaceCurrentTaskIntent: hasActiveTask
+      ? args.replaceCurrentTaskIntent
+      : undefined,
   };
 }
 
@@ -40,6 +44,7 @@ export function buildCurrentTaskIntentRefreshApplyArgs(args: {
       goal: args.resolvedIntent.goal,
       compiledTaskPrompt: args.replacedTask.compiledTaskPrompt,
       originalInstruction: args.sourceInstruction,
+      intent: args.resolvedIntent,
     },
     kinInjectionArgs: {
       compiledTaskPrompt: args.replacedTask.compiledTaskPrompt,

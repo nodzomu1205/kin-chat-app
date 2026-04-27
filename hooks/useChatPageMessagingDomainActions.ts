@@ -24,12 +24,13 @@ export function useChatPageMessagingDomainActions(
     importYouTubeTranscript,
     sendYouTubeTranscriptToKin,
     sendLastKinToGptDraft,
-    receiveLastKinResponseToGptInput,
   } = useGptMessageActions(buildGptMessageActionArgs(actions));
 
   const {
     clearPendingKinInjection,
+    registerTaskDraftFromInput,
     runStartKinTaskFromInput,
+    startRegisteredTask,
     sendKinMessage,
     sendToKin,
     sendLastGptToKinDraft,
@@ -42,7 +43,9 @@ export function useChatPageMessagingDomainActions(
   return {
     kin: {
       clearPendingKinInjection,
+      registerTaskDraftFromInput,
       runStartKinTaskFromInput,
+      startRegisteredTask,
       sendKinMessage,
       sendToKin,
       sendLastKinToGptDraft,
@@ -55,7 +58,6 @@ export function useChatPageMessagingDomainActions(
       startAskAiModeSearch,
       importYouTubeTranscript,
       sendYouTubeTranscriptToKin,
-      receiveLastKinResponseToGptInput,
     },
   };
 }

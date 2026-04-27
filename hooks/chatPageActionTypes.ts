@@ -42,6 +42,7 @@ import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMulti
 import type { MemoryTopicAdjudication } from "@/lib/app/memory-rules/memoryTopicAdjudication";
 import type { ParsedTaskInput } from "@/lib/task/taskInputParser";
 import type { MemorySettings } from "@/lib/memory-domain/memory";
+import type { RegisteredTask } from "@/lib/app/task-registration/taskRegistration";
 
 type TaskProtocolController = ReturnType<typeof useKinTaskProtocol>;
 
@@ -92,6 +93,8 @@ export type ChatPageUiStateArgs = {
 
 export type ChatPageTaskArgs = {
   currentTaskDraft: TaskDraft;
+  taskRegistrationDraft: TaskDraft;
+  registeredTasks: RegisteredTask[];
   currentTaskIntentConstraints: string[];
   setCurrentTaskDraft: React.Dispatch<React.SetStateAction<TaskDraft>>;
   getTaskBaseText: () => string;
@@ -113,6 +116,9 @@ export type ChatPageTaskArgs = {
   ) => string;
   getTaskSlotLabel: () => string;
   syncTaskDraftFromProtocol: (
+    params: { taskId: string } & TaskDraftProtocolProjectionParams
+  ) => void;
+  syncTaskRegistrationDraftFromProtocol: (
     params: { taskId: string } & TaskDraftProtocolProjectionParams
   ) => void;
   applyPrefixedTaskFieldsFromText: (text: string) => ParsedTaskInput;
@@ -178,6 +184,7 @@ export type ChatPageServicesArgs = {
   reasoningMode: ReasoningMode;
   autoCopyFileIngestSysInfoToKin: boolean;
   autoGenerateLibrarySummary: boolean;
+  applyRegisteredTaskRuntimeSettings?: (task: RegisteredTask) => void;
   gptMemoryRuntime: GptMemoryRuntime;
   setUploadKind: React.Dispatch<React.SetStateAction<UploadKind>>;
   applySearchUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
@@ -267,6 +274,8 @@ export type UseKinTransferActionsArgs = Pick<
   | "approvedIntentPhrases"
   | "currentKin"
   | "currentTaskDraft"
+  | "registeredTasks"
+  | "applyRegisteredTaskRuntimeSettings"
   | "getTaskBaseText"
     | "getTaskSlotLabel"
     | "gptInput"
@@ -295,6 +304,7 @@ export type UseKinTransferActionsArgs = Pick<
   | "setPendingKinInjectionIndex"
   | "setPendingKinInjectionPurpose"
   | "syncTaskDraftFromProtocol"
+  | "syncTaskRegistrationDraftFromProtocol"
   | "taskProtocol"
 >;
 
@@ -324,6 +334,7 @@ export type UseTaskProtocolActionsArgs = Pick<
   | "applyTaskUsage"
   | "approvedIntentPhrases"
   | "currentTaskDraft"
+  | "taskRegistrationDraft"
   | "focusKinPanel"
   | "pendingIntentCandidates"
   | "promptDefaultKey"
@@ -342,6 +353,7 @@ export type UseTaskProtocolActionsArgs = Pick<
   | "setProtocolRulebook"
   | "setRejectedIntentCandidateSignatures"
   | "syncTaskDraftFromProtocol"
+  | "syncTaskRegistrationDraftFromProtocol"
   | "taskProtocol"
 >;
 
@@ -372,7 +384,9 @@ export type UseFileIngestActionsArgs = Pick<
 export type ChatPageActionGroups = {
   kin: {
     clearPendingKinInjection: () => void;
+    registerTaskDraftFromInput: () => Promise<void>;
     runStartKinTaskFromInput: () => Promise<void>;
+    startRegisteredTask: (task: RegisteredTask) => void;
     sendKinMessage: (text: string) => Promise<void>;
     sendToKin: () => Promise<void>;
     sendLastKinToGptDraft: () => void | Promise<void>;
@@ -387,7 +401,6 @@ export type ChatPageActionGroups = {
     startAskAiModeSearch: (query: string) => void | Promise<void>;
     importYouTubeTranscript: (source: SourceItem) => void | Promise<void>;
     sendYouTubeTranscriptToKin: (source: SourceItem) => void | Promise<void>;
-    receiveLastKinResponseToGptInput: () => void | Promise<void>;
     injectFileToKinDraft: GptPanelChatProps["onInjectFile"];
   };
   task: {

@@ -11,6 +11,10 @@ import { CHAT_PAGE_MOBILE_BREAKPOINT } from "@/lib/app/ui-state/chatPageDefaults
 import { buildGptPanelProps } from "@/lib/app/ui-state/panelPropsBuilders";
 import { createEmptyTaskDraft } from "@/types/task";
 import type { Message } from "@/types/chat";
+import {
+  createDefaultTaskRegistrationLibrarySettings,
+  createDefaultTaskRegistrationRecurrence,
+} from "@/lib/app/task-registration/taskRegistration";
 
 export default function TestTaskPage() {
   const [gptMessages] = useState<Message[]>([]);
@@ -78,8 +82,14 @@ export default function TestTaskPage() {
     },
     task: {
       currentTaskDraft: taskDraft,
+      taskRegistrationDraft: createEmptyTaskDraft(),
       taskDraftCount: 1,
       activeTaskDraftIndex: 0,
+      registeredTasks: [],
+      editingRegisteredTaskId: null,
+      taskRegistrationLibrarySettings:
+        createDefaultTaskRegistrationLibrarySettings(),
+      taskRegistrationRecurrence: createDefaultTaskRegistrationRecurrence(),
       taskProgressCount: 0,
       activeTaskProgressIndex: 0,
       runPrepTaskFromInput: noopAsync,
@@ -89,7 +99,14 @@ export default function TestTaskPage() {
       runAttachSearchResultToTask: noopAsync,
       sendLatestGptContentToKin: noop,
       sendCurrentTaskContentToKin: noop,
-      receiveLastKinResponseToGptInput: noop,
+      onRegisterCurrentTaskDraft: noop,
+      onSaveCurrentTaskDraftToRegisteredTask: noop,
+      onEditRegisteredTask: noop,
+      onDeleteRegisteredTask: noop,
+      onCancelTaskRegistrationEdit: noop,
+      onStartRegisteredTask: noop,
+      onChangeTaskRegistrationLibrarySettings: noop,
+      onChangeTaskRegistrationRecurrence: noop,
       sendLastGptToKinDraft: noop,
       onResetTaskContext: noop,
       pendingInjection: {

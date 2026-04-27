@@ -32,6 +32,9 @@ export function ingestTaskProtocolEventsState(
   let next = { ...prev };
 
   for (const event of params.events) {
+    if (event.type === "task_proposal") {
+      continue;
+    }
     const resolvedTaskId = event.taskId || next.currentTaskId || prev.currentTaskId || "";
     const actionId = event.actionId || params.createActionId();
     const existingLog = isDuplicateProtocolLogEntry({

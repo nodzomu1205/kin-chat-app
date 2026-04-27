@@ -29,6 +29,8 @@ type RunSendKinMessageFlowArgs = {
   setPendingKinInjectionIndex: Dispatch<SetStateAction<number>>;
   clearPendingKinInjection: () => void;
   onPendingKinAck?: () => void | Promise<void>;
+  onSysTaskSent?: (text: string) => void | Promise<void>;
+  onKinReply?: (text: string) => void | Promise<void>;
 };
 
 type KindroidApiResponse = {
@@ -51,6 +53,8 @@ export async function runSendKinMessageFlow({
   setPendingKinInjectionIndex,
   clearPendingKinInjection,
   onPendingKinAck,
+  onSysTaskSent,
+  onKinReply,
 }: RunSendKinMessageFlowArgs) {
   if (!text.trim() || !currentKin || kinLoading) return;
 
@@ -72,6 +76,9 @@ export async function runSendKinMessageFlow({
     });
 
     const data = (await res.json()) as KindroidApiResponse;
+    if (text.includes("<<SYS_TASK>>")) {
+      await onSysTaskSent?.(text);
+    }
 
     const replyText =
       typeof data.reply === "string" && data.reply.trim()
@@ -89,6 +96,7 @@ export async function runSendKinMessageFlow({
     if (typeof data.reply === "string" && data.reply.trim()) {
       ingestProtocolMessage(data.reply, "kin_to_gpt");
       processMultipartTaskDoneText(data.reply);
+      await onKinReply?.(data.reply);
     }
 
     setKinConnectionState("connected");

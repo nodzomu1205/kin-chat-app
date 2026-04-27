@@ -45,6 +45,30 @@ describe("currentTaskIntentRefreshBuilders", () => {
     ).toBeNull();
   });
 
+  it("builds resolver args for a registration draft without an active runtime task", () => {
+    expect(
+      buildCurrentTaskIntentRefreshResolverArgs({
+        approvedIntentPhrases: [],
+        sourceInstruction: " Registration instruction ",
+        currentTaskId: null,
+        currentTaskDraftTaskId: "R123456",
+        currentTaskTitle: "",
+        currentTaskDraftTitle: "Registration draft",
+        reasoningMode: "strict",
+        applyTaskUsage: vi.fn(),
+        replaceCurrentTaskIntent: vi.fn(),
+        syncTaskDraftFromProtocol: vi.fn(),
+        setPendingKinInjectionBlocks: vi.fn(),
+        setPendingKinInjectionIndex: vi.fn(),
+        setKinInput: vi.fn(),
+      })
+    ).toMatchObject({
+      sourceInstruction: "Registration instruction",
+      currentTaskDraftTitle: "Registration draft",
+      replaceCurrentTaskIntent: undefined,
+    });
+  });
+
   it("builds apply args for draft sync and Kin injection from the refreshed task", () => {
     expect(
       buildCurrentTaskIntentRefreshApplyArgs({
@@ -67,6 +91,9 @@ describe("currentTaskIntentRefreshBuilders", () => {
         taskId: "task-1",
         title: "Updated title",
         goal: "Updated goal",
+        intent: {
+          goal: "Updated goal",
+        },
         compiledTaskPrompt: "<<SYS_TASK>>body<<END_SYS_TASK>>",
         originalInstruction: "Original instruction",
       },
@@ -74,6 +101,7 @@ describe("currentTaskIntentRefreshBuilders", () => {
         compiledTaskPrompt: "<<SYS_TASK>>body<<END_SYS_TASK>>",
         setPendingKinInjectionBlocks: expect.any(Function),
         setPendingKinInjectionIndex: expect.any(Function),
+        setPendingKinInjectionPurpose: undefined,
         setKinInput: expect.any(Function),
       },
     });

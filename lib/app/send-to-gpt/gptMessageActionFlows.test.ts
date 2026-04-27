@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   appendLastGptToKinInfoMessage,
   buildAskAiModeSearchInput,
-  runReceiveLastKinResponseToGptInputFlow,
   runSendLastKinToGptDraftFlow,
   runStartAskAiModeSearchFlow,
 } from "@/lib/app/send-to-gpt/gptMessageActionFlows";
@@ -104,27 +103,6 @@ describe("gptMessageActionFlows", () => {
     });
 
     expect(setGptInput).toHaveBeenCalledWith("latest kin");
-    expect(focusGptPanel).toHaveBeenCalled();
-  });
-
-  it("wraps receive-last-Kin response state updates", () => {
-    const setGptInput = vi.fn();
-    const setGptMessages = vi.fn(
-      (updater: Message[] | ((prev: Message[]) => Message[])) =>
-        typeof updater === "function" ? updater([]) : updater
-    );
-    const focusGptPanel = vi.fn();
-
-    runReceiveLastKinResponseToGptInputFlow({
-      kinMessages: [{ id: "kin", role: "kin", text: "Kin response" }],
-      processMultipartTaskDoneText: vi.fn(() => null),
-      setGptInput,
-      setGptMessages,
-      focusGptPanel,
-    });
-
-    expect(setGptInput).toHaveBeenCalledWith("Kin response");
-    expect(setGptMessages).toHaveBeenCalled();
     expect(focusGptPanel).toHaveBeenCalled();
   });
 

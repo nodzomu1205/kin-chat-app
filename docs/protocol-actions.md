@@ -153,6 +153,8 @@ Should do:
   the shared resolver
 - route `SYS_TASK_PROPOSAL` into the same task-registration draft path as the
   user-facing `タスク登録` button
+- keep `SYS_TASK_PROPOSAL` proposal-only. Kin must wait for user approval
+  followed by a `SYS_TASK` message before starting the task.
 
 Should not do:
 - revive automatic Kin-output-to-library saving as a side route
@@ -164,7 +166,7 @@ Should not do:
 
 ## 6. Task Registration / Sharing Actions
 
-Next planned UI boundary:
+Current UI boundary:
 
 - `タスク登録`: build a task SYS draft from user natural language and place it in
   the Task tab `タスク登録` subtab
@@ -178,6 +180,17 @@ Should do:
   path
 - keep Kin input mutation inside Kin transfer/injection helpers
 - treat GPT input text as user instruction for `タスク共有` / `レス共有`
+
+Additional live rules:
+
+- Task progress runtime starts only after a registered `SYS_TASK` is actually
+  sent to Kin, matched by `TASK_ID`.
+- Task-time library reference overrides apply only after that same Kin send and
+  restore when the active task completes.
+- App-open recurrence scheduling belongs in scheduler code, not panel rendering.
+- `TASK:` / `INFO:` prefix switching must not be reintroduced in response-share
+  or task-share buttons; those buttons are `SYS_INFO` tools and user input is a
+  directive only.
 
 Should not do:
 

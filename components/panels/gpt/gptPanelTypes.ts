@@ -24,6 +24,11 @@ import type {
   UserFacingTaskRequest,
 } from "@/types/taskProtocol";
 import type { LibraryBulkActionMode } from "@/lib/app/reference-library/libraryItemAggregation";
+import type {
+  RegisteredTask,
+  TaskRegistrationLibrarySettings,
+  TaskRegistrationRecurrence,
+} from "@/lib/app/task-registration/taskRegistration";
 
 export type GptInstructionMode =
   | "normal"
@@ -131,11 +136,16 @@ export type GptPanelChatProps = {
 
 export type GptPanelTaskProps = {
   currentTaskDraft: TaskDraft;
+  taskRegistrationDraft: TaskDraft;
   taskDraftCount: number;
   activeTaskDraftIndex: number;
   taskProgressView?: TaskProgressView;
   taskProgressCount: number;
   activeTaskProgressIndex: number;
+  registeredTasks: RegisteredTask[];
+  editingRegisteredTaskId: string | null;
+  taskRegistrationLibrarySettings: TaskRegistrationLibrarySettings;
+  taskRegistrationRecurrence: TaskRegistrationRecurrence;
   pendingInjectionCurrentPart: number;
   pendingInjectionTotalParts: number;
   runPrepTaskFromInput: () => void | Promise<void>;
@@ -145,7 +155,7 @@ export type GptPanelTaskProps = {
   runAttachSearchResultToTask: () => void | Promise<void>;
   sendLatestGptContentToKin: () => void | Promise<void>;
   sendCurrentTaskContentToKin: () => void | Promise<void>;
-  receiveLastKinResponseToGptInput: () => void | Promise<void>;
+  onRegisterTaskDraft?: () => void | Promise<void>;
   sendLastGptToKinDraft: () => void | Promise<void>;
   onChangeTaskTitle: (value: string) => void;
   onChangeTaskUserInstruction: (value: string) => void;
@@ -167,6 +177,18 @@ export type GptPanelTaskProps = {
   onSelectNextTaskProgress?: () => void;
   onStartKinTask?: () => void | Promise<void>;
   onResetTaskContext?: () => void;
+  onRegisterCurrentTaskDraft?: () => void;
+  onSaveCurrentTaskDraftToRegisteredTask?: (taskId: string) => void;
+  onEditRegisteredTask?: (task: RegisteredTask) => void;
+  onDeleteRegisteredTask?: (taskId: string) => void;
+  onCancelTaskRegistrationEdit?: () => void;
+  onStartRegisteredTask?: (task: RegisteredTask) => void;
+  onChangeTaskRegistrationLibrarySettings?: (
+    patch: Partial<TaskRegistrationLibrarySettings>
+  ) => void;
+  onChangeTaskRegistrationRecurrence?: (
+    patch: Partial<TaskRegistrationRecurrence>
+  ) => void;
 };
 
 export type GptPanelProtocolProps = {

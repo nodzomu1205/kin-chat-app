@@ -91,6 +91,9 @@ describe("currentTaskIntentRefresh", () => {
       taskId: "task-1",
       title: "Updated title",
       goal: "Updated goal",
+      intent: {
+        goal: "Updated goal",
+      },
       compiledTaskPrompt:
         "<<SYS_TASK>>\nTITLE: Updated title\nGOAL: Updated goal\n<<END_SYS_TASK>>",
       originalInstruction: "Original instruction text",
@@ -122,5 +125,60 @@ describe("currentTaskIntentRefresh", () => {
 
     expect(resolveTaskIntentWithFallbackMock).not.toHaveBeenCalled();
     expect(applyTaskUsage).not.toHaveBeenCalled();
+  });
+
+  it("refreshes a registration draft without injecting it into Kin input", async () => {
+    resolveTaskIntentWithFallbackMock.mockResolvedValue({
+      intent: {
+        mode: "task",
+        goal: "Updated registration goal",
+        output: {
+          type: "essay",
+          language: "ja",
+        },
+        workflow: {
+          searchRequestCount: 5,
+          searchRequestCountRule: "up_to",
+          askGptCount: 3,
+          askGptCountRule: "up_to",
+        },
+        constraints: ["2000文字程度"],
+      },
+      pendingCandidates: [],
+      usedFallback: true,
+      usage: null,
+    });
+
+    const syncTaskDraftFromProtocol = vi.fn();
+    const setKinInput = vi.fn();
+
+    await syncApprovedIntentPhrasesToCurrentTaskFlow({
+      approvedIntentPhrases: [],
+      sourceInstruction: "Registration instruction",
+      currentTaskId: null,
+      currentTaskDraftTaskId: "R123456",
+      currentTaskTitle: "",
+      currentTaskDraftTitle: "Registration draft",
+      reasoningMode: "strict",
+      applyTaskUsage: vi.fn(),
+      replaceCurrentTaskIntent: vi.fn(),
+      syncTaskDraftFromProtocol,
+      setPendingKinInjectionBlocks: vi.fn(),
+      setPendingKinInjectionIndex: vi.fn(),
+      setKinInput,
+      updateKinInput: false,
+    });
+
+    expect(syncTaskDraftFromProtocol).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskId: "R123456",
+        goal: "Updated registration goal",
+        compiledTaskPrompt: expect.stringContaining("CONSTRAINTS:"),
+      })
+    );
+    expect(syncTaskDraftFromProtocol.mock.calls[0][0].compiledTaskPrompt).toContain(
+      "2000文字程度"
+    );
+    expect(setKinInput).not.toHaveBeenCalled();
   });
 });

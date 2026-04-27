@@ -119,6 +119,7 @@ export type TaskProtocolEventType =
   | "draft_modification_response"
   | "file_save_request"
   | "file_save_response"
+  | "task_proposal"
   | "user_question"
   | "material_request"
   | "task_done"

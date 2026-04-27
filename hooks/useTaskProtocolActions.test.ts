@@ -49,6 +49,7 @@ function createArgs(
       title: "Draft title",
       userInstruction: "Draft instruction",
     },
+    taskRegistrationDraft: createEmptyTaskDraft(),
     focusKinPanel: vi.fn(() => false),
     pendingIntentCandidates: [],
     promptDefaultKey: "prompt-default",
@@ -66,6 +67,7 @@ function createArgs(
     setProtocolRulebook: vi.fn(),
     setRejectedIntentCandidateSignatures: vi.fn(),
     syncTaskDraftFromProtocol: vi.fn(),
+    syncTaskRegistrationDraftFromProtocol: vi.fn(),
     taskProtocol: {
       runtime: {
         currentTaskId: "task-1",

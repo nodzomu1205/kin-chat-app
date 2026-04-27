@@ -5,6 +5,7 @@ import type {
   UseTaskProtocolActionsArgs,
 } from "@/hooks/chatPageActionTypes";
 import {
+  buildRegisterTaskDraftFlowArgs,
   buildSendCurrentTaskContentToKinFlowArgs,
   buildSendLatestGptContentToKinFlowArgs,
   buildStartKinTaskFlowArgs,
@@ -52,6 +53,12 @@ function createTaskProtocolArgs(): UseTaskProtocolActionsArgs {
       userInstruction: "Draft instruction",
       slot: 2,
     },
+    taskRegistrationDraft: {
+      ...createEmptyTaskDraft(),
+      taskId: "R123456",
+      title: "Registration draft",
+      userInstruction: "Registration instruction",
+    },
     focusKinPanel: vi.fn(() => false),
     pendingIntentCandidates: [],
     promptDefaultKey: "prompt-default",
@@ -69,6 +76,7 @@ function createTaskProtocolArgs(): UseTaskProtocolActionsArgs {
     setProtocolRulebook: vi.fn(),
     setRejectedIntentCandidateSignatures: vi.fn(),
     syncTaskDraftFromProtocol: vi.fn(),
+    syncTaskRegistrationDraftFromProtocol: vi.fn(),
     taskProtocol,
   };
 }
@@ -122,6 +130,8 @@ function createKinTransferArgs(): UseKinTransferActionsArgs {
       userInstruction: "Draft instruction",
       slot: 2,
     },
+    registeredTasks: [],
+    applyRegisteredTaskRuntimeSettings: vi.fn(),
     approvedIntentPhrases: [
       {
         id: "approved",
@@ -228,6 +238,15 @@ describe("taskRuntimeActionBuilders", () => {
   it("builds Kin transfer flow args from the shared action state", () => {
     const args = createKinTransferArgs();
     const mergePendingIntentCandidates = vi.fn();
+
+    expect(
+      buildRegisterTaskDraftFlowArgs(args, mergePendingIntentCandidates)
+    ).toMatchObject({
+      rawInput: "directive",
+      approvedIntentPhrases: args.approvedIntentPhrases,
+      mergePendingIntentCandidates,
+      syncTaskDraftFromProtocol: args.syncTaskRegistrationDraftFromProtocol,
+    });
 
     expect(
       buildStartKinTaskFlowArgs(args, mergePendingIntentCandidates)
