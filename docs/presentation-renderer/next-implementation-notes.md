@@ -9,6 +9,11 @@ Last updated: 2026-04-28
 - `Density:` is supported as command metadata and is stored on `PresentationSpec`.
 - The renderer remains standalone under `kin-presentation-renderer`.
 - The app and renderer communicate through JSON plus generated PPTX paths.
+- The root app build runs `npm run build --prefix kin-presentation-renderer`
+  before `next build` so Vercel can generate `kin-presentation-renderer/dist`.
+- `pptxgenjs` and `zod` are also installed at the root app level because the
+  root Next TypeScript build can type-check files under
+  `kin-presentation-renderer/src`.
 - The app currently has a tolerant normalization layer for common GPT JSON drift:
   `content.title`, `content.bullets`, `leftContent`, `rightContent`,
   `content.leftBullets`, `content.rightBullets`, `content.leftColumn`, and
@@ -25,6 +30,19 @@ Last updated: 2026-04-28
 - The older patch-first GPT revision path has been removed from active code.
   Revision now asks GPT for a full revised `PresentationSpec`, then the app
   converts it into patch history internally.
+
+## Deployment Notes
+
+- Vercel should run the root `npm run build` script, not the renderer build
+  directly.
+- The root build intentionally compiles the renderer first:
+  `npm run build --prefix kin-presentation-renderer && next build`.
+- Do not commit `kin-presentation-renderer/dist`; it is build output.
+- If deploy fails with missing renderer modules, check both dependency scopes:
+  the renderer package needs its own dependencies for local standalone use, and
+  the root package needs dependencies that the root TypeScript build resolves.
+- If deploy succeeds but PPTX generation fails at runtime, first confirm that
+  `kin-presentation-renderer/dist/cli.js` exists in the deployed build output.
 
 ## Recommended Next Work
 

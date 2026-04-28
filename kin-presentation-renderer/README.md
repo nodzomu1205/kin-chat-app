@@ -67,6 +67,21 @@ The JSON contract is documented in:
 
 `../docs/presentation-renderer/presentation-spec-v0.1.md`
 
+## Used From Kin Chat App
+
+The renderer is intentionally kept as a standalone package, but the main Kin
+Chat App invokes the compiled CLI from `/api/presentation-render`.
+
+For deployment, the root app build compiles this package before `next build`:
+
+```powershell
+npm run build --prefix kin-presentation-renderer
+```
+
+Keep the source-of-truth exchange between the app and this renderer as JSON
+input plus generated PPTX file paths. Do not couple the renderer to chat,
+library, or GPT-specific app state.
+
 ## Project Shape
 
 - `src/schema.ts`: Zod validation and TypeScript types
