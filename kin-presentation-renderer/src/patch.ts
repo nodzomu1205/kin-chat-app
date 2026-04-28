@@ -24,7 +24,7 @@ const updateSlideOperationSchema = z
   .object({
     op: z.literal("updateSlide"),
     slideNumber: slideNumberSchema,
-    patch: z.record(z.unknown())
+    patch: z.record(z.string(), z.unknown())
   })
   .strict();
 
