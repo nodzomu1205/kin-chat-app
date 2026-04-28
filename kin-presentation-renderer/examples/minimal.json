@@ -1,0 +1,44 @@
+{
+  "version": "0.1",
+  "title": "Minimal Presentation",
+  "subtitle": "Renderer smoke test",
+  "language": "en",
+  "theme": "business-clean",
+  "slides": [
+    {
+      "type": "title",
+      "title": "Minimal Presentation",
+      "subtitle": "Renderer smoke test",
+      "presenter": "Kin",
+      "date": "2026-04-28"
+    },
+    {
+      "type": "bullets",
+      "title": "What this proves",
+      "lead": "The renderer can create a valid PowerPoint file from PresentationSpec v0.1.",
+      "bullets": [
+        {
+          "text": "Schema validation works",
+          "emphasis": "strong"
+        },
+        {
+          "text": "Core slide rendering works"
+        },
+        {
+          "text": "The CLI can write a pptx file"
+        }
+      ],
+      "takeaway": "This is the smallest useful output path."
+    },
+    {
+      "type": "closing",
+      "title": "Next",
+      "message": "Expand rendering quality using real examples.",
+      "nextSteps": [
+        "Render Japanese examples",
+        "Review visual output",
+        "Tune spacing and themes"
+      ]
+    }
+  ]
+}

@@ -66,7 +66,7 @@ export type MultipartAssembly = {
 export type StoredDocument = {
   id: string;
   sourceType: "kin_created" | "ingested_file";
-  artifactType?: "task_result" | "task_snapshot" | "reference_note";
+  artifactType?: "task_result" | "task_snapshot" | "reference_note" | "presentation";
   title: string;
   filename: string;
   text: string;
@@ -84,7 +84,7 @@ export type ReferenceLibraryItem = {
   id: string;
   sourceId: string;
   itemType: "search" | "kin_created" | "ingested_file";
-  artifactType?: "task_result" | "task_snapshot" | "reference_note";
+  artifactType?: "task_result" | "task_snapshot" | "reference_note" | "presentation";
   title: string;
   subtitle: string;
   summary: string;

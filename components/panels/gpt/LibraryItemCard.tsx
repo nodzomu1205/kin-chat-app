@@ -13,6 +13,7 @@ import LibraryItemSearchPreview, {
   LibraryItemPreviewTextArea,
 } from "@/components/panels/gpt/LibraryItemSearchPreview";
 import LibraryItemStoredDocumentEditor from "@/components/panels/gpt/LibraryItemStoredDocumentEditor";
+import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import type { MultipartAssembly, ReferenceLibraryItem } from "@/types/chat";
 
 type Props = Pick<
@@ -94,6 +95,10 @@ export default function LibraryItemCard({
       : null;
   const askAiModeCandidates =
     item.itemType === "search" ? getAskAiModeCandidates(item) : [];
+  const presentationPayload =
+    item.artifactType === "presentation"
+      ? parsePresentationPayload(item.excerptText)
+      : null;
 
   return (
     <div
@@ -145,6 +150,7 @@ export default function LibraryItemCard({
           item={item}
           multipartSource={multipartSource}
           askAiModeCandidates={askAiModeCandidates}
+          presentationPayload={presentationPayload}
           sourceDisplayCount={sourceDisplayCount}
           isMobile={isMobile}
           isEditing={isEditing}
@@ -169,6 +175,7 @@ function LibraryItemCardBody({
   item,
   multipartSource,
   askAiModeCandidates,
+  presentationPayload,
   sourceDisplayCount,
   isMobile,
   isEditing,
@@ -187,6 +194,7 @@ function LibraryItemCardBody({
   item: ReferenceLibraryItem;
   multipartSource: MultipartAssembly | null;
   askAiModeCandidates: AskAiModeCandidate[];
+  presentationPayload: ReturnType<typeof parsePresentationPayload>;
   sourceDisplayCount: number;
   isMobile: boolean;
   isEditing: boolean;
@@ -216,6 +224,10 @@ function LibraryItemCardBody({
 
       <LibraryItemMetadata item={item} multipartSource={multipartSource} />
 
+      {presentationPayload?.outputs.length ? (
+        <PresentationOutputLinks payload={presentationPayload} />
+      ) : null}
+
       {item.itemType === "search" ? (
         <LibraryItemSearchPreview
           item={item}
@@ -242,6 +254,65 @@ function LibraryItemCardBody({
       ) : (
         <LibraryItemPreviewTextArea value={item.excerptText} isMobile={isMobile} />
       )}
+    </div>
+  );
+}
+
+function PresentationOutputLinks({
+  payload,
+}: {
+  payload: NonNullable<ReturnType<typeof parsePresentationPayload>>;
+}) {
+  const latest = payload.outputs[payload.outputs.length - 1];
+  if (!latest?.path) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        padding: "8px 10px",
+        borderRadius: 8,
+        border: "1px solid #bfdbfe",
+        background: "#eff6ff",
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: "#1d4ed8" }}>
+          Latest PPTX
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: "#334155",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={latest.filename}
+        >
+          {latest.filename}
+        </div>
+      </div>
+      <a
+        href={latest.path}
+        download={latest.filename}
+        style={{
+          flexShrink: 0,
+          borderRadius: 999,
+          border: "1px solid #2563eb",
+          background: "#2563eb",
+          color: "#fff",
+          padding: "6px 10px",
+          fontSize: 11,
+          fontWeight: 800,
+          textDecoration: "none",
+        }}
+      >
+        Download PPTX
+      </a>
     </div>
   );
 }

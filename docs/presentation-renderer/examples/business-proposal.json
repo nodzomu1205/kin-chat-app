@@ -1,0 +1,103 @@
+{
+  "version": "0.1",
+  "title": "PowerPoint自動生成フロー 提案",
+  "subtitle": "Kin主導で企画から資料化まで進める新機能案",
+  "language": "ja",
+  "audience": "開発チームおよびプロダクト判断者",
+  "purpose": "独立したPPTX生成基盤を先に構築する進め方を合意する",
+  "theme": "business-clean",
+  "slides": [
+    {
+      "type": "title",
+      "kicker": "Feature Proposal",
+      "title": "PowerPoint自動生成フロー",
+      "subtitle": "Kin主導で企画から資料化まで進める",
+      "presenter": "Product Planning",
+      "date": "2026-04-28"
+    },
+    {
+      "type": "bullets",
+      "title": "目指す体験",
+      "lead": "ユーザーは自然文で目的を伝え、KinがGPTと協調して資料の構成と出力まで進める。",
+      "bullets": [
+        {
+          "text": "Kinがユーザーの意図を整理し、GPTへ資料構成を依頼する",
+          "emphasis": "strong"
+        },
+        {
+          "text": "GPTは決められたJSON形式でプレゼン構造を返す"
+        },
+        {
+          "text": "レンダラーがJSONをPowerPointファイルへ変換する"
+        }
+      ],
+      "takeaway": "自然文から成果物までの距離を短くする。"
+    },
+    {
+      "type": "section",
+      "sectionNumber": "01",
+      "title": "開発方針",
+      "subtitle": "JSON生成とPPTX生成を分離して進める"
+    },
+    {
+      "type": "twoColumn",
+      "title": "二つの責務を分ける",
+      "left": {
+        "heading": "1. JSON生成",
+        "body": "Kinアプリ内でGPTと連携し、PresentationSpec JSONを作る。",
+        "bullets": [
+          {
+            "text": "自然文の意図解釈"
+          },
+          {
+            "text": "不足情報の確認"
+          },
+          {
+            "text": "schemaに沿ったJSON出力"
+          }
+        ]
+      },
+      "right": {
+        "heading": "2. PPTX生成",
+        "body": "独立したレンダラーがJSONを受け取り、PowerPointファイルを返す。",
+        "bullets": [
+          {
+            "text": "schema validation"
+          },
+          {
+            "text": "テーマ適用"
+          },
+          {
+            "text": "pptxファイル生成"
+          }
+        ]
+      },
+      "takeaway": "分離することで、品質検証と将来の再利用がしやすくなる。"
+    },
+    {
+      "type": "table",
+      "title": "初期スコープ",
+      "lead": "v0.1では高度なデザインよりも、安定して資料化できる範囲に絞る。",
+      "columns": ["項目", "v0.1で対応", "後続で検討"],
+      "rows": [
+        ["スライド型", "6種類", "画像、チャート、引用"],
+        ["テーマ", "3種類まで", "ブランド別テーマ"],
+        ["出力", "pptx", "pdf変換"],
+        ["実行方法", "CLI", "HTTP API"],
+        ["連携", "手動JSON", "Kinアプリから自動POST"]
+      ],
+      "takeaway": "最初は小さく作り、出力品質を見ながら広げる。"
+    },
+    {
+      "type": "closing",
+      "title": "最初のマイルストーン",
+      "message": "PresentationSpec v0.1を固定し、CLIでサンプルJSONからpptxを生成できる状態を作る。",
+      "nextSteps": [
+        "schemaとサンプルJSONを作成する",
+        "独立プロジェクトをTypeScriptで作成する",
+        "PptxGenJSで6種類のスライドを実装する",
+        "目視レビューでJSON仕様を調整する"
+      ]
+    }
+  ]
+}

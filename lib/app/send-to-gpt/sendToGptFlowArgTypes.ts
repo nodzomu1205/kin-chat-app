@@ -1,10 +1,13 @@
 import type { GptInstructionMode } from "@/components/panels/gpt/gptPanelTypes";
 import type { MemoryUpdateOptions } from "@/hooks/chatPageActionTypes";
 import type { ReasoningMode } from "@/lib/app/task-runtime/reasoningMode";
-import type { ConversationUsageOptions } from "@/lib/shared/tokenStats";
+import type {
+  BucketUsageOptions,
+  ConversationUsageOptions,
+} from "@/lib/shared/tokenStats";
 import type { Memory } from "@/lib/memory-domain/memory";
 import type { Message } from "@/types/chat";
-import type { ReferenceLibraryItem } from "@/types/chat";
+import type { ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import type { SearchEngine, SearchMode } from "@/types/task";
 import type { TaskProtocolEvent, TaskRuntimeState } from "@/types/taskProtocol";
 import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
@@ -74,6 +77,10 @@ export type SendToGptFlowMemoryArgs = {
   ) => Promise<MemoryResultLike>;
   applyCompressionUsage: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
   applyIngestUsage?: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
+  applyTaskUsage: (
+    usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0],
+    options?: BucketUsageOptions
+  ) => void;
   chatRecentLimit: number;
   gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: Memory }>;
 };
@@ -103,6 +110,7 @@ export type SendToGptFlowRequestArgs = {
   ) => { handled: boolean; accepted: boolean } | null;
   currentTaskCharConstraint?: TaskCharConstraint;
   recordIngestedDocument: (document: {
+    artifactType?: import("@/types/chat").StoredDocument["artifactType"];
     title: string;
     filename: string;
     text: string;
@@ -112,6 +120,10 @@ export type SendToGptFlowRequestArgs = {
     createdAt: string;
     updatedAt: string;
   }) => { id: string };
+  updateStoredDocument: (
+    documentId: string,
+    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
+  ) => void | null;
   onHandleYoutubeTranscriptRequest?: (params: {
     userMessage: Message;
     youtubeTranscriptRequestEvent: TaskProtocolEvent;

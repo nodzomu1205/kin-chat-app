@@ -139,6 +139,7 @@ export function buildChatPageControllerServicesArgs(
     referenceLibraryItems: args.references.referenceLibraryItems,
     libraryIndexResponseCount: args.references.libraryIndexResponseCount,
     recordIngestedDocument: args.usage.recordIngestedDocument,
+    updateStoredDocument: args.references.onSaveStoredDocument,
     gptMemorySettingsControls: args.gpt.gptMemorySettingsControls,
     ingestProtocolMessage: args.task.taskProtocolView.ingestProtocolMessage,
   };
@@ -188,6 +189,7 @@ export function buildGptMessageActionArgs(
 ): UseGptMessageActionsArgs {
   return {
     applyChatUsage: groups.services.applyChatUsage,
+    applyTaskUsage: groups.services.applyTaskUsage,
     applyPrefixedTaskFieldsFromText: groups.task.applyPrefixedTaskFieldsFromText,
     applySearchUsage: groups.services.applySearchUsage,
     applyCompressionUsage: groups.services.applyCompressionUsage,
@@ -210,6 +212,7 @@ export function buildGptMessageActionArgs(
     libraryIndexResponseCount: groups.services.libraryIndexResponseCount,
     processMultipartTaskDoneText: groups.search.processMultipartTaskDoneText,
     recordIngestedDocument: groups.services.recordIngestedDocument,
+    updateStoredDocument: groups.services.updateStoredDocument,
     recordSearchContext: groups.search.recordSearchContext,
     referenceLibraryItems: groups.services.referenceLibraryItems,
     reasoningMode: groups.services.reasoningMode,

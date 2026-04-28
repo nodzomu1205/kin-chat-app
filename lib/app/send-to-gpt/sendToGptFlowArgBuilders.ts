@@ -121,6 +121,7 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
       handleGptMemory: args.gptMemoryRuntime.handleGptMemory,
       applyCompressionUsage: args.applyCompressionUsage,
       applyIngestUsage: args.applyIngestUsage,
+      applyTaskUsage: args.applyTaskUsage,
       chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       gptStateRef: args.gptMemoryRuntime.gptStateRef,
     },
@@ -143,6 +144,7 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
       currentTaskCharConstraint: args.getCurrentTaskCharConstraint() ?? undefined,
       reasoningMode: args.reasoningMode,
       recordIngestedDocument: args.recordIngestedDocument,
+      updateStoredDocument: args.updateStoredDocument,
     },
   };
 }

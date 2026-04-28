@@ -248,7 +248,9 @@ export type ChatPageWorkspaceCompositionServices = {
   >;
   references: Pick<
     ChatPageWorkspaceViewReferencesArgs,
-    "buildLibraryReferenceContext" | "applyRegisteredTaskRuntimeSettings"
+    | "buildLibraryReferenceContext"
+    | "applyRegisteredTaskRuntimeSettings"
+    | "onSaveStoredDocument"
   >;
   gpt: Pick<
     ChatPageWorkspaceViewGptArgs,

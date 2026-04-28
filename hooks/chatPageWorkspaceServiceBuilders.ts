@@ -49,6 +49,7 @@ function buildWorkspaceServicesReferences(
     buildLibraryReferenceContext: args.buildLibraryReferenceContext,
     applyRegisteredTaskRuntimeSettings:
       args.applyRegisteredTaskRuntimeSettings,
+    onSaveStoredDocument: args.onSaveStoredDocument,
   } satisfies ChatPageWorkspaceServicesReferences;
 }
 

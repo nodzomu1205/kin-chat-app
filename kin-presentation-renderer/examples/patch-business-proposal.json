@@ -1,0 +1,32 @@
+{
+  "version": "0.1",
+  "description": "Make the proposal opening clearer and shorten the scope table.",
+  "operations": [
+    {
+      "op": "updateDeck",
+      "title": "PowerPoint自動生成フロー 改訂案",
+      "theme": "business-clean"
+    },
+    {
+      "op": "updateSlide",
+      "slideNumber": 2,
+      "patch": {
+        "title": "目指す体験を一言で言うと",
+        "lead": "ユーザーは自然文で目的を伝え、Kinが構成化と資料化の流れを支援する。",
+        "takeaway": "Kinは会話を、PowerPointという成果物へ接続する。"
+      }
+    },
+    {
+      "op": "updateSlide",
+      "slideNumber": 5,
+      "patch": {
+        "rows": [
+          ["スライド型", "6種類", "画像、チャート、引用"],
+          ["テーマ", "3種類まで", "ブランド別テーマ"],
+          ["出力", "pptx", "pdf変換"],
+          ["実行方法", "CLI", "HTTP API"]
+        ]
+      }
+    }
+  ]
+}

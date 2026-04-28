@@ -204,6 +204,10 @@ export type ChatPageServicesArgs = {
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
+  updateStoredDocument: (
+    documentId: string,
+    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
+  ) => void | null;
   gptMemorySettingsControls: GptMemorySettingsControls;
   ingestProtocolMessage: (
     text: string,
@@ -230,6 +234,7 @@ export type ChatPageActionArgGroups = {
 export type UseGptMessageActionsArgs = Pick<
   UseChatPageActionsArgs,
   | "applyChatUsage"
+  | "applyTaskUsage"
   | "applyPrefixedTaskFieldsFromText"
   | "applySearchUsage"
   | "applyCompressionUsage"
@@ -252,6 +257,7 @@ export type UseGptMessageActionsArgs = Pick<
   | "libraryIndexResponseCount"
   | "processMultipartTaskDoneText"
   | "recordIngestedDocument"
+  | "updateStoredDocument"
   | "recordSearchContext"
   | "referenceLibraryItems"
   | "reasoningMode"
