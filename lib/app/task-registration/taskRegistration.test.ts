@@ -4,6 +4,7 @@ import {
   canRegisterTaskDraft,
   createDefaultTaskRegistrationLibrarySettings,
   createDefaultTaskRegistrationRecurrence,
+  normalizeTaskRegistrationLibraryCountInput,
   removeRegisteredTask,
   updateRegisteredTask,
 } from "@/lib/app/task-registration/taskRegistration";
@@ -69,5 +70,28 @@ describe("taskRegistration", () => {
     expect(updated.originalInstruction).toBe("Updated task");
     expect(updated.librarySettings.enabled).toBe(false);
     expect(updated.recurrence.times).toEqual(["09:00", "17:00"]);
+  });
+
+  it("normalizes library count input while preserving blank in-progress edits", () => {
+    expect(normalizeTaskRegistrationLibraryCountInput("")).toEqual({
+      displayValue: "",
+      count: null,
+    });
+    expect(normalizeTaskRegistrationLibraryCountInput("7")).toEqual({
+      displayValue: "7",
+      count: 7,
+    });
+    expect(normalizeTaskRegistrationLibraryCountInput("09")).toEqual({
+      displayValue: "9",
+      count: 9,
+    });
+    expect(normalizeTaskRegistrationLibraryCountInput("123")).toEqual({
+      displayValue: "50",
+      count: 50,
+    });
+    expect(normalizeTaskRegistrationLibraryCountInput("1件")).toEqual({
+      displayValue: "1",
+      count: 1,
+    });
   });
 });

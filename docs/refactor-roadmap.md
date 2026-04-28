@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-04-26
+Updated: 2026-04-28
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `166 files / 739 tests`
+- test status: `167 files / 753 tests`
 
 This roadmap should now be read together with:
 

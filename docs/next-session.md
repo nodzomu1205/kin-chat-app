@@ -1,6 +1,6 @@
 # Next Session Handover
 
-Updated: 2026-04-27
+Updated: 2026-04-28
 
 ## Stop Rule
 
@@ -25,7 +25,7 @@ Closeout verification passed:
 - `npx tsc --noEmit`
 - `npm run check:utf8`
 - `npm run lint`
-- `npm test` (`166 files / 750 tests`)
+- `npm test` (`167 files / 753 tests`)
 - `npm run build`
 
 The repository is in `late-stage maintenance-watch`, not active rescue.

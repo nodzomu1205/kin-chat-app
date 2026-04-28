@@ -4,7 +4,10 @@ import React, { useState } from "react";
 import type { GptPanelTaskProps } from "@/components/panels/gpt/gptPanelTypes";
 import { sectionCardStyle, formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { GPT_TASK_TEXT } from "@/components/panels/gpt/gptUiText";
-import type { RegisteredTask } from "@/lib/app/task-registration/taskRegistration";
+import {
+  normalizeTaskRegistrationLibraryCountInput,
+  type RegisteredTask,
+} from "@/lib/app/task-registration/taskRegistration";
 
 type Props = Pick<
   GptPanelTaskProps,
@@ -41,6 +44,41 @@ const primaryButtonStyle: React.CSSProperties = {
   background: "#ecfeff",
   color: "#0f766e",
 };
+
+function LibraryCountInput(props: {
+  count: number;
+  ariaLabel: string;
+  onChange?: (count: number) => void;
+}) {
+  const [text, setText] = useState(String(props.count));
+
+  const handleChange = (rawValue: string) => {
+    const normalized = normalizeTaskRegistrationLibraryCountInput(rawValue);
+    setText(normalized.displayValue);
+    if (normalized.count !== null) {
+      props.onChange?.(normalized.count);
+    }
+  };
+
+  const handleBlur = () => {
+    if (text) return;
+    props.onChange?.(0);
+    setText("0");
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={text}
+      onChange={(event) => handleChange(event.target.value)}
+      onBlur={handleBlur}
+      style={{ ...buttonStyle, width: 92, fontWeight: 700 }}
+      aria-label={props.ariaLabel}
+    />
+  );
+}
 
 function formatRecurrenceSummary(task: RegisteredTask) {
   if (task.recurrence.mode === "single") {
@@ -262,18 +300,13 @@ export default function TaskRegistrationPanel({
               <option value="summary_only">summary only</option>
               <option value="summary_with_excerpt">summary + excerpt</option>
             </select>
-            <input
-              type="number"
-              min={0}
-              max={50}
-              value={taskRegistrationLibrarySettings.count}
-              onChange={(event) =>
-                onChangeTaskRegistrationLibrarySettings?.({
-                  count: Math.max(0, Number(event.target.value) || 0),
-                })
+            <LibraryCountInput
+              key={taskRegistrationLibrarySettings.count}
+              count={taskRegistrationLibrarySettings.count}
+              ariaLabel={GPT_TASK_TEXT.registration.libraryCount}
+              onChange={(count) =>
+                onChangeTaskRegistrationLibrarySettings?.({ count })
               }
-              style={{ ...buttonStyle, width: 92, fontWeight: 700 }}
-              aria-label={GPT_TASK_TEXT.registration.libraryCount}
             />
           </div>
         </section>

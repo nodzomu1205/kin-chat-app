@@ -9,6 +9,30 @@ export type TaskRegistrationLibrarySettings = {
   count: number;
 };
 
+export const TASK_REGISTRATION_LIBRARY_COUNT_MAX = 50;
+
+export function normalizeTaskRegistrationLibraryCountInput(rawValue: string) {
+  const digits = rawValue.replace(/\D/g, "");
+
+  if (!digits) {
+    return {
+      displayValue: "",
+      count: null,
+    };
+  }
+
+  const parsedCount = Number.parseInt(digits, 10);
+  const count = Math.min(
+    TASK_REGISTRATION_LIBRARY_COUNT_MAX,
+    Math.max(0, Number.isFinite(parsedCount) ? parsedCount : 0)
+  );
+
+  return {
+    displayValue: String(count),
+    count,
+  };
+}
+
 export type TaskRegistrationRecurrence = {
   mode: "single" | "repeat";
   weekdays: string[];
