@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build --prefix kin-presentation-renderer && next build",
     "start": "next start",
     "lint": "eslint",
     "check:utf8": "node scripts/check-utf8.mjs",
@@ -13,8 +13,10 @@
   "dependencies": {
     "next": "16.2.1",
     "openai": "^6.33.0",
+    "pptxgenjs": "^4.0.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
