@@ -3,10 +3,12 @@ import {
   fetchDriveFileBlob,
   listDriveChildFolders,
   listDriveFolderChildren,
+  uploadDriveBlobFile,
   uploadDriveTextFile,
   type DriveFolderNode,
 } from "@/lib/app/google-drive/googleDriveApi";
 import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
+import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import {
   requestFileIngest,
   resolveIngestErrorMessage,
@@ -280,19 +282,131 @@ export async function runDriveLibraryItemUpload({
     }
   }
 
-  const artifact = buildLibraryItemDriveExport(item);
+  const artifacts = await buildDriveUploadArtifacts(item);
+  const uploadedNames: string[] = [];
+  const primaryArtifact = artifacts[0];
   const uploaded = await uploadDriveTextFile({
     accessToken,
     folderId: destinationFolderId,
-    fileName: artifact.fileName,
-    text: artifact.text,
+    fileName: primaryArtifact.fileName,
+    text: primaryArtifact.text,
+    ...(primaryArtifact.mimeType ? { mimeType: primaryArtifact.mimeType } : {}),
   });
+  uploadedNames.push(uploaded.name || primaryArtifact.fileName);
+
+  for (const artifact of artifacts.slice(1)) {
+    if (artifact.kind !== "blob") continue;
+    const uploadedBinary = await uploadDriveBlobFile({
+      accessToken,
+      folderId: destinationFolderId,
+      fileName: artifact.fileName,
+      blob: artifact.blob,
+      mimeType: artifact.mimeType,
+    });
+    uploadedNames.push(uploadedBinary.name || artifact.fileName);
+  }
+
   appendUiMessage(
     buildDriveUploadCompletedMessage({
-      fileName: uploaded.name || artifact.fileName,
+      fileName: uploadedNames.join(", "),
       destinationFolderName,
     })
   );
   focusGptPanel();
   return "uploaded" as const;
+}
+
+type DriveUploadArtifact =
+  | {
+      kind: "text";
+      fileName: string;
+      text: string;
+      mimeType?: string;
+    }
+  | {
+      kind: "blob";
+      fileName: string;
+      blob: Blob;
+      mimeType: string;
+    };
+
+async function buildDriveUploadArtifacts(
+  item: ReferenceLibraryItem
+): Promise<
+  [Extract<DriveUploadArtifact, { kind: "text" }>, ...DriveUploadArtifact[]]
+> {
+  const primary = {
+    kind: "text" as const,
+    ...buildLibraryItemDriveExport(item),
+  };
+  const pptxArtifact = await buildPresentationPptxDriveArtifact(item);
+  return pptxArtifact ? [primary, pptxArtifact] : [primary];
+}
+
+async function buildPresentationPptxDriveArtifact(
+  item: ReferenceLibraryItem
+): Promise<Extract<DriveUploadArtifact, { kind: "blob" }> | null> {
+  if (item.artifactType !== "presentation") return null;
+  if (typeof fetch === "undefined") return null;
+
+  const payload = parsePresentationPayload(item.excerptText);
+  const latest = payload?.outputs[payload.outputs.length - 1];
+  if (!payload || !latest?.filename) return null;
+
+  const fetchedBlob = latest.path
+    ? await fetch(latest.path)
+        .then((response) => (response.ok ? response.blob() : null))
+        .catch(() => null)
+    : null;
+  const blob =
+    fetchedBlob ||
+    (await renderPresentationPptxBlob({
+      documentId: payload.documentId,
+      spec: payload.spec,
+    }));
+  if (!blob) return null;
+
+  return {
+    kind: "blob",
+    fileName: latest.filename,
+    blob,
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  };
+}
+
+async function renderPresentationPptxBlob(args: {
+  documentId: string;
+  spec: unknown;
+}): Promise<Blob | null> {
+  const response = await fetch("/api/presentation-render", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(args),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+
+  const data = (await response.json().catch(() => null)) as {
+    output?: {
+      contentBase64?: unknown;
+      mimeType?: unknown;
+    };
+  } | null;
+  const contentBase64 = data?.output?.contentBase64;
+  if (typeof contentBase64 !== "string" || !contentBase64) return null;
+
+  const binary = atob(contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new Blob([bytes], {
+    type:
+      typeof data.output?.mimeType === "string"
+        ? data.output.mimeType
+        : "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  });
 }

@@ -9,6 +9,7 @@ import {
   fetchDriveFileBlob,
   listDriveChildFolders,
   listDriveFolderChildren,
+  uploadDriveBlobFile,
   uploadDriveTextFile,
 } from "@/lib/app/google-drive/googleDriveApi";
 import { requestFileIngest } from "@/lib/app/ingest/ingestClient";
@@ -19,6 +20,7 @@ vi.mock("@/lib/app/google-drive/googleDriveApi", () => ({
   fetchDriveFileBlob: vi.fn(),
   listDriveChildFolders: vi.fn(),
   listDriveFolderChildren: vi.fn(),
+  uploadDriveBlobFile: vi.fn(),
   uploadDriveTextFile: vi.fn(),
 }));
 
@@ -88,6 +90,7 @@ describe("runDrivePickedDocumentsImport", () => {
 
 describe("runDriveFileImport", () => {
   beforeEach(() => {
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -325,6 +328,11 @@ describe("runDriveLibraryItemUpload", () => {
       name: "Project notes.txt",
       webViewLink: "https://drive.example/upload-1",
     });
+    vi.mocked(uploadDriveBlobFile).mockResolvedValue({
+      id: "upload-2",
+      name: "Project deck.pptx",
+      webViewLink: "https://drive.example/upload-2",
+    });
   });
 
   it("uploads to the configured parent folder when no child folders exist", async () => {
@@ -352,6 +360,174 @@ describe("runDriveLibraryItemUpload", () => {
       "Google Drive uploaded: Project notes.txt -> configured folder"
     );
     expect(focusGptPanel).toHaveBeenCalled();
+  });
+
+  it("uploads presentation JSON and the latest generated PPTX", async () => {
+    vi.mocked(listDriveChildFolders).mockResolvedValue([]);
+    vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
+      fileName: "pres_1.presentation.json",
+      text: "{\"kind\":\"kin.presentation\"}\n",
+      mimeType: "application/json",
+    });
+    vi.mocked(uploadDriveTextFile).mockResolvedValue({
+      id: "upload-json",
+      name: "pres_1.presentation.json",
+      webViewLink: "https://drive.example/upload-json",
+    });
+    const pptxBlob = new Blob(["pptx bytes"], {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+    const fetchMock = vi.fn(async () => new Response(pptxBlob));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const appendUiMessage = vi.fn();
+
+    const result = await runDriveLibraryItemUpload({
+      item: {
+        id: "item-presentation",
+        title: "Project deck",
+        artifactType: "presentation",
+        excerptText: JSON.stringify({
+          kind: "kin.presentation",
+          version: "0.1",
+          documentId: "pres_1",
+          status: "rendered",
+          spec: {
+            version: "0.1",
+            title: "Project deck",
+            slides: [{ type: "title", title: "Project deck" }],
+          },
+          patches: [],
+          outputs: [
+            {
+              id: "pptx_1",
+              format: "pptx",
+              filename: "Project deck.pptx",
+              path: "blob:https://app.example/pptx-1",
+              createdAt: "2026-04-29T00:00:00.000Z",
+              slideCount: 1,
+            },
+          ],
+          previewText: "Slides: 1",
+          summary: "Project deck",
+          createdAt: "2026-04-29T00:00:00.000Z",
+          updatedAt: "2026-04-29T00:00:00.000Z",
+        }),
+      } as never,
+      folderId: "parent-folder",
+      ensureAccessToken: vi.fn(async () => "upload-token"),
+      promptForDestination: vi.fn(),
+      appendUiMessage,
+      focusGptPanel: vi.fn(() => true),
+    });
+
+    expect(result).toBe("uploaded");
+    expect(fetchMock).toHaveBeenCalledWith("blob:https://app.example/pptx-1");
+    expect(uploadDriveTextFile).toHaveBeenCalledWith({
+      accessToken: "upload-token",
+      folderId: "parent-folder",
+      fileName: "pres_1.presentation.json",
+      text: "{\"kind\":\"kin.presentation\"}\n",
+      mimeType: "application/json",
+    });
+    expect(uploadDriveBlobFile).toHaveBeenCalledWith({
+      accessToken: "upload-token",
+      folderId: "parent-folder",
+      fileName: "Project deck.pptx",
+      blob: pptxBlob,
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+    expect(appendUiMessage).toHaveBeenCalledWith(
+      "Google Drive uploaded: pres_1.presentation.json, Project deck.pptx -> configured folder"
+    );
+  });
+
+  it("regenerates presentation PPTX when the stored Blob URL is unavailable", async () => {
+    vi.mocked(listDriveChildFolders).mockResolvedValue([]);
+    vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
+      fileName: "pres_2.presentation.json",
+      text: "{\"kind\":\"kin.presentation\"}\n",
+      mimeType: "application/json",
+    });
+    vi.mocked(uploadDriveTextFile).mockResolvedValue({
+      id: "upload-json",
+      name: "pres_2.presentation.json",
+      webViewLink: "https://drive.example/upload-json",
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 404 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            output: {
+              contentBase64: Buffer.from("regenerated pptx").toString("base64"),
+              mimeType:
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            },
+          }),
+          { status: 200 }
+        )
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await runDriveLibraryItemUpload({
+      item: {
+        id: "item-presentation",
+        title: "Project deck",
+        artifactType: "presentation",
+        excerptText: JSON.stringify({
+          kind: "kin.presentation",
+          version: "0.1",
+          documentId: "pres_2",
+          status: "rendered",
+          spec: {
+            version: "0.1",
+            title: "Project deck",
+            slides: [{ type: "title", title: "Project deck" }],
+          },
+          patches: [],
+          outputs: [
+            {
+              id: "pptx_1",
+              format: "pptx",
+              filename: "Project deck.pptx",
+              path: "blob:https://app.example/expired",
+              createdAt: "2026-04-29T00:00:00.000Z",
+              slideCount: 1,
+            },
+          ],
+          previewText: "Slides: 1",
+          summary: "Project deck",
+          createdAt: "2026-04-29T00:00:00.000Z",
+          updatedAt: "2026-04-29T00:00:00.000Z",
+        }),
+      } as never,
+      folderId: "parent-folder",
+      ensureAccessToken: vi.fn(async () => "upload-token"),
+      promptForDestination: vi.fn(),
+      appendUiMessage: vi.fn(),
+      focusGptPanel: vi.fn(() => true),
+    });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, "blob:https://app.example/expired");
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/presentation-render",
+      expect.objectContaining({
+        method: "POST",
+      })
+    );
+    expect(uploadDriveBlobFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: "Project deck.pptx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      })
+    );
+    const blob = vi.mocked(uploadDriveBlobFile).mock.calls[0]?.[0].blob;
+    await expect(blob?.text()).resolves.toBe("regenerated pptx");
   });
 
   it("uploads to a selected child folder", async () => {

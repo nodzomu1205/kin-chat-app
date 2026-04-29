@@ -55,21 +55,44 @@ export async function uploadDriveTextFile(args: {
   folderId: string;
   fileName: string;
   text: string;
+  mimeType?: string;
+}) {
+  return uploadDriveBlobFile({
+    accessToken: args.accessToken,
+    folderId: args.folderId,
+    fileName: args.fileName,
+    blob: new Blob([args.text], {
+      type: args.mimeType || "text/plain;charset=utf-8",
+    }),
+    mimeType: args.mimeType || "text/plain",
+  });
+}
+
+export async function uploadDriveBlobFile(args: {
+  accessToken: string;
+  folderId: string;
+  fileName: string;
+  blob: Blob;
+  mimeType: string;
 }) {
   const metadata = {
     name: args.fileName,
     parents: [args.folderId],
-    mimeType: "text/plain",
+    mimeType: args.mimeType,
   };
   const boundary = `drive-upload-${Math.random().toString(36).slice(2, 10)}`;
-  const payload =
-    `--${boundary}\r\n` +
-    "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
-    `${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\n` +
-    "Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
-    `${args.text}\r\n` +
-    `--${boundary}--`;
+  const payload = new Blob(
+    [
+      `--${boundary}\r\n` +
+        "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+        `${JSON.stringify(metadata)}\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Type: ${args.mimeType}\r\n\r\n`,
+      args.blob,
+      `\r\n--${boundary}--`,
+    ],
+    { type: `multipart/related; boundary=${boundary}` }
+  );
 
   const response = await fetch(
     "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",

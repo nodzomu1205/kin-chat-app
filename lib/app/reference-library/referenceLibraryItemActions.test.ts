@@ -72,4 +72,37 @@ describe("buildLibraryItemDriveExport", () => {
 
     expect(exported.fileName).toBe("Transcript [16chars].txt");
   });
+
+  it("exports presentation library items as raw JSON", () => {
+    const exported = buildLibraryItemDriveExport(
+      createLibraryItem({
+        artifactType: "presentation",
+        filename: "pres_1.presentation.json",
+        excerptText: JSON.stringify({
+          kind: "kin.presentation",
+          version: "0.1",
+          documentId: "pres_1",
+          status: "draft",
+          spec: {
+            version: "0.1",
+            title: "Project deck",
+            slides: [{ type: "title", title: "Project deck" }],
+          },
+          patches: [],
+          outputs: [],
+          previewText: "Slides: 1",
+          summary: "Project deck",
+          createdAt: "2026-04-29T00:00:00.000Z",
+          updatedAt: "2026-04-29T00:00:00.000Z",
+        }),
+      })
+    );
+
+    expect(exported.fileName).toBe("pres_1.presentation.json");
+    expect(exported.mimeType).toBe("application/json");
+    expect(JSON.parse(exported.text)).toMatchObject({
+      kind: "kin.presentation",
+      documentId: "pres_1",
+    });
+  });
 });

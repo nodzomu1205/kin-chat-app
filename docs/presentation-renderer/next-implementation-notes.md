@@ -14,6 +14,10 @@ Last updated: 2026-04-29
 - The Next route imports the built renderer modules directly instead of
   spawning the renderer CLI. This keeps `zod`, `pptxgenjs`, and renderer files
   visible to the Next/Vercel server bundler.
+- The library Google Drive save action exports presentation items as raw JSON
+  and, when a PPTX has been generated, uploads the latest PPTX to the same Drive
+  destination. If the browser Blob URL has expired, the app regenerates the PPTX
+  from the stored `PresentationSpec`.
 - The root app build runs `npm run build --prefix kin-presentation-renderer`
   before `next build` so Vercel can generate `kin-presentation-renderer/dist`.
 - `pptxgenjs` and `zod` are also installed at the root app level because the

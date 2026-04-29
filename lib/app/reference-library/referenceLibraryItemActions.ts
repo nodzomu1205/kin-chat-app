@@ -4,6 +4,7 @@ import {
   cleanImportSummarySource,
 } from "@/lib/app/ingest/importSummaryText";
 import type { ReferenceLibraryItem } from "@/types/chat";
+import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -82,7 +83,19 @@ export function buildLibraryItemKinSysInfo(item: ReferenceLibraryItem): string {
 export function buildLibraryItemDriveExport(item: ReferenceLibraryItem): {
   fileName: string;
   text: string;
+  mimeType?: string;
 } {
+  if (item.artifactType === "presentation") {
+    const payload = parsePresentationPayload(item.excerptText);
+    if (payload) {
+      return {
+        fileName: item.filename?.trim() || `${payload.documentId}.presentation.json`,
+        text: `${JSON.stringify(payload, null, 2)}\n`,
+        mimeType: "application/json",
+      };
+    }
+  }
+
   const rawName = (item.filename?.trim() || item.title?.trim() || "library-item")
     .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
     .slice(0, 100);
