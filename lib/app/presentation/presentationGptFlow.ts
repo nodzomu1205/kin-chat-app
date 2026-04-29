@@ -18,6 +18,7 @@ import {
 } from "@/lib/app/presentation/presentationGptPrompts";
 import {
   parsePresentationPatchFromText,
+  parsePresentationDraftFromText,
   parsePresentationSpecFromText,
 } from "@/lib/app/presentation/presentationJsonParsing";
 import { findPresentationPayloadByDocumentId } from "@/lib/app/presentation/presentationLibraryLookup";
@@ -239,13 +240,16 @@ async function runCreatePresentationDraftFlow(args: {
   });
   applyPresentationChatUsage({ data, flowArgs: args.flowArgs });
 
-  const spec = await parseOrRepairPresentationSpec({
+  const draft = await parseOrRepairPresentationDraft({
     assistantText,
     userInstruction: args.commandBody,
     flowArgs: args.flowArgs,
     assistantRequestArgs: args.assistantRequestArgs,
   });
-  const payload = buildPresentationLibraryPayload({ spec });
+  const payload = buildPresentationLibraryPayload({
+    spec: draft.spec,
+    motherSpec: draft.motherSpec,
+  });
   const storedDocument = args.flowArgs.recordIngestedDocument(
     buildPresentationStoredDocument({ payload })
   );
@@ -254,7 +258,7 @@ async function runCreatePresentationDraftFlow(args: {
     flowArgs: args.flowArgs,
     text: buildPresentationDraftSavedMessage({
       documentId: payload.documentId,
-      spec,
+      spec: draft.spec,
       previewText: payload.previewText,
     }),
   });
@@ -325,14 +329,14 @@ async function runRevisePresentationDraftFlow(args: {
   });
 }
 
-async function parseOrRepairPresentationSpec(args: {
+async function parseOrRepairPresentationDraft(args: {
   assistantText: string;
   userInstruction: string;
   flowArgs: SendToGptFlowStepArgs;
   assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
 }) {
   try {
-    return parsePresentationSpecFromText(args.assistantText);
+    return parsePresentationDraftFromText(args.assistantText);
   } catch {
     const { data, assistantText } = await requestPresentationJsonReply({
       assistantRequestArgs: args.assistantRequestArgs,
@@ -342,7 +346,7 @@ async function parseOrRepairPresentationSpec(args: {
       }),
     });
     applyPresentationChatUsage({ data, flowArgs: args.flowArgs });
-    return parsePresentationSpecFromText(assistantText);
+    return parsePresentationDraftFromText(assistantText);
   }
 }
 

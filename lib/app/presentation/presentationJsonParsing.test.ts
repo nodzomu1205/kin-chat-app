@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parsePresentationDraftFromText,
   parsePresentationPatchFromText,
   parsePresentationSpecFromText,
 } from "@/lib/app/presentation/presentationJsonParsing";
@@ -35,6 +36,60 @@ Here is the JSON:
 `);
 
     expect(spec.title).toBe("Wrapped Deck");
+  });
+
+  it("parses PresentationMotherSpec JSON into mother and render specs", () => {
+    const draft = parsePresentationDraftFromText(
+      JSON.stringify({
+        version: "0.2-mother",
+        title: "Mother Deck",
+        purpose: "",
+        audience: "",
+        language: "ja",
+        density: "detailed",
+        theme: "business-clean",
+        sourceIntent: "Build a rich proposal.",
+        slides: [
+          {
+            title: "Rich slide",
+            templateFrame: "",
+            wallpaper: "",
+            bodies: [
+              {
+                keyMessage: "Main message",
+                keyMessageFacts: ["Fact 1"],
+                keyVisual: {
+                  type: "placeholder",
+                  brief: "Simple flow",
+                  assetId: "",
+                  status: "pending",
+                },
+                keyVisualFacts: ["Visual fact"],
+              },
+            ],
+            script: "Speaker note.",
+          },
+        ],
+      })
+    );
+
+    expect(draft.motherSpec?.version).toBe("0.2-mother");
+    expect(draft.spec).toMatchObject({
+      version: "0.1",
+      title: "Mother Deck",
+      slides: [
+        {
+          type: "bullets",
+          title: "Rich slide",
+          bullets: [
+            { text: "Fact 1" },
+            { text: "Visual fact" },
+            { text: "placeholder: Simple flow", emphasis: "muted" },
+          ],
+          notes: "Speaker note.",
+        },
+      ],
+    });
   });
 
   it("parses wrapped PresentationPatch JSON", () => {

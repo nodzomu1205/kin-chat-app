@@ -1,0 +1,159 @@
+import { describe, expect, it } from "vitest";
+import {
+  adaptMotherSpecToPresentationSpec,
+  parsePresentationMotherSpec,
+} from "@/lib/app/presentation/presentationMotherSpec";
+
+describe("presentationMotherSpec", () => {
+  it("normalizes complete mother JSON with required empty fields", () => {
+    const mother = parsePresentationMotherSpec({
+      version: "0.2-mother",
+      title: "Deck",
+      purpose: "",
+      audience: "",
+      language: "ja",
+      density: "dense",
+      theme: "business-clean",
+      sourceIntent: "Create a rich deck.",
+      slides: [
+        {
+          title: "Market shift",
+          templateFrame: "",
+          wallpaper: "",
+          bodies: [
+            {
+              keyMessage: "Demand is moving to story-led products.",
+              keyMessageFacts: ["Consumers compare origin stories."],
+              keyVisual: {
+                type: "diagram",
+                brief: "Consumer decision flow",
+                assetId: "",
+                status: "pending",
+              },
+              keyVisualFacts: ["QR touchpoints can expose product background."],
+            },
+          ],
+          script: "Explain the shift from commodity comparison to story comparison.",
+        },
+      ],
+    });
+
+    expect(mother).toMatchObject({
+      version: "0.2-mother",
+      title: "Deck",
+      slides: [
+        {
+          bodies: [
+            {
+              keyVisual: {
+                type: "diagram",
+                status: "pending",
+              },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("adapts one body to a v0.1 bullets slide", () => {
+    const spec = adaptMotherSpecToPresentationSpec(
+      parsePresentationMotherSpec({
+        version: "0.2-mother",
+        title: "Deck",
+        purpose: "Proposal",
+        audience: "Executives",
+        language: "en",
+        density: "standard",
+        theme: "business-clean",
+        sourceIntent: "",
+        slides: [
+          {
+            title: "Core claim",
+            templateFrame: "",
+            wallpaper: "",
+            bodies: [
+              {
+                keyMessage: "Start with one focused message.",
+                keyMessageFacts: ["Fact A", "Fact B"],
+                keyVisual: {
+                  type: "none",
+                  brief: "",
+                  assetId: "",
+                  status: "none",
+                },
+                keyVisualFacts: [],
+              },
+            ],
+            script: "Talk through the two supporting facts.",
+          },
+        ],
+      })
+    );
+
+    expect(spec).toMatchObject({
+      version: "0.1",
+      title: "Deck",
+      slides: [
+        {
+          type: "bullets",
+          title: "Core claim",
+          lead: "Start with one focused message.",
+          bullets: [{ text: "Fact A" }, { text: "Fact B" }],
+          notes: "Talk through the two supporting facts.",
+        },
+      ],
+    });
+  });
+
+  it("adapts two bodies to a v0.1 twoColumn slide", () => {
+    const spec = adaptMotherSpecToPresentationSpec(
+      parsePresentationMotherSpec({
+        version: "0.2-mother",
+        title: "Deck",
+        purpose: "",
+        audience: "",
+        language: "ja",
+        sourceIntent: "",
+        slides: [
+          {
+            title: "Before and after",
+            templateFrame: "compare",
+            wallpaper: "",
+            bodies: [
+              {
+                keyMessage: "Before",
+                keyMessageFacts: ["Disconnected data"],
+                keyVisual: { type: "none", brief: "", assetId: "", status: "none" },
+                keyVisualFacts: [],
+              },
+              {
+                keyMessage: "After",
+                keyMessageFacts: ["Shared story layer"],
+                keyVisual: { type: "diagram", brief: "Flow", assetId: "", status: "pending" },
+                keyVisualFacts: ["Three actors connect"],
+              },
+            ],
+            script: "",
+          },
+        ],
+      })
+    );
+
+    expect(spec.slides[0]).toMatchObject({
+      type: "twoColumn",
+      left: {
+        heading: "Before",
+        bullets: [{ text: "Disconnected data" }],
+      },
+      right: {
+        heading: "After",
+        bullets: [
+          { text: "Shared story layer" },
+          { text: "Three actors connect" },
+          { text: "diagram: Flow", emphasis: "muted" },
+        ],
+      },
+    });
+  });
+});

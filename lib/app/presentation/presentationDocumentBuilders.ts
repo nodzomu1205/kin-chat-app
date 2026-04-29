@@ -4,6 +4,7 @@ import type {
   PresentationOutput,
   PresentationPatch,
   PresentationSpec,
+  PresentationMotherSpec,
 } from "@/lib/app/presentation/presentationTypes";
 import {
   buildPresentationPayloadPreviewText,
@@ -44,6 +45,7 @@ export function parsePresentationPayload(text: string): PresentationLibraryPaylo
 
 export function buildPresentationLibraryPayload(args: {
   spec: PresentationSpec;
+  motherSpec?: PresentationMotherSpec;
   documentId?: string;
   patches?: PresentationPatch[];
   outputs?: PresentationOutput[];
@@ -59,6 +61,7 @@ export function buildPresentationLibraryPayload(args: {
     version: "0.1",
     documentId: args.documentId || buildPresentationDocumentId(new Date(timestamp)),
     status: args.status || "draft",
+    motherSpec: args.motherSpec,
     spec: args.spec,
     patches: args.patches || [],
     outputs: args.outputs || [],
@@ -73,6 +76,7 @@ export function rebuildPresentationLibraryPayload(
   previous: PresentationLibraryPayload,
   updates: {
     spec?: PresentationSpec;
+    motherSpec?: PresentationMotherSpec;
     patches?: PresentationPatch[];
     outputs?: PresentationOutput[];
     status?: PresentationLibraryPayload["status"];
@@ -83,6 +87,8 @@ export function rebuildPresentationLibraryPayload(
   const spec = updates.spec || previous.spec;
   const draftPayload: PresentationLibraryPayload = {
     ...previous,
+    motherSpec:
+      updates.motherSpec === undefined ? previous.motherSpec : updates.motherSpec,
     spec,
     patches: updates.patches || previous.patches,
     outputs: updates.outputs || previous.outputs,

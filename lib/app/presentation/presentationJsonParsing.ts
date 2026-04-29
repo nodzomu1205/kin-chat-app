@@ -2,17 +2,39 @@ import type {
   PresentationPatch,
   PresentationPatchOperation,
   PresentationDensity,
+  PresentationMotherSpec,
   PresentationSpec,
   SlideSpec,
 } from "@/lib/app/presentation/presentationTypes";
+import {
+  adaptMotherSpecToPresentationSpec,
+  parsePresentationMotherSpec,
+} from "@/lib/app/presentation/presentationMotherSpec";
+
+export type ParsedPresentationDraft = {
+  motherSpec?: PresentationMotherSpec;
+  spec: PresentationSpec;
+};
 
 export function parsePresentationSpecFromText(text: string): PresentationSpec {
+  return parsePresentationDraftFromText(text).spec;
+}
+
+export function parsePresentationDraftFromText(text: string): ParsedPresentationDraft {
   const parsed = parseJsonObject(text);
+  if (looksLikeMotherSpecResponse(parsed)) {
+    const motherSpec = parsePresentationMotherSpec(parsed);
+    return {
+      motherSpec,
+      spec: adaptMotherSpecToPresentationSpec(motherSpec),
+    };
+  }
+
   const spec = normalizePresentationSpecCandidate(parsed);
   if (!isPresentationSpec(spec)) {
     throw new Error("GPT did not return a valid PresentationSpec v0.1 JSON object.");
   }
-  return spec;
+  return { spec };
 }
 
 export function parsePresentationPatchFromText(text: string): PresentationPatch {
@@ -64,6 +86,18 @@ function normalizePresentationSpecCandidate(value: unknown): unknown {
     candidate.deck ||
     candidate.data;
   return coercePresentationSpec(wrapped || value);
+}
+
+function looksLikeMotherSpecResponse(value: unknown): boolean {
+  const candidate = value as Record<string, unknown> | null;
+  if (!candidate || typeof candidate !== "object") return false;
+  if (candidate.version === "0.2-mother") return true;
+  return !!(
+    candidate.motherSpec ||
+    candidate.presentationMotherSpec ||
+    candidate.mother ||
+    candidate.contentModel
+  );
 }
 
 function normalizePresentationPatchCandidate(value: unknown): unknown {

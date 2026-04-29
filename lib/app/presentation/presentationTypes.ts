@@ -9,6 +9,56 @@ export type PresentationDensity =
   | "detailed"
   | "dense";
 
+export type PresentationVisualType =
+  | "none"
+  | "photo"
+  | "illustration"
+  | "diagram"
+  | "chart"
+  | "table"
+  | "placeholder";
+
+export type PresentationVisualStatus =
+  | "none"
+  | "pending"
+  | "auto"
+  | "attached"
+  | "generated";
+
+export type PresentationMotherVisual = {
+  type: PresentationVisualType;
+  brief: string;
+  assetId: string;
+  status: PresentationVisualStatus;
+};
+
+export type PresentationMotherBody = {
+  keyMessage: string;
+  keyMessageFacts: string[];
+  keyVisual: PresentationMotherVisual;
+  keyVisualFacts: string[];
+};
+
+export type PresentationMotherSlide = {
+  title: string;
+  templateFrame: string;
+  wallpaper: string;
+  bodies: PresentationMotherBody[];
+  script: string;
+};
+
+export type PresentationMotherSpec = {
+  version: "0.2-mother";
+  title: string;
+  purpose: string;
+  audience: string;
+  language: "ja" | "en";
+  density?: PresentationDensity;
+  theme?: PresentationTheme;
+  sourceIntent: string;
+  slides: PresentationMotherSlide[];
+};
+
 export type BulletItem = {
   text: string;
   detail?: string;
@@ -158,6 +208,7 @@ export type PresentationLibraryPayload = {
   version: "0.1";
   documentId: string;
   status: "draft" | "revised" | "rendered" | "failed";
+  motherSpec?: PresentationMotherSpec;
   spec: PresentationSpec;
   patches: PresentationPatch[];
   outputs: PresentationOutput[];

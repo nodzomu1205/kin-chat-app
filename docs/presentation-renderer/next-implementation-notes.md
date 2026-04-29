@@ -11,6 +11,9 @@ Last updated: 2026-04-29
 - The app and renderer communicate through JSON plus generated PPTX bytes.
 - PPTX rendering writes only to the OS temp directory at request time. The API
   returns base64 content, and the browser turns it into a Blob download URL.
+- New draft creation asks GPT for `PresentationMotherSpec v0.2`, stores that
+  mother JSON in the library payload, and adapts it into renderer-ready
+  `PresentationSpec v0.1`.
 - The Next route imports the built renderer modules directly instead of
   spawning the renderer CLI. This keeps `zod`, `pptxgenjs`, and renderer files
   visible to the Next/Vercel server bundler.
