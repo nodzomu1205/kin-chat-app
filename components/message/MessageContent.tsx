@@ -23,7 +23,7 @@ export default function MessageContent({ text }: Props) {
 
 function renderMessageText(text: string) {
   const parts: React.ReactNode[] = [];
-  const pattern = /\[([^\]]+)\]\((\/[^)\s]+|https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s]+|\/generated-presentations\/[^\s]+)/g;
+  const pattern = /\[([^\]]+)\]\((\/[^)\s]+|https?:\/\/[^)\s]+|blob:[^)\s]+)\)|(https?:\/\/[^\s]+|\/generated-presentations\/[^\s]+|blob:[^\s]+)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -34,8 +34,9 @@ function renderMessageText(text: string) {
 
     const label = match[1] || match[3];
     const href = match[2] || match[3];
-    const isGeneratedPresentation = href.startsWith("/generated-presentations/");
-    const downloadName = isGeneratedPresentation ? href.split("/").pop() : undefined;
+    const isGeneratedPresentation =
+      href.startsWith("/generated-presentations/") || href.startsWith("blob:");
+    const downloadName = isGeneratedPresentation ? label : undefined;
     parts.push(
       <a
         key={`${href}-${match.index}`}

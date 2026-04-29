@@ -1,6 +1,6 @@
 # Presentation Renderer Next Implementation Notes
 
-Last updated: 2026-04-28
+Last updated: 2026-04-29
 
 ## Current State
 
@@ -8,7 +8,9 @@ Last updated: 2026-04-28
 - `Document ID` is the routing key for revisions and PPTX generation.
 - `Density:` is supported as command metadata and is stored on `PresentationSpec`.
 - The renderer remains standalone under `kin-presentation-renderer`.
-- The app and renderer communicate through JSON plus generated PPTX paths.
+- The app and renderer communicate through JSON plus generated PPTX bytes.
+- PPTX rendering writes only to the OS temp directory at request time. The API
+  returns base64 content, and the browser turns it into a Blob download URL.
 - The root app build runs `npm run build --prefix kin-presentation-renderer`
   before `next build` so Vercel can generate `kin-presentation-renderer/dist`.
 - `pptxgenjs` and `zod` are also installed at the root app level because the
@@ -21,10 +23,10 @@ Last updated: 2026-04-28
 
 ## Cleanup Notes
 
-- Keep generated PPTX files out of git. `public/generated-presentations/` should
-  contain only `.gitignore` in source control.
-- Keep render request temp JSON out of git. `.tmp-presentation-render/` should
-  contain only `.gitignore` in source control.
+- Keep generated PPTX files out of git. `public/generated-presentations/` is
+  legacy local output and should contain only `.gitignore` in source control.
+- Keep render request temp JSON out of git. `.tmp-presentation-render/` is
+  legacy local output and should contain only `.gitignore` in source control.
 - `kin-presentation-renderer/.tmp-render-tests/` is test output and should stay
   ignored.
 - The older patch-first GPT revision path has been removed from active code.
@@ -38,6 +40,11 @@ Last updated: 2026-04-28
 - The root build intentionally compiles the renderer first:
   `npm run build --prefix kin-presentation-renderer && next build`.
 - Do not commit `kin-presentation-renderer/dist`; it is build output.
+- `next.config.ts` explicitly includes `kin-presentation-renderer/dist` in the
+  `/api/presentation-render` trace so Vercel packages the renderer CLI.
+- Do not write generated PPTX files under `public` at runtime on Vercel. Route
+  handlers may run as Lambda functions where the deployment filesystem cannot be
+  used for persistent generated assets.
 - If deploy fails with missing renderer modules, check both dependency scopes:
   the renderer package needs its own dependencies for local standalone use, and
   the root package needs dependencies that the root TypeScript build resolves.

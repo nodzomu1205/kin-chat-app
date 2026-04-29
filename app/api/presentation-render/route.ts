@@ -1,8 +1,9 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -43,22 +44,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const generatedDir = join(process.cwd(), "public", "generated-presentations");
-    const tempDir = join(process.cwd(), ".tmp-presentation-render");
-    await mkdir(generatedDir, { recursive: true });
+    const tempDir = join(tmpdir(), "kin-presentation-render");
     await mkdir(tempDir, { recursive: true });
 
     const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14);
     const baseName = `${documentId}_${timestamp}`;
     const inputPath = join(tempDir, `${baseName}.json`);
     const outputFilename = `${baseName}.pptx`;
-    const outputPath = join(generatedDir, outputFilename);
+    const outputPath = join(tempDir, outputFilename);
 
     await writeFile(inputPath, `${JSON.stringify(body.spec, null, 2)}\n`, "utf8");
     await execFileAsync(process.execPath, [rendererCli, inputPath, outputPath], {
       cwd: process.cwd(),
       windowsHide: true,
     });
+    const outputBuffer = await readFile(outputPath);
+    await Promise.allSettled([
+      rm(inputPath, { force: true }),
+      rm(outputPath, { force: true }),
+    ]);
 
     const spec = body.spec as { title?: unknown; slides?: unknown; theme?: unknown };
     return NextResponse.json({
@@ -66,7 +70,9 @@ export async function POST(req: Request) {
         id: `pptx_${timestamp}`,
         format: "pptx",
         filename: outputFilename,
-        path: `/generated-presentations/${outputFilename}`,
+        contentBase64: outputBuffer.toString("base64"),
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         createdAt: new Date().toISOString(),
         slideCount: Array.isArray(spec.slides) ? spec.slides.length : 0,
       },

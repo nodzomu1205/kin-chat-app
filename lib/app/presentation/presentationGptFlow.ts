@@ -172,6 +172,8 @@ async function renderPresentationPptx(args: {
       format?: "pptx";
       filename?: string;
       path?: string;
+      contentBase64?: string;
+      mimeType?: string;
       createdAt?: string;
       slideCount?: number;
     };
@@ -190,10 +192,36 @@ async function renderPresentationPptx(args: {
     id: data.output.id || `pptx_${Date.now()}`,
     format: "pptx" as const,
     filename: data.output.filename || `${args.documentId}.pptx`,
-    path: data.output.path,
+    path:
+      data.output.path ||
+      createPresentationBlobUrl({
+        contentBase64: data.output.contentBase64,
+        mimeType: data.output.mimeType,
+      }),
     createdAt: data.output.createdAt || new Date().toISOString(),
     slideCount: data.output.slideCount || 0,
   };
+}
+
+function createPresentationBlobUrl(args: {
+  contentBase64?: string;
+  mimeType?: string;
+}) {
+  if (!args.contentBase64 || typeof window === "undefined") return undefined;
+
+  const binary = window.atob(args.contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return URL.createObjectURL(
+    new Blob([bytes], {
+      type:
+        args.mimeType ||
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    })
+  );
 }
 
 async function runCreatePresentationDraftFlow(args: {
