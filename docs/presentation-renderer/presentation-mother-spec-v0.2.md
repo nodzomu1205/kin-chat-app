@@ -65,9 +65,12 @@ type MotherVisual = {
   usable source content.
 - Facts should live in `keyMessageFacts` or `keyVisualFacts`, not only in
   `script`.
-- Fact counts should vary naturally by slide. Include more facts when they add
-  distinct value, but avoid padding or repeating the same idea. Each fact array
-  is capped at 15 items.
+- Fact arrays are intentionally over-complete source pools. Aim to fill each
+  fact array close to its maximum of 15 items whenever distinct useful facts,
+  labels, data points, composition requirements, source caveats, or factual
+  constraints are available. Do not stop at 2-5 facts for symmetry,
+  readability, or slide fit. Use fewer than 15 only when there truly are not
+  enough distinct useful facts.
 - The mother spec has no density concept. It should preserve all useful
   available information, with each fact array capped at 15 items to avoid
   unbounded payloads. Output density belongs to the renderer or adapter.
