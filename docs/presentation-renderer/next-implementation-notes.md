@@ -11,6 +11,9 @@ Last updated: 2026-04-29
 - The app and renderer communicate through JSON plus generated PPTX bytes.
 - PPTX rendering writes only to the OS temp directory at request time. The API
   returns base64 content, and the browser turns it into a Blob download URL.
+- The Next route imports the built renderer modules directly instead of
+  spawning the renderer CLI. This keeps `zod`, `pptxgenjs`, and renderer files
+  visible to the Next/Vercel server bundler.
 - The root app build runs `npm run build --prefix kin-presentation-renderer`
   before `next build` so Vercel can generate `kin-presentation-renderer/dist`.
 - `pptxgenjs` and `zod` are also installed at the root app level because the
@@ -41,7 +44,10 @@ Last updated: 2026-04-29
   `npm run build --prefix kin-presentation-renderer && next build`.
 - Do not commit `kin-presentation-renderer/dist`; it is build output.
 - `next.config.ts` explicitly includes `kin-presentation-renderer/dist` in the
-  `/api/presentation-render` trace so Vercel packages the renderer CLI.
+  `/api/presentation-render` trace so Vercel packages the renderer modules.
+- Runtime rendering should happen in-process from the route. Avoid invoking
+  `node kin-presentation-renderer/dist/cli.js` from Vercel because the child
+  process does not get the same bundled module resolution context.
 - Do not write generated PPTX files under `public` at runtime on Vercel. Route
   handlers may run as Lambda functions where the deployment filesystem cannot be
   used for persistent generated assets.
