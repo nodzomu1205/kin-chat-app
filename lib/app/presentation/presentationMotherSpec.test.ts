@@ -206,6 +206,81 @@ describe("presentationMotherSpec", () => {
     });
   });
 
+  it("filters visible v0.1 output by render density while preserving mother facts", () => {
+    const mother = parsePresentationMotherSpec({
+      version: "0.2-mother",
+      title: "Deck",
+      purpose: "",
+      audience: "",
+      language: "ja",
+      theme: "business-clean",
+      sourceIntent: "",
+      slides: [
+        {
+          title: "Dense source slide",
+          templateFrame: "",
+          wallpaper: "",
+          bodies: [
+            {
+              keyMessage: "A rich source message.",
+              keyMessageFacts: ["Fact 1", "Fact 2", "Fact 3", "Fact 4", "Fact 5"],
+              keyVisual: {
+                type: "diagram",
+                brief: "Visual plan",
+                generationPrompt: "Create a labeled diagram.",
+                assetId: "",
+                status: "pending",
+              },
+              keyVisualFacts: ["Visual fact 1", "Visual fact 2", "Visual fact 3"],
+            },
+          ],
+          script: "",
+        },
+      ],
+    });
+
+    const standard = adaptMotherSpecToPresentationSpec(mother, {
+      renderDensity: "standard",
+    });
+    const dense = adaptMotherSpecToPresentationSpec(mother, {
+      renderDensity: "dense",
+    });
+
+    expect(mother.slides[0].bodies[0].keyMessageFacts).toHaveLength(5);
+    expect(standard.slides[0]).toMatchObject({
+      type: "twoColumn",
+      left: {
+        bullets: [{ text: "Fact 1" }, { text: "Fact 2" }, { text: "Fact 3" }],
+      },
+      right: {
+        bullets: [
+          { text: "Prompt: Create a labeled diagram.", emphasis: "muted" },
+          { text: "Visual fact 1" },
+        ],
+      },
+    });
+    expect(dense.slides[0]).toMatchObject({
+      type: "twoColumn",
+      left: {
+        bullets: [
+          { text: "Fact 1" },
+          { text: "Fact 2" },
+          { text: "Fact 3" },
+          { text: "Fact 4" },
+          { text: "Fact 5" },
+        ],
+      },
+      right: {
+        bullets: [
+          { text: "Prompt: Create a labeled diagram.", emphasis: "muted" },
+          { text: "Visual fact 1" },
+          { text: "Visual fact 2" },
+          { text: "Visual fact 3" },
+        ],
+      },
+    });
+  });
+
   it("adapts two bodies to a v0.1 twoColumn slide", () => {
     const spec = adaptMotherSpecToPresentationSpec(
       parsePresentationMotherSpec({

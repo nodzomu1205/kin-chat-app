@@ -65,9 +65,9 @@ type MotherVisual = {
   usable source content.
 - Facts should live in `keyMessageFacts` or `keyVisualFacts`, not only in
   `script`.
-- Do not default to exactly two facts. For broad informational topics, target
-  5-10 `keyMessageFacts` and 3-8 `keyVisualFacts` when useful information is
-  available, while keeping each fact array capped at 15 items.
+- Fact counts should vary naturally by slide. Include more facts when they add
+  distinct value, but avoid padding or repeating the same idea. Each fact array
+  is capped at 15 items.
 - The mother spec has no density concept. It should preserve all useful
   available information, with each fact array capped at 15 items to avoid
   unbounded payloads. Output density belongs to the renderer or adapter.
@@ -91,6 +91,10 @@ v0.1` so the current renderer can stay stable:
 - 1 body with a visual request -> temporary `twoColumn` bridge layout
 - 2 bodies -> `twoColumn`
 - 3-4 bodies -> compact `table`
+
+The adapter applies output density after the mother JSON is created. For
+example, `standard` keeps fewer visible facts than `detailed` or `dense`, while
+the full mother JSON remains available for later regeneration.
 
 Future renderer work can consume `templateFrame`, `wallpaper`, visual requests,
 and asset IDs directly, then choose freer per-slide layouts instead of relying

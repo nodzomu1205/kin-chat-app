@@ -63,6 +63,7 @@ export function adaptMotherSpecToPresentationSpec(
   motherSpec: PresentationMotherSpec,
   options: { renderDensity?: PresentationDensity } = {}
 ): PresentationSpec {
+  const renderDensity = options.renderDensity || "standard";
   return {
     version: "0.1",
     title: motherSpec.title || "Presentation",
@@ -70,8 +71,10 @@ export function adaptMotherSpecToPresentationSpec(
     audience: motherSpec.audience || undefined,
     purpose: motherSpec.purpose || undefined,
     theme: motherSpec.theme || "business-clean",
-    density: options.renderDensity || "standard",
-    slides: motherSpec.slides.map(adaptMotherSlide),
+    density: renderDensity,
+    slides: motherSpec.slides.map((slide) =>
+      adaptMotherSlide(slide, renderDensity)
+    ),
   };
 }
 
@@ -171,14 +174,17 @@ function normalizeMotherVisual(input: unknown): PresentationMotherVisual {
   };
 }
 
-function adaptMotherSlide(slide: PresentationMotherSpec["slides"][number]): SlideSpec {
+function adaptMotherSlide(
+  slide: PresentationMotherSpec["slides"][number],
+  renderDensity: PresentationDensity
+): SlideSpec {
   if (slide.bodies.length === 2) {
     return {
       type: "twoColumn",
       title: slide.title,
       lead: slide.templateFrame || undefined,
-      left: adaptBodyToColumn(slide.bodies[0], "Left"),
-      right: adaptBodyToColumn(slide.bodies[1], "Right"),
+      left: adaptBodyToColumn(slide.bodies[0], "Left", renderDensity),
+      right: adaptBodyToColumn(slide.bodies[1], "Right", renderDensity),
       takeaway: slide.bodies[0]?.keyMessage || undefined,
       notes: slide.script || undefined,
     };
@@ -192,7 +198,10 @@ function adaptMotherSlide(slide: PresentationMotherSpec["slides"][number]): Slid
       columns: ["Message", "Facts", "Visual"],
       rows: slide.bodies.map((body) => [
         body.keyMessage || "",
-        [...body.keyMessageFacts, ...body.keyVisualFacts].join("; "),
+        [
+          ...limitItems(body.keyMessageFacts, renderDensity, "message"),
+          ...limitItems(body.keyVisualFacts, renderDensity, "visual"),
+        ].join("; "),
         visualLabel(body.keyVisual),
       ]),
       notes: slide.script || undefined,
@@ -209,12 +218,12 @@ function adaptMotherSlide(slide: PresentationMotherSpec["slides"][number]): Slid
       lead: slide.templateFrame || undefined,
       left: {
         heading: body.keyMessage || "Key message",
-        bullets: buildMessageBullets(body, slide.script),
+        bullets: buildMessageBullets(body, slide.script, renderDensity),
       },
       right: {
         heading: visualHeading(body.keyVisual),
         body: body.keyVisual.brief || undefined,
-        bullets: buildVisualBullets(body),
+        bullets: buildVisualBullets(body, renderDensity),
       },
       takeaway: body.keyMessage || undefined,
       notes: slide.script || undefined,
@@ -225,25 +234,33 @@ function adaptMotherSlide(slide: PresentationMotherSpec["slides"][number]): Slid
     type: "bullets",
     title: slide.title,
     lead: body.keyMessage || undefined,
-    bullets: buildBodyBullets(body, slide.script),
+    bullets: buildBodyBullets(body, slide.script, renderDensity),
     takeaway: body.keyMessage || undefined,
     notes: slide.script || undefined,
   };
 }
 
-function adaptBodyToColumn(body: PresentationMotherBody, fallbackHeading: string) {
+function adaptBodyToColumn(
+  body: PresentationMotherBody,
+  fallbackHeading: string,
+  renderDensity: PresentationDensity
+) {
   return {
     heading: body.keyMessage || fallbackHeading,
     body: visualLabel(body.keyVisual) || undefined,
-    bullets: buildBodyBullets(body),
+    bullets: buildBodyBullets(body, "", renderDensity),
   };
 }
 
 function buildBodyBullets(
   body: PresentationMotherBody,
-  fallbackText = ""
+  fallbackText = "",
+  renderDensity: PresentationDensity
 ): BulletItem[] {
-  const facts = [...body.keyMessageFacts, ...body.keyVisualFacts];
+  const facts = [
+    ...limitItems(body.keyMessageFacts, renderDensity, "message"),
+    ...limitItems(body.keyVisualFacts, renderDensity, "visual"),
+  ];
   const bullets: BulletItem[] = facts.map((text) => ({ text }));
   const visual = visualLabel(body.keyVisual);
   if (visual) {
@@ -256,16 +273,25 @@ function buildBodyBullets(
 
 function buildMessageBullets(
   body: PresentationMotherBody,
-  fallbackText = ""
+  fallbackText = "",
+  renderDensity: PresentationDensity
 ): BulletItem[] {
-  const bullets: BulletItem[] = body.keyMessageFacts.map((text) => ({ text }));
+  const bullets: BulletItem[] = limitItems(
+    body.keyMessageFacts,
+    renderDensity,
+    "message"
+  ).map((text) => ({ text }));
   return bullets.length > 0
     ? bullets
     : [{ text: fallbackText || body.keyMessage || "Content to be refined" }];
 }
 
-function buildVisualBullets(body: PresentationMotherBody): BulletItem[] {
-  const bullets: BulletItem[] = body.keyVisual.generationPrompt
+function buildVisualBullets(
+  body: PresentationMotherBody,
+  renderDensity: PresentationDensity
+): BulletItem[] {
+  const includePrompt = renderDensity !== "concise";
+  const bullets: BulletItem[] = includePrompt && body.keyVisual.generationPrompt
     ? [
         {
           text: `Prompt: ${body.keyVisual.generationPrompt}`,
@@ -273,10 +299,31 @@ function buildVisualBullets(body: PresentationMotherBody): BulletItem[] {
         },
       ]
     : [];
-  bullets.push(...body.keyVisualFacts.map((text) => ({ text })));
+  bullets.push(
+    ...limitItems(body.keyVisualFacts, renderDensity, "visual").map((text) => ({
+      text,
+    }))
+  );
   return bullets.length > 0
     ? bullets
     : [{ text: body.keyVisual.brief || "Visual to be specified" }];
+}
+
+function limitItems(
+  items: string[],
+  renderDensity: PresentationDensity,
+  kind: "message" | "visual"
+) {
+  const limits: Record<
+    PresentationDensity,
+    Record<"message" | "visual", number>
+  > = {
+    concise: { message: 2, visual: 0 },
+    standard: { message: 3, visual: 1 },
+    detailed: { message: 5, visual: 2 },
+    dense: { message: 8, visual: 4 },
+  };
+  return items.slice(0, limits[renderDensity][kind]);
 }
 
 function visualLabel(visual: PresentationMotherVisual) {
