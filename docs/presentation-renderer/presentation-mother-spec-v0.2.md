@@ -15,7 +15,6 @@ type PresentationMotherSpec = {
   purpose: string;
   audience: string;
   language: "ja" | "en";
-  density?: "concise" | "standard" | "detailed" | "dense";
   theme?: "business-clean" | "warm-minimal" | "executive-dark";
   sourceIntent: string;
   slides: MotherSlide[];
@@ -65,7 +64,11 @@ type MotherVisual = {
   usable source content.
 - Facts should live in `keyMessageFacts` or `keyVisualFacts`, not only in
   `script`.
-- `script` should explain what the slide communicates, like speaker notes.
+- The mother spec has no density concept. It should preserve all useful
+  available information, with each fact array capped at 15 items to avoid
+  unbounded payloads. Output density belongs to the renderer or adapter.
+- `script` should be read-aloud presenter narration, not a short meta
+  description of what the slide explains.
 - Visual assets are not required at mother-spec time. Use `assetId: ""` and
   `status: "pending"` until an image or generated diagram is attached.
 
@@ -75,8 +78,10 @@ The first implementation converts mother JSON into existing `PresentationSpec
 v0.1` so the current renderer can stay stable:
 
 - 1 body -> `bullets`
+- 1 body with a visual request -> temporary `twoColumn` bridge layout
 - 2 bodies -> `twoColumn`
 - 3-4 bodies -> compact `table`
 
 Future renderer work can consume `templateFrame`, `wallpaper`, visual requests,
-and asset IDs directly.
+and asset IDs directly, then choose freer per-slide layouts instead of relying
+on the temporary visual-to-column bridge.

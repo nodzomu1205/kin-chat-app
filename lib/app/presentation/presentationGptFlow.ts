@@ -243,6 +243,7 @@ async function runCreatePresentationDraftFlow(args: {
   const draft = await parseOrRepairPresentationDraft({
     assistantText,
     userInstruction: args.commandBody,
+    density: args.density,
     flowArgs: args.flowArgs,
     assistantRequestArgs: args.assistantRequestArgs,
   });
@@ -332,11 +333,14 @@ async function runRevisePresentationDraftFlow(args: {
 async function parseOrRepairPresentationDraft(args: {
   assistantText: string;
   userInstruction: string;
+  density?: NonNullable<ReturnType<typeof parsePptCommand>["density"]>;
   flowArgs: SendToGptFlowStepArgs;
   assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
 }) {
   try {
-    return parsePresentationDraftFromText(args.assistantText);
+    return parsePresentationDraftFromText(args.assistantText, {
+      renderDensity: args.density || "standard",
+    });
   } catch {
     const { data, assistantText } = await requestPresentationJsonReply({
       assistantRequestArgs: args.assistantRequestArgs,
@@ -346,7 +350,9 @@ async function parseOrRepairPresentationDraft(args: {
       }),
     });
     applyPresentationChatUsage({ data, flowArgs: args.flowArgs });
-    return parsePresentationDraftFromText(assistantText);
+    return parsePresentationDraftFromText(assistantText, {
+      renderDensity: args.density || "standard",
+    });
   }
 }
 

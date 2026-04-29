@@ -74,18 +74,24 @@ Here is the JSON:
     );
 
     expect(draft.motherSpec?.version).toBe("0.2-mother");
+    expect(draft.motherSpec?.density).toBeUndefined();
     expect(draft.spec).toMatchObject({
       version: "0.1",
       title: "Mother Deck",
+      density: "standard",
       slides: [
         {
-          type: "bullets",
+          type: "twoColumn",
           title: "Rich slide",
-          bullets: [
-            { text: "Fact 1" },
-            { text: "Visual fact" },
-            { text: "placeholder: Simple flow", emphasis: "muted" },
-          ],
+          left: {
+            heading: "Main message",
+            bullets: [{ text: "Fact 1" }],
+          },
+          right: {
+            heading: "placeholder request",
+            body: "Simple flow",
+            bullets: [{ text: "Visual fact" }],
+          },
           notes: "Speaker note.",
         },
       ],

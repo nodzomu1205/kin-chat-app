@@ -60,7 +60,8 @@ export function isPresentationMotherSpec(
 }
 
 export function adaptMotherSpecToPresentationSpec(
-  motherSpec: PresentationMotherSpec
+  motherSpec: PresentationMotherSpec,
+  options: { renderDensity?: PresentationDensity } = {}
 ): PresentationSpec {
   return {
     version: "0.1",
@@ -69,7 +70,7 @@ export function adaptMotherSpecToPresentationSpec(
     audience: motherSpec.audience || undefined,
     purpose: motherSpec.purpose || undefined,
     theme: motherSpec.theme || "business-clean",
-    density: motherSpec.density || "standard",
+    density: options.renderDensity || "standard",
     slides: motherSpec.slides.map(adaptMotherSlide),
   };
 }
@@ -98,7 +99,6 @@ function normalizeMotherSpecCandidate(input: unknown): PresentationMotherSpec {
     purpose: stringValue(wrapped?.purpose),
     audience: stringValue(wrapped?.audience),
     language,
-    density: supportedDensity(wrapped?.density),
     theme: supportedTheme(wrapped?.theme),
     sourceIntent: stringValue(wrapped?.sourceIntent || wrapped?.intent),
     slides: slidesSource.map((slide, index) =>
@@ -136,11 +136,11 @@ function normalizeMotherBody(input: unknown): PresentationMotherBody {
     ),
     keyMessageFacts: stringArray(
       candidate?.keyMessageFacts || candidate?.facts || candidate?.messageFacts
-    ).slice(0, 12),
+    ).slice(0, 15),
     keyVisual: normalizeMotherVisual(visualCandidate || candidate?.keyVisual),
     keyVisualFacts: stringArray(
       candidate?.keyVisualFacts || candidate?.visualFacts
-    ).slice(0, 12),
+    ).slice(0, 15),
   };
 }
 
@@ -194,6 +194,27 @@ function adaptMotherSlide(slide: PresentationMotherSpec["slides"][number]): Slid
   }
 
   const body = slide.bodies[0];
+  if (hasVisualRequest(body)) {
+    // Temporary renderer bridge: visual-backed single-body slides use columns
+    // until the renderer can choose freer layouts from visual intent.
+    return {
+      type: "twoColumn",
+      title: slide.title,
+      lead: slide.templateFrame || undefined,
+      left: {
+        heading: body.keyMessage || "Key message",
+        bullets: buildMessageBullets(body, slide.script),
+      },
+      right: {
+        heading: visualHeading(body.keyVisual),
+        body: body.keyVisual.brief || undefined,
+        bullets: body.keyVisualFacts.map((text) => ({ text })),
+      },
+      takeaway: body.keyMessage || undefined,
+      notes: slide.script || undefined,
+    };
+  }
+
   return {
     type: "bullets",
     title: slide.title,
@@ -227,9 +248,32 @@ function buildBodyBullets(
     : [{ text: body.keyMessage || fallbackText || "Content to be refined" }];
 }
 
+function buildMessageBullets(
+  body: PresentationMotherBody,
+  fallbackText = ""
+): BulletItem[] {
+  const bullets: BulletItem[] = body.keyMessageFacts.map((text) => ({ text }));
+  return bullets.length > 0
+    ? bullets
+    : [{ text: fallbackText || body.keyMessage || "Content to be refined" }];
+}
+
 function visualLabel(visual: PresentationMotherVisual) {
   if (visual.type === "none" && !visual.brief) return "";
   return [visual.type, visual.brief].filter(Boolean).join(": ");
+}
+
+function visualHeading(visual: PresentationMotherVisual) {
+  if (visual.type === "none") return "Visual";
+  return `${visual.type} request`;
+}
+
+function hasVisualRequest(body: PresentationMotherBody) {
+  return (
+    body.keyVisual.type !== "none" ||
+    !!body.keyVisual.brief ||
+    body.keyVisualFacts.length > 0
+  );
 }
 
 function isMotherBody(body: PresentationMotherBody) {
@@ -261,15 +305,6 @@ function objectValue(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
-}
-
-function supportedDensity(value: unknown): PresentationDensity | undefined {
-  return value === "concise" ||
-    value === "standard" ||
-    value === "detailed" ||
-    value === "dense"
-    ? value
-    : undefined;
 }
 
 function supportedTheme(value: unknown): PresentationTheme | undefined {

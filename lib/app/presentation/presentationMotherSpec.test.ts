@@ -106,6 +106,97 @@ describe("presentationMotherSpec", () => {
     });
   });
 
+  it("omits mother density while applying render density to v0.1 output", () => {
+    const mother = parsePresentationMotherSpec({
+      version: "0.2-mother",
+      title: "Deck",
+      purpose: "",
+      audience: "",
+      language: "ja",
+      density: "concise",
+      theme: "business-clean",
+      sourceIntent: "",
+      slides: [
+        {
+          title: "Core claim",
+          templateFrame: "",
+          wallpaper: "",
+          bodies: [
+            {
+              keyMessage: "Start with one focused message.",
+              keyMessageFacts: ["Fact A"],
+              keyVisual: {
+                type: "none",
+                brief: "",
+                assetId: "",
+                status: "none",
+              },
+              keyVisualFacts: [],
+            },
+          ],
+          script: "",
+        },
+      ],
+    });
+    const spec = adaptMotherSpecToPresentationSpec(mother, {
+      renderDensity: "concise",
+    });
+
+    expect(mother.density).toBeUndefined();
+    expect(spec.density).toBe("concise");
+  });
+
+  it("adapts one body with a visual request to a v0.1 twoColumn slide", () => {
+    const spec = adaptMotherSpecToPresentationSpec(
+      parsePresentationMotherSpec({
+        version: "0.2-mother",
+        title: "Deck",
+        purpose: "",
+        audience: "",
+        language: "ja",
+        density: "dense",
+        theme: "business-clean",
+        sourceIntent: "",
+        slides: [
+          {
+            title: "Visual-backed claim",
+            templateFrame: "",
+            wallpaper: "",
+            bodies: [
+              {
+                keyMessage: "Message belongs on the left.",
+                keyMessageFacts: ["Fact A"],
+                keyVisual: {
+                  type: "diagram",
+                  brief: "Simple system flow",
+                  assetId: "",
+                  status: "pending",
+                },
+                keyVisualFacts: ["Visual should show three steps."],
+              },
+            ],
+            script: "Talk through the message and the visual.",
+          },
+        ],
+      })
+    );
+
+    expect(spec.slides[0]).toMatchObject({
+      type: "twoColumn",
+      title: "Visual-backed claim",
+      left: {
+        heading: "Message belongs on the left.",
+        bullets: [{ text: "Fact A" }],
+      },
+      right: {
+        heading: "diagram request",
+        body: "Simple system flow",
+        bullets: [{ text: "Visual should show three steps." }],
+      },
+      notes: "Talk through the message and the visual.",
+    });
+  });
+
   it("adapts two bodies to a v0.1 twoColumn slide", () => {
     const spec = adaptMotherSpecToPresentationSpec(
       parsePresentationMotherSpec({

@@ -20,13 +20,18 @@ export function parsePresentationSpecFromText(text: string): PresentationSpec {
   return parsePresentationDraftFromText(text).spec;
 }
 
-export function parsePresentationDraftFromText(text: string): ParsedPresentationDraft {
+export function parsePresentationDraftFromText(
+  text: string,
+  options: { renderDensity?: PresentationDensity } = {}
+): ParsedPresentationDraft {
   const parsed = parseJsonObject(text);
   if (looksLikeMotherSpecResponse(parsed)) {
     const motherSpec = parsePresentationMotherSpec(parsed);
     return {
       motherSpec,
-      spec: adaptMotherSpecToPresentationSpec(motherSpec),
+      spec: adaptMotherSpecToPresentationSpec(motherSpec, {
+        renderDensity: options.renderDensity,
+      }),
     };
   }
 
