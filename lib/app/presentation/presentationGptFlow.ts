@@ -235,7 +235,6 @@ async function runCreatePresentationDraftFlow(args: {
     assistantRequestArgs: args.assistantRequestArgs,
     finalRequestText: buildCreatePresentationSpecPrompt({
       userInstruction: args.commandBody,
-      density: args.density,
     }),
   });
   applyPresentationChatUsage({ data, flowArgs: args.flowArgs });

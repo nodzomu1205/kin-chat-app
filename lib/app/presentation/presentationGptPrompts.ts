@@ -6,17 +6,15 @@ import type {
 
 export function buildCreatePresentationSpecPrompt(args: {
   userInstruction: string;
-  density?: PresentationDensity;
 }) {
-  const density = args.density || "standard";
   return [
     "You are generating a PowerPoint presentation JSON draft for Kin.",
     "Return strict JSON only. Do not wrap it in Markdown. Do not add commentary.",
     "",
     "The JSON must conform to PresentationMotherSpec v0.2:",
     "- version must be \"0.2-mother\"",
-    "- do not include a mother-level density setting; the mother JSON is a maximum-detail source record",
-    `- render density requested by the user is \"${density}\"; it will be applied later by the renderer adapter, not by reducing this mother JSON`,
+    "- do not include a mother-level compactness setting; the mother JSON is the maximum-detail source record",
+    "- do not optimize this JSON for slide fit or final deck readability; final deck display is chosen only after this JSON is parsed",
     "- top-level required fields: version, title, purpose, audience, language, theme, sourceIntent, slides",
     "- supported themes: business-clean, warm-minimal, executive-dark",
     "- each slide must include all fields: title, templateFrame, wallpaper, bodies, script",
@@ -24,11 +22,12 @@ export function buildCreatePresentationSpecPrompt(args: {
     "- each slide must include 1 to 4 bodies",
     "- each body must include all fields: keyMessage, keyMessageFacts, keyVisual, keyVisualFacts",
     "- keyMessage should be non-empty for every body unless the source has literally no usable content",
-    "- keyMessageFacts should contain the useful concrete support facts for that keyMessage, up to 15 facts per body",
+    "- keyMessageFacts should preserve the useful concrete support facts for that keyMessage, up to 15 facts per body",
     "- fact counts should vary naturally by slide; do not use the same number of facts on every slide",
-    "- for broad informational topics, include more facts when they add distinct value, but avoid padding or repeating the same idea",
-    "- keyVisualFacts should contain the useful concrete support facts for that visual, up to 15 facts per body",
+    "- for broad informational topics, many slides should have 4-10 keyMessageFacts when distinct useful facts are available; some slides may have fewer",
+    "- keyVisualFacts should preserve the useful concrete support facts for that visual, up to 15 facts per body",
     "- visual fact counts should vary naturally by visual; include only facts that help generate or understand the intended visual",
+    "- when keyVisual.type is not none, keyVisualFacts should usually contain 1-6 concrete visual labels, data points, composition requirements, or source caveats",
     "- do not put all slide content only in script; script is narration, while keyMessage and facts are the visible slide material",
     "- keyVisual must include all fields: type, brief, generationPrompt, assetId, status",
     "- supported keyVisual.type: none, photo, illustration, diagram, chart, table, placeholder",
@@ -40,7 +39,7 @@ export function buildCreatePresentationSpecPrompt(args: {
     "- for photo visuals, generationPrompt should describe the desired documentary/reference image and avoid inventing a fake historical photo when only illustration is appropriate",
     "- for diagram or illustration visuals, generationPrompt should describe the exact components, arrows/relationships, labels, and visual hierarchy",
     "- use empty strings for unknown optional text, [] for empty fact arrays, assetId \"\" until an asset is attached",
-    "- keep all useful information in the mother JSON; do not over-compress facts for slide fit",
+    "- keep all useful information in the mother JSON; do not compress facts for slide fit",
     "- keep content semantic; do not use coordinates, font sizes, or colors",
     "- use Japanese when the user writes Japanese unless they explicitly ask otherwise",
     "- prefer 6 to 12 slides unless the user specifies a slide count",
@@ -161,7 +160,7 @@ export function buildRepairPresentationSpecPrompt(args: {
     "}",
     "",
     "Every slide must have 1 to 4 bodies. Use empty strings and empty arrays instead of omitting fields.",
-    "Do not include a mother-level density setting. Preserve all useful source facts, up to 15 facts per fact array.",
+    "Do not include a mother-level compactness setting. Preserve all useful source facts, up to 15 facts per fact array.",
     "Do not default to exactly two facts when the invalid response contains or implies more useful facts.",
     "Every keyVisual must include generationPrompt. It should be directly usable by a future visual generation step.",
     "Do not leave keyMessage and keyMessageFacts empty when the invalid response contains usable slide content or script.",
