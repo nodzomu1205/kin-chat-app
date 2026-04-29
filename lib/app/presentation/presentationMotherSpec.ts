@@ -155,6 +155,12 @@ function normalizeMotherVisual(input: unknown): PresentationMotherVisual {
   return {
     type,
     brief: stringValue(candidate?.brief || (candidate ? "" : input)),
+    generationPrompt: stringValue(
+      candidate?.generationPrompt ||
+        candidate?.prompt ||
+        candidate?.visualPrompt ||
+        candidate?.imagePrompt
+    ),
     assetId: stringValue(candidate?.assetId),
     status:
       candidate && VISUAL_STATUSES.includes(candidate.status as never)
@@ -208,7 +214,7 @@ function adaptMotherSlide(slide: PresentationMotherSpec["slides"][number]): Slid
       right: {
         heading: visualHeading(body.keyVisual),
         body: body.keyVisual.brief || undefined,
-        bullets: body.keyVisualFacts.map((text) => ({ text })),
+        bullets: buildVisualBullets(body),
       },
       takeaway: body.keyMessage || undefined,
       notes: slide.script || undefined,
@@ -258,6 +264,21 @@ function buildMessageBullets(
     : [{ text: fallbackText || body.keyMessage || "Content to be refined" }];
 }
 
+function buildVisualBullets(body: PresentationMotherBody): BulletItem[] {
+  const bullets: BulletItem[] = body.keyVisual.generationPrompt
+    ? [
+        {
+          text: `Prompt: ${body.keyVisual.generationPrompt}`,
+          emphasis: "muted" as const,
+        },
+      ]
+    : [];
+  bullets.push(...body.keyVisualFacts.map((text) => ({ text })));
+  return bullets.length > 0
+    ? bullets
+    : [{ text: body.keyVisual.brief || "Visual to be specified" }];
+}
+
 function visualLabel(visual: PresentationMotherVisual) {
   if (visual.type === "none" && !visual.brief) return "";
   return [visual.type, visual.brief].filter(Boolean).join(": ");
@@ -283,6 +304,7 @@ function isMotherBody(body: PresentationMotherBody) {
     Array.isArray(body.keyMessageFacts) &&
     !!body.keyVisual &&
     typeof body.keyVisual.brief === "string" &&
+    typeof body.keyVisual.generationPrompt === "string" &&
     Array.isArray(body.keyVisualFacts)
   );
 }

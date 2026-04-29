@@ -27,6 +27,8 @@ describe("presentationMotherSpec", () => {
               keyVisual: {
                 type: "diagram",
                 brief: "Consumer decision flow",
+                generationPrompt:
+                  "Create a clean diagram showing consumer scan, product story, and producer feedback loop.",
                 assetId: "",
                 status: "pending",
               },
@@ -106,7 +108,7 @@ describe("presentationMotherSpec", () => {
     });
   });
 
-  it("omits mother density while applying render density to v0.1 output", () => {
+  it("applies render density to v0.1 output without using mother density", () => {
     const mother = parsePresentationMotherSpec({
       version: "0.2-mother",
       title: "Deck",
@@ -142,7 +144,6 @@ describe("presentationMotherSpec", () => {
       renderDensity: "concise",
     });
 
-    expect(mother.density).toBeUndefined();
     expect(spec.density).toBe("concise");
   });
 
@@ -169,6 +170,8 @@ describe("presentationMotherSpec", () => {
                 keyVisual: {
                   type: "diagram",
                   brief: "Simple system flow",
+                  generationPrompt:
+                    "Create a simple three-step system flow diagram with clear labels.",
                   assetId: "",
                   status: "pending",
                 },
@@ -191,7 +194,13 @@ describe("presentationMotherSpec", () => {
       right: {
         heading: "diagram request",
         body: "Simple system flow",
-        bullets: [{ text: "Visual should show three steps." }],
+        bullets: [
+          {
+            text: "Prompt: Create a simple three-step system flow diagram with clear labels.",
+            emphasis: "muted",
+          },
+          { text: "Visual should show three steps." },
+        ],
       },
       notes: "Talk through the message and the visual.",
     });

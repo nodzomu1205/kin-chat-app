@@ -45,6 +45,7 @@ type MotherVisual = {
     | "table"
     | "placeholder";
   brief: string;
+  generationPrompt: string;
   assetId: string;
   status: "none" | "pending" | "auto" | "attached" | "generated";
 };
@@ -64,11 +65,20 @@ type MotherVisual = {
   usable source content.
 - Facts should live in `keyMessageFacts` or `keyVisualFacts`, not only in
   `script`.
+- Do not default to exactly two facts. For broad informational topics, target
+  5-10 `keyMessageFacts` and 3-8 `keyVisualFacts` when useful information is
+  available, while keeping each fact array capped at 15 items.
 - The mother spec has no density concept. It should preserve all useful
   available information, with each fact array capped at 15 items to avoid
   unbounded payloads. Output density belongs to the renderer or adapter.
 - `script` should be read-aloud presenter narration, not a short meta
   description of what the slide explains.
+- `keyVisual.brief` should be a concise visual plan.
+- `keyVisual.generationPrompt` should be directly usable by a later visual
+  generation step. It should specify subject, composition or layout, labels or
+  data to include, language, style, and what to avoid. Chart and table prompts
+  should include chart/table type, axes or columns, categories/series, known
+  values, and `needs source data` where numeric values are unknown.
 - Visual assets are not required at mother-spec time. Use `assetId: ""` and
   `status: "pending"` until an image or generated diagram is attached.
 

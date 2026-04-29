@@ -61,6 +61,7 @@ Here is the JSON:
                 keyVisual: {
                   type: "placeholder",
                   brief: "Simple flow",
+                  generationPrompt: "Create a simple labeled flow diagram.",
                   assetId: "",
                   status: "pending",
                 },
@@ -74,7 +75,9 @@ Here is the JSON:
     );
 
     expect(draft.motherSpec?.version).toBe("0.2-mother");
-    expect(draft.motherSpec?.density).toBeUndefined();
+    expect(draft.motherSpec?.slides[0]?.bodies[0]?.keyVisual.generationPrompt).toBe(
+      "Create a simple labeled flow diagram."
+    );
     expect(draft.spec).toMatchObject({
       version: "0.1",
       title: "Mother Deck",
@@ -90,7 +93,13 @@ Here is the JSON:
           right: {
             heading: "placeholder request",
             body: "Simple flow",
-            bullets: [{ text: "Visual fact" }],
+            bullets: [
+              {
+                text: "Prompt: Create a simple labeled flow diagram.",
+                emphasis: "muted",
+              },
+              { text: "Visual fact" },
+            ],
           },
           notes: "Speaker note.",
         },

@@ -28,6 +28,7 @@ export type PresentationVisualStatus =
 export type PresentationMotherVisual = {
   type: PresentationVisualType;
   brief: string;
+  generationPrompt: string;
   assetId: string;
   status: PresentationVisualStatus;
 };
@@ -53,7 +54,6 @@ export type PresentationMotherSpec = {
   purpose: string;
   audience: string;
   language: "ja" | "en";
-  density?: PresentationDensity;
   theme?: PresentationTheme;
   sourceIntent: string;
   slides: PresentationMotherSlide[];
