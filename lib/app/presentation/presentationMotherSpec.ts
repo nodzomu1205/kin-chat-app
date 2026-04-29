@@ -197,8 +197,8 @@ function adaptMotherSlide(slide: PresentationMotherSpec["slides"][number]): Slid
   return {
     type: "bullets",
     title: slide.title,
-    lead: body.keyMessage || slide.templateFrame || undefined,
-    bullets: buildBodyBullets(body),
+    lead: body.keyMessage || undefined,
+    bullets: buildBodyBullets(body, slide.script),
     takeaway: body.keyMessage || undefined,
     notes: slide.script || undefined,
   };
@@ -212,14 +212,19 @@ function adaptBodyToColumn(body: PresentationMotherBody, fallbackHeading: string
   };
 }
 
-function buildBodyBullets(body: PresentationMotherBody): BulletItem[] {
+function buildBodyBullets(
+  body: PresentationMotherBody,
+  fallbackText = ""
+): BulletItem[] {
   const facts = [...body.keyMessageFacts, ...body.keyVisualFacts];
   const bullets: BulletItem[] = facts.map((text) => ({ text }));
   const visual = visualLabel(body.keyVisual);
   if (visual) {
     bullets.push({ text: visual, emphasis: "muted" as const });
   }
-  return bullets.length > 0 ? bullets : [{ text: body.keyMessage || "Content to be refined" }];
+  return bullets.length > 0
+    ? bullets
+    : [{ text: body.keyMessage || fallbackText || "Content to be refined" }];
 }
 
 function visualLabel(visual: PresentationMotherVisual) {

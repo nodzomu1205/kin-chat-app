@@ -156,4 +156,44 @@ describe("presentationMotherSpec", () => {
       },
     });
   });
+
+  it("uses slide script as fallback visible content when GPT leaves body empty", () => {
+    const spec = adaptMotherSpecToPresentationSpec(
+      parsePresentationMotherSpec({
+        version: "0.2-mother",
+        title: "Deck",
+        purpose: "",
+        audience: "",
+        language: "ja",
+        sourceIntent: "",
+        slides: [
+          {
+            title: "History overview",
+            templateFrame: "standard",
+            wallpaper: "",
+            bodies: [
+              {
+                keyMessage: "",
+                keyMessageFacts: [],
+                keyVisual: { type: "none", brief: "", assetId: "", status: "none" },
+                keyVisualFacts: [],
+              },
+            ],
+            script: "Explain the historical background and why it matters now.",
+          },
+        ],
+      })
+    );
+
+    expect(spec.slides[0]).toMatchObject({
+      type: "bullets",
+      title: "History overview",
+      bullets: [
+        {
+          text: "Explain the historical background and why it matters now.",
+        },
+      ],
+      notes: "Explain the historical background and why it matters now.",
+    });
+  });
 });

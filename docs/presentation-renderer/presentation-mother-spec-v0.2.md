@@ -61,6 +61,10 @@ type MotherVisual = {
   other paired structures.
 - Use three or four bodies only when there is a clear parallel structure.
 - GPT should not discard useful facts to fit a slide layout.
+- `keyMessage` should be non-empty for every body unless there is literally no
+  usable source content.
+- Facts should live in `keyMessageFacts` or `keyVisualFacts`, not only in
+  `script`.
 - `script` should explain what the slide communicates, like speaker notes.
 - Visual assets are not required at mother-spec time. Use `assetId: ""` and
   `status: "pending"` until an image or generated diagram is attached.
