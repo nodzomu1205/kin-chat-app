@@ -34,9 +34,17 @@ function renderMessageText(text: string) {
 
     const label = match[1] || match[3];
     const href = match[2] || match[3];
+    const isLegacyGeneratedPresentation = href.startsWith(
+      "/generated-presentations/"
+    );
+    const isBlobPresentation = href.startsWith("blob:");
     const isGeneratedPresentation =
-      href.startsWith("/generated-presentations/") || href.startsWith("blob:");
-    const downloadName = isGeneratedPresentation ? label : undefined;
+      isLegacyGeneratedPresentation || isBlobPresentation;
+    const downloadName = isLegacyGeneratedPresentation
+      ? href.split("/").pop()
+      : isBlobPresentation
+        ? label
+        : undefined;
     parts.push(
       <a
         key={`${href}-${match.index}`}

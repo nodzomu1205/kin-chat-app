@@ -55,7 +55,8 @@ Last updated: 2026-04-29
   the renderer package needs its own dependencies for local standalone use, and
   the root package needs dependencies that the root TypeScript build resolves.
 - If deploy succeeds but PPTX generation fails at runtime, first confirm that
-  `kin-presentation-renderer/dist/cli.js` exists in the deployed build output.
+  `kin-presentation-renderer/dist/renderer.js` and `schema.js` are present in
+  the deployed build output and included in the `/api/presentation-render` trace.
 
 ## Recommended Next Work
 
