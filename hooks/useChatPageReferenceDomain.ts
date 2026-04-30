@@ -167,6 +167,7 @@ export function useChatPageReferenceDomain(
     showAllLibraryItemsInChat,
     sendAllLibraryItemsToKin,
     uploadLibraryItemToGoogleDrive,
+    renderPresentationPlanToPpt,
     importGoogleDriveFile,
     indexGoogleDriveFolder,
     importGoogleDriveFolder,
@@ -189,6 +190,7 @@ export function useChatPageReferenceDomain(
     indexGoogleDriveFolderPicker: openFolderIndexPicker,
     importGoogleDriveFolderPicker: openFolderImportPicker,
     uploadLibraryItemToDrivePicker: uploadLibraryItemToDrive,
+    updateStoredDocument,
   });
 
   const libraryReferenceEstimatedTokens = estimateLibraryReferenceTokens();
@@ -233,6 +235,7 @@ export function useChatPageReferenceDomain(
     showAllLibraryItemsInChat,
     sendAllLibraryItemsToKin,
     uploadLibraryItemToGoogleDrive,
+    renderPresentationPlanToPpt,
     importGoogleDriveFile,
     indexGoogleDriveFolder,
     importGoogleDriveFolder,

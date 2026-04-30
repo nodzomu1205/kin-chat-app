@@ -5,6 +5,8 @@ import type {
   PresentationPatch,
   PresentationSpec,
   PresentationMotherSpec,
+  PresentationInformationInventory,
+  PresentationStrategy,
 } from "@/lib/app/presentation/presentationTypes";
 import {
   buildPresentationPayloadPreviewText,
@@ -46,6 +48,8 @@ export function parsePresentationPayload(text: string): PresentationLibraryPaylo
 export function buildPresentationLibraryPayload(args: {
   spec: PresentationSpec;
   motherSpec?: PresentationMotherSpec;
+  informationInventory?: PresentationInformationInventory;
+  presentationStrategy?: PresentationStrategy;
   documentId?: string;
   patches?: PresentationPatch[];
   outputs?: PresentationOutput[];
@@ -62,6 +66,8 @@ export function buildPresentationLibraryPayload(args: {
     documentId: args.documentId || buildPresentationDocumentId(new Date(timestamp)),
     status: args.status || "draft",
     motherSpec: args.motherSpec,
+    informationInventory: args.informationInventory,
+    presentationStrategy: args.presentationStrategy,
     spec: args.spec,
     patches: args.patches || [],
     outputs: args.outputs || [],
@@ -77,6 +83,8 @@ export function rebuildPresentationLibraryPayload(
   updates: {
     spec?: PresentationSpec;
     motherSpec?: PresentationMotherSpec;
+    informationInventory?: PresentationInformationInventory;
+    presentationStrategy?: PresentationStrategy;
     patches?: PresentationPatch[];
     outputs?: PresentationOutput[];
     status?: PresentationLibraryPayload["status"];
@@ -89,6 +97,14 @@ export function rebuildPresentationLibraryPayload(
     ...previous,
     motherSpec:
       updates.motherSpec === undefined ? previous.motherSpec : updates.motherSpec,
+    informationInventory:
+      updates.informationInventory === undefined
+        ? previous.informationInventory
+        : updates.informationInventory,
+    presentationStrategy:
+      updates.presentationStrategy === undefined
+        ? previous.presentationStrategy
+        : updates.presentationStrategy,
     spec,
     patches: updates.patches || previous.patches,
     outputs: updates.outputs || previous.outputs,

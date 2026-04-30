@@ -10,6 +10,10 @@ import {
 import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import {
+  buildPresentationSpecFromTaskPlan,
+  buildPresentationTaskPlanFromText,
+} from "@/lib/app/presentation/presentationTaskPlanning";
+import {
   requestFileIngest,
   resolveIngestErrorMessage,
   resolveIngestFileTitle,
@@ -37,6 +41,7 @@ import {
   type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
 import type { ReferenceLibraryItem } from "@/types/chat";
+import type { PresentationTaskPlan } from "@/types/task";
 
 export type DriveImportFile = {
   id: string;
@@ -346,6 +351,10 @@ async function buildDriveUploadArtifacts(
 async function buildPresentationPptxDriveArtifact(
   item: ReferenceLibraryItem
 ): Promise<Extract<DriveUploadArtifact, { kind: "blob" }> | null> {
+  if (item.artifactType === "presentation_plan") {
+    return buildPresentationPlanPptxDriveArtifact(item);
+  }
+
   if (item.artifactType !== "presentation") return null;
   if (typeof fetch === "undefined") return null;
 
@@ -369,6 +378,61 @@ async function buildPresentationPptxDriveArtifact(
   return {
     kind: "blob",
     fileName: latest.filename,
+    blob,
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  };
+}
+
+function isPresentationTaskPlan(value: unknown): value is PresentationTaskPlan {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    (value as PresentationTaskPlan).version === "0.1-presentation-task-plan"
+  );
+}
+
+async function buildPresentationPlanPptxDriveArtifact(
+  item: ReferenceLibraryItem
+): Promise<Extract<DriveUploadArtifact, { kind: "blob" }> | null> {
+  if (typeof fetch === "undefined") return null;
+
+  const parsedPlan = buildPresentationTaskPlanFromText({
+    title: item.title,
+    text: item.excerptText,
+  });
+  const storedPlan = isPresentationTaskPlan(item.structuredPayload)
+    ? item.structuredPayload
+    : null;
+  const plan =
+    parsedPlan.slides.length > 0
+      ? {
+          ...parsedPlan,
+          latestPptx: storedPlan?.latestPptx || null,
+        }
+      : storedPlan || parsedPlan;
+  const spec = buildPresentationSpecFromTaskPlan(plan);
+  const latest = plan.latestPptx;
+  const fetchedBlob = latest?.path
+    ? await fetch(latest.path)
+        .then((response) => (response.ok ? response.blob() : null))
+        .catch(() => null)
+    : null;
+  const blob =
+    fetchedBlob ||
+    (await renderPresentationPptxBlob({
+      documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
+      spec,
+    }));
+  if (!blob) return null;
+
+  return {
+    kind: "blob",
+    fileName:
+      latest?.filename ||
+      `${(spec.title || item.title || "presentation-plan")
+        .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
+        .slice(0, 100)}.pptx`,
     blob,
     mimeType:
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",

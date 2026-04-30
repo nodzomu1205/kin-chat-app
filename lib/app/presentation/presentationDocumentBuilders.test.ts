@@ -59,6 +59,67 @@ describe("presentation document builders", () => {
     });
   });
 
+  it("stores information inventory and presentation strategy in payload preview", () => {
+    const payload = buildPresentationLibraryPayload({
+      spec,
+      documentId: "pres_test",
+      informationInventory: {
+        version: "0.2-information-inventory",
+        topic: "提案",
+        language: "ja",
+        rawFacts: [
+          {
+            id: "fact_001",
+            text: "初稿作成を短縮する",
+            sourceHint: "",
+          },
+        ],
+        factGroups: [
+          {
+            id: "group_001",
+            label: "導入効果",
+            factIds: ["fact_001"],
+          },
+        ],
+      },
+      presentationStrategy: {
+        version: "0.1-presentation-strategy",
+        title: "提案資料",
+        purpose: "承認を得る",
+        audience: "部長層",
+        tone: "executive",
+        density: "standard",
+        slideCountRange: { min: 2, max: 4, target: 3 },
+        selectedFactGroupIds: ["group_001"],
+        factGroupPriority: [],
+        visualPolicy: {
+          overallUse: "selective",
+          mustVisualizeFactGroupIds: [],
+          avoidVisualFactGroupIds: [],
+          preferredVisualTypes: ["diagram"],
+          avoidVisualTypes: [],
+          reason: "",
+        },
+        structurePolicy: {
+          preferredFlow: "overview_to_detail",
+          allowMultipleFactGroupsPerSlide: true,
+          combineRelatedFactGroups: true,
+          notes: "",
+        },
+      },
+    });
+    const rebuilt = rebuildPresentationLibraryPayload(payload, {});
+
+    expect(rebuilt.informationInventory?.factGroups).toHaveLength(1);
+    expect(rebuilt.presentationStrategy?.slideCountRange.target).toBe(3);
+    expect(rebuilt.previewText).toContain(
+      "Information Inventory: 1 raw facts / 1 fact groups"
+    );
+    expect(rebuilt.previewText).toContain(
+      "Presentation Strategy: 3 target slides / selective visuals"
+    );
+  });
+
   it("rebuilds payload preview and status after updates", () => {
     const payload = buildPresentationLibraryPayload({
       spec,

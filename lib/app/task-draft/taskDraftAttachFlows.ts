@@ -4,7 +4,18 @@ import {
   buildTaskStructuredInput,
   formatTaskResultText,
   runAutoPrepTask,
+  runAutoPrepPresentationTask,
+  runAutoUpdatePresentationTask,
 } from "@/lib/app/gpt-task/gptTaskClient";
+import {
+  buildPresentationTaskPlan,
+  buildPresentationTaskStructuredInput,
+  formatPresentationTaskPlanText,
+  formatPresentationTaskResultText,
+  isPresentationTaskInstruction,
+  resolvePresentationTaskTitle,
+  stripPresentationTaskMarker,
+} from "@/lib/app/presentation/presentationTaskPlanning";
 import {
   buildLibraryTaskSource,
   buildPreparedTaskDraftUpdate,
@@ -57,12 +68,18 @@ export async function runAttachSearchResultToTaskFlow(
     return;
   }
 
-  const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
+  const presentationMode =
+    args.currentTaskDraft.mode === "presentation" ||
+    isPresentationTaskInstruction(args.gptInput.trim());
+  const normalizedInput = presentationMode
+    ? stripPresentationTaskMarker(args.gptInput.trim())
+    : args.gptInput.trim();
+  const parsedInput = args.applyPrefixedTaskFieldsFromText(normalizedInput);
   const fallbackTitle = resolveUpdateTaskTitle({
     explicitTitle: parsedInput.title,
     currentTitle: args.currentTaskDraft.title,
     currentTaskName: args.currentTaskDraft.taskName,
-    freeText: parsedInput.freeText || args.gptInput.trim(),
+    freeText: parsedInput.freeText || normalizedInput,
     searchQuery: parsedInput.searchQuery || taskSearchContext?.query,
     fallback:
       args.currentTaskDraft.title ||
@@ -84,7 +101,15 @@ export async function runAttachSearchResultToTaskFlow(
     fallbackTitle,
     includeCurrentTitle: false,
   });
-  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const resolvedTitle = resolvePresentationTaskTitle({
+    presentationMode,
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title,
+    currentTaskName: args.currentTaskDraft.taskName,
+    generatedTitle: resolvedTitleResult.title,
+    fallbackTitle,
+    preserveExistingTitle: !!currentTaskText,
+  });
   const nextUserInstruction = resolveTaskDraftUserInstruction(
     parsedInput.userInstruction,
     parsedInput.freeText,
@@ -97,13 +122,20 @@ export async function runAttachSearchResultToTaskFlow(
   });
 
   if (!currentTaskText) {
-    const prepInput = buildTaskStructuredInput({
-      title: resolvedTitle,
-      userInstruction: nextUserInstruction,
-      body: materialText,
-      searchRawText:
-        taskLibraryItem?.itemType === "search" ? taskSearchContext?.rawText || "" : "",
-    });
+    const prepInput = presentationMode
+      ? buildPresentationTaskStructuredInput({
+          title: resolvedTitle,
+          userInstruction: nextUserInstruction,
+          body: parsedInput.freeText || normalizedInput,
+          material: materialText,
+        })
+      : buildTaskStructuredInput({
+          title: resolvedTitle,
+          userInstruction: nextUserInstruction,
+          body: materialText,
+          searchRawText:
+            taskLibraryItem?.itemType === "search" ? taskSearchContext?.rawText || "" : "",
+        });
 
     startTaskFlowRequest({
       setGptMessages: args.setGptMessages,
@@ -112,12 +144,30 @@ export async function runAttachSearchResultToTaskFlow(
     });
 
     try {
-      const data = await runAutoPrepTask(prepInput, "attach-library-item");
-      const taskText = formatTaskResultText(data?.parsed, data?.raw);
+      const data = presentationMode
+        ? await runAutoPrepPresentationTask(prepInput, "attach-library-item-ppt")
+        : await runAutoPrepTask(prepInput, "attach-library-item");
+      const presentationPlan = presentationMode
+        ? buildPresentationTaskPlan({
+            title: resolvedTitle,
+            result: data?.parsed,
+            rawText: data?.raw,
+          })
+        : null;
+      const taskText = presentationMode
+        ? presentationPlan
+          ? formatPresentationTaskPlanText(presentationPlan)
+          : formatPresentationTaskResultText(data?.parsed, data?.raw)
+        : formatTaskResultText(data?.parsed, data?.raw);
       const assistantMsg: Message = {
         id: generateId(),
         role: "gpt",
-        text: ["Library item imported into a new task.", taskText].join("\n\n"),
+        text: [
+          presentationMode
+            ? "Library item imported into a new PPT design task."
+            : "Library item imported into a new task.",
+          taskText,
+        ].join("\n\n"),
         meta: {
           kind: "task_prep",
           sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
@@ -165,6 +215,8 @@ export async function runAttachSearchResultToTaskFlow(
           title: resolvedTitle,
           userInstruction: nextUserInstruction,
           taskTitleDebug: resolvedTitleResult.debug,
+          mode: presentationMode ? "presentation" : "normal",
+          presentationPlan,
           body: taskText,
           searchContext:
             taskLibraryItem?.itemType === "search"
@@ -198,13 +250,21 @@ export async function runAttachSearchResultToTaskFlow(
     return;
   }
 
-  const taskInput = buildTaskInput({
-    title: resolvedTitle,
-    userInstruction: nextUserInstruction,
-    actionInstruction: parsedInput.freeText || args.gptInput.trim(),
-    body: currentTaskText,
-    material: materialText,
-  });
+  const taskInput = presentationMode
+    ? buildPresentationTaskStructuredInput({
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        currentPlanText: currentTaskText,
+        body: parsedInput.freeText || normalizedInput,
+        material: materialText,
+      })
+    : buildTaskInput({
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        actionInstruction: parsedInput.freeText || normalizedInput,
+        body: currentTaskText,
+        material: materialText,
+      });
 
   startTaskFlowRequest({
     setGptMessages: args.setGptMessages,
@@ -213,12 +273,30 @@ export async function runAttachSearchResultToTaskFlow(
   });
 
   try {
-    const data = await runAutoPrepTask(taskInput, "attach-search-result");
-    const taskText = formatTaskResultText(data?.parsed, data?.raw);
+    const data = presentationMode
+      ? await runAutoUpdatePresentationTask(taskInput, "attach-search-result-ppt")
+      : await runAutoPrepTask(taskInput, "attach-search-result");
+    const presentationPlan = presentationMode
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
+        })
+      : undefined;
+    const taskText = presentationMode
+      ? presentationPlan
+        ? formatPresentationTaskPlanText(presentationPlan)
+        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
-      text: ["Library item attached to task.", taskText].join("\n\n"),
+        text: [
+          presentationMode
+            ? "Library item attached to PPT design task."
+            : "Library item attached to task.",
+          taskText,
+        ].join("\n\n"),
       meta: {
         kind: "task_prep",
         sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
@@ -266,6 +344,8 @@ export async function runAttachSearchResultToTaskFlow(
         title: resolvedTitle,
         userInstruction: nextUserInstruction,
         taskTitleDebug: resolvedTitleResult.debug,
+        mode: presentationMode ? "presentation" : prev.mode,
+        presentationPlan,
         body: taskText,
         searchContext:
           taskLibraryItem?.itemType === "search"

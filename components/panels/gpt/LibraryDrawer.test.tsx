@@ -33,6 +33,7 @@ function renderLibraryDrawer(
       onShowAllLibraryItemsInChat={() => Promise.resolve()}
       onSendAllLibraryItemsToKin={() => Promise.resolve()}
       onUploadLibraryItemToGoogleDrive={() => Promise.resolve()}
+      onRenderPresentationPlanToPpt={() => Promise.resolve()}
       onOpenGoogleDriveFolder={() => {}}
       onImportGoogleDriveFile={() => Promise.resolve()}
       onIndexGoogleDriveFolder={() => Promise.resolve()}
@@ -161,5 +162,74 @@ describe("LibraryDrawer", () => {
     expect(html).toContain(">送<");
     expect(html).toContain(">保<");
     expect(html).not.toMatch(/[郢ｧ邵ｺ隴∬叉陷ｿ驍ｵ陜ｨ驛｢髯ｷ髫ｴ遶奇ｨ滄圷]/u);
+  });
+
+  it("shows PPTX output only for presentation plans with slide design JSON", () => {
+    const baseItem: ReferenceLibraryItem = {
+      id: "doc:1",
+      sourceId: "doc:1",
+      itemType: "kin_created",
+      artifactType: "presentation_plan",
+      title: "PPT Design",
+      subtitle: "設計書",
+      summary: "summary",
+      excerptText: "【PPT設計書】",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const emptyHtml = renderLibraryDrawer({
+      referenceLibraryItems: [
+        {
+          ...baseItem,
+          structuredPayload: {
+            version: "0.1-presentation-task-plan",
+            title: "PPT Design",
+            slides: [],
+          },
+        },
+      ],
+      libraryReferenceCount: 1,
+    });
+    const renderableHtml = renderLibraryDrawer({
+      referenceLibraryItems: [
+        {
+          ...baseItem,
+          id: "doc:2",
+          sourceId: "doc:2",
+          structuredPayload: {
+            version: "0.1-presentation-task-plan",
+            title: "PPT Design",
+            slides: [
+              {
+                slideNumber: 1,
+                sectionLabel: "",
+                title: "Title",
+                keyMessage: "",
+                supportingInfo: [],
+                keyVisual: "",
+                visualSupportingInfo: [],
+                placementComposition: "中央にタイトル",
+                layoutItems: [{ region: "タイトル", text: "Title" }],
+                structuredContent: {
+                  title: "Title",
+                  mainMessage: "",
+                  facts: [],
+                  visual: { brief: "", supportingFacts: [] },
+                  layout: {
+                    instruction: "中央にタイトル",
+                    elements: [{ region: "タイトル", text: "Title" }],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+      libraryReferenceCount: 1,
+    });
+
+    expect(emptyHtml).not.toContain("PPTX出力");
+    expect(renderableHtml).toContain("PPTX出力");
   });
 });

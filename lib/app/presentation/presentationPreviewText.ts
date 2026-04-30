@@ -76,6 +76,18 @@ export function buildPresentationPayloadSummary(
   return withOutput.length > 320 ? `${withOutput.slice(0, 320).trimEnd()}...` : withOutput;
 }
 
+function inventoryLine(payload: PresentationLibraryPayload) {
+  const inventory = payload.informationInventory;
+  if (!inventory) return "";
+  return `Information Inventory: ${inventory.rawFacts.length} raw facts / ${inventory.factGroups.length} fact groups`;
+}
+
+function strategyLine(payload: PresentationLibraryPayload) {
+  const strategy = payload.presentationStrategy;
+  if (!strategy) return "";
+  return `Presentation Strategy: ${strategy.slideCountRange.target} target slides / ${strategy.visualPolicy.overallUse} visuals / ${strategy.structurePolicy.preferredFlow}`;
+}
+
 export function buildPresentationPayloadPreviewText(
   payload: PresentationLibraryPayload
 ): string {
@@ -88,6 +100,8 @@ export function buildPresentationPayloadPreviewText(
     payload.outputs.length > 0 && payload.outputs[payload.outputs.length - 1].path
       ? `Latest PPTX Link: ${payload.outputs[payload.outputs.length - 1].path}`
       : "",
+    inventoryLine(payload),
+    strategyLine(payload),
     "",
     payload.previewText,
   ].filter((line) => line !== "");

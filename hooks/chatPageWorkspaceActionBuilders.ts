@@ -100,6 +100,7 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onShowAllLibraryItemsInChat: args.onShowAllLibraryItemsInChat,
     onSendAllLibraryItemsToKin: args.onSendAllLibraryItemsToKin,
     onUploadLibraryItemToGoogleDrive: args.onUploadLibraryItemToGoogleDrive,
+    onRenderPresentationPlanToPpt: args.onRenderPresentationPlanToPpt,
     onChangeAutoLibraryReferenceEnabled: args.onChangeAutoLibraryReferenceEnabled,
     onChangeLibraryReferenceMode: args.onChangeLibraryReferenceMode,
     onChangeLibraryIndexResponseCount: args.onChangeLibraryIndexResponseCount,

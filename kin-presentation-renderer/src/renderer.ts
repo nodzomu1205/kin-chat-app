@@ -127,9 +127,10 @@ function renderTitleSlide(
     });
   }
 
+  const hasKeyVisual = !!slideSpec.keyVisual;
   slide.addText(slideSpec.title, {
     x: 0.76,
-    y: 1.62,
+    y: hasKeyVisual ? 0.88 : 1.62,
     w: 10.4,
     h: 1.25,
     fontFace: theme.fontFace,
@@ -140,10 +141,36 @@ function renderTitleSlide(
     margin: 0
   });
 
+  if (slideSpec.keyVisual) {
+    slide.addShape("roundRect", {
+      x: 1.12,
+      y: 2.38,
+      w: 11.1,
+      h: 2.38,
+      rectRadius: 0.06,
+      fill: { color: theme.accentSoft },
+      line: { color: theme.accent, width: 1.2 }
+    });
+    slide.addText(slideSpec.keyVisual, {
+      x: 1.42,
+      y: 3.02,
+      w: 10.5,
+      h: 0.86,
+      fontFace: theme.fontFace,
+      fontSize: 18,
+      bold: true,
+      color: theme.text,
+      fit: "shrink",
+      margin: 0.04,
+      valign: "middle",
+      align: "center"
+    });
+  }
+
   if (slideSpec.subtitle) {
     slide.addText(slideSpec.subtitle, {
       x: 0.78,
-      y: 3.08,
+      y: hasKeyVisual ? 5.18 : 3.08,
       w: 9.2,
       h: 0.7,
       fontFace: theme.fontFace,
@@ -260,8 +287,21 @@ function renderTwoColumnSlide(
   addSlideTitle(slide, theme, slideSpec.title, slideSpec.lead);
 
   const y = slideSpec.lead ? 2.12 : 1.74;
-  addColumn(slide, theme, resolveColumn(slideSpec, "left"), 0.76, y, 5.65, density);
-  addColumn(slide, theme, resolveColumn(slideSpec, "right"), 6.92, y, 5.65, density);
+  const textColumn = resolveColumn(slideSpec, "left");
+  const visualColumn = resolveColumn(slideSpec, "right");
+  if (slideSpec.layoutVariant === "visualHero") {
+    addVisualHero(slide, theme, visualColumn, textColumn, y, density);
+    addTakeaway(slide, theme, slideSpec.takeaway);
+    return;
+  }
+  if (slideSpec.layoutVariant === "visualLeftTextRight") {
+    addColumn(slide, theme, visualColumn, 0.76, y, 5.65, density);
+    addColumn(slide, theme, textColumn, 6.92, y, 5.65, density);
+    addTakeaway(slide, theme, slideSpec.takeaway);
+    return;
+  }
+  addColumn(slide, theme, textColumn, 0.76, y, 5.65, density);
+  addColumn(slide, theme, visualColumn, 6.92, y, 5.65, density);
   addTakeaway(slide, theme, slideSpec.takeaway);
 }
 
@@ -459,6 +499,103 @@ function addBullet(
   }
 }
 
+function addVisualHero(
+  slide: PptxGenJS.Slide,
+  theme: RendererTheme,
+  visualColumn: ColumnContent,
+  textColumn: ColumnContent,
+  y: number,
+  density: PresentationDensity
+): void {
+  const settings = densitySettings(density);
+  slide.addShape("roundRect", {
+    x: 0.82,
+    y,
+    w: 11.72,
+    h: 2.45,
+    rectRadius: 0.05,
+    fill: { color: theme.accentSoft },
+    line: { color: theme.accent, width: 1.2 }
+  });
+  slide.addText(visualColumn.heading, {
+    x: 1.08,
+    y: y + 0.22,
+    w: 11.2,
+    h: 0.3,
+    fontFace: theme.fontFace,
+    fontSize: 14,
+    bold: true,
+    color: theme.accent,
+    fit: "shrink",
+    margin: 0
+  });
+  slide.addText(visualColumn.body || "ビジュアル案を確認してください", {
+    x: 1.18,
+    y: y + 0.68,
+    w: 10.98,
+    h: visualColumn.bullets?.length ? 0.66 : 1.12,
+    fontFace: theme.fontFace,
+    fontSize: 18,
+    bold: true,
+    color: theme.text,
+    fit: "shrink",
+    margin: 0.04,
+    valign: "middle",
+    align: "center"
+  });
+  visualColumn.bullets?.slice(0, 4).forEach((bullet, index) => {
+    slide.addText(bullet.text, {
+      x: 1.16 + index * 2.76,
+      y: y + 1.68,
+      w: 2.42,
+      h: 0.36,
+      fontFace: theme.fontFace,
+      fontSize: 9.8,
+      bold: bullet.emphasis === "strong",
+      color: theme.text,
+      fill: { color: theme.surface, transparency: 5 },
+      fit: "shrink",
+      margin: 0.04,
+      valign: "middle",
+      align: "center"
+    });
+  });
+
+  const textY = y + 2.78;
+  slide.addShape("roundRect", {
+    x: 0.82,
+    y: textY,
+    w: 11.72,
+    h: 1.42,
+    rectRadius: 0.04,
+    fill: { color: theme.surface },
+    line: { color: theme.border, width: 1 }
+  });
+  slide.addText(textColumn.body || textColumn.heading, {
+    x: 1.08,
+    y: textY + 0.18,
+    w: 11.1,
+    h: 0.34,
+    fontFace: theme.fontFace,
+    fontSize: 12.6,
+    bold: true,
+    color: theme.text,
+    fit: "shrink",
+    margin: 0
+  });
+  textColumn.bullets?.slice(0, 3).forEach((bullet, index) => {
+    addBullet(
+      slide,
+      theme,
+      bullet,
+      1.18 + index * 3.75,
+      textY + 0.74,
+      3.25,
+      settings
+    );
+  });
+}
+
 function addColumn(
   slide: PptxGenJS.Slide,
   theme: RendererTheme,
@@ -469,6 +606,9 @@ function addColumn(
   density: PresentationDensity = "standard"
 ): void {
   const settings = densitySettings(density);
+  const isVisualColumn = /ビジュアル|visual|photo|image|diagram|chart|map/i.test(
+    column.heading
+  );
   slide.addShape("roundRect", {
     x,
     y,
@@ -492,7 +632,33 @@ function addColumn(
   });
 
   let contentY = y + 0.8;
-  if (column.body) {
+  if (isVisualColumn && column.body) {
+    slide.addShape("roundRect", {
+      x: x + 0.28,
+      y: contentY,
+      w: w - 0.55,
+      h: 1.55,
+      rectRadius: 0.04,
+      fill: { color: theme.accentSoft },
+      line: { color: theme.accent, width: 1 }
+    });
+    slide.addText(column.body, {
+      x: x + 0.48,
+      y: contentY + 0.2,
+      w: w - 0.95,
+      h: 1.04,
+      fontFace: theme.fontFace,
+      fontSize: 12.4,
+      bold: true,
+      color: theme.text,
+      fit: "shrink",
+      margin: 0.04,
+      breakLine: false,
+      valign: "middle",
+      align: "center"
+    });
+    contentY += 1.8;
+  } else if (column.body) {
     slide.addText(column.body, {
       x: x + 0.28,
       y: contentY,

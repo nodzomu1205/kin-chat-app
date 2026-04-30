@@ -128,6 +128,8 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
         BuildGptPanelArgs["references"]["onSendAllLibraryItemsToKin"];
       onUploadLibraryItemToGoogleDrive:
         BuildGptPanelArgs["references"]["onUploadLibraryItemToGoogleDrive"];
+      onRenderPresentationPlanToPpt:
+        BuildGptPanelArgs["references"]["onRenderPresentationPlanToPpt"];
   };
   settings: Omit<
     BuildGptPanelArgs["settings"],

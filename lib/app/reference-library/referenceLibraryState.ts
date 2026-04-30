@@ -89,7 +89,7 @@ export function buildReferenceLibraryContext(params: {
     lines.push(`TITLE: ${item.title}`);
     lines.push(`SUMMARY: ${item.summary}`);
     if (effectiveMode === "summary_with_excerpt" && item.excerptText.trim()) {
-      lines.push(`EXCERPT: ${item.excerptText.trim().slice(0, 1200)}`);
+      lines.push(`EXCERPT: ${item.excerptText.trim()}`);
     }
     if (
       effectiveMode === "summary_with_excerpt" &&

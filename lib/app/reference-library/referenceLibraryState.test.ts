@@ -93,6 +93,32 @@ describe("referenceLibraryState", () => {
     expect(context).not.toContain("Source B");
   });
 
+  it("keeps the full excerpt text when summary with excerpt is enabled", () => {
+    const longExcerpt = `start ${"x".repeat(1300)} end`;
+
+    const context = buildReferenceLibraryContext({
+      autoLibraryReferenceEnabled: true,
+      libraryReferenceCount: 1,
+      libraryItems: [
+        {
+          id: "doc:1",
+          itemType: "ingested_file",
+          title: "Long source",
+          summary: "Summary",
+          excerptText: longExcerpt,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ] as never,
+      libraryReferenceMode: "summary_with_excerpt",
+      libraryItemModeOverrides: {},
+      sourceDisplayCount: 1,
+    });
+
+    expect(context).toContain(`EXCERPT: ${longExcerpt}`);
+    expect(context).toContain(" end");
+  });
+
   it("estimates tokens from the generated context", () => {
     expect(
       estimateReferenceLibraryTokens({

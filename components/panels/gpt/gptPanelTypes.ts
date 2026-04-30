@@ -247,13 +247,16 @@ export type GptPanelReferenceProps = {
   onSendYouTubeTranscriptToKin: (source: SourceItem) => void | Promise<void>;
     onSaveStoredDocument: (
       documentId: string,
-      patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
+      patch: Partial<
+        Pick<StoredDocument, "title" | "text" | "summary" | "structuredPayload">
+      >
     ) => void;
     onShowLibraryItemInChat: (itemId: string) => void;
     onSendLibraryItemToKin: (itemId: string) => void | Promise<void>;
     onShowAllLibraryItemsInChat: (mode: LibraryBulkActionMode) => void | Promise<void>;
     onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
     onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
+    onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
   };
 
 export type GptPanelSettingsProps = {

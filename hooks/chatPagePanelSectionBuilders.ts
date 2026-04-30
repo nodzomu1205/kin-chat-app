@@ -55,6 +55,8 @@ export function buildChatPageWorkspaceGptReferences(
     onSendAllLibraryItemsToKin: args.references.onSendAllLibraryItemsToKin,
     onUploadLibraryItemToGoogleDrive:
       args.references.onUploadLibraryItemToGoogleDrive,
+    onRenderPresentationPlanToPpt:
+      args.references.onRenderPresentationPlanToPpt,
   };
 }
 

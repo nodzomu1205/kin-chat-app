@@ -264,6 +264,7 @@ export function buildIngestedStoredDocument(args: {
   taskTitle?: string;
   kinName?: string;
   completedAt?: string;
+  structuredPayload?: StoredDocument["structuredPayload"];
   createdAt: string;
   updatedAt: string;
 }): StoredDocument {
@@ -343,6 +344,7 @@ export function buildReferenceLibraryDocumentItem(
     taskTitle: normalizedItem.taskTitle,
     kinName: normalizedItem.kinName,
     completedAt: normalizedItem.completedAt,
+    structuredPayload: normalizedItem.structuredPayload,
   };
 }
 

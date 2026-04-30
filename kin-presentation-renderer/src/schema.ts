@@ -37,6 +37,7 @@ export const titleSlideSchema = z
     type: z.literal("title"),
     title: nonEmptyString,
     subtitle: z.string().trim().optional(),
+    keyVisual: z.string().trim().optional(),
     kicker: z.string().trim().optional(),
     presenter: z.string().trim().optional(),
     date: z.string().trim().optional(),
@@ -73,6 +74,9 @@ export const twoColumnSlideSchema = z
     type: z.literal("twoColumn"),
     title: nonEmptyString,
     lead: z.string().trim().optional(),
+    layoutVariant: z
+      .enum(["textLeftVisualRight", "visualLeftTextRight", "visualHero"])
+      .optional(),
     left: columnContentSchema,
     right: columnContentSchema,
     takeaway: z.string().trim().optional(),

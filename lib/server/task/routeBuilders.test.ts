@@ -31,6 +31,18 @@ describe("task route builders", () => {
     expect(request.input).toContain("Do not create a new title.");
   });
 
+  it("uses the presentation plan prompt for presentation output format", () => {
+    const request = buildTaskResponsesRequest({
+      ...sampleTask,
+      type: "PREP_TASK",
+      outputFormat: "presentation_plan",
+    });
+
+    expect(request.input).toContain("<<SYS_PRESENTATION_PLAN_TASK>>");
+    expect(request.input).toContain("Return only one valid JSON object.");
+    expect(request.input).toContain('"slideDesign"');
+  });
+
   it("builds the task route response payload", () => {
     expect(
       buildTaskRouteResponse({

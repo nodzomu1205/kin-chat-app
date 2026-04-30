@@ -66,7 +66,12 @@ export type MultipartAssembly = {
 export type StoredDocument = {
   id: string;
   sourceType: "kin_created" | "ingested_file";
-  artifactType?: "task_result" | "task_snapshot" | "reference_note" | "presentation";
+  artifactType?:
+    | "task_result"
+    | "task_snapshot"
+    | "reference_note"
+    | "presentation"
+    | "presentation_plan";
   title: string;
   filename: string;
   text: string;
@@ -76,6 +81,7 @@ export type StoredDocument = {
   kinName?: string;
   completedAt?: string;
   charCount: number;
+  structuredPayload?: unknown;
   createdAt: string;
   updatedAt: string;
 };
@@ -84,7 +90,12 @@ export type ReferenceLibraryItem = {
   id: string;
   sourceId: string;
   itemType: "search" | "kin_created" | "ingested_file";
-  artifactType?: "task_result" | "task_snapshot" | "reference_note" | "presentation";
+  artifactType?:
+    | "task_result"
+    | "task_snapshot"
+    | "reference_note"
+    | "presentation"
+    | "presentation_plan";
   title: string;
   subtitle: string;
   summary: string;
@@ -96,6 +107,7 @@ export type ReferenceLibraryItem = {
   taskTitle?: string;
   kinName?: string;
   completedAt?: string;
+  structuredPayload?: unknown;
   rawResultId?: string;
   sources?: SourceItem[];
   askAiModeItems?: Array<{

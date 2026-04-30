@@ -530,6 +530,82 @@ describe("runDriveLibraryItemUpload", () => {
     await expect(blob?.text()).resolves.toBe("regenerated pptx");
   });
 
+  it("uploads presentation plan text and generated PPTX", async () => {
+    vi.mocked(listDriveChildFolders).mockResolvedValue([]);
+    vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
+      fileName: "PPT Design - Cotton.txt",
+      text: "presentation plan text",
+      mimeType: "text/plain",
+    });
+    vi.mocked(uploadDriveTextFile).mockResolvedValue({
+      id: "upload-plan",
+      name: "PPT Design - Cotton.txt",
+      webViewLink: "https://drive.example/upload-plan",
+    });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output: {
+            contentBase64: Buffer.from("plan pptx").toString("base64"),
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          },
+        }),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runDriveLibraryItemUpload({
+      item: {
+        id: "item-plan",
+        sourceId: "ingest:plan-1",
+        title: "PPT Design - Cotton",
+        artifactType: "presentation_plan",
+        excerptText: [
+          "【PPT設計書】",
+          "概要: Cotton",
+          "",
+          "■ スライド設計",
+          "- 1. タイトルスライド",
+          "- - タイトル：Cotton",
+          "- - キーメッセージ：Overview",
+          "- - ビジュアル：Cotton field",
+          "- - 配置：タイトル中央",
+        ].join("\n"),
+      } as never,
+      folderId: "parent-folder",
+      ensureAccessToken: vi.fn(async () => "upload-token"),
+      promptForDestination: vi.fn(),
+      appendUiMessage: vi.fn(),
+      focusGptPanel: vi.fn(() => true),
+    });
+
+    expect(result).toBe("uploaded");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/presentation-render",
+      expect.objectContaining({
+        method: "POST",
+      })
+    );
+    expect(uploadDriveTextFile).toHaveBeenCalledWith({
+      accessToken: "upload-token",
+      folderId: "parent-folder",
+      fileName: "PPT Design - Cotton.txt",
+      text: "presentation plan text",
+      mimeType: "text/plain",
+    });
+    expect(uploadDriveBlobFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: "PPT Design - Cotton.pptx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      })
+    );
+    const blob = vi.mocked(uploadDriveBlobFile).mock.calls[0]?.[0].blob;
+    await expect(blob?.text()).resolves.toBe("plan pptx");
+  });
+
   it("uploads to a selected child folder", async () => {
     vi.mocked(listDriveChildFolders).mockResolvedValue([
       {

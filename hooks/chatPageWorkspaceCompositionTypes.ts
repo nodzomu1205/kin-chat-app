@@ -176,6 +176,7 @@ export type ChatPageWorkspaceCompositionActions = {
       | "onShowAllLibraryItemsInChat"
       | "onSendAllLibraryItemsToKin"
       | "onUploadLibraryItemToGoogleDrive"
+      | "onRenderPresentationPlanToPpt"
     | "onChangeAutoLibraryReferenceEnabled"
     | "onChangeLibraryReferenceMode"
     | "onChangeLibraryIndexResponseCount"

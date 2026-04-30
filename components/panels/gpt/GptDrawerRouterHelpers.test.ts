@@ -247,6 +247,7 @@ describe("GptDrawerRouterHelpers", () => {
           onShowAllLibraryItemsInChat: noop,
           onSendAllLibraryItemsToKin: noop,
           onUploadLibraryItemToGoogleDrive: noop,
+          onRenderPresentationPlanToPpt: noop,
         },
       settings: {
         libraryReferenceCount: 4,

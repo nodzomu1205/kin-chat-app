@@ -7,6 +7,8 @@ import {
   serializePresentationPayload,
 } from "@/lib/app/presentation/presentationDocumentBuilders";
 import {
+  buildCreateInformationInventoryPrompt,
+  buildCreatePresentationStrategyPrompt,
   buildCreatePresentationSpecPrompt,
   buildPresentationCommandFailureMessage,
   buildPresentationDraftSavedMessage,
@@ -14,11 +16,14 @@ import {
   buildPresentationRevisionSavedMessage,
   buildRepairPresentationRevisionSpecPrompt,
   buildRepairPresentationSpecPrompt,
-  buildRevisePresentationSpecPrompt,
+  buildReviseInformationInventoryPrompt,
+  buildRevisePresentationStrategyPrompt,
 } from "@/lib/app/presentation/presentationGptPrompts";
 import {
   parsePresentationPatchFromText,
   parsePresentationDraftFromText,
+  parseInformationInventoryFromText,
+  parsePresentationStrategyFromText,
   parsePresentationSpecFromText,
 } from "@/lib/app/presentation/presentationJsonParsing";
 import { findPresentationPayloadByDocumentId } from "@/lib/app/presentation/presentationLibraryLookup";
@@ -231,16 +236,47 @@ async function runCreatePresentationDraftFlow(args: {
   flowArgs: SendToGptFlowStepArgs;
   assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
 }) {
-  const { data, assistantText } = await requestPresentationJsonReply({
+  const inventoryReply = await requestPresentationJsonReply({
     assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildCreatePresentationSpecPrompt({
+    finalRequestText: buildCreateInformationInventoryPrompt({
       userInstruction: args.commandBody,
     }),
   });
-  applyPresentationChatUsage({ data, flowArgs: args.flowArgs });
+  applyPresentationChatUsage({ data: inventoryReply.data, flowArgs: args.flowArgs });
+
+  const informationInventory = parseInformationInventoryFromText(
+    inventoryReply.assistantText
+  );
+
+  const strategyReply = await requestPresentationJsonReply({
+    assistantRequestArgs: args.assistantRequestArgs,
+    finalRequestText: buildCreatePresentationStrategyPrompt({
+      userInstruction: args.commandBody,
+      inventory: informationInventory,
+      density: args.density,
+    }),
+  });
+  applyPresentationChatUsage({ data: strategyReply.data, flowArgs: args.flowArgs });
+
+  const presentationStrategy = parsePresentationStrategyFromText(
+    strategyReply.assistantText,
+    {
+      renderDensity: args.density,
+    }
+  );
+
+  const specReply = await requestPresentationJsonReply({
+    assistantRequestArgs: args.assistantRequestArgs,
+    finalRequestText: buildCreatePresentationSpecPrompt({
+      userInstruction: args.commandBody,
+      inventory: informationInventory,
+      strategy: presentationStrategy,
+    }),
+  });
+  applyPresentationChatUsage({ data: specReply.data, flowArgs: args.flowArgs });
 
   const draft = await parseOrRepairPresentationDraft({
-    assistantText,
+    assistantText: specReply.assistantText,
     userInstruction: args.commandBody,
     density: args.density,
     flowArgs: args.flowArgs,
@@ -249,6 +285,8 @@ async function runCreatePresentationDraftFlow(args: {
   const payload = buildPresentationLibraryPayload({
     spec: draft.spec,
     motherSpec: draft.motherSpec,
+    informationInventory,
+    presentationStrategy,
   });
   const storedDocument = args.flowArgs.recordIngestedDocument(
     buildPresentationStoredDocument({ payload })
@@ -260,6 +298,9 @@ async function runCreatePresentationDraftFlow(args: {
       documentId: payload.documentId,
       spec: draft.spec,
       previewText: payload.previewText,
+      inventoryFactGroupCount: informationInventory.factGroups.length,
+      inventoryFactCount: informationInventory.rawFacts.length,
+      strategySummary: `${presentationStrategy.slideCountRange.target} target slides / ${presentationStrategy.visualPolicy.overallUse} visuals / ${presentationStrategy.structurePolicy.preferredFlow}`,
     }),
   });
 
@@ -285,18 +326,50 @@ async function runRevisePresentationDraftFlow(args: {
     throw new Error(`Presentation document not found: ${args.documentId}`);
   }
 
-  const { data, assistantText } = await requestPresentationJsonReply({
+  const inventoryReply = await requestPresentationJsonReply({
     assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildRevisePresentationSpecPrompt({
+    finalRequestText: buildReviseInformationInventoryPrompt({
       userInstruction: args.commandBody,
       payload: found.payload,
+    }),
+  });
+  applyPresentationChatUsage({ data: inventoryReply.data, flowArgs: args.flowArgs });
+
+  const informationInventory = parseInformationInventoryFromText(
+    inventoryReply.assistantText
+  );
+
+  const strategyReply = await requestPresentationJsonReply({
+    assistantRequestArgs: args.assistantRequestArgs,
+    finalRequestText: buildRevisePresentationStrategyPrompt({
+      userInstruction: args.commandBody,
+      payload: found.payload,
+      inventory: informationInventory,
       density: args.density,
     }),
   });
-  applyPresentationChatUsage({ data, flowArgs: args.flowArgs });
+  applyPresentationChatUsage({ data: strategyReply.data, flowArgs: args.flowArgs });
+
+  const presentationStrategy = parsePresentationStrategyFromText(
+    strategyReply.assistantText,
+    {
+      renderDensity: args.density,
+    }
+  );
+
+  const specReply = await requestPresentationJsonReply({
+    assistantRequestArgs: args.assistantRequestArgs,
+    finalRequestText: buildCreatePresentationSpecPrompt({
+      userInstruction: args.commandBody,
+      inventory: informationInventory,
+      strategy: presentationStrategy,
+      currentSpec: found.payload.spec,
+    }),
+  });
+  applyPresentationChatUsage({ data: specReply.data, flowArgs: args.flowArgs });
 
   const patch = await parseOrRepairPresentationRevision({
-    assistantText,
+    assistantText: specReply.assistantText,
     userInstruction: args.commandBody,
     currentSpec: found.payload.spec,
     flowArgs: args.flowArgs,
@@ -309,6 +382,8 @@ async function runRevisePresentationDraftFlow(args: {
   });
   const updatedPayload = rebuildPresentationLibraryPayload(found.payload, {
     spec: updatedSpec,
+    informationInventory,
+    presentationStrategy,
     patches: [...found.payload.patches, patch],
     outputs: [...found.payload.outputs, output],
     status: "rendered",

@@ -61,6 +61,7 @@ export type TaskCallArgs =
       inputRef: string;
       inputSummary: string;
       constraints: string[];
+      outputFormat?: string;
     }
   | {
       type: "FORMAT_TASK";
@@ -132,6 +133,9 @@ export function buildPrepInputFromIngestResult(
 }
 
 export function buildTaskApiRequestBody(args: TaskCallArgs): { task: TaskRequest } {
+  const outputFormat =
+    args.type === "FORMAT_TASK" ? "sections" : args.outputFormat || "sections";
+
   return {
     task: {
       type: args.type,
@@ -141,7 +145,7 @@ export function buildTaskApiRequestBody(args: TaskCallArgs): { task: TaskRequest
       inputRef: args.inputRef,
       inputSummary: args.inputSummary,
       constraints: args.constraints,
-      outputFormat: "sections",
+      outputFormat,
       priority: "HIGH",
       visibility: "INTERNAL",
       responseMode: "STRUCTURED_RESULT",

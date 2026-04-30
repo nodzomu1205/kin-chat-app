@@ -1,57 +1,202 @@
 import type {
   PresentationDensity,
+  PresentationInformationInventory,
   PresentationLibraryPayload,
+  PresentationStrategy,
   PresentationSpec,
 } from "@/lib/app/presentation/presentationTypes";
 
-export function buildCreatePresentationSpecPrompt(args: {
+export function buildCreateInformationInventoryPrompt(args: {
   userInstruction: string;
 }) {
   return [
-    "You are generating a PowerPoint presentation JSON draft for Kin.",
+    "You are organizing source information for Kin.",
     "Return strict JSON only. Do not wrap it in Markdown. Do not add commentary.",
     "",
-    "The JSON must conform to PresentationMotherSpec v0.2:",
-    "- version must be \"0.2-mother\"",
-    "- do not include a mother-level compactness setting; the mother JSON is the maximum-detail source record",
-    "- do not optimize this JSON for slide fit or final deck readability; final deck display is chosen only after this JSON is parsed",
-    "- top-level required fields: version, title, purpose, audience, language, theme, sourceIntent, slides",
-    "- supported themes: business-clean, warm-minimal, executive-dark",
-    "- each slide must include all fields: title, templateFrame, wallpaper, bodies, script",
-    "- bodies means the number of key-message/key-visual blocks inside one slide; use 1 normally, 2 for left/right contrast, 3-4 only for clear parallel structures",
-    "- each slide must include 1 to 4 bodies",
-    "- each body must include all fields: keyMessage, keyMessageFacts, keyVisual, keyVisualFacts",
-    "- keyMessage should be non-empty for every body unless the source has literally no usable content",
-    "- keyMessageFacts should preserve the useful concrete support facts for that keyMessage, up to 15 facts per body",
-    "- aim to fill keyMessageFacts close to the maximum of 15 items whenever distinct useful facts are available",
-    "- do not stop at 2-5 keyMessageFacts for symmetry, readability, slide fit, or because the outline looks complete",
-    "- use fewer than 15 keyMessageFacts only when there truly are not enough distinct useful facts",
-    "- keyVisualFacts should preserve the useful concrete support facts for that visual, up to 15 facts per body",
-    "- aim to fill keyVisualFacts close to the maximum of 15 items whenever the visual needs labels, data points, composition requirements, source caveats, or factual constraints",
-    "- do not stop at 0-3 keyVisualFacts when the intended visual has useful components to specify",
-    "- use fewer than 15 keyVisualFacts only when the visual is genuinely simple or lacks enough distinct useful constraints",
-    "- do not put all source material only in script; script is narration, while keyMessage and fact arrays are the source pool for later renderer selection",
-    "- keyVisual must include all fields: type, brief, generationPrompt, assetId, status",
-    "- supported keyVisual.type: none, photo, illustration, diagram, chart, table, placeholder",
-    "- supported keyVisual.status: none, pending, auto, attached, generated",
-    "- keyVisual.brief should be a concise visual plan, not a vague label",
-    "- keyVisual.generationPrompt should be a direct prompt that can be passed to an image/chart/table generation step",
-    "- generationPrompt must specify subject, composition/layout, labels or data to include, language, style, and what to avoid",
-    "- for chart or table visuals, generationPrompt must name the chart/table type, axes or columns, categories/series, values if known, and state \"needs source data\" for unknown numeric values",
-    "- for photo visuals, generationPrompt should describe the desired documentary/reference image and avoid inventing a fake historical photo when only illustration is appropriate",
-    "- for diagram or illustration visuals, generationPrompt should describe the exact components, arrows/relationships, labels, and visual hierarchy",
-    "- use empty strings for unknown optional text, [] for empty fact arrays, assetId \"\" until an asset is attached",
-    "- keep all useful information in the mother JSON; do not compress facts for slide fit",
-    "- keep content semantic; do not use coordinates, font sizes, or colors",
+    "This step is NOT about PowerPoint, slides, deck layout, visual design, density, or presentation flow.",
+    "Do not mention slides, pages, layouts, bullets for slide fit, or visuals.",
+    "Your job is only to convert the available source context into an information inventory.",
+    "",
+    "The JSON must conform to InformationInventory v0.2:",
+    "- version must be \"0.2-information-inventory\"",
+    "- required fields: version, topic, language, rawFacts, factGroups",
+    "- rawFacts is the primary output: a broad, detailed inventory of concrete source facts",
+    "- rawFacts must include every distinct, useful, non-duplicative fact supported by the provided source context",
+    "- rawFacts is not a summary and not slide bullets; do not compress source material into a few representative facts",
+    "- each rawFact must include only: id, text, sourceHint",
+    "- do not add kind, importance, priority, score, interpretation, slide hints, visual hints, missingInfo, searchSuggestions, keyMessages, or facts nested inside groups",
+    "- factGroups is only a light semantic classification over rawFacts using factIds",
+    "- each factGroup must include only: id, label, factIds",
+    "- create factGroups only where facts naturally belong together by meaning; leave unrelated facts ungrouped",
+    "- do not use factGroups to summarize, rank, or decide what matters for the presentation",
+    "- do not target a fixed number of facts; the correct count depends on the source",
+    "- do not stop at 4 or 5 facts just because the item looks tidy",
     "- use Japanese when the user writes Japanese unless they explicitly ask otherwise",
-    "- prefer 6 to 12 slides unless the user specifies a slide count",
-    "- include audience and purpose when inferable",
-    "- make each slide focused, but keep rich support facts and script",
-    "- script must be a read-aloud speaker script, not a meta description of the slide",
-    "- write script as if the presenter is speaking to the audience; include the key message, context, and important facts in natural prose",
-    "- for Japanese decks, script should usually be 250-700 Japanese characters per slide depending on available information",
     "",
     "User instruction:",
+    args.userInstruction.trim(),
+  ].join("\n");
+}
+
+export function buildReviseInformationInventoryPrompt(args: {
+  userInstruction: string;
+  payload: PresentationLibraryPayload;
+}) {
+  return [
+    "You are revising the source information inventory for Kin.",
+    "Return strict JSON only. Do not wrap it in Markdown. Do not add commentary.",
+    "",
+    "This step is NOT about PowerPoint, slides, deck layout, visual design, density, or presentation flow.",
+    "Apply the user's revision instruction to the information inventory itself.",
+    "If the user asks for more depth, expertise, specificity, or richer content, expand rawFacts first, then update factGroups only where meaningful.",
+    "If the user asks for visual treatment only, preserve the factual inventory unless new factual distinctions are needed.",
+    "",
+    "Inventory requirements:",
+    "- version must be \"0.2-information-inventory\"",
+    "- required fields: version, topic, language, rawFacts, factGroups",
+    "- rawFacts must be the primary extraction output",
+    "- each rawFact must include only: id, text, sourceHint",
+    "- factGroups must include only: id, label, factIds",
+    "- factGroups are light semantic classification only, not key messages or presentation claims",
+    "- do not add kind, importance, priority, score, interpretation, slide hints, visual hints, missingInfo, searchSuggestions, keyMessages, or nested facts",
+    "- do not target a fixed number of facts",
+    "- do not stop at 4 or 5 facts just because the item looks tidy",
+    "- use Japanese when the user writes Japanese unless they explicitly ask otherwise",
+    "",
+    "Current InformationInventory JSON:",
+    JSON.stringify(args.payload.informationInventory || null, null, 2),
+    "",
+    "Current PresentationSpec JSON:",
+    JSON.stringify(args.payload.spec, null, 2),
+    "",
+    "User revision instruction:",
+    args.userInstruction.trim(),
+  ].join("\n");
+}
+
+export function buildCreatePresentationStrategyPrompt(args: {
+  userInstruction: string;
+  inventory: PresentationInformationInventory;
+  density?: PresentationDensity;
+}) {
+  return [
+    "You are creating a presentation strategy for Kin.",
+    "Return strict JSON only. Do not wrap it in Markdown. Do not add commentary.",
+    "",
+    "This step is a meta-level editing strategy, not a slide-by-slide draft.",
+    "Do not create individual slides. Do not assign exact slide layouts.",
+    "",
+    "The JSON must conform to PresentationStrategy v0.1:",
+    "- version must be \"0.1-presentation-strategy\"",
+    "- required fields: version, title, purpose, audience, tone, density, slideCountRange, selectedFactGroupIds, factGroupPriority, visualPolicy, structurePolicy",
+    "- supported tone: educational, analytical, executive, narrative, persuasive",
+    "- supported density: concise, standard, detailed, dense",
+    args.density ? `- density must be \"${args.density}\"` : "- infer density from the user instruction if not explicit",
+    "- slideCountRange must include min, max, target",
+    "- selectedFactGroupIds chooses which inventory fact groups should be used",
+    "- factGroupPriority explains must_use, should_use, optional at fact-group level",
+    "- visualPolicy decides how much visual support to use overall; visuals are not mandatory for every slide",
+    "- visualPolicy.overallUse must be minimal, selective, or frequent",
+    "- use mustVisualizeFactGroupIds only when a fact group clearly benefits from or requires a visual",
+    "- use avoidVisualFactGroupIds when text-only treatment is clearer",
+    "- preferredVisualTypes and avoidVisualTypes can include none, photo, illustration, diagram, chart, table, placeholder",
+    "- structurePolicy sets the broad flow only; supported preferredFlow: chronological, overview_to_detail, thesis_evidence, comparison, problem_solution",
+    "- structurePolicy must use allowMultipleFactGroupsPerSlide and combineRelatedFactGroups",
+    "- use Japanese when the user writes Japanese unless they explicitly ask otherwise",
+    "",
+    "InformationInventory JSON:",
+    JSON.stringify(args.inventory, null, 2),
+    "",
+    "Original user instruction:",
+    args.userInstruction.trim(),
+  ].join("\n");
+}
+
+export function buildRevisePresentationStrategyPrompt(args: {
+  userInstruction: string;
+  payload: PresentationLibraryPayload;
+  inventory: PresentationInformationInventory;
+  density?: PresentationDensity;
+}) {
+  const density = args.density || args.payload.presentationStrategy?.density;
+  return [
+    "You are revising the presentation strategy for Kin.",
+    "Return strict JSON only. Do not wrap it in Markdown. Do not add commentary.",
+    "",
+    "This step is a meta-level editing strategy, not a slide-by-slide draft.",
+    "Do not create individual slides. Do not assign exact slide layouts.",
+    "",
+    "Apply the user's revision instruction to the strategy.",
+    "If the user asks for more depth or expertise, consider density, selectedFactGroupIds, factGroupPriority, and slideCountRange.",
+    "If the user asks for photos or visuals, update visualPolicy rather than adding unsupported image fields to slides.",
+    "",
+    "The JSON must conform to PresentationStrategy v0.1:",
+    "- version must be \"0.1-presentation-strategy\"",
+    "- required fields: version, title, purpose, audience, tone, density, slideCountRange, selectedFactGroupIds, factGroupPriority, visualPolicy, structurePolicy",
+    density ? `- density must be \"${density}\"` : "- preserve or infer density from the revision instruction",
+    "- visualPolicy.overallUse must be minimal, selective, or frequent",
+    "- use mustVisualizeFactGroupIds only for fact groups that should definitely get visual treatment",
+    "- visuals are not mandatory for every slide",
+    "- preferredVisualTypes and avoidVisualTypes can include none, photo, illustration, diagram, chart, table, placeholder",
+    "- structurePolicy must use allowMultipleFactGroupsPerSlide and combineRelatedFactGroups",
+    "- use Japanese when the user writes Japanese unless they explicitly ask otherwise",
+    "",
+    "Current PresentationStrategy JSON:",
+    JSON.stringify(args.payload.presentationStrategy || null, null, 2),
+    "",
+    "Updated InformationInventory JSON:",
+    JSON.stringify(args.inventory, null, 2),
+    "",
+    "Current PresentationSpec JSON:",
+    JSON.stringify(args.payload.spec, null, 2),
+    "",
+    "User revision instruction:",
+    args.userInstruction.trim(),
+  ].join("\n");
+}
+
+export function buildCreatePresentationSpecPrompt(args: {
+  userInstruction: string;
+  inventory: PresentationInformationInventory;
+  strategy: PresentationStrategy;
+  currentSpec?: PresentationSpec;
+}) {
+  return [
+    "You are creating the renderer-ready PresentationSpec v0.1 JSON for Kin.",
+    "Return strict JSON only. Do not wrap it in Markdown. Do not add commentary.",
+    "",
+    "Use the InformationInventory as the source of facts.",
+    "Use the PresentationStrategy as the binding editing policy.",
+    "Only this step may decide concrete slide structure and layouts.",
+    "",
+    "Required PresentationSpec v0.1 shape:",
+    "- version must be \"0.1\"",
+    "- required fields: version, title, language, audience, purpose, theme, density, slides",
+    "- supported themes: business-clean, warm-minimal, executive-dark",
+    "- density must match the strategy density",
+    "- supported slide types: title, section, bullets, twoColumn, table, closing",
+    "- do not output unsupported fields such as images, imageUrl, media, assets, coordinates, font sizes, or colors",
+    "- when a photo or other visual is requested, represent it with supported slide structures such as twoColumn: put the visual request in the right column as heading/body/bullets",
+    "- for visual requests, include a direct generation prompt as visible text such as \"Prompt: ...\" until the renderer supports real assets",
+    "- respect strategy.slideCountRange unless the user instruction clearly requires otherwise",
+    "- include visuals only when strategy.visualPolicy supports it for the selected fact groups",
+    "- do not force every slide to have a visual",
+    "- do not force every slide into the same layout",
+    "- for standard density, visible slide bullets should be selective; do not mutate the inventory itself",
+    "- notes should be read-aloud presenter narration, not a meta description of the slide",
+    "- keep content semantic; do not use coordinates, font sizes, or colors",
+    "- use Japanese when the user writes Japanese unless they explicitly ask otherwise",
+    "",
+    "InformationInventory JSON:",
+    JSON.stringify(args.inventory, null, 2),
+    "",
+    "PresentationStrategy JSON:",
+    JSON.stringify(args.strategy, null, 2),
+    "",
+    args.currentSpec ? "Current PresentationSpec JSON:" : "",
+    args.currentSpec ? JSON.stringify(args.currentSpec, null, 2) : "",
+    args.currentSpec ? "" : "",
+    "Original user instruction:",
     args.userInstruction.trim(),
   ].join("\n");
 }
@@ -135,39 +280,23 @@ export function buildRepairPresentationSpecPrompt(args: {
   invalidResponse: string;
 }) {
   return [
-    "Convert the following invalid response into a valid PresentationMotherSpec v0.2 JSON object.",
+    "Convert the following invalid response into a valid renderer-ready PresentationSpec v0.1 JSON object.",
     "Return strict JSON only. Do not wrap it in Markdown. Do not add commentary.",
     "",
     "Required shape:",
     "{",
-    "  \"version\": \"0.2-mother\",",
+    "  \"version\": \"0.1\",",
     "  \"title\": string,",
-    "  \"purpose\": string,",
-    "  \"audience\": string,",
     "  \"language\": \"ja\" | \"en\",",
+    "  \"audience\": string,",
+    "  \"purpose\": string,",
     "  \"theme\": \"business-clean\" | \"warm-minimal\" | \"executive-dark\",",
-    "  \"sourceIntent\": string,",
-    "  \"slides\": [{",
-    "    \"title\": string,",
-    "    \"templateFrame\": string,",
-    "    \"wallpaper\": string,",
-    "    \"bodies\": [{",
-    "      \"keyMessage\": string,",
-    "      \"keyMessageFacts\": string[],",
-    "      \"keyVisual\": { \"type\": string, \"brief\": string, \"generationPrompt\": string, \"assetId\": string, \"status\": string },",
-    "      \"keyVisualFacts\": string[]",
-    "    }],",
-    "    \"script\": string",
-    "  }]",
+    "  \"density\": \"concise\" | \"standard\" | \"detailed\" | \"dense\",",
+    "  \"slides\": [supported slide objects]",
     "}",
     "",
-    "Every slide must have 1 to 4 bodies. Use empty strings and empty arrays instead of omitting fields.",
-    "Do not include a mother-level compactness setting. Preserve useful source facts up to the maximum of 15 facts per fact array.",
-    "Aim to fill fact arrays close to 15 items whenever distinct useful facts exist.",
-    "Do not stop at 2-5 facts for symmetry, readability, slide fit, or because the outline looks complete.",
-    "Every keyVisual must include generationPrompt. It should be directly usable by a future visual generation step.",
-    "Do not leave keyMessage and keyMessageFacts empty when the invalid response contains usable slide content or script.",
-    "script must be read-aloud presenter narration, not a sentence that says what the slide explains.",
+    "Supported slide types: title, section, bullets, twoColumn, table, closing.",
+    "Use notes for read-aloud presenter narration where useful.",
     "Do not use coordinates or visual styling fields.",
     "",
     "Original user instruction:",
@@ -182,6 +311,9 @@ export function buildPresentationDraftSavedMessage(args: {
   documentId: string;
   spec: PresentationSpec;
   previewText: string;
+  inventoryFactGroupCount?: number;
+  inventoryFactCount?: number;
+  strategySummary?: string;
 }) {
   return [
     "Presentation draft saved to library.",
@@ -190,6 +322,10 @@ export function buildPresentationDraftSavedMessage(args: {
     `Title: ${args.spec.title}`,
     `Slides: ${args.spec.slides.length}`,
     `Theme: ${args.spec.theme || "business-clean"}`,
+    args.inventoryFactGroupCount !== undefined
+      ? `Information Inventory: ${args.inventoryFactCount || 0} raw facts / ${args.inventoryFactGroupCount} fact groups`
+      : "",
+    args.strategySummary ? `Presentation Strategy: ${args.strategySummary}` : "",
     "",
     args.previewText,
     "",
@@ -247,6 +383,6 @@ export function buildPresentationCommandFailureMessage(args: {
     "",
     detail,
     "",
-    "Please try again with /ppt and a slightly more explicit instruction. If this repeats, ask GPT to return only PresentationMotherSpec v0.2 JSON.",
+    "Please try again with /ppt and a slightly more explicit instruction. If this repeats, ask GPT to return only valid PresentationSpec v0.1 JSON.",
   ].join("\n");
 }

@@ -6,6 +6,8 @@ export type PreparedTaskDraftUpdateParams = {
   title: string;
   userInstruction?: string;
   body: string;
+  mode?: TaskDraft["mode"];
+  presentationPlan?: TaskDraft["presentationPlan"];
   taskTitleDebug?: TaskDraft["taskTitleDebug"];
   objective?: string;
   prepText?: string;
@@ -22,6 +24,11 @@ export function buildPreparedTaskDraftUpdate(
     ...previous,
     title: params.title,
     taskName: params.title,
+    mode: params.mode || previous.mode || "normal",
+    presentationPlan:
+      params.presentationPlan !== undefined
+        ? params.presentationPlan
+        : previous.presentationPlan,
     userInstruction: params.userInstruction || previous.userInstruction,
     body: params.body,
     taskTitleDebug:

@@ -128,6 +128,7 @@ export default function GptTaskStatusDrawer({
     !!taskDraft.deepenText.trim() ||
     !!taskDraft.mergedText.trim() ||
     taskDraft.sources.length > 0;
+  const isPresentationMode = taskDraft.mode === "presentation";
 
   const instructionPreview = useMemo(() => {
     const text = taskDraft.userInstruction?.trim() || "";
@@ -143,7 +144,10 @@ export default function GptTaskStatusDrawer({
       taskDraft.prepText?.trim() ||
       "";
     if (!text) return GPT_TASK_TEXT.status.emptyBody;
-    return text.length > 220 ? `${text.slice(0, 220)}...` : text;
+    const previewLimit = taskDraft.mode === "presentation" ? 1200 : 220;
+    return text.length > previewLimit
+      ? `${text.slice(0, previewLimit)}...`
+      : text;
   }, [
     taskDraft.body,
     taskDraft.mergedText,
@@ -286,6 +290,8 @@ export default function GptTaskStatusDrawer({
         >
           <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.state}</div>
           <div>{statusLabelMap[taskDraft.status]}</div>
+          <div style={{ fontWeight: 800, color: "#334155" }}>MODE</div>
+          <div>{isPresentationMode ? "PPT設計" : "通常タスク"}</div>
           <div style={{ fontWeight: 800, color: "#334155" }}>TASK_ID</div>
           <div>{taskIdLabel}</div>
           <div style={{ fontWeight: 800, color: "#334155" }}>{GPT_TASK_TEXT.status.taskName}</div>
@@ -404,7 +410,9 @@ export default function GptTaskStatusDrawer({
             marginBottom: 8,
           }}
         >
-          <div style={tokenLeftLabelStyle}>{GPT_TASK_TEXT.status.aiBody}</div>
+          <div style={tokenLeftLabelStyle}>
+            {isPresentationMode ? "PPT設計書" : GPT_TASK_TEXT.status.aiBody}
+          </div>
           <button
             type="button"
             onClick={() => setEditBodyOpen((prev) => !prev)}

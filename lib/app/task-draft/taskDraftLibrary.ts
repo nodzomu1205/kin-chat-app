@@ -1,6 +1,10 @@
 import type { StoredDocument } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 import { buildLibraryFilenameWithCharCount } from "@/lib/app/ingest/ingestDocumentModel";
+import {
+  buildPresentationTaskPlanFromText,
+  formatPresentationTaskPlanText,
+} from "@/lib/app/presentation/presentationTaskPlanning";
 
 function trimLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -12,6 +16,9 @@ export function getTaskDraftLibraryTitle(taskDraft: TaskDraft) {
     taskDraft.taskName.trim() ||
     taskDraft.userInstruction.trim().slice(0, 48);
 
+  if (taskDraft.mode === "presentation") {
+    return title ? `PPT Design - ${title}` : "PPT Design";
+  }
   return title ? `Task Snapshot - ${title}` : "Task Snapshot";
 }
 
@@ -69,14 +76,26 @@ export function buildTaskDraftLibrarySummary(taskDraft: TaskDraft) {
 export function buildStoredDocumentFromTaskDraft(
   taskDraft: TaskDraft
 ): Omit<StoredDocument, "id" | "sourceType"> | null {
-  const text = buildTaskDraftLibraryText(taskDraft);
+  const text =
+    taskDraft.mode === "presentation" && taskDraft.presentationPlan
+      ? formatPresentationTaskPlanText(taskDraft.presentationPlan)
+      : buildTaskDraftLibraryText(taskDraft);
   if (!text) return null;
 
   const now = new Date().toISOString();
   const title = getTaskDraftLibraryTitle(taskDraft);
+  const structuredPayload =
+    taskDraft.mode === "presentation"
+      ? taskDraft.presentationPlan ||
+        buildPresentationTaskPlanFromText({
+          title: taskDraft.title || taskDraft.taskName || title,
+          text,
+        })
+      : undefined;
 
   return {
-    artifactType: "task_snapshot",
+    artifactType:
+      taskDraft.mode === "presentation" ? "presentation_plan" : "task_snapshot",
     title,
     filename: buildLibraryFilenameWithCharCount(`${title}.txt`, text),
     text,
@@ -84,6 +103,7 @@ export function buildStoredDocumentFromTaskDraft(
     taskId: taskDraft.taskId || undefined,
     taskTitle: taskDraft.title || taskDraft.taskName || undefined,
     charCount: text.length,
+    structuredPayload,
     createdAt: now,
     updatedAt: now,
   };

@@ -12,6 +12,7 @@ import {
   resolveUploadKindFromFile,
   type TaskCallArgs,
 } from "@/lib/app/gpt-task/gptTaskClientBuilders";
+import { buildPresentationTaskConstraints } from "@/lib/app/presentation/presentationTaskPlanning";
 
 export { buildPrepInputFromIngestResult, getExtension, resolveUploadKindFromFile };
 
@@ -180,6 +181,36 @@ export async function runAutoPrepTask(inputText: string, label = "ingest-result"
       "原則として日本語で整理。ただし入力やユーザー追加指示に明示的な言語指定がある場合はその言語を優先する",
       ...COMMON_EVIDENCE_RULES,
     ],
+  });
+}
+
+export async function runAutoPrepPresentationTask(
+  inputText: string,
+  label = "presentation-task-plan"
+) {
+  return callTaskApi({
+    type: "PREP_TASK",
+    goal:
+      "ライブラリ素材とユーザー指示をもとに、PPT出力前に人間が確認・修正できるプレゼン設計書を作る",
+    inputRef: label,
+    inputSummary: inputText,
+    constraints: buildPresentationTaskConstraints("create"),
+    outputFormat: "presentation_plan",
+  });
+}
+
+export async function runAutoUpdatePresentationTask(
+  inputText: string,
+  label = "presentation-task-plan-update"
+) {
+  return callTaskApi({
+    type: "PREP_TASK",
+    goal:
+      "既存のPPT設計書を、追加素材またはユーザー修正指示に基づいて更新する",
+    inputRef: label,
+    inputSummary: inputText,
+    constraints: buildPresentationTaskConstraints("update"),
+    outputFormat: "presentation_plan",
   });
 }
 

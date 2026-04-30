@@ -71,6 +71,21 @@ describe("gptTaskClient builders", () => {
     vi.useRealTimers();
   });
 
+  it("passes through presentation plan output format", () => {
+    expect(
+      buildTaskApiRequestBody({
+        type: "PREP_TASK",
+        goal: "Create a presentation plan",
+        inputRef: "ppt",
+        inputSummary: "source",
+        constraints: [],
+        outputFormat: "presentation_plan",
+      }).task
+    ).toMatchObject({
+      outputFormat: "presentation_plan",
+    });
+  });
+
   it("keeps format-task titles optional and explicit", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-18T12:00:00Z"));

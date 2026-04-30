@@ -170,10 +170,74 @@ export type TaskDraftStatus =
   | "deepened"
   | "formatted";
 
+export type TaskDraftMode = "normal" | "presentation";
+
+export type PresentationTaskPlan = {
+  version: "0.1-presentation-task-plan";
+  title: string;
+  sourceSummary: string;
+  extractedItems: string[];
+  strategyItems: string[];
+  keyMessages: string[];
+  slideItems: string[];
+  slides: PresentationTaskSlidePlan[];
+  missingInfo: string[];
+  nextSuggestions: string[];
+  latestPptx?: {
+    filename: string;
+    path: string;
+    createdAt: string;
+    slideCount: number;
+  } | null;
+  debug?: PresentationTaskPlanDebug;
+  updatedAt: string;
+};
+
+export type PresentationTaskPlanDebug = {
+  slideSource: "slideDesignJson" | "legacySlideText" | "none";
+  slideJsonRaw: string[];
+  slideJsonParsed: boolean;
+  slideCount: number;
+  generatedAt: string;
+};
+
+export type PresentationTaskSlidePlan = {
+  slideNumber: number;
+  sectionLabel: string;
+  title: string;
+  keyMessage: string;
+  supportingInfo: string[];
+  keyVisual: string;
+  visualSupportingInfo: string[];
+  placementComposition: string;
+  layoutItems: PresentationTaskSlideLayoutItem[];
+  structuredContent: PresentationTaskSlideStructuredContent;
+};
+
+export type PresentationTaskSlideLayoutItem = {
+  region: string;
+  text: string;
+};
+
+export type PresentationTaskSlideStructuredContent = {
+  title: string;
+  mainMessage: string;
+  facts: string[];
+  visual: {
+    brief: string;
+    supportingFacts: string[];
+  };
+  layout: {
+    instruction: string;
+    elements: PresentationTaskSlideLayoutItem[];
+  };
+};
+
 export type TaskDraft = {
   id: string;
   taskId: string;
   slot: number;
+  mode?: TaskDraftMode;
 
   title: string;
   userInstruction: string;
@@ -186,6 +250,7 @@ export type TaskDraft = {
   deepenText: string;
   mergedText: string;
   kinTaskText: string;
+  presentationPlan?: PresentationTaskPlan | null;
   taskTitleDebug?: {
     prompt: string;
     rawReply: string;
@@ -213,6 +278,7 @@ export function createEmptyTaskDraft(): TaskDraft {
     id: "",
     taskId: "",
     slot: 1,
+    mode: "normal",
 
     title: "",
     userInstruction: "",
@@ -225,6 +291,7 @@ export function createEmptyTaskDraft(): TaskDraft {
     deepenText: "",
     mergedText: "",
     kinTaskText: "",
+    presentationPlan: null,
     taskTitleDebug: null,
     status: "idle",
     sources: [],

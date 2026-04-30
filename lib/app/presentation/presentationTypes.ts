@@ -59,6 +59,76 @@ export type PresentationMotherSpec = {
   slides: PresentationMotherSlide[];
 };
 
+export type InformationInventoryFact = {
+  id: string;
+  text: string;
+  sourceHint: string;
+};
+
+export type InformationInventoryFactGroup = {
+  id: string;
+  label: string;
+  factIds: string[];
+};
+
+export type PresentationInformationInventory = {
+  version: "0.2-information-inventory";
+  topic: string;
+  language: "ja" | "en";
+  rawFacts: InformationInventoryFact[];
+  factGroups: InformationInventoryFactGroup[];
+};
+
+export type PresentationTone =
+  | "educational"
+  | "analytical"
+  | "executive"
+  | "narrative"
+  | "persuasive";
+
+export type PresentationStructureFlow =
+  | "chronological"
+  | "overview_to_detail"
+  | "thesis_evidence"
+  | "comparison"
+  | "problem_solution";
+
+export type PresentationVisualUse = "minimal" | "selective" | "frequent";
+
+export type PresentationStrategy = {
+  version: "0.1-presentation-strategy";
+  title: string;
+  purpose: string;
+  audience: string;
+  tone: PresentationTone;
+  density: PresentationDensity;
+  slideCountRange: {
+    min: number;
+    max: number;
+    target: number;
+  };
+  selectedFactGroupIds: string[];
+  factGroupPriority: Array<{
+    factGroupId: string;
+    priority: "must_use" | "should_use" | "optional";
+    reason: string;
+  }>;
+  visualPolicy: {
+    overallUse: PresentationVisualUse;
+    mustVisualizeFactGroupIds: string[];
+    avoidVisualFactGroupIds: string[];
+    preferredVisualTypes: PresentationVisualType[];
+    avoidVisualTypes: PresentationVisualType[];
+    reason: string;
+  };
+  structurePolicy: {
+    preferredFlow: PresentationStructureFlow;
+    allowMultipleFactGroupsPerSlide: boolean;
+    combineRelatedFactGroups: boolean;
+    notes: string;
+  };
+};
+
 export type BulletItem = {
   text: string;
   detail?: string;
@@ -76,6 +146,7 @@ export type TitleSlide = {
   type: "title";
   title: string;
   subtitle?: string;
+  keyVisual?: string;
   kicker?: string;
   presenter?: string;
   date?: string;
@@ -106,6 +177,10 @@ export type TwoColumnSlide = {
   type: "twoColumn";
   title: string;
   lead?: string;
+  layoutVariant?:
+    | "textLeftVisualRight"
+    | "visualLeftTextRight"
+    | "visualHero";
   left: ColumnContent;
   right: ColumnContent;
   takeaway?: string;
@@ -209,6 +284,8 @@ export type PresentationLibraryPayload = {
   documentId: string;
   status: "draft" | "revised" | "rendered" | "failed";
   motherSpec?: PresentationMotherSpec;
+  informationInventory?: PresentationInformationInventory;
+  presentationStrategy?: PresentationStrategy;
   spec: PresentationSpec;
   patches: PresentationPatch[];
   outputs: PresentationOutput[];

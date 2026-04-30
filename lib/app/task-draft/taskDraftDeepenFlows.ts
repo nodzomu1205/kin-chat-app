@@ -3,8 +3,21 @@ import {
   buildTaskInput,
   formatTaskResultText,
   runAutoDeepenTask,
+  runAutoUpdatePresentationTask,
 } from "@/lib/app/gpt-task/gptTaskClient";
-import { buildDeepenedTaskDraftUpdate } from "@/lib/app/task-draft/taskDraftFlowProjection";
+import {
+  buildDeepenedTaskDraftUpdate,
+  buildPreparedTaskDraftUpdate,
+} from "@/lib/app/task-draft/taskDraftFlowProjection";
+import {
+  buildPresentationTaskPlan,
+  buildPresentationTaskStructuredInput,
+  formatPresentationTaskPlanText,
+  formatPresentationTaskResultText,
+  isPresentationTaskInstruction,
+  resolvePresentationTaskTitle,
+  stripPresentationTaskMarker,
+} from "@/lib/app/presentation/presentationTaskPlanning";
 import {
   appendTaskInfoMessage,
   buildTaskFlowRecentContext,
@@ -35,10 +48,16 @@ export async function runDeepenTaskFromLastFlow(
     return;
   }
 
-  const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
+  const presentationMode =
+    args.currentTaskDraft.mode === "presentation" ||
+    isPresentationTaskInstruction(args.gptInput.trim());
+  const normalizedInput = presentationMode
+    ? stripPresentationTaskMarker(args.gptInput.trim())
+    : args.gptInput.trim();
+  const parsedInput = args.applyPrefixedTaskFieldsFromText(normalizedInput);
   const fallbackTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
-    freeText: parsedInput.freeText || args.gptInput.trim(),
+    freeText: parsedInput.freeText || normalizedInput,
     searchQuery: parsedInput.searchQuery,
     fallback: args.currentTaskDraft.title || "Deepened task",
   });
@@ -55,25 +74,43 @@ export async function runDeepenTaskFromLastFlow(
     fallbackTitle,
     includeCurrentTitle: false,
   });
-  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const resolvedTitle = resolvePresentationTaskTitle({
+    presentationMode,
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title,
+    currentTaskName: args.currentTaskDraft.taskName,
+    generatedTitle: resolvedTitleResult.title,
+    fallbackTitle,
+    preserveExistingTitle: true,
+  });
   const nextUserInstruction = resolveTaskDraftUserInstruction(
     parsedInput.userInstruction,
     parsedInput.freeText,
     args.currentTaskDraft.userInstruction
   );
 
-  const taskInput = buildTaskInput({
-    title: resolvedTitle,
-    userInstruction: nextUserInstruction,
-    actionInstruction: parsedInput.freeText || args.gptInput.trim(),
-    body: text,
-    material: text,
-  });
+  const taskInput = presentationMode
+    ? buildPresentationTaskStructuredInput({
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        currentPlanText: text,
+        body: parsedInput.freeText || normalizedInput || "PPT設計書を深掘り",
+        material: text,
+      })
+    : buildTaskInput({
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        actionInstruction: parsedInput.freeText || normalizedInput,
+        body: text,
+        material: text,
+      });
 
   const userMsg: Message = {
     id: generateId(),
     role: "user",
-    text: `[Deepen]\n${parsedInput.freeText || "Deeper analysis requested."}`,
+    text: presentationMode
+      ? `[PPT design deepen]\n${parsedInput.freeText || "PPT設計書の深掘り"}`
+      : `[Deepen]\n${parsedInput.freeText || "Deeper analysis requested."}`,
     meta: {
       kind: "task_info",
     },
@@ -93,8 +130,21 @@ export async function runDeepenTaskFromLastFlow(
   });
 
   try {
-    const data = await runAutoDeepenTask(taskInput, "current-task");
-    const taskText = formatTaskResultText(data?.parsed, data?.raw);
+    const data = presentationMode
+      ? await runAutoUpdatePresentationTask(taskInput, "current-ppt-task")
+      : await runAutoDeepenTask(taskInput, "current-task");
+    const presentationPlan = presentationMode
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
+        })
+      : undefined;
+    const taskText = presentationMode
+      ? presentationPlan
+        ? formatPresentationTaskPlanText(presentationPlan)
+        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
@@ -120,12 +170,22 @@ export async function runDeepenTaskFromLastFlow(
     });
 
     args.setCurrentTaskDraft((prev) =>
-      buildDeepenedTaskDraftUpdate(prev, {
-        title: resolvedTitle,
-        userInstruction: nextUserInstruction,
-        taskTitleDebug: resolvedTitleResult.debug,
-        body: taskText,
-      })
+      presentationMode
+        ? buildPreparedTaskDraftUpdate(prev, {
+            title: resolvedTitle,
+            userInstruction: nextUserInstruction,
+            taskTitleDebug: resolvedTitleResult.debug,
+            mode: "presentation",
+            presentationPlan,
+            body: taskText,
+            preservePrepText: true,
+          })
+        : buildDeepenedTaskDraftUpdate(prev, {
+            title: resolvedTitle,
+            userInstruction: nextUserInstruction,
+            taskTitleDebug: resolvedTitleResult.debug,
+            body: taskText,
+          })
     );
 
     args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });

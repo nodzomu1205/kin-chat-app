@@ -25,6 +25,7 @@ export type LibraryDrawerProps = Pick<
   | "onShowAllLibraryItemsInChat"
   | "onSendAllLibraryItemsToKin"
   | "onUploadLibraryItemToGoogleDrive"
+  | "onRenderPresentationPlanToPpt"
 > &
   Pick<
     GptPanelSettingsProps,

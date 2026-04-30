@@ -2,8 +2,11 @@ import type {
   PresentationPatch,
   PresentationPatchOperation,
   PresentationDensity,
+  PresentationInformationInventory,
   PresentationMotherSpec,
+  PresentationStrategy,
   PresentationSpec,
+  PresentationVisualType,
   SlideSpec,
 } from "@/lib/app/presentation/presentationTypes";
 import {
@@ -13,6 +16,8 @@ import {
 
 export type ParsedPresentationDraft = {
   motherSpec?: PresentationMotherSpec;
+  informationInventory?: PresentationInformationInventory;
+  presentationStrategy?: PresentationStrategy;
   spec: PresentationSpec;
 };
 
@@ -49,6 +54,36 @@ export function parsePresentationPatchFromText(text: string): PresentationPatch 
     throw new Error("GPT did not return a valid PresentationPatch v0.1 JSON object.");
   }
   return patch;
+}
+
+export function parseInformationInventoryFromText(
+  text: string
+): PresentationInformationInventory {
+  const parsed = parseJsonObject(text);
+  const inventory = normalizeInformationInventoryCandidate(parsed);
+  if (!isInformationInventory(inventory)) {
+    throw new Error(
+      "GPT did not return a valid InformationInventory v0.2 JSON object."
+    );
+  }
+  return inventory;
+}
+
+export function parsePresentationStrategyFromText(
+  text: string,
+  options: { renderDensity?: PresentationDensity } = {}
+): PresentationStrategy {
+  const parsed = parseJsonObject(text);
+  const strategy = normalizePresentationStrategyCandidate(
+    parsed,
+    options.renderDensity
+  );
+  if (!isPresentationStrategy(strategy)) {
+    throw new Error(
+      "GPT did not return a valid PresentationStrategy v0.1 JSON object."
+    );
+  }
+  return strategy;
 }
 
 function parseJsonObject(text: string): unknown {
@@ -91,6 +126,236 @@ function normalizePresentationSpecCandidate(value: unknown): unknown {
     candidate.deck ||
     candidate.data;
   return coercePresentationSpec(wrapped || value);
+}
+
+function normalizeInformationInventoryCandidate(value: unknown): unknown {
+  const candidate = value as Record<string, unknown> | null;
+  if (!candidate || typeof candidate !== "object") return value;
+  const wrapped =
+    objectValue(candidate.informationInventory) ||
+    objectValue(candidate.inventory) ||
+    objectValue(candidate.data) ||
+    candidate;
+  const rawMessages = Array.isArray(wrapped.keyMessages)
+    ? wrapped.keyMessages
+    : Array.isArray(wrapped.messages)
+      ? wrapped.messages
+      : Array.isArray(wrapped.items)
+        ? wrapped.items
+        : [];
+  const rawGroups = Array.isArray(wrapped.factGroups)
+    ? wrapped.factGroups
+    : Array.isArray(wrapped.groups)
+      ? wrapped.groups
+      : [];
+  const rawFactInputs = Array.isArray(wrapped.rawFacts)
+    ? wrapped.rawFacts
+    : Array.isArray(wrapped.facts)
+      ? wrapped.facts
+      : [];
+  const explicitRawFacts = rawFactInputs
+    .map((fact, index) => normalizeInventoryFact(fact, 0, index, "fact"))
+    .filter((fact) => fact.text);
+  const legacyGroups = rawMessages
+    .map((message, index) => normalizeLegacyInventoryGroup(message, index))
+    .filter(
+      (group) => group.label || group.factIds.length > 0 || group.facts.length > 0
+    );
+  const legacyFacts = explicitRawFacts.length > 0
+    ? []
+    : legacyGroups.flatMap((group) => group.facts);
+  const rawFacts = mergeInventoryFacts([...explicitRawFacts, ...legacyFacts]);
+  const rawFactIds = new Set(rawFacts.map((fact) => fact.id));
+  const normalizedGroups = [
+    ...rawGroups.map((group, index) => normalizeInventoryFactGroup(group, index)),
+    ...legacyGroups.map(({ facts: _facts, ...group }) => group),
+  ];
+
+  return {
+    version: "0.2-information-inventory",
+    topic:
+      stringValue(wrapped.topic) ||
+      stringValue(wrapped.title) ||
+      stringValue(wrapped.subject),
+    language: wrapped.language === "en" ? "en" : "ja",
+    rawFacts,
+    factGroups: normalizedGroups
+      .map((group) => ({
+        ...group,
+        factIds: group.factIds.filter((factId) => rawFactIds.has(factId)),
+      }))
+      .filter((group) => group.label || group.factIds.length > 0),
+  };
+}
+
+function normalizeInventoryFactGroup(value: unknown, index: number) {
+  const candidate = objectValue(value);
+  return {
+    id:
+      stringValue(candidate?.id || candidate?.groupId) ||
+      `group_${String(index + 1).padStart(3, "0")}`,
+    label:
+      stringValue(candidate?.label || candidate?.title || candidate?.name) ||
+      `Group ${index + 1}`,
+    factIds: coerceStringArray(
+      candidate?.factIds || candidate?.rawFactIds || candidate?.factReferences
+    ),
+  };
+}
+
+function normalizeLegacyInventoryGroup(
+  value: unknown,
+  index: number
+) {
+  const candidate = objectValue(value);
+  const inlineFactInputs = Array.isArray(candidate?.facts)
+    ? candidate?.facts
+    : Array.isArray(candidate?.keyMessageFacts)
+      ? candidate?.keyMessageFacts
+      : Array.isArray(candidate?.supportingFacts)
+        ? candidate?.supportingFacts
+        : [];
+  const factIds = coerceStringArray(
+    candidate?.factIds || candidate?.rawFactIds || candidate?.factReferences
+  );
+  const facts = inlineFactInputs
+    .map((fact, factIndex) =>
+      normalizeInventoryFact(fact, index, factIndex, `fact_${String(index + 1).padStart(3, "0")}`)
+    )
+    .filter((fact) => fact.text);
+  const fallbackFactIds = factIds.length > 0 ? factIds : facts.map((fact) => fact.id);
+  return {
+    id:
+      stringValue(candidate?.id || candidate?.keyMessageId) ||
+      `group_${String(index + 1).padStart(3, "0")}`,
+    label:
+      stringValue(
+        candidate?.label ||
+        candidate?.message ||
+          candidate?.keyMessage ||
+          candidate?.title ||
+          candidate?.text
+      ) || `Group ${index + 1}`,
+    factIds: fallbackFactIds,
+    facts,
+  };
+}
+
+function normalizeInventoryFact(
+  value: unknown,
+  messageIndex: number,
+  factIndex: number,
+  fallbackPrefix = "fact"
+) {
+  const candidate = objectValue(value);
+  const text = candidate
+    ? stringValue(candidate.text || candidate.fact || candidate.value)
+    : stringValue(value);
+  return {
+    id:
+      stringValue(candidate?.id || candidate?.factId) ||
+      `${fallbackPrefix}_${String(
+        factIndex + 1
+      ).padStart(3, "0")}`,
+    text,
+    sourceHint: stringValue(candidate?.sourceHint || candidate?.source || ""),
+  };
+}
+
+function mergeInventoryFacts(
+  facts: Array<ReturnType<typeof normalizeInventoryFact>>
+) {
+  const byId = new Map<string, ReturnType<typeof normalizeInventoryFact>>();
+  facts.forEach((fact) => {
+    if (!fact.text) return;
+    if (!byId.has(fact.id)) {
+      byId.set(fact.id, fact);
+      return;
+    }
+    let suffix = 2;
+    let nextId = `${fact.id}_${suffix}`;
+    while (byId.has(nextId)) {
+      suffix += 1;
+      nextId = `${fact.id}_${suffix}`;
+    }
+    byId.set(nextId, { ...fact, id: nextId });
+  });
+  return Array.from(byId.values());
+}
+
+function normalizePresentationStrategyCandidate(
+  value: unknown,
+  renderDensity?: PresentationDensity
+): unknown {
+  const candidate = value as Record<string, unknown> | null;
+  if (!candidate || typeof candidate !== "object") return value;
+  const wrapped =
+    objectValue(candidate.presentationStrategy) ||
+    objectValue(candidate.strategy) ||
+    objectValue(candidate.plan) ||
+    objectValue(candidate.data) ||
+    candidate;
+  const rawSlideRange =
+    objectValue(wrapped.slideCountRange) || objectValue(wrapped.slideRange);
+  const target =
+    numberValue(rawSlideRange?.target) || numberValue(wrapped.targetSlideCount) || 6;
+  const min = numberValue(rawSlideRange?.min) || Math.max(1, target - 1);
+  const max = numberValue(rawSlideRange?.max) || Math.max(min, target + 2);
+  const visualPolicy = objectValue(wrapped.visualPolicy) || {};
+  const structurePolicy = objectValue(wrapped.structurePolicy) || {};
+
+  return {
+    version: "0.1-presentation-strategy",
+    title: stringValue(wrapped.title),
+    purpose: stringValue(wrapped.purpose),
+    audience: stringValue(wrapped.audience),
+    tone: supportedTone(wrapped.tone),
+    density:
+      renderDensity ||
+      (isSupportedDensity(wrapped.density) ? wrapped.density : "standard"),
+    slideCountRange: {
+      min,
+      max,
+      target: Math.min(Math.max(target, min), max),
+    },
+    selectedFactGroupIds: coerceStringArray(
+      wrapped.selectedFactGroupIds ||
+        wrapped.factGroupIds ||
+        wrapped.selectedKeyMessageIds ||
+        wrapped.keyMessageIds
+    ),
+    factGroupPriority: normalizeFactGroupPriority(
+      wrapped.factGroupPriority || wrapped.keyMessagePriority
+    ),
+    visualPolicy: {
+      overallUse: supportedVisualUse(visualPolicy.overallUse),
+      mustVisualizeFactGroupIds: coerceStringArray(
+        visualPolicy.mustVisualizeFactGroupIds ||
+          visualPolicy.mustVisualizeKeyMessageIds
+      ),
+      avoidVisualFactGroupIds: coerceStringArray(
+        visualPolicy.avoidVisualFactGroupIds ||
+          visualPolicy.avoidVisualKeyMessageIds
+      ),
+      preferredVisualTypes: coerceVisualTypes(visualPolicy.preferredVisualTypes),
+      avoidVisualTypes: coerceVisualTypes(visualPolicy.avoidVisualTypes),
+      reason: stringValue(visualPolicy.reason),
+    },
+    structurePolicy: {
+      preferredFlow: supportedStructureFlow(structurePolicy.preferredFlow),
+      allowMultipleFactGroupsPerSlide:
+        booleanValue(
+          structurePolicy.allowMultipleFactGroupsPerSlide ||
+            structurePolicy.allowMultipleKeyMessagesPerSlide
+        ) ?? true,
+      combineRelatedFactGroups:
+        booleanValue(
+          structurePolicy.combineRelatedFactGroups ||
+            structurePolicy.combineRelatedKeyMessages
+        ) ?? true,
+      notes: stringValue(structurePolicy.notes),
+    },
+  };
 }
 
 function looksLikeMotherSpecResponse(value: unknown): boolean {
@@ -143,6 +408,58 @@ function isPresentationSpec(value: unknown): value is PresentationSpec {
     Array.isArray(candidate.slides) &&
     candidate.slides.length > 0 &&
     candidate.slides.every(isSlideSpec)
+  );
+}
+
+function isInformationInventory(
+  value: unknown
+): value is PresentationInformationInventory {
+  const candidate = value as PresentationInformationInventory;
+  return (
+    !!candidate &&
+    candidate.version === "0.2-information-inventory" &&
+    typeof candidate.topic === "string" &&
+    (candidate.language === "ja" || candidate.language === "en") &&
+    Array.isArray(candidate.rawFacts) &&
+    candidate.rawFacts.length > 0 &&
+    candidate.rawFacts.every(
+      (fact) =>
+        typeof fact.id === "string" &&
+        typeof fact.text === "string" &&
+        typeof fact.sourceHint === "string"
+    ) &&
+    Array.isArray(candidate.factGroups) &&
+    candidate.factGroups.every(
+      (group) =>
+        typeof group.id === "string" &&
+        typeof group.label === "string" &&
+        Array.isArray(group.factIds) &&
+        group.factIds.every((factId) => typeof factId === "string")
+    )
+  );
+}
+
+function isPresentationStrategy(value: unknown): value is PresentationStrategy {
+  const candidate = value as PresentationStrategy;
+  return (
+    !!candidate &&
+    candidate.version === "0.1-presentation-strategy" &&
+    typeof candidate.title === "string" &&
+    typeof candidate.purpose === "string" &&
+    typeof candidate.audience === "string" &&
+    isSupportedDensity(candidate.density) &&
+    !!candidate.slideCountRange &&
+    Number.isInteger(candidate.slideCountRange.min) &&
+    Number.isInteger(candidate.slideCountRange.max) &&
+    Number.isInteger(candidate.slideCountRange.target) &&
+    Array.isArray(candidate.selectedFactGroupIds) &&
+    Array.isArray(candidate.factGroupPriority) &&
+    !!candidate.visualPolicy &&
+    Array.isArray(candidate.visualPolicy.mustVisualizeFactGroupIds) &&
+    Array.isArray(candidate.visualPolicy.avoidVisualFactGroupIds) &&
+    Array.isArray(candidate.visualPolicy.preferredVisualTypes) &&
+    Array.isArray(candidate.visualPolicy.avoidVisualTypes) &&
+    !!candidate.structurePolicy
   );
 }
 
@@ -666,6 +983,82 @@ function isSupportedDensity(value: unknown): value is PresentationDensity {
     value === "detailed" ||
     value === "dense"
   );
+}
+
+function supportedTone(value: unknown) {
+  return value === "educational" ||
+    value === "analytical" ||
+    value === "executive" ||
+    value === "narrative" ||
+    value === "persuasive"
+    ? value
+    : "educational";
+}
+
+function supportedVisualUse(value: unknown) {
+  return value === "minimal" || value === "selective" || value === "frequent"
+    ? value
+    : "selective";
+}
+
+function supportedStructureFlow(value: unknown) {
+  return value === "chronological" ||
+    value === "overview_to_detail" ||
+    value === "thesis_evidence" ||
+    value === "comparison" ||
+    value === "problem_solution"
+    ? value
+    : "overview_to_detail";
+}
+
+function normalizeFactGroupPriority(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      const candidate = objectValue(item);
+      const factGroupId = stringValue(
+        candidate?.factGroupId ||
+          candidate?.groupId ||
+          candidate?.keyMessageId ||
+          candidate?.id ||
+          candidate?.messageId
+      );
+      if (!factGroupId) return null;
+      const priority =
+        candidate?.priority === "must_use" ||
+        candidate?.priority === "should_use" ||
+        candidate?.priority === "optional"
+          ? candidate.priority
+          : "should_use";
+      return {
+        factGroupId,
+        priority,
+        reason: stringValue(candidate?.reason),
+      };
+    })
+    .filter(Boolean);
+}
+
+function coerceVisualTypes(value: unknown) {
+  return coerceStringArray(value).filter(
+    (type): type is PresentationVisualType =>
+      type === "none" ||
+      type === "photo" ||
+      type === "illustration" ||
+      type === "diagram" ||
+      type === "chart" ||
+      type === "table" ||
+      type === "placeholder"
+  );
+}
+
+function booleanValue(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value.toLowerCase() === "true") return true;
+    if (value.toLowerCase() === "false") return false;
+  }
+  return undefined;
 }
 
 function hasContentLikeFields(candidate: Record<string, unknown>) {

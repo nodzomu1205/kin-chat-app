@@ -6,6 +6,7 @@ import { pillButton } from "@/components/panels/gpt/gptPanelStyles";
 import { GPT_GOOGLE_DRIVE_TEXT } from "@/components/panels/gpt/gptGoogleDriveText";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { iconButton } from "@/components/panels/gpt/LibraryDrawerControls";
+import { hasRenderablePresentationTaskPlan } from "@/lib/app/presentation/presentationTaskPlanning";
 import type { LibraryDrawerProps } from "@/components/panels/gpt/LibraryDrawerTypes";
 import type { MultipartAssembly, ReferenceLibraryItem } from "@/types/chat";
 
@@ -22,6 +23,7 @@ export default function LibraryItemCardActions({
   onShowLibraryItemInChat,
   onSendLibraryItemToKin,
   onUploadLibraryItemToGoogleDrive,
+  onRenderPresentationPlanToPpt,
   setExpandedId,
   setEditingId,
   setDraftTitle,
@@ -40,12 +42,17 @@ export default function LibraryItemCardActions({
   onShowLibraryItemInChat: LibraryDrawerProps["onShowLibraryItemInChat"];
   onSendLibraryItemToKin: LibraryDrawerProps["onSendLibraryItemToKin"];
   onUploadLibraryItemToGoogleDrive: LibraryDrawerProps["onUploadLibraryItemToGoogleDrive"];
+  onRenderPresentationPlanToPpt: LibraryDrawerProps["onRenderPresentationPlanToPpt"];
   setExpandedId: React.Dispatch<React.SetStateAction<string>>;
   setEditingId: React.Dispatch<React.SetStateAction<string>>;
   setDraftTitle: React.Dispatch<React.SetStateAction<string>>;
   setDraftSummary: React.Dispatch<React.SetStateAction<string>>;
   setDraftText: React.Dispatch<React.SetStateAction<string>>;
 }) {
+  const canRenderPresentationPlan =
+    item.artifactType === "presentation_plan" &&
+    hasRenderablePresentationTaskPlan(item.structuredPayload);
+
   return (
     <div
       style={{
@@ -172,6 +179,17 @@ export default function LibraryItemCardActions({
         >
           保
         </button>
+        {canRenderPresentationPlan ? (
+          <button
+            type="button"
+            onClick={() => void onRenderPresentationPlanToPpt(item.id)}
+            style={iconButton()}
+            title="PPTX出力"
+            aria-label="PPTX出力"
+          >
+            PPT
+          </button>
+        ) : null}
       </div>
     </div>
   );

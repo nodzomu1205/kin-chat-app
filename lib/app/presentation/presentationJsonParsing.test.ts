@@ -1,11 +1,114 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseInformationInventoryFromText,
   parsePresentationDraftFromText,
   parsePresentationPatchFromText,
   parsePresentationSpecFromText,
+  parsePresentationStrategyFromText,
 } from "@/lib/app/presentation/presentationJsonParsing";
 
 describe("presentationJsonParsing", () => {
+  it("parses information inventory JSON without slide concepts", () => {
+    const inventory = parseInformationInventoryFromText(
+      JSON.stringify({
+        version: "0.2-information-inventory",
+        topic: "ロシア史",
+        language: "ja",
+        rawFacts: [
+          {
+            id: "fact_001",
+            text: "882年にキエフ・ルーシが成立した",
+            sourceHint: "source A",
+          },
+          {
+            id: "fact_002",
+            text: "1991年にソ連が解体した",
+            sourceHint: "source B",
+          },
+        ],
+        factGroups: [
+          {
+            id: "group_001",
+            label: "歴史の転換点",
+            factIds: ["fact_001", "fact_002"],
+          },
+        ],
+      })
+    );
+
+    expect(inventory).toMatchObject({
+      version: "0.2-information-inventory",
+      topic: "ロシア史",
+      rawFacts: [
+        { id: "fact_001", text: "882年にキエフ・ルーシが成立した" },
+        { id: "fact_002", text: "1991年にソ連が解体した" },
+      ],
+      factGroups: [
+        {
+          id: "group_001",
+          label: "歴史の転換点",
+          factIds: ["fact_001", "fact_002"],
+        },
+      ],
+    });
+  });
+
+  it("upgrades v0.1-style inventory facts into rawFacts", () => {
+    const inventory = parseInformationInventoryFromText(
+      JSON.stringify({
+        topic: "提案",
+        keyMessages: [
+          {
+            message: "導入効果がある",
+            facts: ["初稿作成を短縮する"],
+          },
+        ],
+      })
+    );
+
+    expect(inventory).toMatchObject({
+      version: "0.2-information-inventory",
+      rawFacts: [{ id: "fact_001_001", text: "初稿作成を短縮する" }],
+      factGroups: [{ factIds: ["fact_001_001"] }],
+    });
+  });
+
+  it("parses presentation strategy JSON as meta-level policy", () => {
+    const strategy = parsePresentationStrategyFromText(
+      JSON.stringify({
+        title: "ロシア史",
+        density: "dense",
+        slideCountRange: { min: 5, max: 8, target: 6 },
+        selectedFactGroupIds: ["group_001"],
+        visualPolicy: {
+          overallUse: "selective",
+          mustVisualizeFactGroupIds: ["group_002"],
+          preferredVisualTypes: ["diagram", "chart"],
+        },
+        structurePolicy: {
+          preferredFlow: "chronological",
+        },
+      }),
+      { renderDensity: "standard" }
+    );
+
+    expect(strategy).toMatchObject({
+      version: "0.1-presentation-strategy",
+      density: "standard",
+      slideCountRange: { min: 5, max: 8, target: 6 },
+      selectedFactGroupIds: ["group_001"],
+      visualPolicy: {
+        overallUse: "selective",
+        mustVisualizeFactGroupIds: ["group_002"],
+        preferredVisualTypes: ["diagram", "chart"],
+      },
+      structurePolicy: {
+        preferredFlow: "chronological",
+        allowMultipleFactGroupsPerSlide: true,
+      },
+    });
+  });
+
   it("parses strict PresentationSpec JSON", () => {
     const spec = parsePresentationSpecFromText(
       JSON.stringify({

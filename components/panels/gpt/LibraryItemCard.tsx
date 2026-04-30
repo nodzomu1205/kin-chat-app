@@ -38,6 +38,7 @@ type Props = Pick<
   | "onShowLibraryItemInChat"
   | "onSendLibraryItemToKin"
   | "onUploadLibraryItemToGoogleDrive"
+  | "onRenderPresentationPlanToPpt"
 > & {
   item: ReferenceLibraryItem;
   isMobile: boolean;
@@ -75,6 +76,7 @@ export default function LibraryItemCard({
   onShowLibraryItemInChat,
   onSendLibraryItemToKin,
   onUploadLibraryItemToGoogleDrive,
+  onRenderPresentationPlanToPpt,
   isMobile,
   isExpanded,
   isEditing,
@@ -138,6 +140,7 @@ export default function LibraryItemCard({
         onShowLibraryItemInChat={onShowLibraryItemInChat}
         onSendLibraryItemToKin={onSendLibraryItemToKin}
         onUploadLibraryItemToGoogleDrive={onUploadLibraryItemToGoogleDrive}
+        onRenderPresentationPlanToPpt={onRenderPresentationPlanToPpt}
         setExpandedId={setExpandedId}
         setEditingId={setEditingId}
         setDraftTitle={setDraftTitle}

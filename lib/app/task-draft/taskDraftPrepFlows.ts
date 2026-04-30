@@ -5,7 +5,18 @@ import {
   buildTaskStructuredInput,
   formatTaskResultText,
   runAutoPrepTask,
+  runAutoPrepPresentationTask,
+  runAutoUpdatePresentationTask,
 } from "@/lib/app/gpt-task/gptTaskClient";
+import {
+  buildPresentationTaskPlan,
+  buildPresentationTaskStructuredInput,
+  formatPresentationTaskPlanText,
+  formatPresentationTaskResultText,
+  isPresentationTaskInstruction,
+  resolvePresentationTaskTitle,
+  stripPresentationTaskMarker,
+} from "@/lib/app/presentation/presentationTaskPlanning";
 import { buildPreparedTaskDraftUpdate } from "@/lib/app/task-draft/taskDraftFlowProjection";
 import {
   buildGptTaskPrepSource,
@@ -44,8 +55,14 @@ export async function runPrepTaskFromInputFlow(
   if (!args.gptInput.trim() || args.gptLoading) return;
 
   const text = args.gptInput.trim();
-  const parsedInput = args.applyPrefixedTaskFieldsFromText(text);
-  const taskBodySource = parsedInput.freeText || text;
+  const presentationMode =
+    args.currentTaskDraft.mode === "presentation" ||
+    isPresentationTaskInstruction(text);
+  const normalizedText = presentationMode
+    ? stripPresentationTaskMarker(text)
+    : text;
+  const parsedInput = args.applyPrefixedTaskFieldsFromText(normalizedText);
+  const taskBodySource = parsedInput.freeText || normalizedText;
   const fallbackTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
     freeText: taskBodySource,
@@ -64,22 +81,37 @@ export async function runPrepTaskFromInputFlow(
     fallbackTitle,
     includeCurrentTitle: false,
   });
-  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const resolvedTitle = resolvePresentationTaskTitle({
+    presentationMode,
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title,
+    currentTaskName: args.currentTaskDraft.taskName,
+    generatedTitle: resolvedTitleResult.title,
+    fallbackTitle,
+    preserveExistingTitle: false,
+  });
   const nextUserInstruction = resolveTaskDraftUserInstruction(
     parsedInput.userInstruction,
     args.currentTaskDraft.userInstruction
   );
-  const prepInput = buildTaskStructuredInput({
-    title: resolvedTitle,
-    userInstruction: nextUserInstruction,
-    body: taskBodySource,
-    searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
-  });
+  const prepInput = presentationMode
+    ? buildPresentationTaskStructuredInput({
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        body: taskBodySource,
+        material: args.currentTaskDraft.searchContext?.rawText || "",
+      })
+    : buildTaskStructuredInput({
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        body: taskBodySource,
+        searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
+      });
 
   const userMsg: Message = {
     id: generateId(),
     role: "user",
-    text: `[Task prep]\n${text}`,
+    text: presentationMode ? `[PPT design prep]\n${text}` : `[Task prep]\n${text}`,
   };
 
   const { requestRecentMessages } = buildTaskFlowRecentContext({
@@ -96,8 +128,21 @@ export async function runPrepTaskFromInputFlow(
   });
 
   try {
-    const data = await runAutoPrepTask(prepInput, "gpt-input");
-    const taskText = formatTaskResultText(data?.parsed, data?.raw);
+    const data = presentationMode
+      ? await runAutoPrepPresentationTask(prepInput, "gpt-input-ppt")
+      : await runAutoPrepTask(prepInput, "gpt-input");
+    const presentationPlan = presentationMode
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
+        })
+      : null;
+    const taskText = presentationMode
+      ? presentationPlan
+        ? formatPresentationTaskPlanText(presentationPlan)
+        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
@@ -129,6 +174,8 @@ export async function runPrepTaskFromInputFlow(
         title: resolvedTitle,
         userInstruction: nextUserInstruction,
         taskTitleDebug: resolvedTitleResult.debug,
+        mode: presentationMode ? "presentation" : "normal",
+        presentationPlan,
         body: taskText,
         searchContext: args.currentTaskDraft.searchContext ?? prev.searchContext,
         objective: (parsedInput.freeText || text).slice(0, 120),
@@ -165,12 +212,19 @@ export async function runUpdateTaskFromInputFlow(
   }
 
   const additionalText = args.gptInput.trim();
-  const parsedInput = args.applyPrefixedTaskFieldsFromText(additionalText);
+  const presentationMode =
+    args.currentTaskDraft.mode === "presentation" ||
+    isPresentationTaskInstruction(additionalText);
+  const normalizedAdditionalText = presentationMode
+    ? stripPresentationTaskMarker(additionalText)
+    : additionalText;
+  const parsedInput =
+    args.applyPrefixedTaskFieldsFromText(normalizedAdditionalText);
   const fallbackTitle = resolveUpdateTaskTitle({
     explicitTitle: parsedInput.title,
     currentTitle: args.currentTaskDraft.title,
     currentTaskName: args.currentTaskDraft.taskName,
-    freeText: parsedInput.freeText || additionalText,
+    freeText: parsedInput.freeText || normalizedAdditionalText,
     searchQuery: parsedInput.searchQuery,
     fallback: args.currentTaskDraft.title || "Task",
     getResolvedTaskTitle: args.getResolvedTaskTitle,
@@ -179,34 +233,52 @@ export async function runUpdateTaskFromInputFlow(
     explicitTitle: parsedInput.title,
     currentTitle: args.currentTaskDraft.title || args.currentTaskDraft.taskName,
     taskBody: currentTaskText,
-    additionalSource: parsedInput.freeText || additionalText,
+    additionalSource: parsedInput.freeText || normalizedAdditionalText,
     userInstruction: mergeTaskTitleInstructions(
       parsedInput.userInstruction,
       args.currentTaskDraft.userInstruction
     ),
     fallbackTitle,
   });
-  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const resolvedTitle = resolvePresentationTaskTitle({
+    presentationMode,
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title,
+    currentTaskName: args.currentTaskDraft.taskName,
+    generatedTitle: resolvedTitleResult.title,
+    fallbackTitle,
+    preserveExistingTitle: true,
+  });
   const nextUserInstruction = resolveTaskDraftUserInstruction(
     parsedInput.userInstruction,
     args.currentTaskDraft.userInstruction
   );
 
-  const mergedInput = buildMergedTaskInput(
-    currentTaskText,
-    "GPT task update",
-    parsedInput.freeText || additionalText,
-    {
-      title: resolvedTitle,
-      userInstruction: nextUserInstruction,
-      searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
-    }
-  );
+  const mergedInput = presentationMode
+    ? buildPresentationTaskStructuredInput({
+        title: resolvedTitle,
+        userInstruction: nextUserInstruction,
+        currentPlanText: currentTaskText,
+        body: parsedInput.freeText || normalizedAdditionalText,
+        material: args.currentTaskDraft.searchContext?.rawText || "",
+      })
+    : buildMergedTaskInput(
+        currentTaskText,
+        "GPT task update",
+        parsedInput.freeText || normalizedAdditionalText,
+        {
+          title: resolvedTitle,
+          userInstruction: nextUserInstruction,
+          searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
+        }
+      );
 
   const userMsg: Message = {
     id: generateId(),
     role: "user",
-    text: `[Task update]\n${additionalText}`,
+    text: presentationMode
+      ? `[PPT design update]\n${additionalText}`
+      : `[Task update]\n${additionalText}`,
     meta: {
       kind: "task_info",
       sourceType: "manual",
@@ -227,8 +299,21 @@ export async function runUpdateTaskFromInputFlow(
   });
 
   try {
-    const data = await runAutoPrepTask(mergedInput, "task-update");
-    const taskText = formatTaskResultText(data?.parsed, data?.raw);
+    const data = presentationMode
+      ? await runAutoUpdatePresentationTask(mergedInput, "task-update-ppt")
+      : await runAutoPrepTask(mergedInput, "task-update");
+    const presentationPlan = presentationMode
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
+        })
+      : undefined;
+    const taskText = presentationMode
+      ? presentationPlan
+        ? formatPresentationTaskPlanText(presentationPlan)
+        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
@@ -255,7 +340,7 @@ export async function runUpdateTaskFromInputFlow(
     });
 
     const source = buildGptTaskUpdateSource(
-      parsedInput.freeText || additionalText
+      parsedInput.freeText || normalizedAdditionalText
     );
 
     args.setCurrentTaskDraft((prev) =>
@@ -263,6 +348,8 @@ export async function runUpdateTaskFromInputFlow(
         title: resolvedTitle,
         userInstruction: nextUserInstruction,
         taskTitleDebug: resolvedTitleResult.debug,
+        mode: presentationMode ? "presentation" : prev.mode,
+        presentationPlan,
         body: taskText,
         preservePrepText: true,
         sources: [source],
@@ -294,8 +381,14 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     return;
   }
 
-  const parsedInput = args.applyPrefixedTaskFieldsFromText(args.gptInput.trim());
-  const directionInstruction = parsedInput.freeText || args.gptInput.trim();
+  const presentationMode =
+    args.currentTaskDraft.mode === "presentation" ||
+    isPresentationTaskInstruction(args.gptInput.trim());
+  const normalizedInput = presentationMode
+    ? stripPresentationTaskMarker(args.gptInput.trim())
+    : args.gptInput.trim();
+  const parsedInput = args.applyPrefixedTaskFieldsFromText(normalizedInput);
+  const directionInstruction = parsedInput.freeText || normalizedInput;
   const currentTaskText = args.getTaskBaseText();
   const fallbackTitle = resolveUpdateTaskTitle({
     explicitTitle: parsedInput.title,
@@ -318,30 +411,48 @@ export async function runUpdateTaskFromLastGptMessageFlow(
     ),
     fallbackTitle,
   });
-  const resolvedTitle = resolvedTitleResult.title || fallbackTitle;
+  const resolvedTitle = resolvePresentationTaskTitle({
+    presentationMode,
+    explicitTitle: parsedInput.title,
+    currentTitle: args.currentTaskDraft.title,
+    currentTaskName: args.currentTaskDraft.taskName,
+    generatedTitle: resolvedTitleResult.title,
+    fallbackTitle,
+    preserveExistingTitle: true,
+  });
   const nextUserInstruction = resolveTaskDraftUserInstruction(
     parsedInput.userInstruction,
     directionInstruction,
     args.currentTaskDraft.userInstruction
   );
-  const taskInput = currentTaskText
-    ? buildTaskInput({
-        title: resolvedTitle,
-        userInstruction: nextUserInstruction,
-        actionInstruction:
-          directionInstruction ||
-          "Review the latest GPT response, refine the task, and return an updated draft.",
-        body: currentTaskText,
-        material: lastGptMessage.text.trim(),
-      })
-    : buildTaskStructuredInput({
+  const taskInput = presentationMode
+    ? buildPresentationTaskStructuredInput({
         title: resolvedTitle,
         userInstruction:
           nextUserInstruction ||
-          "Review the latest GPT response and generate a clean task draft from it.",
-        body: lastGptMessage.text.trim(),
-        searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
-      });
+          "最新GPTメッセージを素材としてPPT設計書を更新してください。",
+        currentPlanText: currentTaskText,
+        body: directionInstruction,
+        material: lastGptMessage.text.trim(),
+      })
+    : currentTaskText
+      ? buildTaskInput({
+          title: resolvedTitle,
+          userInstruction: nextUserInstruction,
+          actionInstruction:
+            directionInstruction ||
+            "Review the latest GPT response, refine the task, and return an updated draft.",
+          body: currentTaskText,
+          material: lastGptMessage.text.trim(),
+        })
+      : buildTaskStructuredInput({
+          title: resolvedTitle,
+          userInstruction:
+            nextUserInstruction ||
+            "Review the latest GPT response and generate a clean task draft from it.",
+          body: lastGptMessage.text.trim(),
+          searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
+        });
 
   const { requestRecentMessages } = buildTaskFlowRecentContext({
     gptStateRef: args.gptStateRef,
@@ -355,12 +466,30 @@ export async function runUpdateTaskFromLastGptMessageFlow(
   });
 
   try {
-    const data = await runAutoPrepTask(taskInput, "task-update-last-gpt");
-    const taskText = formatTaskResultText(data?.parsed, data?.raw);
+    const data = presentationMode
+      ? await runAutoUpdatePresentationTask(taskInput, "task-update-last-gpt-ppt")
+      : await runAutoPrepTask(taskInput, "task-update-last-gpt");
+    const presentationPlan = presentationMode
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
+        })
+      : undefined;
+    const taskText = presentationMode
+      ? presentationPlan
+        ? formatPresentationTaskPlanText(presentationPlan)
+        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),
       role: "gpt",
-      text: ["Task updated from latest GPT message.", taskText].join("\n\n"),
+      text: [
+        presentationMode
+          ? "PPT design task updated from latest GPT message."
+          : "Task updated from latest GPT message.",
+        taskText,
+      ].join("\n\n"),
       meta: {
         kind: "task_prep",
         sourceType: "gpt_input",
@@ -392,6 +521,8 @@ export async function runUpdateTaskFromLastGptMessageFlow(
         title: resolvedTitle,
         userInstruction: nextUserInstruction,
         taskTitleDebug: resolvedTitleResult.debug,
+        mode: presentationMode ? "presentation" : prev.mode,
+        presentationPlan,
         body: taskText,
         objective: (directionInstruction || lastGptMessage.text.trim()).slice(
           0,

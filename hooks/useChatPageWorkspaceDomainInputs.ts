@@ -191,6 +191,8 @@ export function useChatPageWorkspaceDomainInputs(
         onSendAllLibraryItemsToKin: referenceDomain.sendAllLibraryItemsToKin,
         onUploadLibraryItemToGoogleDrive:
           referenceDomain.uploadLibraryItemToGoogleDrive,
+        onRenderPresentationPlanToPpt:
+          referenceDomain.renderPresentationPlanToPpt,
       onChangeAutoLibraryReferenceEnabled:
         referenceDomain.setAutoLibraryReferenceEnabled,
       onChangeLibraryReferenceMode: referenceDomain.setLibraryReferenceMode,

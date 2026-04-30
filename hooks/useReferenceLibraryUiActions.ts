@@ -6,6 +6,11 @@ import {
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import {
+  buildPresentationSpecFromTaskPlan,
+  buildPresentationTaskPlanFromText,
+  hasRenderablePresentationTaskPlan,
+} from "@/lib/app/presentation/presentationTaskPlanning";
+import {
   buildLibraryItemsAggregateKinSysInfo,
   buildLibraryItemsAggregateText,
   type LibraryBulkActionMode,
@@ -15,7 +20,8 @@ import {
 } from "@/lib/app/kin-protocol/kinMultipart";
 import { applyKinSysInfoInjection } from "@/lib/app/kin-protocol/kinInfoInjection";
 import type { GptMemoryRuntime } from "@/lib/app/ui-state/chatPageGptMemoryControls";
-import type { Message, ReferenceLibraryItem } from "@/types/chat";
+import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
+import type { PresentationTaskPlan } from "@/types/task";
 import type { ConversationUsageOptions, normalizeUsage } from "@/lib/shared/tokenStats";
 
 type UseReferenceLibraryUiActionsArgs = {
@@ -47,7 +53,13 @@ type UseReferenceLibraryUiActionsArgs = {
     | "uploaded"
     | "unavailable"
     | "cancelled"
-    | Promise<"uploaded" | "unavailable" | "cancelled">;
+      | Promise<"uploaded" | "unavailable" | "cancelled">;
+  updateStoredDocument: (
+    documentId: string,
+    patch: Partial<
+      Pick<StoredDocument, "title" | "text" | "summary" | "structuredPayload">
+    >
+  ) => void;
 };
 
 function createLibraryUiMessage(text: string): Message {
@@ -73,6 +85,33 @@ function downloadTextFile(fileName: string, text: string) {
   window.URL.revokeObjectURL(url);
 }
 
+function isPresentationTaskPlan(value: unknown): value is PresentationTaskPlan {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    (value as PresentationTaskPlan).version === "0.1-presentation-task-plan"
+  );
+}
+
+function createPresentationBlobUrl(args: {
+  contentBase64?: string;
+  mimeType?: string;
+}) {
+  if (!args.contentBase64 || typeof window === "undefined") return "";
+  const binary = window.atob(args.contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return URL.createObjectURL(
+    new Blob([bytes], {
+      type:
+        args.mimeType ||
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    })
+  );
+}
+
 export function useReferenceLibraryUiActions({
   libraryItems,
   getLibraryItemById,
@@ -92,6 +131,7 @@ export function useReferenceLibraryUiActions({
   indexGoogleDriveFolderPicker,
   importGoogleDriveFolderPicker,
   uploadLibraryItemToDrivePicker,
+  updateStoredDocument,
 }: UseReferenceLibraryUiActionsArgs) {
   useEffect(() => {
     setGptMessages((prev) => {
@@ -210,6 +250,95 @@ export function useReferenceLibraryUiActions({
     openGoogleDriveFolder();
   };
 
+  const renderPresentationPlanToPpt = async (itemId: string) => {
+    const item = getLibraryItemById(itemId);
+    if (!item || item.artifactType !== "presentation_plan") return;
+    const parsedPlan = buildPresentationTaskPlanFromText({
+      title: item.title,
+      text: item.excerptText,
+    });
+    const storedPlan = isPresentationTaskPlan(item.structuredPayload)
+      ? item.structuredPayload
+      : null;
+    const plan =
+      parsedPlan.slides.length > 0
+        ? {
+            ...parsedPlan,
+            latestPptx: storedPlan?.latestPptx || null,
+          }
+        : storedPlan || parsedPlan;
+    if (!hasRenderablePresentationTaskPlan(plan)) {
+      setGptMessages((prev) => [
+        ...prev,
+        createLibraryUiMessage(
+          "PPTX出力に必要なスライド設計JSONがありません。PPT設計書を更新してからPPTX出力してください。"
+        ),
+      ]);
+      focusGptPanel();
+      return;
+    }
+    const spec = buildPresentationSpecFromTaskPlan(plan);
+    const response = await fetch("/api/presentation-render", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
+        spec,
+      }),
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      output?: {
+        filename?: string;
+        path?: string;
+        contentBase64?: string;
+        mimeType?: string;
+        createdAt?: string;
+        slideCount?: number;
+      };
+      error?: unknown;
+    };
+    if (!response.ok || !data.output) {
+      const detail =
+        typeof data.error === "string" ? data.error : "PPTX output failed.";
+      setGptMessages((prev) => [...prev, createLibraryUiMessage(detail)]);
+      return;
+    }
+    const path =
+      data.output.path ||
+      createPresentationBlobUrl({
+        contentBase64: data.output.contentBase64,
+        mimeType: data.output.mimeType,
+      });
+    const filename = data.output.filename || `${spec.title}.pptx`;
+    const nextPlan: PresentationTaskPlan = {
+      ...plan,
+      latestPptx: {
+        filename,
+        path,
+        createdAt: data.output.createdAt || new Date().toISOString(),
+        slideCount: data.output.slideCount || spec.slides.length,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    updateStoredDocument(item.sourceId, {
+      structuredPayload: nextPlan,
+      summary: item.summary,
+    });
+    setGptMessages((prev) => [
+      ...prev,
+      createLibraryUiMessage(
+        [
+          "Presentation PPTX created from design plan.",
+          "",
+          `Title: ${spec.title}`,
+          `Slides: ${spec.slides.length}`,
+          path ? `PPTX: [${filename}](${path})` : `File: ${filename}`,
+        ].join("\n")
+      ),
+    ]);
+    focusGptPanel();
+  };
+
   const importGoogleDriveFile = () => importGoogleDriveFilePicker();
 
   const indexGoogleDriveFolder = () => indexGoogleDriveFolderPicker();
@@ -222,6 +351,7 @@ export function useReferenceLibraryUiActions({
     showAllLibraryItemsInChat,
     sendAllLibraryItemsToKin,
     uploadLibraryItemToGoogleDrive,
+    renderPresentationPlanToPpt,
     importGoogleDriveFile,
     indexGoogleDriveFolder,
     importGoogleDriveFolder,

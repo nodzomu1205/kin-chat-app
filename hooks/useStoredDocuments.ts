@@ -172,7 +172,9 @@ export function useStoredDocuments() {
 
   const updateStoredDocument = (
     documentId: string,
-    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
+    patch: Partial<
+      Pick<StoredDocument, "title" | "text" | "summary" | "structuredPayload">
+    >
   ) => {
     const updatedAt = new Date().toISOString();
     const existing = getStoredDocument(documentId);

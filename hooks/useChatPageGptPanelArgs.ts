@@ -137,6 +137,8 @@ export function useChatPageGptPanelArgs(
       onSendAllLibraryItemsToKin: args.references.onSendAllLibraryItemsToKin,
       onUploadLibraryItemToGoogleDrive:
         args.references.onUploadLibraryItemToGoogleDrive,
+      onRenderPresentationPlanToPpt:
+        args.references.onRenderPresentationPlanToPpt,
     },
     settings: {
       ...args.settings,
