@@ -1,6 +1,19 @@
 # Next Session Handover
 
-Updated: 2026-04-28
+Updated: 2026-04-30
+
+## Latest Handoff
+
+The newest active handoff is for PPT design task planning:
+
+- [`HANDOFF-2026-04-30.md`](./HANDOFF-2026-04-30.md)
+- [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
+- [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
+
+If the next session is about PPT design, start there before touching code. The
+main direction is to replace free-form slide `parts: [{ role, text }]` with a
+frame-based JSON model, then derive both the visible design text and renderer
+input from that canonical frame JSON.
 
 ## Stop Rule
 
