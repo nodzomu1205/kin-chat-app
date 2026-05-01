@@ -142,6 +142,9 @@ export function buildChatPageControllerServicesArgs(
     buildLibraryReferenceContext: args.references.buildLibraryReferenceContext,
     referenceLibraryItems: args.references.referenceLibraryItems,
     libraryIndexResponseCount: args.references.libraryIndexResponseCount,
+    imageLibraryReferenceEnabled:
+      args.references.imageLibraryReferenceEnabled,
+    imageLibraryReferenceCount: args.references.imageLibraryReferenceCount,
     recordIngestedDocument: args.usage.recordIngestedDocument,
     updateStoredDocument: args.references.onSaveStoredDocument,
     gptMemorySettingsControls: args.gpt.gptMemorySettingsControls,
@@ -218,6 +221,9 @@ export function buildGptMessageActionArgs(
     kinMessages: groups.uiState.kinMessages,
     lastSearchContext: groups.search.lastSearchContext,
     libraryIndexResponseCount: groups.services.libraryIndexResponseCount,
+    imageLibraryReferenceEnabled:
+      groups.services.imageLibraryReferenceEnabled,
+    imageLibraryReferenceCount: groups.services.imageLibraryReferenceCount,
     processMultipartTaskDoneText: groups.search.processMultipartTaskDoneText,
     recordIngestedDocument: groups.services.recordIngestedDocument,
     updateStoredDocument: groups.services.updateStoredDocument,
@@ -302,7 +308,11 @@ export function buildTaskDraftActionArgs(
     gptLoading: groups.uiState.gptLoading,
     gptMemoryRuntime: groups.services.gptMemoryRuntime,
     gptMessages: groups.uiState.gptMessages,
+    imageLibraryReferenceEnabled:
+      groups.services.imageLibraryReferenceEnabled,
+    imageLibraryReferenceCount: groups.services.imageLibraryReferenceCount,
     lastSearchContext: groups.search.lastSearchContext,
+    referenceLibraryItems: groups.services.referenceLibraryItems,
     setCurrentTaskDraft: groups.task.setCurrentTaskDraft,
     setGptInput: groups.uiState.setGptInput,
     setGptLoading: groups.uiState.setGptLoading,

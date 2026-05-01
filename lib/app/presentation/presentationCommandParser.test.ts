@@ -2,83 +2,97 @@ import { describe, expect, it } from "vitest";
 import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
 
 describe("parsePptCommand", () => {
-  it("detects new draft requests", () => {
-    expect(
-      parsePptCommand("/ppt\n部長層向けの提案プレゼンを10枚で作って")
-    ).toMatchObject({
+  it("does not route new draft requests through the legacy /ppt draft flow", () => {
+    const parsed = parsePptCommand("/ppt\nCreate a cotton supply chain deck");
+
+    expect(parsed).toMatchObject({
       isPptCommand: true,
-      intent: "createDraft",
-      body: "部長層向けの提案プレゼンを10枚で作って",
+      body: "Create a cotton supply chain deck",
     });
+    expect(parsed.intent).toBeUndefined();
   });
 
-  it("detects document-scoped revisions", () => {
-    expect(
-      parsePptCommand(
-        "/ppt\nDocument ID: pres_123\n3枚目の内容をもっとリッチにして"
-      )
-    ).toMatchObject({
-      isPptCommand: true,
-      documentId: "pres_123",
-      intent: "reviseDraft",
-      body: "3枚目の内容をもっとリッチにして",
-    });
-  });
+  it("does not route document-scoped edits through the legacy /ppt draft flow", () => {
+    const parsed = parsePptCommand(
+      "/ppt\nDocument ID: ppt_123\nMake slide 3 richer"
+    );
 
-  it("treats Japanese wording that includes 見せて as a revision when it has edit details", () => {
-    expect(
-      parsePptCommand(
-        "/ppt\nDocument ID: pres_123\n消費者体験に力点を置いてもっとリッチな内容にして。ボックスやフローチャートを使って分かりやすく見せて。"
-      )
-    ).toMatchObject({
+    expect(parsed).toMatchObject({
       isPptCommand: true,
-      documentId: "pres_123",
-      intent: "reviseDraft",
+      documentId: "ppt_123",
+      body: "Make slide 3 richer",
     });
+    expect(parsed.intent).toBeUndefined();
   });
 
   it("detects concise preview requests", () => {
-    expect(
-      parsePptCommand("/ppt\nDocument ID: pres_123\nプレビュー")
-    ).toMatchObject({
+    expect(parsePptCommand("/ppt\nDocument ID: ppt_123\npreview")).toMatchObject({
       isPptCommand: true,
-      documentId: "pres_123",
+      documentId: "ppt_123",
       intent: "showPreview",
     });
   });
 
   it("detects render requests", () => {
     expect(
-      parsePptCommand("/ppt\nDocument ID: pres_123\nImages: on\nCreate PPT")
+      parsePptCommand("/ppt\nDocument ID: ppt_123\nImages: on\nCreate PPT")
     ).toMatchObject({
-      documentId: "pres_123",
+      documentId: "ppt_123",
       intent: "renderPptx",
+      generateImages: true,
+      imageMode: "hybrid",
+      body: "Create PPT",
+    });
+  });
+
+  it("parses PPT image modes", () => {
+    expect(parsePptCommand("/ppt\nImages: off\nCreate PPT")).toMatchObject({
+      imageMode: "off",
+      generateImages: false,
+      body: "Create PPT",
+    });
+    expect(
+      parsePptCommand("/ppt\nImages: on, library\nCreate PPT")
+    ).toMatchObject({
+      imageMode: "library",
+      generateImages: true,
+      body: "Create PPT",
+    });
+    expect(parsePptCommand("/ppt\nImages: on, API\nCreate PPT")).toMatchObject({
+      imageMode: "api",
+      generateImages: true,
+      body: "Create PPT",
+    });
+    expect(
+      parsePptCommand("/ppt\nImages: on, library, API\nCreate PPT")
+    ).toMatchObject({
+      imageMode: "hybrid",
       generateImages: true,
       body: "Create PPT",
     });
   });
 
-  it("parses density metadata case-insensitively and removes it from the body", () => {
-    expect(
-      parsePptCommand("/ppt\nDensity: Detailed\n事業計画を10枚でまとめて")
-    ).toMatchObject({
+  it("parses density metadata without reviving the legacy draft intent", () => {
+    const createParsed = parsePptCommand(
+      "/ppt\nDensity: Detailed\nCreate a cotton deck"
+    );
+    expect(createParsed).toMatchObject({
       isPptCommand: true,
-      intent: "createDraft",
       density: "detailed",
-      body: "事業計画を10枚でまとめて",
+      body: "Create a cotton deck",
     });
+    expect(createParsed.intent).toBeUndefined();
 
-    expect(
-      parsePptCommand(
-        "/ppt\nDocument ID: pres_123\nDensity: DENSE\n内容をもっと厚くして"
-      )
-    ).toMatchObject({
+    const editParsed = parsePptCommand(
+      "/ppt\nDocument ID: ppt_123\nDensity: DENSE\nMake it richer"
+    );
+    expect(editParsed).toMatchObject({
       isPptCommand: true,
-      intent: "reviseDraft",
-      documentId: "pres_123",
+      documentId: "ppt_123",
       density: "dense",
-      body: "内容をもっと厚くして",
+      body: "Make it richer",
     });
+    expect(editParsed.intent).toBeUndefined();
   });
 
   it("detects render requests even without a document id", () => {
@@ -90,9 +104,9 @@ describe("parsePptCommand", () => {
   });
 
   it("ignores normal messages", () => {
-    expect(parsePptCommand("普通のメッセージ")).toMatchObject({
+    expect(parsePptCommand("normal message")).toMatchObject({
       isPptCommand: false,
-      body: "普通のメッセージ",
+      body: "normal message",
     });
   });
 });

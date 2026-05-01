@@ -3,8 +3,10 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { NextResponse } from "next/server";
 import {
-  hydrateFrameSpecVisualAssets,
+  resolveFrameSpecVisualAssets,
   stripFrameSpecVisualAssets,
+  type PresentationImageMode,
+  type PresentationLibraryImageAsset,
 } from "@/lib/server/presentation/imageGeneration";
 
 export const runtime = "nodejs";
@@ -20,6 +22,8 @@ export async function POST(req: Request) {
       spec?: unknown;
       frameSpec?: unknown;
       generateImages?: unknown;
+      imageMode?: unknown;
+      libraryImageAssets?: unknown;
     };
     const documentId =
       typeof body.documentId === "string" && body.documentId.trim()
@@ -45,10 +49,13 @@ export async function POST(req: Request) {
         ? parseFramePresentationSpec(body.frameSpec)
         : null;
     const shouldGenerateImages = body.generateImages === true;
+    const imageMode = normalizeImageMode(body.imageMode, shouldGenerateImages);
+    const libraryImageAssets = normalizeLibraryImageAssets(body.libraryImageAssets);
     const parsedFrameSpec = parsedFrameSpecInput
       ? shouldGenerateImages
-        ? await hydrateFrameSpecVisualAssets(parsedFrameSpecInput, {
-            enabled: true,
+        ? await resolveFrameSpecVisualAssets(parsedFrameSpecInput, {
+            mode: imageMode,
+            libraryImageAssets,
           })
         : stripFrameSpecVisualAssets(parsedFrameSpecInput)
       : null;
@@ -90,10 +97,10 @@ export async function POST(req: Request) {
         createdAt: new Date().toISOString(),
         slideCount: parsedFrameSpec?.slideFrames.length || parsedSpec?.slides.length || 0,
         generatedImages:
-          parsedFrameSpec && shouldGenerateImages
+          parsedFrameSpec && imageMode !== "off"
             ? collectGeneratedImages(parsedFrameSpec as never)
             : [],
-        frameSpec: parsedFrameSpec && shouldGenerateImages ? parsedFrameSpec : undefined,
+        frameSpec: parsedFrameSpec && imageMode !== "off" ? parsedFrameSpec : undefined,
       },
       metadata: {
         title: parsedInput.title,
@@ -107,6 +114,59 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+function normalizeImageMode(
+  value: unknown,
+  shouldGenerateImages: boolean
+): PresentationImageMode {
+  if (
+    value === "off" ||
+    value === "library" ||
+    value === "api" ||
+    value === "hybrid"
+  ) {
+    return value;
+  }
+  return shouldGenerateImages ? "api" : "off";
+}
+
+function normalizeLibraryImageAssets(value: unknown): PresentationLibraryImageAsset[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const record = item as Record<string, unknown>;
+    if (typeof record.imageId !== "string" || typeof record.base64 !== "string") {
+      return [];
+    }
+    return [
+      {
+        imageId: record.imageId,
+        title: typeof record.title === "string" ? record.title : undefined,
+        fileName: typeof record.fileName === "string" ? record.fileName : undefined,
+        mimeType: typeof record.mimeType === "string" ? record.mimeType : "image/png",
+        base64: record.base64,
+        description:
+          typeof record.description === "string" ? record.description : undefined,
+        prompt: typeof record.prompt === "string" ? record.prompt : undefined,
+        originalPrompt:
+          typeof record.originalPrompt === "string"
+            ? record.originalPrompt
+            : undefined,
+        widthPx: typeof record.widthPx === "number" ? record.widthPx : undefined,
+        heightPx: typeof record.heightPx === "number" ? record.heightPx : undefined,
+        aspectRatio:
+          typeof record.aspectRatio === "number" ? record.aspectRatio : undefined,
+        orientation:
+          record.orientation === "landscape" ||
+          record.orientation === "portrait" ||
+          record.orientation === "square" ||
+          record.orientation === "unknown"
+            ? record.orientation
+            : undefined,
+      },
+    ];
+  });
 }
 
 function collectGeneratedImages(frameSpec: {

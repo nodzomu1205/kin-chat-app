@@ -38,8 +38,11 @@ function renderLibraryDrawer(
       onImportGoogleDriveFile={() => Promise.resolve()}
       onIndexGoogleDriveFolder={() => Promise.resolve()}
       onImportGoogleDriveFolder={() => Promise.resolve()}
+      onImportGoogleDriveImageFile={() => Promise.resolve()}
       onImportDeviceFile={() => Promise.resolve()}
+      onImportDeviceImageFile={() => Promise.resolve()}
       deviceImportAccept=".txt,.md,.pdf,image/*"
+      imageImportAccept="image/*"
       {...props}
     />
   );
@@ -76,6 +79,7 @@ describe("LibraryDrawer", () => {
         onImportGoogleDriveFolder={() => Promise.resolve()}
         deviceInputId="device-import-test"
         onImportDeviceFile={() => Promise.resolve()}
+        onImportDeviceImageFile={() => Promise.resolve()}
         deviceImportAccept=".txt,.md,.pdf,image/*"
         deviceImportDisabled={false}
         onShowAllLibraryItemsInChat={() => Promise.resolve()}

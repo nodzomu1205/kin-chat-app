@@ -263,6 +263,7 @@ export type PresentationTaskVisualRequest = {
   brief: string;
   prompt?: string;
   promptNote?: string;
+  preferredImageId?: string;
   labels?: string[];
   asset?: {
     imageId?: string;
@@ -270,6 +271,10 @@ export type PresentationTaskVisualRequest = {
     base64: string;
     alt?: string;
     sourcePromptHash?: string;
+    widthPx?: number;
+    heightPx?: number;
+    aspectRatio?: number;
+    orientation?: "landscape" | "portrait" | "square" | "unknown";
   };
   renderStyle?: {
     orientation?: "horizontal" | "vertical";

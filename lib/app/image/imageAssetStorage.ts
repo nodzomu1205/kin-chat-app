@@ -16,6 +16,10 @@ type StoredImageAsset = {
   fileName?: string;
   fileSize?: number;
   originalMimeType?: string;
+  widthPx?: number;
+  heightPx?: number;
+  aspectRatio?: number;
+  orientation?: GeneratedImageLibraryPayload["orientation"];
   alt?: string;
   sourcePromptHash?: string;
   options?: GeneratedImageLibraryPayload["options"];
@@ -46,6 +50,10 @@ export async function saveGeneratedImageAsset(
       fileName: payload.fileName,
       fileSize: payload.fileSize,
       originalMimeType: payload.originalMimeType,
+      widthPx: payload.widthPx,
+      heightPx: payload.heightPx,
+      aspectRatio: payload.aspectRatio,
+      orientation: payload.orientation,
       alt: payload.alt,
       sourcePromptHash: payload.sourcePromptHash,
       options: payload.options,
@@ -88,6 +96,10 @@ export async function loadGeneratedImagePayloadById(
     fileName: asset.fileName,
     fileSize: asset.fileSize,
     originalMimeType: asset.originalMimeType,
+    widthPx: asset.widthPx,
+    heightPx: asset.heightPx,
+    aspectRatio: asset.aspectRatio,
+    orientation: asset.orientation,
     alt: asset.alt,
     sourcePromptHash: asset.sourcePromptHash,
     options: asset.options || inferStoredImageOptions(asset),
@@ -114,6 +126,10 @@ export async function hydrateGeneratedImagePayload(
     fileName: payload.fileName || asset.fileName,
     fileSize: payload.fileSize ?? asset.fileSize,
     originalMimeType: payload.originalMimeType || asset.originalMimeType,
+    widthPx: payload.widthPx ?? asset.widthPx,
+    heightPx: payload.heightPx ?? asset.heightPx,
+    aspectRatio: payload.aspectRatio ?? asset.aspectRatio,
+    orientation: payload.orientation || asset.orientation,
     alt: payload.alt || asset.alt,
     sourcePromptHash: payload.sourcePromptHash || asset.sourcePromptHash,
     options: payload.options || asset.options || inferStoredImageOptions(asset),

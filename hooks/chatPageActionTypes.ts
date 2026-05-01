@@ -205,6 +205,8 @@ export type ChatPageServicesArgs = {
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceEnabled: boolean;
+  imageLibraryReferenceCount: number;
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
@@ -263,6 +265,8 @@ export type UseGptMessageActionsArgs = Pick<
     | "kinMessages"
   | "lastSearchContext"
   | "libraryIndexResponseCount"
+  | "imageLibraryReferenceEnabled"
+  | "imageLibraryReferenceCount"
   | "processMultipartTaskDoneText"
   | "recordIngestedDocument"
   | "updateStoredDocument"
@@ -336,7 +340,10 @@ export type UseTaskDraftActionsArgs = Pick<
   | "gptLoading"
   | "gptMemoryRuntime"
   | "gptMessages"
+  | "imageLibraryReferenceEnabled"
+  | "imageLibraryReferenceCount"
   | "lastSearchContext"
+  | "referenceLibraryItems"
   | "setCurrentTaskDraft"
   | "setGptInput"
   | "setGptLoading"

@@ -71,6 +71,10 @@ export function buildGeneratedImageDisplayText(args: {
     | "fileName"
     | "fileSize"
     | "originalMimeType"
+    | "widthPx"
+    | "heightPx"
+    | "aspectRatio"
+    | "orientation"
     | "options"
     | "usage"
   >;
@@ -89,6 +93,13 @@ export function buildGeneratedImageDisplayText(args: {
     payload.fileName ? `File: ${payload.fileName}` : "",
     typeof payload.fileSize === "number"
       ? `File size: ${formatImageFileSizeKb(payload.fileSize)}`
+      : "",
+    payload.widthPx && payload.heightPx
+      ? `Dimensions: ${payload.widthPx} x ${payload.heightPx}`
+      : "",
+    payload.orientation ? `Orientation: ${payload.orientation}` : "",
+    typeof payload.aspectRatio === "number"
+      ? `Aspect ratio: ${payload.aspectRatio.toFixed(3)}`
       : "",
     payload.originalMimeType ? `Original MIME: ${payload.originalMimeType}` : "",
     args.imagePath ? `![${payload.imageId}](${args.imagePath})` : "",

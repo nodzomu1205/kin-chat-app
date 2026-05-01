@@ -5,6 +5,7 @@ type VisualRequestWithAsset = {
   brief?: string;
   prompt?: string;
   promptNote?: string;
+  preferredImageId?: string;
   asset?: {
     imageId?: string;
     mimeType: string;
@@ -12,6 +13,10 @@ type VisualRequestWithAsset = {
     alt?: string;
     sourcePromptHash?: string;
     usage?: ImageGenerationUsage;
+    widthPx?: number;
+    heightPx?: number;
+    aspectRatio?: number;
+    orientation?: "landscape" | "portrait" | "square" | "unknown";
   };
 };
 
@@ -23,6 +28,23 @@ type FrameSpecWithVisuals = {
   slideFrames?: Array<{
     blocks?: FrameBlockWithVisual[];
   }>;
+};
+
+export type PresentationImageMode = "off" | "library" | "api" | "hybrid";
+
+export type PresentationLibraryImageAsset = {
+  imageId: string;
+  title?: string;
+  fileName?: string;
+  mimeType: string;
+  base64: string;
+  description?: string;
+  prompt?: string;
+  originalPrompt?: string;
+  widthPx?: number;
+  heightPx?: number;
+  aspectRatio?: number;
+  orientation?: "landscape" | "portrait" | "square" | "unknown";
 };
 
 const OPENAI_IMAGES_URL = "https://api.openai.com/v1/images/generations";
@@ -107,6 +129,70 @@ export async function hydrateFrameSpecVisualAssets<T>(
   return next as T;
 }
 
+export async function resolveFrameSpecVisualAssets<T>(
+  frameSpec: T,
+  options: {
+    mode?: PresentationImageMode;
+    libraryImageAssets?: PresentationLibraryImageAsset[];
+  } = {}
+): Promise<T> {
+  const mode = options.mode || "off";
+  if (mode === "off") return stripFrameSpecVisualAssets(frameSpec);
+
+  const next = JSON.parse(JSON.stringify(frameSpec)) as T & FrameSpecWithVisuals;
+  const usedImageIds = new Set<string>();
+  for (const slide of next.slideFrames || []) {
+    for (const block of slide.blocks || []) {
+      const visual = block.visualRequest;
+      if (!shouldGenerateVisual(visual)) continue;
+      if (mode === "library" || mode === "hybrid") {
+        const matched = findBestLibraryImageAsset({
+          visual,
+          assets: options.libraryImageAssets || [],
+          usedImageIds,
+        });
+        if (matched) {
+          usedImageIds.add(matched.imageId);
+          visual.asset = {
+            imageId: matched.imageId,
+            mimeType: matched.mimeType || "image/png",
+            base64: matched.base64,
+            alt: matched.description || matched.title || visual.brief,
+            sourcePromptHash: matched.imageId,
+            widthPx: matched.widthPx,
+            heightPx: matched.heightPx,
+            aspectRatio: matched.aspectRatio,
+            orientation: matched.orientation,
+          };
+          continue;
+        }
+      }
+      if (mode === "api" || mode === "hybrid") {
+        const prompt = buildImagePrompt(visual);
+        const sourcePromptHash = hashPrompt(prompt);
+        const imageId = `img_${sourcePromptHash}`;
+        if (visual.asset?.sourcePromptHash === sourcePromptHash && visual.asset.base64) {
+          continue;
+        }
+        const apiKey = process.env.OPENAI_API_KEY?.trim();
+        if (!apiKey) {
+          throw new Error("OPENAI_API_KEY is not set.");
+        }
+        const generated = await generateOpenAIImage({ apiKey, prompt });
+        visual.asset = {
+          imageId,
+          mimeType: generated.mimeType,
+          base64: generated.base64,
+          alt: visual.brief || "Generated presentation visual",
+          sourcePromptHash,
+          usage: generated.usage,
+        };
+      }
+    }
+  }
+  return next as T;
+}
+
 export function stripFrameSpecVisualAssets<T>(frameSpec: T): T {
   const next = JSON.parse(JSON.stringify(frameSpec)) as T & FrameSpecWithVisuals;
   for (const slide of next.slideFrames || []) {
@@ -157,6 +243,81 @@ function shouldGenerateVisual(
   if (!visual?.prompt?.trim() && !visual?.promptNote?.trim() && !visual?.brief?.trim()) return false;
   if (visual.type === "none" || visual.type === "table") return false;
   return true;
+}
+
+function findBestLibraryImageAsset(args: {
+  visual: VisualRequestWithAsset;
+  assets: PresentationLibraryImageAsset[];
+  usedImageIds: Set<string>;
+}) {
+  const preferredImageId = args.visual.preferredImageId?.trim();
+  if (preferredImageId && !args.usedImageIds.has(preferredImageId)) {
+    const exact = args.assets.find(
+      (asset) => asset.base64 && asset.imageId === preferredImageId
+    );
+    if (exact) return exact;
+  }
+
+  const visualText = normalizeMatchText([
+    args.visual.brief,
+    args.visual.prompt,
+    args.visual.promptNote,
+    args.visual.type,
+    args.visual.preferredImageId,
+  ]);
+  if (!visualText) return null;
+  const scored = args.assets
+    .filter((asset) => asset.base64 && !args.usedImageIds.has(asset.imageId))
+    .map((asset) => ({
+      asset,
+      score: scoreLibraryImageMatch(visualText, asset),
+    }))
+    .filter((item) => item.score >= 2)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.asset || null;
+}
+
+function scoreLibraryImageMatch(
+  visualText: string,
+  asset: PresentationLibraryImageAsset
+) {
+  const assetText = normalizeMatchText([
+    asset.title,
+    asset.fileName,
+    asset.description,
+    asset.prompt,
+    asset.originalPrompt,
+  ]);
+  if (!assetText) return 0;
+  const visualTerms = new Set(
+    visualText.split(/\s+/).filter((term) => term.length >= 2)
+  );
+  let score = 0;
+  for (const term of visualTerms) {
+    if (assetText.includes(term)) score += term.length >= 4 ? 2 : 1;
+  }
+  const visualCjk = cjkCharacters(visualText);
+  const assetCjk = cjkCharacters(assetText);
+  if (visualCjk.length >= 4 && assetCjk.length >= 4) {
+    const assetSet = new Set(assetCjk);
+    const overlap = new Set(visualCjk.filter((char) => assetSet.has(char))).size;
+    score += Math.floor(overlap / 2);
+  }
+  return score;
+}
+
+function cjkCharacters(value: string) {
+  return Array.from(value).filter((char) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(char));
+}
+
+function normalizeMatchText(parts: Array<string | undefined>) {
+  return parts
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function buildImagePrompt(visual: VisualRequestWithAsset) {

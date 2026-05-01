@@ -56,6 +56,7 @@ function isDriveFolder(entry: Pick<DriveFolderNode, "mimeType">) {
 
 export function canImportDriveMimeType(mimeType?: string): mimeType is string {
   if (!mimeType) return false;
+  if (mimeType.startsWith("image/")) return true;
   if (mimeType.startsWith("text/")) return true;
   if (mimeType === "application/pdf") return true;
   if (mimeType === "application/json") return true;
@@ -63,6 +64,10 @@ export function canImportDriveMimeType(mimeType?: string): mimeType is string {
   if (mimeType === "application/vnd.google-apps.document") return true;
   if (mimeType === "application/vnd.google-apps.spreadsheet") return true;
   return false;
+}
+
+export function isDriveImageMimeType(mimeType?: string): boolean {
+  return !!mimeType && mimeType.startsWith("image/");
 }
 
 function isImportableDriveEntry(entry: Pick<DriveFolderNode, "mimeType">) {

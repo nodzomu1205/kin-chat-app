@@ -16,6 +16,7 @@ import {
   runDriveFolderImport,
   runDrivePickedDocumentsImport,
   runDriveLibraryItemUpload,
+  type DriveImportOptions,
 } from "@/hooks/googleDriveImportExecution";
 import {
   useGoogleDrivePickerRuntime,
@@ -76,7 +77,7 @@ export function useGoogleDrivePicker({
   const importDriveFile = useCallback(
     async (
       file: { id: string; name: string; mimeType: string; path?: string },
-      options: { manageLoading?: boolean } = {}
+      options: DriveImportOptions = {}
     ) => {
       const manageLoading = options.manageLoading !== false;
       if (manageLoading) setIngestLoading(true);
@@ -115,7 +116,7 @@ export function useGoogleDrivePicker({
   const importDriveImageFile = useCallback(
     async (
       file: { id: string; name: string; mimeType: string; path?: string },
-      options: { manageLoading?: boolean } = {}
+      options: DriveImportOptions = {}
     ) => {
       const manageLoading = options.manageLoading !== false;
       if (manageLoading) setIngestLoading(true);
@@ -123,11 +124,15 @@ export function useGoogleDrivePicker({
       try {
         await runDriveImageFileImport({
           file,
+          sidecarFile: options.sidecarFile,
+          sidecarText: options.sidecarText,
+          sidecarFileName: options.sidecarFileName,
           ensureAccessToken,
           ingestOptions,
           autoGenerateLibrarySummary,
           currentTaskId,
           imageLibraryImportEnabled,
+          forceImageLibraryImportEnabled: options.forceImageLibraryImportEnabled,
           imageLibraryImportMode,
           recordIngestedDocument,
           appendUiMessage: (text, sourceType) => {
@@ -167,13 +172,21 @@ export function useGoogleDrivePicker({
             appendUiMessage(setGptMessages, text, sourceType);
           },
           importDriveFile,
+          importDriveImageFile,
           focusGptPanel,
         });
       } finally {
         setIngestLoading(false);
       }
     },
-    [ensureAccessToken, focusGptPanel, importDriveFile, setGptMessages, setIngestLoading]
+    [
+      ensureAccessToken,
+      focusGptPanel,
+      importDriveFile,
+      importDriveImageFile,
+      setGptMessages,
+      setIngestLoading,
+    ]
   );
 
   const openPickerForMode = useCallback(async (mode: DrivePickerMode) => {
@@ -187,17 +200,25 @@ export function useGoogleDrivePicker({
           docs,
           mode,
           importDriveFile,
+          importDriveImageFile,
           importDriveFolder,
         });
       },
     });
-  }, [ensureAccessToken, folderId, importDriveFile, importDriveFolder]);
+  }, [
+    ensureAccessToken,
+    folderId,
+    importDriveFile,
+    importDriveFolder,
+    importDriveImageFile,
+  ]);
 
   const openPickerForModeWithImporter = useCallback(
     async (
       mode: DrivePickerMode,
       fileImporter: (
-        file: { id: string; name: string; mimeType: string; path?: string }
+        file: { id: string; name: string; mimeType: string; path?: string },
+        options?: DriveImportOptions
       ) => Promise<void>
     ) => {
       const accessToken = await ensureAccessToken();
@@ -210,7 +231,9 @@ export function useGoogleDrivePicker({
             docs,
             mode,
             importDriveFile: fileImporter,
+            importDriveImageFile: fileImporter,
             importDriveFolder,
+            imageImportMode: true,
           });
         },
       });

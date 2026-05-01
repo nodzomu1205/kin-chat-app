@@ -222,7 +222,11 @@ export function formatPresentationSlideFramePlanLines(
   frames.forEach((frame, index) => {
     if (index > 0) lines.push("");
     lines.push(`Slide ${frame.slideNumber}: ${frame.title || "Untitled"}`);
-    lines.push(`Frame: ${frame.masterFrameId} / ${frame.layoutFrameId}`);
+    lines.push(
+      deckFrame?.masterFrameId === frame.masterFrameId
+        ? `Frame: ${frame.layoutFrameId}`
+        : `Frame: ${frame.masterFrameId} / ${frame.layoutFrameId}`
+    );
     frame.blocks.forEach((block) => {
       formatBlockDisplayLines(block).forEach((line) => lines.push(line));
     });
@@ -429,13 +433,15 @@ function normalizeVisualRequest(value: unknown): PresentationTaskVisualRequest |
   const brief = stringValue(candidate.brief || candidate.text || candidate.label);
   const prompt = stringValue(candidate.prompt || candidate.generationPrompt);
   const promptNote = stringValue(candidate.promptNote || candidate.promptStatus || candidate.note);
+  const preferredImageId = stringValue(candidate.preferredImageId || candidate.imageId || candidate.assetId);
   const labels = stringArray(candidate.labels);
-  if (!brief && !prompt && !promptNote && labels.length === 0) return null;
+  if (!brief && !prompt && !promptNote && !preferredImageId && labels.length === 0) return null;
   return {
     type: VISUAL_TYPES.has(type) ? (type as PresentationTaskVisualRequest["type"]) : "diagram",
     brief,
     prompt: prompt || undefined,
     promptNote: promptNote || undefined,
+    preferredImageId: preferredImageId || undefined,
     labels: labels.length > 0 ? labels : undefined,
     renderStyle: normalizeVisualRenderStyle(candidate.renderStyle),
   };
@@ -630,7 +636,9 @@ function formatBlockDisplayLines(block: PresentationTaskSlideBlock) {
       lines.push("  - ビジュアル内表示ラベル:");
       block.visualRequest.labels.forEach((label) => lines.push(`    - ${label}`));
     }
-    if (block.visualRequest.asset?.imageId) {
+    if (block.visualRequest.preferredImageId) {
+      lines.push(`  - Image ID: ${block.visualRequest.preferredImageId}`);
+    } else if (block.visualRequest.asset?.imageId) {
       lines.push(`  - Image ID: ${block.visualRequest.asset.imageId}`);
     }
   }

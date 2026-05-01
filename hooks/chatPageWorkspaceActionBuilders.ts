@@ -107,6 +107,11 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onChangeLibraryReferenceMode: args.onChangeLibraryReferenceMode,
     onChangeLibraryIndexResponseCount: args.onChangeLibraryIndexResponseCount,
     onChangeLibraryReferenceCount: args.onChangeLibraryReferenceCount,
+    onChangeImageLibraryReferenceEnabled:
+      args.onChangeImageLibraryReferenceEnabled,
+    onChangeImageLibraryReferenceCount:
+      args.onChangeImageLibraryReferenceCount,
+    onChangeImageLibraryCardLimit: args.onChangeImageLibraryCardLimit,
     onChangeGoogleDriveFolderLink: args.onChangeGoogleDriveFolderLink,
     onOpenGoogleDriveFolder: args.onOpenGoogleDriveFolder,
     onImportGoogleDriveFile: args.onImportGoogleDriveFile,

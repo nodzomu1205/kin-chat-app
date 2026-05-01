@@ -5,6 +5,7 @@ import { pillButton } from "@/components/panels/gpt/gptPanelStyles";
 import { GPT_GOOGLE_DRIVE_TEXT } from "@/components/panels/gpt/gptGoogleDriveText";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import type { LibraryBulkActionMode } from "@/lib/app/reference-library/libraryItemAggregation";
+import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
 
 export function iconButton(tone: "default" | "danger" = "default"): React.CSSProperties {
   return {
@@ -30,16 +31,21 @@ type ImportControlsProps = {
   setDriveImportMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onOpenGoogleDriveFolder: () => void;
   onImportGoogleDriveFile: () => void | Promise<void>;
-  onImportGoogleDriveImageFile: () => void | Promise<void>;
   onIndexGoogleDriveFolder: () => void | Promise<void>;
   onImportGoogleDriveFolder: () => void | Promise<void>;
   deviceInputId: string;
-  onImportDeviceFile: (file: File) => void | Promise<void>;
+  onImportDeviceFile: (
+    file: File,
+    sidecarText?: ImageImportSidecarText
+  ) => void | Promise<void>;
+  onImportDeviceImageFile: (
+    file: File,
+    sidecarText?: ImageImportSidecarText
+  ) => void | Promise<void>;
   deviceImportAccept: string;
   deviceImportDisabled: boolean;
   onShowAllLibraryItemsInChat: (mode: LibraryBulkActionMode) => void | Promise<void>;
   onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
-  importTarget: "library" | "images";
   initialBulkActionsOpen?: boolean;
 };
 
@@ -48,16 +54,15 @@ export function LibraryImportControls({
   setDriveImportMenuOpen,
   onOpenGoogleDriveFolder,
   onImportGoogleDriveFile,
-  onImportGoogleDriveImageFile,
   onIndexGoogleDriveFolder,
   onImportGoogleDriveFolder,
   deviceInputId,
   onImportDeviceFile,
+  onImportDeviceImageFile,
   deviceImportAccept,
   deviceImportDisabled,
   onShowAllLibraryItemsInChat,
   onSendAllLibraryItemsToKin,
-  importTarget,
   initialBulkActionsOpen = false,
 }: ImportControlsProps) {
   const [bulkActionsOpen, setBulkActionsOpen] = React.useState(initialBulkActionsOpen);
@@ -226,12 +231,17 @@ export function LibraryImportControls({
               id={deviceInputId}
               type="file"
               accept={deviceImportAccept}
+              multiple
               disabled={deviceImportDisabled}
               onChange={(event) => {
-                const file = event.target.files?.[0];
+                const files = Array.from(event.target.files || []);
                 event.currentTarget.value = "";
-                if (!file || deviceImportDisabled) return;
-                void onImportDeviceFile(file);
+                if (files.length === 0 || deviceImportDisabled) return;
+                void importFilesByType({
+                  files,
+                  onImportDeviceFile,
+                  onImportDeviceImageFile,
+                });
               }}
               style={{
                 position: "absolute",
@@ -261,9 +271,7 @@ export function LibraryImportControls({
               <DriveMenuButton
                 onClick={() => {
                   setDriveImportMenuOpen(false);
-                  void (importTarget === "images"
-                    ? onImportGoogleDriveImageFile()
-                    : onImportGoogleDriveFile());
+                  void onImportGoogleDriveFile();
                 }}
               >
                 {GPT_GOOGLE_DRIVE_TEXT.settings.importFile}
@@ -329,6 +337,64 @@ export function LibraryImportControls({
       ) : null}
     </div>
   );
+}
+
+async function importFilesByType(args: {
+  files: File[];
+  onImportDeviceFile: (
+    file: File,
+    sidecarText?: ImageImportSidecarText
+  ) => void | Promise<void>;
+  onImportDeviceImageFile: (
+    file: File,
+    sidecarText?: ImageImportSidecarText
+  ) => void | Promise<void>;
+}) {
+  const sidecars = args.files.filter(isTextSidecarFile);
+  const images = args.files.filter(isImageFile);
+  const pairedSidecars = new Set<File>();
+  for (const image of images) {
+    const sidecar = findMatchingSidecarFile(image, sidecars);
+    if (sidecar) pairedSidecars.add(sidecar);
+    await args.onImportDeviceImageFile(
+      image,
+      sidecar
+        ? {
+            fileName: sidecar.name,
+            text: await sidecar.text(),
+          }
+        : undefined
+    );
+  }
+  for (const file of args.files) {
+    if (isImageFile(file) || pairedSidecars.has(file)) continue;
+    await args.onImportDeviceFile(file);
+  }
+}
+
+function isImageFile(file: File) {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name);
+}
+
+function isTextSidecarFile(file: File) {
+  if (file.type.startsWith("text/")) return true;
+  return /\.(txt|md|json)$/i.test(file.name);
+}
+
+function findMatchingSidecarFile(image: File, sidecars: File[]) {
+  const imageKey = sidecarKey(image.name);
+  return sidecars.find((sidecar) => sidecarKey(sidecar.name) === imageKey);
+}
+
+function sidecarKey(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
+    .replace(/\.generated-image$/u, "")
+    .replace(/\.(?:txt|md|json)$/u, "")
+    .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
+    .trim();
 }
 
 function DriveMenuButton({

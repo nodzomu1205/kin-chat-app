@@ -276,6 +276,31 @@ export default function GptPanel(props: GptPanelProps) {
     await chat.onInjectFile(file, buildDeviceImportOptions(settings));
   };
 
+  const handleInjectFiles = async (files?: FileList | null) => {
+    if (!files || settings.ingestLoading || !settings.canInjectFile) return;
+    const fileList = Array.from(files);
+    const sidecars = fileList.filter(isTextSidecarFile);
+    const pairedSidecars = new Set<File>();
+    for (const file of fileList) {
+      if (!isImageFile(file)) continue;
+      const sidecar = findMatchingSidecarFile(file, sidecars);
+      if (sidecar) pairedSidecars.add(sidecar);
+      await references.onImportDeviceImageFile(
+        file,
+        sidecar
+          ? {
+              fileName: sidecar.name,
+              text: await sidecar.text(),
+            }
+          : undefined
+      );
+    }
+    for (const file of fileList) {
+      if (isImageFile(file) || pairedSidecars.has(file)) continue;
+      await handleInjectFile(file);
+    }
+  };
+
   const toggleSettingsWorkspace = (next: SettingsWorkspaceView) => {
     setViewState((prev) => toggleGptSettingsWorkspace(prev, next));
   };
@@ -447,7 +472,7 @@ export default function GptPanel(props: GptPanelProps) {
             }
             event.preventDefault();
             setDragActive(false);
-            await handleInjectFile(event.dataTransfer.files?.[0]);
+            await handleInjectFiles(event.dataTransfer.files);
           }}
         >
         {dragActive ? (
@@ -635,4 +660,29 @@ export default function GptPanel(props: GptPanelProps) {
       </div>
     </div>
   );
+}
+
+function isImageFile(file: File) {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name);
+}
+
+function isTextSidecarFile(file: File) {
+  if (file.type.startsWith("text/")) return true;
+  return /\.(txt|md|json)$/i.test(file.name);
+}
+
+function findMatchingSidecarFile(image: File, sidecars: File[]) {
+  const imageKey = sidecarKey(image.name);
+  return sidecars.find((sidecar) => sidecarKey(sidecar.name) === imageKey);
+}
+
+function sidecarKey(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
+    .replace(/\.generated-image$/u, "")
+    .replace(/\.(?:txt|md|json)$/u, "")
+    .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
+    .trim();
 }

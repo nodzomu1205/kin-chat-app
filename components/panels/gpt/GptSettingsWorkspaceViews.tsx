@@ -7,6 +7,7 @@ import type {
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
   LibrarySettingsSection,
+  ImageLibraryReferenceSettingsSection,
   ProtocolSettingsSection,
   SearchSettingsSection,
 } from "@/components/panels/gpt/GptSettingsSections";
@@ -199,6 +200,24 @@ export function LibrarySettingsWorkspaceView(props: {
           props.settings.onChangeLibraryIndexResponseCount
         }
         onChangeLibraryReferenceCount={props.settings.onChangeLibraryReferenceCount}
+      />
+
+      <ImageLibraryReferenceSettingsSection
+        isMobile={props.isMobile}
+        imageLibraryReferenceEnabled={
+          props.settings.imageLibraryReferenceEnabled
+        }
+        imageLibraryReferenceCount={props.settings.imageLibraryReferenceCount}
+        imageLibraryCardLimit={props.settings.imageLibraryCardLimit}
+        onChangeImageLibraryReferenceEnabled={
+          props.settings.onChangeImageLibraryReferenceEnabled
+        }
+        onChangeImageLibraryReferenceCount={
+          props.settings.onChangeImageLibraryReferenceCount
+        }
+        onChangeImageLibraryCardLimit={
+          props.settings.onChangeImageLibraryCardLimit
+        }
       />
 
       <SearchSettingsSection

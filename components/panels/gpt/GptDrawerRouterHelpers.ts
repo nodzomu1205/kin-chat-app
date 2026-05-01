@@ -61,6 +61,7 @@ type LibraryDrawerRouteInput = {
   settings: Pick<
     GptPanelSettingsProps,
     | "libraryReferenceCount"
+    | "imageLibraryReferenceCount"
     | "sourceDisplayCount"
     | "onOpenGoogleDriveFolder"
     | "onImportGoogleDriveFile"
@@ -242,6 +243,7 @@ export function buildLibraryDrawerProps({
     multipartAssemblies: references.multipartAssemblies,
     referenceLibraryItems: references.referenceLibraryItems,
     libraryReferenceCount: settings.libraryReferenceCount,
+    imageLibraryReferenceCount: settings.imageLibraryReferenceCount,
     sourceDisplayCount: settings.sourceDisplayCount,
     selectedTaskLibraryItemId: references.selectedTaskLibraryItemId,
     onSelectTaskLibraryItem: references.onSelectTaskLibraryItem,
@@ -270,7 +272,7 @@ export function buildLibraryDrawerProps({
     onImportDeviceFile,
     onImportDeviceImageFile: references.onImportDeviceImageFile,
     deviceImportAccept: getDeviceImportAccept(settings.uploadKind),
-    imageImportAccept: "image/*",
+    imageImportAccept: "image/*,.txt,.md,.json,text/plain,application/json",
     deviceImportDisabled: settings.ingestLoading || !settings.canInjectFile,
     isMobile: header.isMobile,
   };
@@ -331,6 +333,9 @@ export function buildGptSettingsDrawerProps({
     libraryReferenceMode: settings.libraryReferenceMode,
     libraryIndexResponseCount: settings.libraryIndexResponseCount,
     libraryReferenceCount: settings.libraryReferenceCount,
+    imageLibraryReferenceEnabled: settings.imageLibraryReferenceEnabled,
+    imageLibraryReferenceCount: settings.imageLibraryReferenceCount,
+    imageLibraryCardLimit: settings.imageLibraryCardLimit,
     libraryStorageMB: settings.libraryStorageMB,
     libraryReferenceEstimatedTokens: settings.libraryReferenceEstimatedTokens,
     autoSendKinSysInput: settings.autoSendKinSysInput,
@@ -351,6 +356,11 @@ export function buildGptSettingsDrawerProps({
     onChangeLibraryIndexResponseCount:
       settings.onChangeLibraryIndexResponseCount,
     onChangeLibraryReferenceCount: settings.onChangeLibraryReferenceCount,
+    onChangeImageLibraryReferenceEnabled:
+      settings.onChangeImageLibraryReferenceEnabled,
+    onChangeImageLibraryReferenceCount:
+      settings.onChangeImageLibraryReferenceCount,
+    onChangeImageLibraryCardLimit: settings.onChangeImageLibraryCardLimit,
     onChangeAutoSendKinSysInput: settings.onChangeAutoSendKinSysInput,
     onChangeAutoCopyKinSysResponseToGpt:
       settings.onChangeAutoCopyKinSysResponseToGpt,

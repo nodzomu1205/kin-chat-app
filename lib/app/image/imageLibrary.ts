@@ -16,6 +16,10 @@ export type GeneratedImageLibraryPayload = {
   fileName?: string;
   fileSize?: number;
   originalMimeType?: string;
+  widthPx?: number;
+  heightPx?: number;
+  aspectRatio?: number;
+  orientation?: "landscape" | "portrait" | "square" | "unknown";
   alt?: string;
   sourcePromptHash?: string;
   options?: ImageGenerationOptions;

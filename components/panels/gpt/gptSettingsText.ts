@@ -73,8 +73,14 @@ export const GPT_SETTINGS_SECTION_TEXT = {
   autoLibraryReferenceHelp:
     "Kin の発話や検索結果、取込文書などをもとに、ライブラリ候補を自動で参照に含めます。",
   libraryReferenceModeLabel: "ライブラリ参照モード",
-  libraryIndexResponseCountLabel: "ライブラリ index 件数",
+  libraryIndexResponseCountLabel: "ライブラリカード上限",
   libraryReferenceCountLabel: "ライブラリ参照件数",
+  imageLibraryReferenceTitle: "画像ライブラリ参照",
+  imageLibraryReferenceEnabledLabel: "画像ライブラリ参照",
+  imageLibraryReferenceEnabledHelp:
+    "PPT設計書作成とPPTX出力で、画像ライブラリカードを候補として使います。",
+  imageLibraryReferenceCountLabel: "画像ライブラリ参照件数",
+  imageLibraryCardLimitLabel: "画像ライブラリカード上限",
   libraryStorageLabel: "ライブラリ容量",
   libraryEstimatedTokensLabel: "ライブラリ想定トークン",
   libraryEstimatedTokensValuePrefix: "約 ",

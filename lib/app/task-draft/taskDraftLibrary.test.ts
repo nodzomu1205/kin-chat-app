@@ -51,6 +51,8 @@ describe("taskDraftLibrary", () => {
         strategyItems: [],
         keyMessages: [],
         slideItems: ["1枚目: タイトル"],
+        slideFrames: [],
+        slides: [],
         missingInfo: [],
         nextSuggestions: [],
         updatedAt: "2026-04-29T00:00:00.000Z",

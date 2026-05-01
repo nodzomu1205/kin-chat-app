@@ -156,6 +156,9 @@ export function buildChatPageWorkspaceGptSettings(
     libraryReferenceMode: args.references.libraryReferenceMode,
     libraryIndexResponseCount: args.references.libraryIndexResponseCount,
     libraryReferenceCount: args.references.libraryReferenceCount,
+    imageLibraryReferenceEnabled: args.references.imageLibraryReferenceEnabled,
+    imageLibraryReferenceCount: args.references.imageLibraryReferenceCount,
+    imageLibraryCardLimit: args.references.imageLibraryCardLimit,
     libraryStorageMB: args.references.libraryStorageMB,
     libraryReferenceEstimatedTokens:
       args.references.libraryReferenceEstimatedTokens,
@@ -192,6 +195,12 @@ export function buildChatPageWorkspaceGptSettings(
       args.references.onChangeLibraryIndexResponseCount,
     onChangeLibraryReferenceCount:
       args.references.onChangeLibraryReferenceCount,
+    onChangeImageLibraryReferenceEnabled:
+      args.references.onChangeImageLibraryReferenceEnabled,
+    onChangeImageLibraryReferenceCount:
+      args.references.onChangeImageLibraryReferenceCount,
+    onChangeImageLibraryCardLimit:
+      args.references.onChangeImageLibraryCardLimit,
     onChangeAutoSendKinSysInput: args.bridge.onChangeAutoSendKinSysInput,
     onChangeAutoCopyKinSysResponseToGpt:
       args.bridge.onChangeAutoCopyKinSysResponseToGpt,

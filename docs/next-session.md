@@ -11,17 +11,22 @@ The newest active handoff is for PPT image-library asset routing:
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
 If the next session is about PPT design or PPTX rendering, start with the
-2026-05-01 handoff before touching code. The immediate next slice is to route
-saved image-library assets into PPTX output:
+2026-05-01 handoff before touching code. The immediate next slice is no longer
+image routing; it is PPT frame viewing/editing:
 
-1. add image dimensions to image payloads
-2. extend `/ppt Images:` from boolean to `off / library / api / hybrid`
-3. hydrate browser-side image assets before `/api/presentation-render`
-4. resolve visuals by library match first, then API fallback when requested
+1. implement `PPT frames: Show index`
+2. implement `PPT frames: Show JSON / <frameId>`
+3. implement `PPT frames: Edit JSON / <frameId>` with schema/error validation
+4. implement `PPT frames: Delete JSON / <frameId>`
+5. wire the editable registry into PPT design generation and renderer mapping
 
 Keep the frame-based slide JSON direction from the 2026-04-30 handoff. Do not
 return to the older approach of generating natural-language slide specs first
 and parsing them into JSON later.
+
+Watch for the closeout trap recorded in `HANDOFF-2026-05-01.md`: common
+`deckFrame.masterFrameId` values should not be repeated as ordinary slide-level
+frame content unless the slide intentionally overrides the deck master.
 
 ## Stop Rule
 

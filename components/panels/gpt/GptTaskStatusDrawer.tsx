@@ -153,6 +153,7 @@ export default function GptTaskStatusDrawer({
     taskDraft.mergedText,
     taskDraft.deepenText,
     taskDraft.prepText,
+    taskDraft.mode,
   ]);
 
   return (

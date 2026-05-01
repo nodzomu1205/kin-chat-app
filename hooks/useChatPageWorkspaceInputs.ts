@@ -133,6 +133,9 @@ export function useChatPageWorkspaceInputs(args: UseChatPageWorkspaceInputsArgs)
       libraryReferenceMode: args.references.libraryReferenceMode,
       libraryIndexResponseCount: args.references.libraryIndexResponseCount,
       libraryReferenceCount: args.references.libraryReferenceCount,
+      imageLibraryReferenceEnabled: args.references.imageLibraryReferenceEnabled,
+      imageLibraryReferenceCount: args.references.imageLibraryReferenceCount,
+      imageLibraryCardLimit: args.references.imageLibraryCardLimit,
       libraryStorageMB: args.references.libraryStorageMB,
       libraryReferenceEstimatedTokens:
         args.references.libraryReferenceEstimatedTokens,

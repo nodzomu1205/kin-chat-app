@@ -25,6 +25,7 @@ import {
 } from "./GptSettingsDrawerSections";
 import {
   LibrarySettingsSection,
+  ImageLibraryReferenceSettingsSection,
   ProtocolSettingsSection,
   RulesSettingsSection,
   SearchSettingsSection,
@@ -76,6 +77,9 @@ type Props = {
   libraryReferenceMode: LibraryReferenceMode;
   libraryIndexResponseCount: number;
   libraryReferenceCount: number;
+  imageLibraryReferenceEnabled: boolean;
+  imageLibraryReferenceCount: number;
+  imageLibraryCardLimit: number;
   libraryStorageMB: number;
   libraryReferenceEstimatedTokens: number;
   autoSendKinSysInput: boolean;
@@ -94,6 +98,9 @@ type Props = {
   onChangeLibraryReferenceMode: (v: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (v: number) => void;
   onChangeLibraryReferenceCount: (v: number) => void;
+  onChangeImageLibraryReferenceEnabled: (v: boolean) => void;
+  onChangeImageLibraryReferenceCount: (v: number) => void;
+  onChangeImageLibraryCardLimit: (v: number) => void;
   onChangeAutoSendKinSysInput: (v: boolean) => void;
   onChangeAutoCopyKinSysResponseToGpt: (v: boolean) => void;
   onChangeAutoSendGptSysInput: (v: boolean) => void;
@@ -252,19 +259,34 @@ export default function GptSettingsDrawer(props: Props) {
       ) : null}
 
       {activeTab === "library" ? (
-        <LibrarySettingsSection
-          isMobile={props.isMobile}
-          autoLibraryReferenceEnabled={props.autoLibraryReferenceEnabled}
-          libraryReferenceMode={props.libraryReferenceMode}
-          libraryIndexResponseCount={props.libraryIndexResponseCount}
-          libraryReferenceCount={props.libraryReferenceCount}
-          libraryStorageMB={props.libraryStorageMB}
-          libraryReferenceEstimatedTokens={props.libraryReferenceEstimatedTokens}
-          onChangeAutoLibraryReferenceEnabled={props.onChangeAutoLibraryReferenceEnabled}
-          onChangeLibraryReferenceMode={props.onChangeLibraryReferenceMode}
-          onChangeLibraryIndexResponseCount={props.onChangeLibraryIndexResponseCount}
-          onChangeLibraryReferenceCount={props.onChangeLibraryReferenceCount}
-        />
+        <>
+          <LibrarySettingsSection
+            isMobile={props.isMobile}
+            autoLibraryReferenceEnabled={props.autoLibraryReferenceEnabled}
+            libraryReferenceMode={props.libraryReferenceMode}
+            libraryIndexResponseCount={props.libraryIndexResponseCount}
+            libraryReferenceCount={props.libraryReferenceCount}
+            libraryStorageMB={props.libraryStorageMB}
+            libraryReferenceEstimatedTokens={props.libraryReferenceEstimatedTokens}
+            onChangeAutoLibraryReferenceEnabled={props.onChangeAutoLibraryReferenceEnabled}
+            onChangeLibraryReferenceMode={props.onChangeLibraryReferenceMode}
+            onChangeLibraryIndexResponseCount={props.onChangeLibraryIndexResponseCount}
+            onChangeLibraryReferenceCount={props.onChangeLibraryReferenceCount}
+          />
+          <ImageLibraryReferenceSettingsSection
+            isMobile={props.isMobile}
+            imageLibraryReferenceEnabled={props.imageLibraryReferenceEnabled}
+            imageLibraryReferenceCount={props.imageLibraryReferenceCount}
+            imageLibraryCardLimit={props.imageLibraryCardLimit}
+            onChangeImageLibraryReferenceEnabled={
+              props.onChangeImageLibraryReferenceEnabled
+            }
+            onChangeImageLibraryReferenceCount={
+              props.onChangeImageLibraryReferenceCount
+            }
+            onChangeImageLibraryCardLimit={props.onChangeImageLibraryCardLimit}
+          />
+        </>
       ) : null}
 
       {activeTab === "rules" ? (

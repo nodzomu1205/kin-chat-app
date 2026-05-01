@@ -107,8 +107,8 @@ describe("presentationTaskPlanning", () => {
     const visibleText = formatPresentationTaskPlanText(plan);
     const spec = buildPresentationSpecFromTaskPlan(plan);
 
-    expect(plan.debug.slideSource).toBe("slideFrameJson");
-    expect(visibleText).toContain("Frame: titleLineFooter / visualLeftTextRight");
+    expect(plan.debug?.slideSource).toBe("slideFrameJson");
+    expect(visibleText).toContain("Frame: visualLeftTextRight");
     expect(visibleText).toContain("- block2 textStack (textStackTopLeft)");
     expect(visibleText).toContain("- 表示本文: The process has three clear steps.");
     expect(visibleText).toContain("- Intake");

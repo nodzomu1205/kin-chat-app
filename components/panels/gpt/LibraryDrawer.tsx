@@ -11,6 +11,7 @@ export default function LibraryDrawer({
   multipartAssemblies,
   referenceLibraryItems,
   libraryReferenceCount,
+  imageLibraryReferenceCount,
   sourceDisplayCount,
   selectedTaskLibraryItemId,
   onSelectTaskLibraryItem,
@@ -38,7 +39,6 @@ export default function LibraryDrawer({
   isMobile = false,
   onImportDeviceFile,
   onImportDeviceImageFile,
-  onImportGoogleDriveImageFile,
   deviceImportAccept,
   imageImportAccept,
   deviceImportDisabled = false,
@@ -63,18 +63,13 @@ export default function LibraryDrawer({
         setDriveImportMenuOpen={setDriveImportMenuOpen}
         onOpenGoogleDriveFolder={onOpenGoogleDriveFolder}
         onImportGoogleDriveFile={onImportGoogleDriveFile}
-        onImportGoogleDriveImageFile={onImportGoogleDriveImageFile}
         onIndexGoogleDriveFolder={onIndexGoogleDriveFolder}
         onImportGoogleDriveFolder={onImportGoogleDriveFolder}
         deviceInputId={deviceInputId}
-        onImportDeviceFile={
-          activeLibraryView === "images" ? onImportDeviceImageFile : onImportDeviceFile
-        }
-        deviceImportAccept={
-          activeLibraryView === "images" ? imageImportAccept : deviceImportAccept
-        }
+        onImportDeviceFile={onImportDeviceFile}
+        onImportDeviceImageFile={onImportDeviceImageFile}
+        deviceImportAccept={mergeAcceptValues(deviceImportAccept, imageImportAccept)}
         deviceImportDisabled={deviceImportDisabled}
-        importTarget={activeLibraryView}
         onShowAllLibraryItemsInChat={onShowAllLibraryItemsInChat}
         onSendAllLibraryItemsToKin={onSendAllLibraryItemsToKin}
       />
@@ -130,6 +125,7 @@ export default function LibraryDrawer({
               multipartAssemblies={multipartAssemblies}
               referenceLibraryItems={referenceLibraryItems}
               libraryReferenceCount={libraryReferenceCount}
+              imageLibraryReferenceCount={imageLibraryReferenceCount}
               sourceDisplayCount={sourceDisplayCount}
               selectedTaskLibraryItemId={selectedTaskLibraryItemId}
               onSelectTaskLibraryItem={onSelectTaskLibraryItem}
@@ -165,4 +161,15 @@ export default function LibraryDrawer({
       )}
     </section>
   );
+}
+
+function mergeAcceptValues(...values: string[]) {
+  return Array.from(
+    new Set(
+      values
+        .flatMap((value) => value.split(","))
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  ).join(",");
 }

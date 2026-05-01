@@ -24,6 +24,7 @@ function createBaseFlowArgs(): RunSendToGptFlowArgs {
     getAskAiModeLinkForQuery: vi.fn(() => ""),
     applySearchUsage: vi.fn(),
     applyChatUsage: vi.fn(),
+    applyTaskUsage: vi.fn(),
     taskProtocolRuntime: {
       currentTaskId: null,
       currentTaskTitle: "",
@@ -61,6 +62,7 @@ function createBaseFlowArgs(): RunSendToGptFlowArgs {
     setPendingKinInjectionIndex: vi.fn(),
     processMultipartTaskDoneText: vi.fn(() => null),
     recordIngestedDocument: vi.fn(() => ({ id: "doc-1" })),
+    updateStoredDocument: vi.fn(),
   };
 }
 

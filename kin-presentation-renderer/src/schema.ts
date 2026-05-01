@@ -201,6 +201,7 @@ export const frameVisualRequestSchema = z
     brief: z.string().trim().optional(),
     prompt: z.string().trim().optional(),
     promptNote: z.string().trim().optional(),
+    preferredImageId: z.string().trim().optional(),
     labels: z.array(nonEmptyString).optional(),
     asset: z
       .object({
@@ -208,7 +209,11 @@ export const frameVisualRequestSchema = z
         mimeType: z.string().trim().default("image/png"),
         base64: z.string().trim(),
         alt: z.string().trim().optional(),
-        sourcePromptHash: z.string().trim().optional()
+        sourcePromptHash: z.string().trim().optional(),
+        widthPx: z.number().positive().optional(),
+        heightPx: z.number().positive().optional(),
+        aspectRatio: z.number().positive().optional(),
+        orientation: z.enum(["landscape", "portrait", "square", "unknown"]).optional()
       })
       .optional(),
     renderStyle: z

@@ -83,8 +83,67 @@ describe("runDrivePickedDocumentsImport", () => {
       id: "file-1",
       name: "notes.txt",
       mimeType: "text/plain",
+    }, { sidecarFile: undefined });
+    expect(importDriveFile).toHaveBeenCalledWith({
+      id: "image-1",
+      name: "image.png",
+      mimeType: "image/png",
+    }, { sidecarFile: undefined });
+    expect(importDriveFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("pairs selected image imports with matching text sidecars", async () => {
+    const importDriveFile = vi.fn(async () => {});
+    const importDriveImageFile = vi.fn(async () => {});
+
+    await runDrivePickedDocumentsImport({
+      mode: "file_import",
+      docs: [
+        {
+          id: "image-1",
+          name: "image.png",
+          mimeType: "image/png",
+        },
+        {
+          id: "sidecar-1",
+          name: "image.txt",
+          mimeType: "text/plain",
+        },
+        {
+          id: "notes-1",
+          name: "notes.txt",
+          mimeType: "text/plain",
+        },
+      ],
+      importDriveFile,
+      importDriveImageFile,
+      importDriveFolder: vi.fn(async () => {}),
     });
+
     expect(importDriveFile).toHaveBeenCalledTimes(1);
+    expect(importDriveFile).toHaveBeenCalledWith(
+      {
+        id: "notes-1",
+        name: "notes.txt",
+        mimeType: "text/plain",
+      },
+      { sidecarFile: undefined }
+    );
+    expect(importDriveImageFile).toHaveBeenCalledTimes(1);
+    expect(importDriveImageFile).toHaveBeenCalledWith(
+      {
+        id: "image-1",
+        name: "image.png",
+        mimeType: "image/png",
+      },
+      {
+        sidecarFile: {
+          id: "sidecar-1",
+          name: "image.txt",
+          mimeType: "text/plain",
+        },
+      }
+    );
   });
 });
 
@@ -302,7 +361,7 @@ describe("runDriveFolderImport", () => {
       focusGptPanel: vi.fn(() => true),
     });
 
-    expect(importDriveFile).toHaveBeenCalledTimes(2);
+    expect(importDriveFile).toHaveBeenCalledTimes(3);
     expect(importDriveFile).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ id: "file-1" }),
@@ -310,7 +369,64 @@ describe("runDriveFolderImport", () => {
     );
     expect(importDriveFile).toHaveBeenNthCalledWith(
       2,
+      expect.objectContaining({ id: "file-2" }),
+      { manageLoading: false }
+    );
+    expect(importDriveFile).toHaveBeenNthCalledWith(
+      3,
       expect.objectContaining({ id: "file-3" }),
+      { manageLoading: false }
+    );
+  });
+
+  it("routes folder image imports through the image importer with matching sidecars", async () => {
+    vi.mocked(listDriveFolderChildren).mockResolvedValue([
+      {
+        id: "image-1",
+        name: "image.png",
+        mimeType: "image/png",
+        path: "Project/assets/image.png",
+      },
+      {
+        id: "sidecar-1",
+        name: "image.txt",
+        mimeType: "text/plain",
+        path: "Project/assets/image.txt",
+      },
+      {
+        id: "notes-1",
+        name: "notes.txt",
+        mimeType: "text/plain",
+        path: "Project/notes.txt",
+      },
+    ]);
+
+    const importDriveFile = vi.fn(async () => {});
+    const importDriveImageFile = vi.fn(async () => {});
+
+    await runDriveFolderImport({
+      folder: {
+        id: "folder-3",
+        name: "Project",
+      },
+      mode: "import",
+      ensureAccessToken: vi.fn(async () => "token-folder"),
+      appendUiMessage: vi.fn(),
+      importDriveFile,
+      importDriveImageFile,
+      focusGptPanel: vi.fn(() => true),
+    });
+
+    expect(importDriveImageFile).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "image-1" }),
+      {
+        manageLoading: false,
+        sidecarFile: expect.objectContaining({ id: "sidecar-1" }),
+      }
+    );
+    expect(importDriveFile).toHaveBeenCalledTimes(1);
+    expect(importDriveFile).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "notes-1" }),
       { manageLoading: false }
     );
   });

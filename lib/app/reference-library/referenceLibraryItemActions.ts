@@ -6,6 +6,7 @@ import {
 import type { ReferenceLibraryItem } from "@/types/chat";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
+import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText";
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -92,24 +93,12 @@ export function buildLibraryItemDriveExport(item: ReferenceLibraryItem): {
       : null;
     if (payload) {
       return {
-        fileName: `${payload.imageId}.generated-image.json`,
-        text: `${JSON.stringify(
-          {
-            imageId: payload.imageId,
-            mimeType: payload.mimeType,
-            prompt: payload.prompt,
-            originalPrompt: payload.originalPrompt,
-            revisionInstruction: payload.revisionInstruction,
-            alt: payload.alt,
-            sourcePromptHash: payload.sourcePromptHash,
-            options: payload.options,
-            usage: payload.usage,
-            createdAt: payload.createdAt,
-          },
-          null,
-          2
-        )}\n`,
-        mimeType: "application/json",
+        fileName: item.filename?.trim() || `${payload.imageId}.txt`,
+        text: normalizeWhitespace(
+          item.excerptText?.trim() ||
+            item.summary?.trim() ||
+            buildGeneratedImageDisplayText({ payload })
+        ),
       };
     }
   }

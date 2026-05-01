@@ -106,12 +106,14 @@ describe("buildLibraryItemDriveExport", () => {
     });
   });
 
-  it("exports generated image metadata without embedding image bytes in the text file", () => {
+  it("exports generated image cards as the visible card text", () => {
     const exported = buildLibraryItemDriveExport(
       createLibraryItem({
         artifactType: "generated_image",
         title: "Image",
         subtitle: "Image ID: img_123",
+        filename: "img_123.txt",
+        excerptText: "Image ID: img_123\nPrompt:\nPrompt text",
         structuredPayload: {
           version: "0.1-generated-image",
           imageId: "img_123",
@@ -123,9 +125,8 @@ describe("buildLibraryItemDriveExport", () => {
       })
     );
 
-    expect(exported.fileName).toBe("img_123.generated-image.json");
-    expect(exported.mimeType).toBe("application/json");
-    expect(exported.text).toContain('"imageId": "img_123"');
-    expect(exported.text).not.toContain('"base64"');
+    expect(exported.fileName).toBe("img_123.txt");
+    expect(exported.mimeType).toBeUndefined();
+    expect(exported.text).toBe("Image ID: img_123\nPrompt:\nPrompt text");
   });
 });

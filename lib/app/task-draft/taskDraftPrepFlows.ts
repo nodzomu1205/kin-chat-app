@@ -17,6 +17,10 @@ import {
   resolvePresentationTaskTitle,
   stripPresentationTaskMarker,
 } from "@/lib/app/presentation/presentationTaskPlanning";
+import {
+  buildPresentationImageLibraryContext,
+  getPresentationImageLibraryCandidates,
+} from "@/lib/app/presentation/presentationImageLibrary";
 import { buildPreparedTaskDraftUpdate } from "@/lib/app/task-draft/taskDraftFlowProjection";
 import {
   buildGptTaskPrepSource,
@@ -48,6 +52,21 @@ import type {
   UpdateTaskFromLastGptMessageFlowArgs,
 } from "@/lib/app/task-draft/taskDraftActionFlowTypes";
 import type { Message } from "@/types/chat";
+
+function buildTaskDraftImageLibraryContext(
+  args:
+    | PrepTaskFromInputFlowArgs
+    | UpdateTaskFromInputFlowArgs
+    | UpdateTaskFromLastGptMessageFlowArgs
+) {
+  return buildPresentationImageLibraryContext(
+    getPresentationImageLibraryCandidates({
+      enabled: args.imageLibraryReferenceEnabled,
+      count: args.imageLibraryReferenceCount,
+      referenceLibraryItems: args.referenceLibraryItems,
+    })
+  );
+}
 
 export async function runPrepTaskFromInputFlow(
   args: PrepTaskFromInputFlowArgs
@@ -100,6 +119,7 @@ export async function runPrepTaskFromInputFlow(
         userInstruction: nextUserInstruction,
         body: taskBodySource,
         material: args.currentTaskDraft.searchContext?.rawText || "",
+        imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildTaskStructuredInput({
         title: resolvedTitle,
@@ -261,6 +281,7 @@ export async function runUpdateTaskFromInputFlow(
         currentPlanText: currentTaskText,
         body: parsedInput.freeText || normalizedAdditionalText,
         material: args.currentTaskDraft.searchContext?.rawText || "",
+        imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildMergedTaskInput(
         currentTaskText,
@@ -434,6 +455,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
         currentPlanText: currentTaskText,
         body: directionInstruction,
         material: lastGptMessage.text.trim(),
+        imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : currentTaskText
       ? buildTaskInput({

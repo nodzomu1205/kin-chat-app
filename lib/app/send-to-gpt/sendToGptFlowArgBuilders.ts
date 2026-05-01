@@ -101,6 +101,8 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
         }),
       referenceLibraryItems: args.referenceLibraryItems,
       libraryIndexResponseCount: args.libraryIndexResponseCount,
+      imageLibraryReferenceEnabled: args.imageLibraryReferenceEnabled,
+      imageLibraryReferenceCount: args.imageLibraryReferenceCount,
       buildLibraryReferenceContext: args.buildLibraryReferenceContext,
       taskProtocolAnswerPendingRequest: args.taskProtocol.answerPendingRequest,
       ingestProtocolMessage: args.ingestProtocolMessage,

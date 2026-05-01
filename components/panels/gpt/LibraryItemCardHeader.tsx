@@ -17,6 +17,7 @@ export default function LibraryItemCardHeader({
   item,
   priorityIndex,
   libraryReferenceCount,
+  imageLibraryReferenceCount,
   selectedTaskLibraryItemId,
   multipartSource,
   isMobile,
@@ -29,6 +30,7 @@ export default function LibraryItemCardHeader({
   item: ReferenceLibraryItem;
   priorityIndex: number;
   libraryReferenceCount: number;
+  imageLibraryReferenceCount: number;
   selectedTaskLibraryItemId: string;
   multipartSource: MultipartAssembly | null;
   isMobile: boolean;
@@ -125,9 +127,11 @@ export default function LibraryItemCardHeader({
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
-        {item.artifactType !== "generated_image" &&
-        priorityIndex > 0 &&
-        priorityIndex <= libraryReferenceCount ? (
+        {priorityIndex > 0 &&
+        priorityIndex <=
+          (item.artifactType === "generated_image"
+            ? imageLibraryReferenceCount
+            : libraryReferenceCount) ? (
           <span
             style={{
               fontSize: 11,

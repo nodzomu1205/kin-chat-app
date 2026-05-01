@@ -98,6 +98,10 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps 
     settings.onChangeLibraryIndexResponseCount(clampPanelCount(value, 1, 50));
   const onChangeLibraryReferenceCount = (value: number) =>
     settings.onChangeLibraryReferenceCount(clampPanelCount(value, 0, 20));
+  const onChangeImageLibraryReferenceCount = (value: number) =>
+    settings.onChangeImageLibraryReferenceCount(clampPanelCount(value, 0, 50));
+  const onChangeImageLibraryCardLimit = (value: number) =>
+    settings.onChangeImageLibraryCardLimit(clampPanelCount(value, 0, 200));
 
   return {
     header,
@@ -122,6 +126,8 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps 
       onChangeSourceDisplayCount,
       onChangeLibraryIndexResponseCount,
       onChangeLibraryReferenceCount,
+      onChangeImageLibraryReferenceCount,
+      onChangeImageLibraryCardLimit,
     },
   };
 }

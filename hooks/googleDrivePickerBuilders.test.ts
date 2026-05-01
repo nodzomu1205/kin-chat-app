@@ -86,7 +86,7 @@ describe("googleDrivePickerBuilders", () => {
     expect(canImportDriveMimeType("text/plain")).toBe(true);
     expect(canImportDriveMimeType("application/pdf")).toBe(true);
     expect(canImportDriveMimeType("application/vnd.google-apps.document")).toBe(true);
-    expect(canImportDriveMimeType("image/png")).toBe(false);
+    expect(canImportDriveMimeType("image/png")).toBe(true);
   });
 
   it("resolves picked Drive folder actions from picker mode", () => {
@@ -149,11 +149,19 @@ describe("googleDrivePickerBuilders", () => {
       resolveDrivePickedImportAction({
         doc: {
           id: "file-2",
+          name: "image.png",
           mimeType: "image/png",
         },
         mode: "file_import",
       })
-    ).toBeNull();
+    ).toEqual({
+      kind: "file",
+      file: {
+        id: "file-2",
+        name: "image.png",
+        mimeType: "image/png",
+      },
+    });
   });
 
   it("builds Drive import stored text and prefers compact summaries", () => {

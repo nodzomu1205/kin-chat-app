@@ -164,6 +164,10 @@ export function useChatPageWorkspaceDomainInputs(
       libraryReferenceMode: referenceDomain.libraryReferenceMode,
       libraryIndexResponseCount: referenceDomain.libraryIndexResponseCount,
       libraryReferenceCount: referenceDomain.libraryReferenceCount,
+      imageLibraryReferenceEnabled:
+        referenceDomain.imageLibraryReferenceEnabled,
+      imageLibraryReferenceCount: referenceDomain.imageLibraryReferenceCount,
+      imageLibraryCardLimit: referenceDomain.imageLibraryCardLimit,
       libraryStorageMB: referenceDomain.libraryStorageMB,
       libraryReferenceEstimatedTokens:
         referenceDomain.libraryReferenceEstimatedTokens,
@@ -201,6 +205,11 @@ export function useChatPageWorkspaceDomainInputs(
       onChangeLibraryIndexResponseCount:
         referenceDomain.setLibraryIndexResponseCount,
       onChangeLibraryReferenceCount: referenceDomain.setLibraryReferenceCount,
+      onChangeImageLibraryReferenceEnabled:
+        referenceDomain.setImageLibraryReferenceEnabled,
+      onChangeImageLibraryReferenceCount:
+        referenceDomain.setImageLibraryReferenceCount,
+      onChangeImageLibraryCardLimit: referenceDomain.setImageLibraryCardLimit,
       onChangeGoogleDriveFolderLink: referenceDomain.setGoogleDriveFolderLink,
       onOpenGoogleDriveFolder: referenceDomain.openGoogleDriveFolder,
       onImportGoogleDriveFile: referenceDomain.importGoogleDriveFile,

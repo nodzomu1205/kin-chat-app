@@ -2,6 +2,7 @@ import type {
   GptPanelReferenceProps,
   GptPanelSettingsProps,
 } from "@/components/panels/gpt/gptPanelTypes";
+import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
 
 export type LibraryDrawerProps = Pick<
   GptPanelReferenceProps,
@@ -30,6 +31,7 @@ export type LibraryDrawerProps = Pick<
   Pick<
     GptPanelSettingsProps,
     | "libraryReferenceCount"
+    | "imageLibraryReferenceCount"
     | "sourceDisplayCount"
     | "onOpenGoogleDriveFolder"
     | "onImportGoogleDriveFile"
@@ -38,7 +40,10 @@ export type LibraryDrawerProps = Pick<
   > & {
     isMobile?: boolean;
     onImportDeviceFile: (file: File) => void | Promise<void>;
-    onImportDeviceImageFile: (file: File) => void | Promise<void>;
+    onImportDeviceImageFile: (
+      file: File,
+      sidecarText?: ImageImportSidecarText
+    ) => void | Promise<void>;
     onImportGoogleDriveImageFile: () => void | Promise<void>;
     deviceImportAccept: string;
     imageImportAccept: string;

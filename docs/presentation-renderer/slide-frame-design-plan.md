@@ -1,6 +1,6 @@
 # Slide Frame Design Plan
 
-Last updated: 2026-04-30
+Last updated: 2026-05-01
 
 ## Purpose
 
@@ -46,6 +46,52 @@ The important boundary is that only the slide-design portion needs the stricter
 JSON frame system. The earlier information organization should remain rich
 natural language because forcing that layer through narrow JSON caused thin,
 low-value outputs.
+
+## Next Implementation: Editable Frame Registry
+
+The next implementation should expose the frame package in chat so the user can
+inspect and refine the actual registry used by PPT design and rendering.
+
+Target commands:
+
+```text
+PPT frames: Show index
+PPT frames: Show JSON / titleLineFooter
+PPT frames: Edit JSON / titleLineFooter
+PPT frames: Delete JSON / titleLineFooter
+```
+
+`Show index` should print every registered master/layout/block frame with ID,
+label, and short description.
+
+`Show JSON / <frameId>` should print the stored registry JSON for one frame.
+
+`Edit JSON / <frameId>` should treat the following lines as a replacement JSON
+document for that frame. Validate before saving. If the JSON is malformed or
+fails obvious frame requirements, return an error message and keep the previous
+frame unchanged.
+
+`Delete JSON / <frameId>` should remove a custom frame only when safe. Built-in
+frames can be protected initially; if deletion is allowed later, renderer and
+prompt references must be checked first.
+
+Important: do not create a docs-only frame list. The command output should come
+from the same registry that prompt construction and renderer mapping consume.
+
+## Deck Master Inheritance Rule
+
+`deckFrame` owns common deck-wide decisions such as master frame, background,
+page numbering, logo, and typography. A slide should only specify
+`masterFrameId` when it intentionally overrides `deckFrame.masterFrameId`.
+
+The normalized in-memory model may still carry an inherited `masterFrameId` for
+renderer convenience, but the authored design JSON and visible PPT design text
+should not repeat the common master on every slide.
+
+This rule exists because `titleLineFooter` duplication reappeared after an
+earlier cleanup. The root risk is residue across prompt examples, parser
+defaults, display projection, and renderer schema defaults. Fix the registry and
+inheritance model instead of adding more prompt warnings.
 
 ## Non-Goals
 

@@ -121,6 +121,8 @@ export type ChatPageControllerCompositionArgs = {
     buildLibraryReferenceContext: () => string;
     referenceLibraryItems: ReferenceLibraryItem[];
     libraryIndexResponseCount: number;
+    imageLibraryReferenceEnabled: UseChatPageActionsArgs["imageLibraryReferenceEnabled"];
+    imageLibraryReferenceCount: UseChatPageActionsArgs["imageLibraryReferenceCount"];
     recordIngestedDocument: UseChatPageActionsArgs["recordIngestedDocument"];
     gptMemorySettingsControls: GptMemorySettingsControls;
     ingestProtocolMessage: UseChatPageActionsArgs["ingestProtocolMessage"];

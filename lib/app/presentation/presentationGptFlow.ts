@@ -5,34 +5,20 @@ import {
   formatPresentationTaskPlanText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
 import { findPresentationPlanByDocumentId } from "@/lib/app/presentation/presentationPlanLibrary";
-import { applyPresentationPlanInstruction } from "@/lib/app/presentation/presentationPlanRevision";
 import {
-  buildPresentationLibraryPayload,
-  buildPresentationStoredDocument,
-  rebuildPresentationLibraryPayload,
-  serializePresentationPayload,
-} from "@/lib/app/presentation/presentationDocumentBuilders";
-import {
-  buildCreateInformationInventoryPrompt,
-  buildCreatePresentationStrategyPrompt,
-  buildCreatePresentationSpecPrompt,
   buildPresentationCommandFailureMessage,
-  buildPresentationDraftSavedMessage,
   buildPresentationRenderedMessage,
-  buildRepairPresentationSpecPrompt,
 } from "@/lib/app/presentation/presentationGptPrompts";
 import {
-  parsePresentationDraftFromText,
-  parseInformationInventoryFromText,
-  parsePresentationStrategyFromText,
-} from "@/lib/app/presentation/presentationJsonParsing";
+  getPresentationImageLibraryCandidates,
+} from "@/lib/app/presentation/presentationImageLibrary";
+import { loadGeneratedImageAsset } from "@/lib/app/image/imageAssetStorage";
 import { normalizeImageGenerationUsage } from "@/lib/app/image/imageDisplayText";
 import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlowRequest";
 import {
   applySendToGptRequestStart,
 } from "@/lib/app/send-to-gpt/sendToGptFlowState";
 import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
-import type { ChatApiSearchLike } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
 import type { Message } from "@/types/chat";
 import type { PresentationTaskSlideFrame } from "@/types/task";
 
@@ -42,7 +28,7 @@ export async function runPresentationGptCommandFlow(args: {
   assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
 }): Promise<boolean> {
   const command = parsePptCommand(args.rawText);
-  if (!command.isPptCommand || !command.intent) return false;
+  if (!command.isPptCommand) return false;
 
   const userMessage: Message = {
     id: generateId(),
@@ -57,32 +43,27 @@ export async function runPresentationGptCommandFlow(args: {
   });
 
   try {
-    if (command.intent === "createDraft") {
-      await runCreatePresentationDraftFlow({
-        commandBody: command.body,
-        density: command.density,
-        flowArgs: args.flowArgs,
-        assistantRequestArgs: args.assistantRequestArgs,
-      });
-      return true;
-    }
-
-    if (command.intent === "reviseDraft") {
-      await runRevisePresentationDraftFlow({
-        commandBody: command.body,
-        documentId: command.documentId,
-        density: command.density,
-        flowArgs: args.flowArgs,
-        assistantRequestArgs: args.assistantRequestArgs,
-      });
-      return true;
-    }
-
     if (command.intent === "renderPptx") {
       await runRenderPresentationPptxFlow({
         documentId: command.documentId,
         generateImages: command.generateImages,
+        imageMode: command.imageMode,
         flowArgs: args.flowArgs,
+      });
+      return true;
+    }
+
+    if (!command.intent) {
+      appendPresentationAssistantMessage({
+        flowArgs: args.flowArgs,
+        text: [
+          "PPT design creation now runs through the task design flow.",
+          "",
+          "Use the task controls to create or update a PPT design document, then run:",
+          "/ppt",
+          "Document ID: ppt_...",
+          "Create PPT",
+        ].join("\n"),
       });
       return true;
     }
@@ -101,7 +82,7 @@ export async function runPresentationGptCommandFlow(args: {
     appendPresentationAssistantMessage({
       flowArgs: args.flowArgs,
       text: buildPresentationCommandFailureMessage({
-        action: command.intent === "reviseDraft" ? "reviseDraft" : "createDraft",
+        action: "renderPptx",
         error,
       }),
     });
@@ -114,6 +95,7 @@ export async function runPresentationGptCommandFlow(args: {
 async function runRenderPresentationPptxFlow(args: {
   documentId?: string;
   generateImages?: boolean;
+  imageMode?: ReturnType<typeof parsePptCommand>["imageMode"];
   flowArgs: SendToGptFlowStepArgs;
 }) {
   if (!args.documentId) {
@@ -133,6 +115,10 @@ async function runRenderPresentationPptxFlow(args: {
       documentId: args.documentId,
       frameSpec,
       generateImages: args.generateImages,
+      imageMode: args.imageMode,
+      libraryImageAssets: await hydratePresentationLibraryImageAssets({
+        flowArgs: args.flowArgs,
+      }),
     });
     applyGeneratedImageUsage({
       generatedImages: output.generatedImages,
@@ -174,6 +160,8 @@ async function renderPresentationPptx(args: {
   spec?: unknown;
   frameSpec?: unknown;
   generateImages?: boolean;
+  imageMode?: ReturnType<typeof parsePptCommand>["imageMode"];
+  libraryImageAssets?: PresentationRenderLibraryImageAsset[];
 }) {
   const res = await fetch("/api/presentation-render", {
     method: "POST",
@@ -242,6 +230,50 @@ async function renderPresentationPptx(args: {
   };
 }
 
+type PresentationRenderLibraryImageAsset = {
+  imageId: string;
+  title?: string;
+  fileName?: string;
+  mimeType: string;
+  base64: string;
+  description?: string;
+  prompt?: string;
+  originalPrompt?: string;
+  widthPx?: number;
+  heightPx?: number;
+  aspectRatio?: number;
+  orientation?: "landscape" | "portrait" | "square" | "unknown";
+};
+
+async function hydratePresentationLibraryImageAssets(args: {
+  flowArgs: SendToGptFlowStepArgs;
+}): Promise<PresentationRenderLibraryImageAsset[]> {
+  const candidates = getPresentationImageLibraryCandidates({
+    enabled: args.flowArgs.imageLibraryReferenceEnabled,
+    count: args.flowArgs.imageLibraryReferenceCount,
+    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+  });
+  const hydrated = await Promise.all(
+    candidates.map(async (candidate) => {
+      const asset = await loadGeneratedImageAsset(candidate.imageId);
+      if (!asset?.base64) return null;
+      return {
+        ...candidate,
+        mimeType: candidate.mimeType || asset.mimeType || "image/png",
+        base64: asset.base64,
+        description: candidate.description || asset.description,
+        prompt: candidate.prompt || asset.prompt,
+        originalPrompt: candidate.originalPrompt || asset.originalPrompt,
+        widthPx: candidate.widthPx ?? asset.widthPx,
+        heightPx: candidate.heightPx ?? asset.heightPx,
+        aspectRatio: candidate.aspectRatio ?? asset.aspectRatio,
+        orientation: candidate.orientation || asset.orientation,
+      };
+    })
+  );
+  return hydrated.filter(Boolean) as PresentationRenderLibraryImageAsset[];
+}
+
 function applyGeneratedImageUsage(args: {
   generatedImages?: Array<{
     usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
@@ -273,201 +305,6 @@ function createPresentationBlobUrl(args: {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     })
   );
-}
-
-async function runCreatePresentationDraftFlow(args: {
-  commandBody: string;
-  density?: NonNullable<ReturnType<typeof parsePptCommand>["density"]>;
-  flowArgs: SendToGptFlowStepArgs;
-  assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
-}) {
-  const inventoryReply = await requestPresentationJsonReply({
-    assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildCreateInformationInventoryPrompt({
-      userInstruction: args.commandBody,
-    }),
-  });
-  applyPresentationChatUsage({ data: inventoryReply.data, flowArgs: args.flowArgs });
-
-  const informationInventory = parseInformationInventoryFromText(
-    inventoryReply.assistantText
-  );
-
-  const strategyReply = await requestPresentationJsonReply({
-    assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildCreatePresentationStrategyPrompt({
-      userInstruction: args.commandBody,
-      inventory: informationInventory,
-      density: args.density,
-    }),
-  });
-  applyPresentationChatUsage({ data: strategyReply.data, flowArgs: args.flowArgs });
-
-  const presentationStrategy = parsePresentationStrategyFromText(
-    strategyReply.assistantText,
-    {
-      renderDensity: args.density,
-    }
-  );
-
-  const specReply = await requestPresentationJsonReply({
-    assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildCreatePresentationSpecPrompt({
-      userInstruction: args.commandBody,
-      inventory: informationInventory,
-      strategy: presentationStrategy,
-    }),
-  });
-  applyPresentationChatUsage({ data: specReply.data, flowArgs: args.flowArgs });
-
-  const draft = await parseOrRepairPresentationDraft({
-    assistantText: specReply.assistantText,
-    userInstruction: args.commandBody,
-    density: args.density,
-    flowArgs: args.flowArgs,
-    assistantRequestArgs: args.assistantRequestArgs,
-  });
-  const payload = buildPresentationLibraryPayload({
-    spec: draft.spec,
-    motherSpec: draft.motherSpec,
-    informationInventory,
-    presentationStrategy,
-  });
-  const storedDocument = args.flowArgs.recordIngestedDocument(
-    buildPresentationStoredDocument({ payload })
-  );
-
-  appendPresentationAssistantMessage({
-    flowArgs: args.flowArgs,
-    text: buildPresentationDraftSavedMessage({
-      documentId: payload.documentId,
-      spec: draft.spec,
-      previewText: payload.previewText,
-      inventoryFactGroupCount: informationInventory.factGroups.length,
-      inventoryFactCount: informationInventory.rawFacts.length,
-      strategySummary: `${presentationStrategy.slideCountRange.target} target slides / ${presentationStrategy.visualPolicy.overallUse} visuals / ${presentationStrategy.structurePolicy.preferredFlow}`,
-    }),
-  });
-
-  return storedDocument;
-}
-
-async function runRevisePresentationDraftFlow(args: {
-  commandBody: string;
-  documentId?: string;
-  density?: NonNullable<ReturnType<typeof parsePptCommand>["density"]>;
-  flowArgs: SendToGptFlowStepArgs;
-  assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
-}) {
-  if (!args.documentId) {
-    throw new Error("Document ID is required for presentation revisions.");
-  }
-
-  const foundPlan = findPresentationPlanByDocumentId({
-    documentId: args.documentId,
-    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
-  });
-  if (foundPlan) {
-    const revision = applyPresentationPlanInstruction(foundPlan.plan, args.commandBody);
-    if (!revision.changed) {
-      throw new Error("No supported presentation plan edit was detected in the instruction.");
-    }
-    args.flowArgs.updateStoredDocument(foundPlan.sourceId, {
-      title: foundPlan.item.title,
-      text: formatPresentationTaskPlanText(revision.plan),
-      structuredPayload: revision.plan,
-      summary: foundPlan.item.summary,
-    });
-    appendPresentationAssistantMessage({
-      flowArgs: args.flowArgs,
-      text: [
-        "PPT design plan updated.",
-        "",
-        `Document ID: ${args.documentId}`,
-        `Title: ${revision.plan.title}`,
-        ...revision.notes.map((note) => `- ${note}`),
-      ].join("\n"),
-    });
-    return;
-  }
-
-  throw new Error(`Presentation plan document not found: ${args.documentId}`);
-}
-
-async function parseOrRepairPresentationDraft(args: {
-  assistantText: string;
-  userInstruction: string;
-  density?: NonNullable<ReturnType<typeof parsePptCommand>["density"]>;
-  flowArgs: SendToGptFlowStepArgs;
-  assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
-}) {
-  try {
-    return parsePresentationDraftFromText(args.assistantText, {
-      renderDensity: args.density || "standard",
-    });
-  } catch {
-    const { data, assistantText } = await requestPresentationJsonReply({
-      assistantRequestArgs: args.assistantRequestArgs,
-      finalRequestText: buildRepairPresentationSpecPrompt({
-        originalUserInstruction: args.userInstruction,
-        invalidResponse: args.assistantText,
-      }),
-    });
-    applyPresentationChatUsage({ data, flowArgs: args.flowArgs });
-    return parsePresentationDraftFromText(assistantText, {
-      renderDensity: args.density || "standard",
-    });
-  }
-}
-
-async function requestPresentationJsonReply(args: {
-  assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
-  finalRequestText: string;
-}): Promise<{
-  data: ChatApiSearchLike;
-  assistantText: string;
-}> {
-  const requestArgs = args.assistantRequestArgs;
-  const res = await fetch("/api/chatgpt", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      mode: "chat",
-      memory: requestArgs.requestMemory,
-      recentMessages: Array.isArray(requestArgs.recentMessages)
-        ? requestArgs.recentMessages
-        : [],
-      input: args.finalRequestText,
-      storedSearchContext: "",
-      storedDocumentContext: requestArgs.storedDocumentContext || "",
-      storedLibraryContext: requestArgs.storedLibraryContext || "",
-      searchMode: "normal",
-      searchEngines: [],
-      searchLocation: requestArgs.effectiveSearchLocation || "",
-      generateSearchSummary: false,
-      instructionMode: "normal",
-      reasoningMode: requestArgs.reasoningMode,
-    }),
-  });
-
-  const data = (await res.json().catch(() => ({}))) as ChatApiSearchLike & {
-    error?: unknown;
-  };
-
-  if (!res.ok) {
-    const message =
-      typeof data.error === "string" && data.error.trim()
-        ? data.error.trim()
-        : `Presentation GPT request failed (${res.status} ${res.statusText || "unknown"})`;
-    throw new Error(message);
-  }
-
-  return {
-    data,
-    assistantText: data.reply || "",
-  };
 }
 
 function appendPresentationAssistantMessage(args: {
@@ -505,11 +342,4 @@ function buildPresentationPreviewMessage(args: {
   }
 
   return `Presentation plan document not found: ${args.documentId}`;
-}
-
-function applyPresentationChatUsage(args: {
-  data: ChatApiSearchLike;
-  flowArgs: SendToGptFlowStepArgs;
-}) {
-  args.flowArgs.applyTaskUsage(args.data.usage);
 }

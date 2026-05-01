@@ -400,25 +400,37 @@ function renderFrameVisualBlock(
 ): void {
   const visual = block.visualRequest;
   if (visual?.asset?.base64) {
-    slide.addImage({
-      data: `data:${visual.asset.mimeType || "image/png"};base64,${visual.asset.base64}`,
+    const imageBox = resolveContainedImageBox(box, resolveAssetAspectRatio(visual.asset));
+    slide.addShape("rect", {
       x: box.x,
       y: box.y,
       w: box.w,
-      h: box.h
+      h: box.h,
+      fill: { color: theme.surface, transparency: 100 },
+      line: { color: theme.border, width: 0.55, transparency: 45 }
+    });
+    slide.addImage({
+      data: `data:${visual.asset.mimeType || "image/png"};base64,${visual.asset.base64}`,
+      x: imageBox.x,
+      y: imageBox.y,
+      w: imageBox.w,
+      h: imageBox.h
     });
     return;
   }
   if (visual?.type === "diagram") {
     renderFrameDiagramBlock(slide, block, theme, box);
+    addFrameBlockIdTag(slide, block.id, theme, box);
     return;
   }
   if (visual?.type === "map") {
     renderFrameMapBlock(slide, block, theme, box);
+    addFrameBlockIdTag(slide, block.id, theme, box);
     return;
   }
   if (visual?.type === "iconSet") {
     renderFrameIconSetBlock(slide, block, theme, box);
+    addFrameBlockIdTag(slide, block.id, theme, box);
     return;
   }
   slide.addShape("roundRect", {
@@ -478,6 +490,75 @@ function renderFrameVisualBlock(
       });
     });
   }
+  addFrameBlockIdTag(slide, block.id, theme, box);
+}
+
+function resolveAssetAspectRatio(
+  asset: NonNullable<NonNullable<FrameBlock["visualRequest"]>["asset"]>
+): number | undefined {
+  if (typeof asset.aspectRatio === "number" && asset.aspectRatio > 0) {
+    return asset.aspectRatio;
+  }
+  if (
+    typeof asset.widthPx === "number" &&
+    asset.widthPx > 0 &&
+    typeof asset.heightPx === "number" &&
+    asset.heightPx > 0
+  ) {
+    return asset.widthPx / asset.heightPx;
+  }
+  return undefined;
+}
+
+function resolveContainedImageBox(
+  box: { x: number; y: number; w: number; h: number },
+  aspectRatio?: number
+) {
+  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+    return box;
+  }
+  const boxRatio = box.w / box.h;
+  if (aspectRatio > boxRatio) {
+    const h = box.w / aspectRatio;
+    return {
+      x: box.x,
+      y: box.y + (box.h - h) / 2,
+      w: box.w,
+      h
+    };
+  }
+  const w = box.h * aspectRatio;
+  return {
+    x: box.x + (box.w - w) / 2,
+    y: box.y,
+    w,
+    h: box.h
+  };
+}
+
+function addFrameBlockIdTag(
+  slide: PptxGenJS.Slide,
+  blockId: string | undefined,
+  theme: RendererTheme,
+  box: { x: number; y: number; w: number; h: number }
+): void {
+  if (!blockId) return;
+  const tagW = Math.min(1.25, Math.max(0.7, box.w * 0.28));
+  slide.addText(`Block ${blockId}`, {
+    x: box.x + box.w - tagW - 0.12,
+    y: box.y + box.h - 0.34,
+    w: tagW,
+    h: 0.22,
+    fontFace: theme.fontFace,
+    fontSize: 7.2,
+    bold: true,
+    color: theme.accent,
+    fill: { color: theme.background, transparency: 8 },
+    line: { color: theme.accent, transparency: 35 },
+    fit: "shrink",
+    align: "center",
+    margin: 0.02
+  });
 }
 
 function renderFrameDiagramBlock(

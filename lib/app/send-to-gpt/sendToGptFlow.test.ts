@@ -94,6 +94,7 @@ describe("runSendToGptFlow", () => {
       getAskAiModeLinkForQuery: () => "",
       applySearchUsage,
       applyChatUsage,
+      applyTaskUsage: () => {},
       handleGptMemory: async () => ({ compressionUsage: null }),
       applyCompressionUsage: () => {},
       chatRecentLimit: 8,
@@ -131,6 +132,7 @@ describe("runSendToGptFlow", () => {
         sourceType: "ingested_file",
         ...document,
       }),
+      updateStoredDocument: () => undefined,
     });
 
     const assistantMessage = messages[messages.length - 1];
@@ -203,6 +205,7 @@ describe("runSendToGptFlow", () => {
       getAskAiModeLinkForQuery: () => "",
       applySearchUsage: () => {},
       applyChatUsage: () => {},
+      applyTaskUsage: () => {},
       handleGptMemory: async () => ({ compressionUsage: null }),
       applyCompressionUsage: () => {},
       chatRecentLimit: 8,
@@ -240,6 +243,7 @@ describe("runSendToGptFlow", () => {
         sourceType: "ingested_file",
         ...document,
       }),
+      updateStoredDocument: () => undefined,
     });
 
     expect(fetchSpy).not.toHaveBeenCalled();

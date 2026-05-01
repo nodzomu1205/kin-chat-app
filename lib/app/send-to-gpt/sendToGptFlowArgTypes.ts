@@ -62,6 +62,8 @@ export type SendToGptFlowProtocolArgs = {
   shouldInjectTaskContextWithSettings: (userInput: string) => boolean;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceEnabled?: boolean;
+  imageLibraryReferenceCount?: number;
   buildLibraryReferenceContext: () => string;
   taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
   ingestProtocolMessage: (

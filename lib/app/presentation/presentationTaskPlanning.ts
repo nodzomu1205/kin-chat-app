@@ -49,6 +49,7 @@ export function buildPresentationTaskStructuredInput(args: {
   body?: string;
   material?: string;
   currentPlanText?: string;
+  imageLibraryContext?: string;
 }) {
   return [
     `プレゼンタイトル: ${args.title?.trim() || "未設定"}`,
@@ -59,6 +60,11 @@ export function buildPresentationTaskStructuredInput(args: {
     args.body?.trim() ? `入力本文:\n${args.body.trim()}` : "",
     args.material?.trim() ? `取込素材:\n${args.material.trim()}` : "",
   ]
+    .concat(
+      args.imageLibraryContext?.trim()
+        ? [`Image library reference candidates:\n${args.imageLibraryContext.trim()}`]
+        : []
+    )
     .filter(Boolean)
     .join("\n\n");
 }
@@ -96,12 +102,16 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "Keep extractedItems as atomic facts: one process step, country group, risk, or initiative per bullet. Do not collapse distinct facts into one generic summary.",
     "The canonical slide design source is deckFrame + slideFrames JSON. Natural-language slide design text is only a projection from that JSON.",
     "deckFrame holds deck-wide settings such as page count, common master, background/wallpaper, page number, and logo. Do not repeat common settings on every slide.",
+    "In slideFrames, omit masterFrameId unless a slide intentionally overrides deckFrame.masterFrameId.",
     "Do not create slideDesign.slides[].parts as the preferred path. Do not rely on natural-language slide text and a parser to recover JSON.",
     "Use the fixed frame package: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4.",
     "Block styles define fields: listCompact = heading + items; textStackTopLeft = heading + text; visualContain/visualCover = visualRequest only; headlineCenter/callout = one emphasized text.",
     "Choose slide count from the material and strategy. If the source naturally implies 5-7 slides, create 5-7 slideFrames.",
     "The visible chat text must show the actual messages that will appear in PPTX. Do not replace display text or items with counts such as '+ 6 items'.",
     "For visual blocks, include the full visual prompt in visualRequest.prompt. If the visual is too complex to prompt yet, leave prompt empty and explain why in visualRequest.promptNote.",
+    "If an image-library candidate semantically fits a visual block, set visualRequest.preferredImageId to its Image ID and still keep a brief/prompt explaining why it fits.",
+    "Image-library selection is a two-step decision: first choose whether a candidate is semantically relevant; only after selecting it, use Orientation, Size, and Aspect ratio to choose layoutFrameId, block order, and visual role. Do not reject a semantically fitting image because of aspect ratio alone.",
+    "For layout after image selection, landscape images should go in wide/hero visual areas, portrait images should go in vertical/narrow visual areas, and square images should go in balanced visual areas. Avoid defaulting to 50/50 left-right layouts when the selected asset shape would make the image feel cramped or distorted.",
     "If the user gives a revision instruction, preserve reusable frame choices where valid and update the affected slideFrame fields.",
     "Do not invent facts missing from the material. Put missing material in MISSING_INFO.",
     mode === "create"

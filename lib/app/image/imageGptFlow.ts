@@ -10,6 +10,7 @@ import {
   loadGeneratedImagePayloadById,
   saveGeneratedImageAsset,
 } from "@/lib/app/image/imageAssetStorage";
+import { readImageDimensions } from "@/lib/app/image/imageDimensions";
 import {
   buildGeneratedImageDisplayText,
   normalizeImageGenerationUsage,
@@ -187,6 +188,10 @@ async function createStandaloneImage(args: {
     imageIdSeed: args.imageIdSeed,
     options: args.options,
   });
+  const dimensions = await readImageDimensions({
+    base64: output.contentBase64,
+    mimeType: output.mimeType,
+  });
   const payload: GeneratedImageLibraryPayload = {
     version: "0.1-generated-image",
     imageId: output.imageId,
@@ -200,6 +205,7 @@ async function createStandaloneImage(args: {
     sourcePromptHash: output.sourcePromptHash,
     options: output.options,
     usage: output.usage,
+    ...dimensions,
     createdAt: output.createdAt,
   };
   await saveGeneratedImageAsset(payload);

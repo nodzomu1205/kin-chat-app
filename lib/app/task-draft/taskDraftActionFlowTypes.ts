@@ -36,6 +36,9 @@ export type CommonTaskDraftFlowArgs = {
   setCurrentTaskDraft: SetTaskDraft;
   gptStateRef: MutableRefObject<KinMemoryState>;
   chatRecentLimit: number;
+  referenceLibraryItems: ReferenceLibraryItem[];
+  imageLibraryReferenceEnabled: boolean;
+  imageLibraryReferenceCount: number;
   applyChatUsage: (
     usage: Parameters<typeof normalizeUsage>[0],
     options?: ConversationUsageOptions

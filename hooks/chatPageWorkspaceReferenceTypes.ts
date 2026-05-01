@@ -48,6 +48,18 @@ export type ChatPageWorkspaceViewReferencesArgs = {
     ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryIndexResponseCount"];
   libraryReferenceCount:
     ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceCount"];
+  imageLibraryReferenceEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["imageLibraryReferenceEnabled"];
+  onChangeImageLibraryReferenceEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeImageLibraryReferenceEnabled"];
+  imageLibraryReferenceCount:
+    ChatPageGptPanelCompositionArgs["settings"]["imageLibraryReferenceCount"];
+  onChangeImageLibraryReferenceCount:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeImageLibraryReferenceCount"];
+  imageLibraryCardLimit:
+    ChatPageGptPanelCompositionArgs["settings"]["imageLibraryCardLimit"];
+  onChangeImageLibraryCardLimit:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeImageLibraryCardLimit"];
   onChangeLibraryReferenceCount:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryReferenceCount"];
   libraryStorageMB: ChatPageGptPanelCompositionArgs["settings"]["libraryStorageMB"];

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useGoogleDriveLibrary } from "@/hooks/useGoogleDriveLibrary";
 import { useGoogleDrivePicker } from "@/hooks/useGoogleDrivePicker";
 import { useMultipartAssemblies } from "@/hooks/useMultipartAssemblies";
@@ -12,8 +13,10 @@ import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMulti
 import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
 import {
   importImageFileToLibrary,
+  type ImageImportSidecarText,
   type ImageLibraryImportMode,
 } from "@/lib/app/image/imageImportFlow";
+import { resolveLibraryCardLimitDeletionIds } from "@/lib/app/reference-library/libraryCardLimits";
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import type { SearchContext } from "@/types/task";
@@ -89,6 +92,12 @@ export function useChatPageReferenceDomain(
     setLibraryReferenceMode,
     libraryIndexResponseCount,
     setLibraryIndexResponseCount,
+    imageLibraryReferenceEnabled,
+    setImageLibraryReferenceEnabled,
+    imageLibraryReferenceCount,
+    setImageLibraryReferenceCount,
+    imageLibraryCardLimit,
+    setImageLibraryCardLimit,
     libraryReferenceCount,
     setLibraryReferenceCount,
     libraryStorageMB,
@@ -106,6 +115,20 @@ export function useChatPageReferenceDomain(
     multipartStorageMB,
     sourceDisplayCount: args.sourceDisplayCount,
   });
+
+  useEffect(() => {
+    const deletionIds = resolveLibraryCardLimitDeletionIds({
+      items: libraryItems,
+      libraryCardLimit: libraryIndexResponseCount,
+      imageLibraryCardLimit,
+    });
+    deletionIds.forEach(deleteStoredDocument);
+  }, [
+    deleteStoredDocument,
+    imageLibraryCardLimit,
+    libraryIndexResponseCount,
+    libraryItems,
+  ]);
 
   const {
     googleDriveFolderLink,
@@ -152,11 +175,15 @@ export function useChatPageReferenceDomain(
     simpleImageCharLimit: args.simpleImageCharLimit,
   };
 
-  const importDeviceImageFile = async (file: File) => {
+  const importDeviceImageFile = async (
+    file: File,
+    sidecarText?: ImageImportSidecarText
+  ) => {
     args.setIngestLoading(true);
     try {
       const { payload } = await importImageFileToLibrary({
         file,
+        sidecarText,
         imageLibraryImportEnabled: args.imageLibraryImportEnabled,
         mode: args.imageLibraryImportMode,
         ingestOptions: imageIngestOptions,
@@ -264,6 +291,12 @@ export function useChatPageReferenceDomain(
     setLibraryReferenceMode,
     libraryIndexResponseCount,
     setLibraryIndexResponseCount,
+    imageLibraryReferenceEnabled,
+    setImageLibraryReferenceEnabled,
+    imageLibraryReferenceCount,
+    setImageLibraryReferenceCount,
+    imageLibraryCardLimit,
+    setImageLibraryCardLimit,
     libraryReferenceCount,
     setLibraryReferenceCount,
     libraryStorageMB,

@@ -36,12 +36,16 @@ type GooglePickerBuilder = {
   setOAuthToken: (value: string) => GooglePickerBuilder;
   setCallback: (value: (data: GooglePickerCallbackData) => void | Promise<void>) => GooglePickerBuilder;
   addView: (value: GooglePickerDocsView) => GooglePickerBuilder;
+  enableFeature: (value: string) => GooglePickerBuilder;
   build: () => { setVisible: (value: boolean) => void };
 };
 
 type GooglePickerNamespace = {
   Action: { PICKED: string };
   DocsView: new (viewId: string) => GooglePickerDocsView;
+  Feature?: {
+    MULTISELECT_ENABLED?: string;
+  };
   PickerBuilder: new () => GooglePickerBuilder;
   ViewId: {
     DOCS: string;
@@ -138,6 +142,10 @@ export async function openGoogleDrivePicker({
       if (data.action !== pickerApi.Action.PICKED) return;
       await onPickedDocs(data.docs || []);
     });
+
+  if (mode === "file_import" && pickerApi.Feature?.MULTISELECT_ENABLED) {
+    pickerBuilder.enableFeature(pickerApi.Feature.MULTISELECT_ENABLED);
+  }
 
   pickerBuilder.addView(mode === "file_import" ? docsView : foldersView);
   pickerBuilder.build().setVisible(true);

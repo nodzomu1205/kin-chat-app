@@ -29,6 +29,7 @@ import type {
   TaskRegistrationLibrarySettings,
   TaskRegistrationRecurrence,
 } from "@/lib/app/task-registration/taskRegistration";
+import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
 
 export type GptInstructionMode =
   | "normal"
@@ -260,7 +261,10 @@ export type GptPanelReferenceProps = {
     onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
     onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
     onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
-    onImportDeviceImageFile: (file: File) => void | Promise<void>;
+    onImportDeviceImageFile: (
+      file: File,
+      sidecarText?: ImageImportSidecarText
+    ) => void | Promise<void>;
     onImportGoogleDriveImageFile: () => void | Promise<void>;
   };
 
@@ -288,6 +292,9 @@ export type GptPanelSettingsProps = {
   libraryReferenceMode: LibraryReferenceMode;
   libraryIndexResponseCount: number;
   libraryReferenceCount: number;
+  imageLibraryReferenceEnabled: boolean;
+  imageLibraryReferenceCount: number;
+  imageLibraryCardLimit: number;
   libraryStorageMB: number;
   libraryReferenceEstimatedTokens: number;
   autoSendKinSysInput: boolean;
@@ -320,6 +327,9 @@ export type GptPanelSettingsProps = {
   onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (value: number) => void;
   onChangeLibraryReferenceCount: (value: number) => void;
+  onChangeImageLibraryReferenceEnabled: (value: boolean) => void;
+  onChangeImageLibraryReferenceCount: (value: number) => void;
+  onChangeImageLibraryCardLimit: (value: number) => void;
   onChangeAutoSendKinSysInput: (value: boolean) => void;
   onChangeAutoCopyKinSysResponseToGpt: (value: boolean) => void;
   onChangeAutoSendGptSysInput: (value: boolean) => void;

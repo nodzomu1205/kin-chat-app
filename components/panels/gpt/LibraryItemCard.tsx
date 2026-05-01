@@ -27,6 +27,7 @@ type Props = Pick<
   | "referenceLibraryItems"
   | "multipartAssemblies"
   | "libraryReferenceCount"
+  | "imageLibraryReferenceCount"
   | "sourceDisplayCount"
   | "selectedTaskLibraryItemId"
   | "onSelectTaskLibraryItem"
@@ -65,6 +66,7 @@ export default function LibraryItemCard({
   referenceLibraryItems,
   multipartAssemblies,
   libraryReferenceCount,
+  imageLibraryReferenceCount,
   sourceDisplayCount,
   selectedTaskLibraryItemId,
   onSelectTaskLibraryItem,
@@ -96,7 +98,13 @@ export default function LibraryItemCard({
   setDraftText,
 }: Props) {
   const priorityIndex =
-    referenceLibraryItems.findIndex((entry) => entry.id === item.id) + 1;
+    referenceLibraryItems
+      .filter((entry) =>
+        item.artifactType === "generated_image"
+          ? entry.artifactType === "generated_image"
+          : entry.artifactType !== "generated_image"
+      )
+      .findIndex((entry) => entry.id === item.id) + 1;
   const multipartSource =
     item.itemType === "kin_created"
       ? multipartAssemblies.find((entry) => `kin:${entry.id}` === item.sourceId) || null
@@ -126,6 +134,7 @@ export default function LibraryItemCard({
         item={item}
         priorityIndex={priorityIndex}
         libraryReferenceCount={libraryReferenceCount}
+        imageLibraryReferenceCount={imageLibraryReferenceCount}
         selectedTaskLibraryItemId={selectedTaskLibraryItemId}
         multipartSource={multipartSource}
         isMobile={isMobile}

@@ -3,6 +3,7 @@ import {
   type GeneratedImageLibraryPayload,
 } from "@/lib/app/image/imageLibrary";
 import { saveGeneratedImageAsset } from "@/lib/app/image/imageAssetStorage";
+import { readImageDimensions } from "@/lib/app/image/imageDimensions";
 import {
   requestFileIngest,
   resolveIngestErrorMessage,
@@ -23,9 +24,14 @@ import { generateId } from "@/lib/shared/uuid";
 import type { StoredDocument } from "@/types/chat";
 
 export type ImageLibraryImportMode = "image_only" | "image_with_description";
+export type ImageImportSidecarText = {
+  fileName: string;
+  text: string;
+};
 
 export async function importImageFileToLibrary(args: {
   file: File;
+  sidecarText?: ImageImportSidecarText;
   imageLibraryImportEnabled: boolean;
   mode: ImageLibraryImportMode;
   ingestOptions: SharedIngestOptions;
@@ -37,56 +43,71 @@ export async function importImageFileToLibrary(args: {
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
   const base64 = await fileToBase64(args.file);
-  const { response, data } = await requestFileIngest({
-    file: args.file,
-    options: {
-      ...args.ingestOptions,
-      kind: "image",
-    },
+  const dimensions = await readImageDimensions({
+    base64,
+    mimeType: args.file.type || "image/png",
   });
-  let totalIngestUsage = normalizeUsage(data?.usage);
-  if (!response.ok) {
+  const sidecarText = args.sidecarText?.text.trim();
+  const data = sidecarText
+    ? null
+    : await requestFileIngest({
+        file: args.file,
+        options: {
+          ...args.ingestOptions,
+          kind: "image",
+        },
+      });
+  let totalIngestUsage = normalizeUsage(data?.data?.usage);
+  if (data && !data.response.ok) {
     throw new Error(
       resolveIngestErrorMessage({
-        data,
+        data: data.data,
         fallback: "Image text import failed.",
       })
     );
   }
 
-  const textLibraryContent = buildDriveImportStoredText(data?.result || {});
-  const fileTitle = resolveIngestFileTitle({
-    data,
-    fallback: args.file.name,
-  });
-  const rawTextForSummary = buildCanonicalSummarySource(textLibraryContent);
-  const preparedDocument = await prepareIngestedStoredDocument({
-    title: fileTitle,
-    filename: buildIngestedDocumentFilename({
+  const textLibraryContent =
+    sidecarText || buildDriveImportStoredText(data?.data?.result || {});
+  const fileTitle = sidecarText
+    ? args.sidecarText?.fileName || args.file.name
+    : resolveIngestFileTitle({
+        data: data?.data || {},
+        fallback: args.file.name,
+      });
+  let textStoredDocument: StoredDocument | null = null;
+  const shouldRecordTextLibraryDocument =
+    !sidecarText || !args.imageLibraryImportEnabled;
+  if (shouldRecordTextLibraryDocument) {
+    const rawTextForSummary = buildCanonicalSummarySource(textLibraryContent);
+    const preparedDocument = await prepareIngestedStoredDocument({
       title: fileTitle,
-      fallbackFilename: args.file.name,
-    }),
-    text: textLibraryContent,
-    taskId: args.currentTaskId,
-    autoGenerateSummary: args.autoGenerateLibrarySummary,
-    currentUsage: totalIngestUsage,
-    fallbackSummary:
-      args.autoGenerateLibrarySummary && rawTextForSummary
-        ? buildDriveImportSummary({
-            result: data?.result,
-            fallbackText: rawTextForSummary,
-            fallbackTitle: fileTitle,
-          })
-        : "",
-    onSummaryError: (error) => {
-      console.warn("Image import summary generation failed", error);
-    },
-  });
-  totalIngestUsage = preparedDocument.totalUsage;
-  args.applyIngestUsage(totalIngestUsage);
-  const textStoredDocument = args.recordIngestedDocument(
-    preparedDocument.storedDocument
-  );
+      filename: buildIngestedDocumentFilename({
+        title: fileTitle,
+        fallbackFilename: args.file.name,
+      }),
+      text: textLibraryContent,
+      taskId: args.currentTaskId,
+      autoGenerateSummary: args.autoGenerateLibrarySummary,
+      currentUsage: totalIngestUsage,
+      fallbackSummary:
+        args.autoGenerateLibrarySummary && rawTextForSummary
+          ? buildDriveImportSummary({
+              result: data?.data?.result,
+              fallbackText: rawTextForSummary,
+              fallbackTitle: fileTitle,
+            })
+          : "",
+      onSummaryError: (error) => {
+        console.warn("Image import summary generation failed", error);
+      },
+    });
+    totalIngestUsage = preparedDocument.totalUsage;
+    args.applyIngestUsage(totalIngestUsage);
+    textStoredDocument = args.recordIngestedDocument(
+      preparedDocument.storedDocument
+    );
+  }
 
   if (!args.imageLibraryImportEnabled) {
     return { payload: null, storedDocument: textStoredDocument };
@@ -107,6 +128,7 @@ export async function importImageFileToLibrary(args: {
     source: "imported",
     fileName: args.file.name,
     fileSize: args.file.size,
+    ...dimensions,
     alt: args.file.name,
     sourcePromptHash: imageId,
     createdAt: new Date().toISOString(),
@@ -132,6 +154,10 @@ export async function saveImportedImageFileToLibrary(args: {
   ) => StoredDocument;
 }) {
   const base64 = await fileToBase64(args.file);
+  const dimensions = await readImageDimensions({
+    base64,
+    mimeType: args.file.type || "image/png",
+  });
   const imageId = `img_${generateId().replace(/[^A-Za-z0-9_-]+/g, "")}`;
   const payload: GeneratedImageLibraryPayload = {
     version: "0.1-generated-image",
@@ -146,6 +172,7 @@ export async function saveImportedImageFileToLibrary(args: {
     source: "imported",
     fileName: args.file.name,
     fileSize: args.file.size,
+    ...dimensions,
     alt: args.file.name,
     sourcePromptHash: imageId,
     createdAt: new Date().toISOString(),

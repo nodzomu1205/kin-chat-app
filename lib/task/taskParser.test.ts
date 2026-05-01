@@ -99,6 +99,128 @@ describe("taskParser", () => {
     );
   });
 
+  it("parses presentation plan JSON when the plan is nested", () => {
+    const parsed = parseTaskResult(
+      JSON.stringify({
+        taskId: "outer-task",
+        presentationPlan: {
+          type: "PREP_TASK",
+          status: "OK",
+          summary: "Nested deck plan",
+          extractedItems: ["Nested source fact"],
+          strategyItems: ["audience: operators"],
+          keyMessages: ["Explain the process"],
+          deckFrame: { slideCount: 1, masterFrameId: "titleLineFooter" },
+          slideFrames: [
+            {
+              slideNumber: 1,
+              title: "Nested workflow",
+              masterFrameId: "titleLineFooter",
+              layoutFrameId: "titleBody",
+              blocks: [
+                {
+                  id: "block1",
+                  kind: "textStack",
+                  styleId: "textStackTopLeft",
+                  heading: "Workflow",
+                  text: "A clear workflow summary.",
+                },
+              ],
+            },
+          ],
+        },
+      })
+    );
+
+    expect(parsed?.summary).toBe("Nested deck plan");
+    expect(parsed?.detailBlocks).toEqual(
+      expect.arrayContaining([
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              deckFrame: { slideCount: 1, masterFrameId: "titleLineFooter" },
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Nested workflow",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "titleBody",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "textStack",
+                      styleId: "textStackTopLeft",
+                      heading: "Workflow",
+                      text: "A clear workflow summary.",
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ])
+    );
+  });
+
+  it("treats top-level slides as slide frames for presentation plan JSON", () => {
+    const parsed = parseTaskResult(
+      JSON.stringify({
+        taskId: "task-slides",
+        type: "PREP_TASK",
+        status: "OK",
+        summary: "Slides-shaped deck plan",
+        slides: [
+          {
+            slideNumber: 1,
+            title: "Supply chain",
+            masterFrameId: "titleLineFooter",
+            layoutFrameId: "titleBody",
+            blocks: [
+              {
+                id: "block1",
+                kind: "listCompact",
+                styleId: "listCompact",
+                heading: "Main steps",
+                items: ["Grow", "Harvest", "Process"],
+              },
+            ],
+          },
+        ],
+      })
+    );
+
+    expect(parsed?.detailBlocks).toEqual(
+      expect.arrayContaining([
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Supply chain",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "titleBody",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "listCompact",
+                      styleId: "listCompact",
+                      heading: "Main steps",
+                      items: ["Grow", "Harvest", "Process"],
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ])
+    );
+  });
+
   it("parses presentation plan JSON as a task result with slide design JSON", () => {
     const parsed = parseTaskResult(
       JSON.stringify({

@@ -17,6 +17,10 @@ import {
   stripPresentationTaskMarker,
 } from "@/lib/app/presentation/presentationTaskPlanning";
 import {
+  buildPresentationImageLibraryContext,
+  getPresentationImageLibraryCandidates,
+} from "@/lib/app/presentation/presentationImageLibrary";
+import {
   buildLibraryTaskSource,
   buildPreparedTaskDraftUpdate,
 } from "@/lib/app/task-draft/taskDraftFlowProjection";
@@ -41,6 +45,16 @@ import {
   resolveGeneratedTaskTitle,
   resolveTaskDraftUserInstruction,
 } from "@/lib/task/taskTitleGeneration";
+
+function buildTaskDraftImageLibraryContext(args: AttachSearchResultToTaskFlowArgs) {
+  return buildPresentationImageLibraryContext(
+    getPresentationImageLibraryCandidates({
+      enabled: args.imageLibraryReferenceEnabled,
+      count: args.imageLibraryReferenceCount,
+      referenceLibraryItems: args.referenceLibraryItems,
+    })
+  );
+}
 
 export async function runAttachSearchResultToTaskFlow(
   args: AttachSearchResultToTaskFlowArgs
@@ -128,6 +142,7 @@ export async function runAttachSearchResultToTaskFlow(
           userInstruction: nextUserInstruction,
           body: parsedInput.freeText || normalizedInput,
           material: materialText,
+          imageLibraryContext: buildTaskDraftImageLibraryContext(args),
         })
       : buildTaskStructuredInput({
           title: resolvedTitle,
@@ -257,6 +272,7 @@ export async function runAttachSearchResultToTaskFlow(
         currentPlanText: currentTaskText,
         body: parsedInput.freeText || normalizedInput,
         material: materialText,
+        imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildTaskInput({
         title: resolvedTitle,

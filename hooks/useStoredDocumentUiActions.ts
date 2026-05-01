@@ -35,23 +35,36 @@ export function useStoredDocumentUiActions({
       anchor.download = `${imagePayload.imageId}.${imageExtension(imagePayload.mimeType)}`;
       anchor.click();
       window.URL.revokeObjectURL(url);
+      downloadTextDocument({
+        fileName: document.filename || `${imagePayload.imageId}.txt`,
+        text: document.text,
+      });
       return;
     }
-    const blob = new Blob([document.text], { type: "text/plain;charset=utf-8" });
-    const url = window.URL.createObjectURL(blob);
-    const anchor = window.document.createElement("a");
-    anchor.href = url;
-    anchor.download =
-      document.filename.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_") ||
-      "document.txt";
-    anchor.click();
-    window.URL.revokeObjectURL(url);
+    downloadTextDocument({
+      fileName:
+        document.filename.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_") ||
+        "document.txt",
+      text: document.text,
+    });
   };
 
   return {
     loadStoredDocumentToGptInput,
     downloadStoredDocument,
   };
+}
+
+function downloadTextDocument(args: { fileName: string; text: string }) {
+  if (typeof window === "undefined") return;
+  const blob = new Blob([args.text], { type: "text/plain;charset=utf-8" });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = window.document.createElement("a");
+  anchor.href = url;
+  anchor.download =
+    args.fileName.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_") || "document.txt";
+  anchor.click();
+  window.URL.revokeObjectURL(url);
 }
 
 function base64ToBytes(value: string) {

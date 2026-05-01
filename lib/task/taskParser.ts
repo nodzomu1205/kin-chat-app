@@ -24,6 +24,49 @@ function stringArray(value: unknown) {
     : [];
 }
 
+function arrayValue(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function hasPresentationPlanFields(value: Record<string, unknown>) {
+  return (
+    Array.isArray(value.slideFrames) ||
+    Array.isArray(value.slides) ||
+    !!objectValue(value.slideDesign) ||
+    !!objectValue(value.deckFrame) ||
+    !!objectValue(value.slideFrameDocument) ||
+    !!objectValue(value.frameDocument)
+  );
+}
+
+function resolvePresentationPlanRoot(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  if (hasPresentationPlanFields(value)) return value;
+
+  for (const key of ["presentationPlan", "presentation", "plan", "result", "deck"]) {
+    const candidate = objectValue(value[key]);
+    if (candidate && hasPresentationPlanFields(candidate)) return candidate;
+  }
+
+  return value;
+}
+
+function resolveSlideFrames(root: Record<string, unknown>) {
+  const slideFrames = arrayValue(root.slideFrames);
+  if (slideFrames.length > 0) return slideFrames;
+
+  const slides = arrayValue(root.slides);
+  if (slides.length > 0) return slides;
+
+  const nestedFrameDocument =
+    objectValue(root.slideFrameDocument) || objectValue(root.frameDocument);
+  const nestedSlideFrames = arrayValue(nestedFrameDocument?.slideFrames);
+  if (nestedSlideFrames.length > 0) return nestedSlideFrames;
+
+  return [];
+}
+
 function extractJsonObjectText(value: string) {
   const trimmed = value.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
@@ -47,24 +90,33 @@ function parsePresentationPlanTaskResult(text: string): TaskResult | null {
 
   const root = objectValue(parsed);
   if (!root) return null;
-  const slideFrames = Array.isArray(root.slideFrames) ? root.slideFrames : [];
-  const deckFrame = objectValue(root.deckFrame);
-  const hasLegacySlideDesign = !!objectValue(root.slideDesign);
+  const planRoot = resolvePresentationPlanRoot(root);
+  const slideFrames = resolveSlideFrames(planRoot);
+  const deckFrame = objectValue(planRoot.deckFrame) || objectValue(root.deckFrame);
+  const hasLegacySlideDesign =
+    !!objectValue(planRoot.slideDesign) || !!objectValue(root.slideDesign);
   if (slideFrames.length === 0 && !hasLegacySlideDesign) return null;
 
-  const type = stringValue(root.type);
-  const status = stringValue(root.status);
-  const slideDesign = objectValue(root.slideDesign) || { slides: [] };
+  const type = stringValue(planRoot.type) || stringValue(root.type);
+  const status = stringValue(planRoot.status) || stringValue(root.status);
+  const slideDesign =
+    objectValue(planRoot.slideDesign) || objectValue(root.slideDesign) || { slides: [] };
+  const extractedItems = planRoot.extractedItems ?? root.extractedItems;
+  const strategyItems = planRoot.strategyItems ?? root.strategyItems;
+  const keyMessages = planRoot.keyMessages ?? root.keyMessages;
+  const warnings = planRoot.warnings ?? root.warnings;
+  const missingInfo = planRoot.missingInfo ?? root.missingInfo;
+  const nextSuggestion = planRoot.nextSuggestion ?? root.nextSuggestion;
 
   return {
-    taskId: stringValue(root.taskId),
+    taskId: stringValue(planRoot.taskId) || stringValue(root.taskId),
     type: isTaskType(type) ? type : "PREP_TASK",
     status: isTaskResultStatus(status) ? status : "PARTIAL",
-    summary: stringValue(root.summary),
+    summary: stringValue(planRoot.summary) || stringValue(root.summary),
     keyPoints: [],
     detailBlocks: [
-      { title: "抽出事項", body: stringArray(root.extractedItems) },
-      { title: "Presentation Strategy", body: stringArray(root.strategyItems) },
+      { title: "抽出事項", body: stringArray(extractedItems) },
+      { title: "Presentation Strategy", body: stringArray(strategyItems) },
       ...(slideFrames.length > 0
         ? [
             {
@@ -73,15 +125,15 @@ function parsePresentationPlanTaskResult(text: string): TaskResult | null {
             },
           ]
         : []),
-      { title: "キーメッセージ", body: stringArray(root.keyMessages) },
+      { title: "キーメッセージ", body: stringArray(keyMessages) },
       {
         title: "スライド設計JSON",
         body: [JSON.stringify({ slides: Array.isArray(slideDesign.slides) ? slideDesign.slides : [] })],
       },
     ],
-    warnings: stringArray(root.warnings),
-    missingInfo: stringArray(root.missingInfo),
-    nextSuggestion: stringArray(root.nextSuggestion),
+    warnings: stringArray(warnings),
+    missingInfo: stringArray(missingInfo),
+    nextSuggestion: stringArray(nextSuggestion),
   };
 }
 

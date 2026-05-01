@@ -42,9 +42,11 @@ import {
   buildDriveUploadDestinationPrompt,
   buildDriveUploadInvalidSelectionMessage,
   canImportDriveMimeType,
+  isDriveImageMimeType,
   resolveDrivePickedImportAction,
   resolveDriveUploadDestinationIndex,
   type DrivePickerDocument,
+  type DrivePickedImportAction,
   type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
 import type { ReferenceLibraryItem } from "@/types/chat";
@@ -55,6 +57,14 @@ export type DriveImportFile = {
   name: string;
   mimeType: string;
   path?: string;
+};
+
+export type DriveImportOptions = {
+  manageLoading?: boolean;
+  sidecarFile?: DriveImportFile;
+  sidecarText?: string;
+  sidecarFileName?: string;
+  forceImageLibraryImportEnabled?: boolean;
 };
 
 export type DriveUiMessageSourceType = NonNullable<Message["meta"]>["sourceType"];
@@ -71,28 +81,58 @@ export type RunDrivePickedDocumentsImportArgs = {
   mode: DrivePickerMode;
   importDriveFile: (
     file: DriveImportFile,
-    options?: { manageLoading?: boolean }
+    options?: DriveImportOptions
+  ) => Promise<void>;
+  importDriveImageFile?: (
+    file: DriveImportFile,
+    options?: DriveImportOptions
   ) => Promise<void>;
   importDriveFolder: (
     folder: DriveImportFolder,
     mode: DriveFolderImportMode
   ) => Promise<void>;
+  imageImportMode?: boolean;
 };
 
 export async function runDrivePickedDocumentsImport({
   docs,
   mode,
   importDriveFile,
+  importDriveImageFile,
   importDriveFolder,
+  imageImportMode = false,
 }: RunDrivePickedDocumentsImportArgs) {
-  for (const doc of docs) {
-    const action = resolveDrivePickedImportAction({ doc, mode });
-    if (!action) continue;
+  const actions = docs
+    .map((doc) => resolveDrivePickedImportAction({ doc, mode }))
+    .filter((action): action is NonNullable<typeof action> => !!action);
+  const pairedSidecarIds = new Set<string>();
+  for (const action of actions) {
+    if (action.kind !== "file" || !isDriveImageMimeType(action.file.mimeType)) {
+      continue;
+    }
+    const sidecar = findMatchingDriveTextSidecar(action.file, actions);
+    if (sidecar) pairedSidecarIds.add(sidecar.id);
+  }
+
+  for (const action of actions) {
     if (action.kind === "folder") {
       await importDriveFolder(action.folder, action.mode);
       continue;
     }
-    await importDriveFile(action.file);
+    if (imageImportMode && !isDriveImageMimeType(action.file.mimeType)) {
+      continue;
+    }
+    if (importDriveImageFile && pairedSidecarIds.has(action.file.id)) continue;
+    const sidecarFile = isDriveImageMimeType(action.file.mimeType)
+      ? findMatchingDriveTextSidecar(action.file, actions)
+      : undefined;
+    if (isDriveImageMimeType(action.file.mimeType) && importDriveImageFile) {
+      await importDriveImageFile(action.file, {
+        sidecarFile,
+      });
+      continue;
+    }
+    await importDriveFile(action.file, { sidecarFile });
   }
 }
 
@@ -197,11 +237,15 @@ export async function runDriveFileImport({
 
 export async function runDriveImageFileImport(args: {
   file: DriveImportFile;
+  sidecarFile?: DriveImportFile;
+  sidecarText?: string;
+  sidecarFileName?: string;
   ensureAccessToken: () => Promise<string>;
   ingestOptions: SharedIngestOptions;
   autoGenerateLibrarySummary: boolean;
   currentTaskId?: string;
   imageLibraryImportEnabled: boolean;
+  forceImageLibraryImportEnabled?: boolean;
   imageLibraryImportMode: ImageLibraryImportMode;
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
@@ -231,9 +275,23 @@ export async function runDriveImageFileImport(args: {
   const downloadedFile = new File([blob], args.file.name, {
     type: blob.type || args.file.mimeType || "image/png",
   });
+  const sidecarText =
+    args.sidecarText ||
+    (await readDriveSidecarText({
+      accessToken,
+      sidecarFile: args.sidecarFile,
+    }));
   const { payload } = await importImageFileToLibrary({
     file: downloadedFile,
-    imageLibraryImportEnabled: args.imageLibraryImportEnabled,
+    sidecarText: sidecarText
+      ? {
+          fileName:
+            args.sidecarFileName || args.sidecarFile?.name || args.file.name,
+          text: sidecarText,
+        }
+      : undefined,
+    imageLibraryImportEnabled:
+      args.forceImageLibraryImportEnabled || args.imageLibraryImportEnabled,
     mode: args.imageLibraryImportMode,
     ingestOptions: args.ingestOptions,
     autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
@@ -265,7 +323,11 @@ export type RunDriveFolderImportArgs = {
   ) => void;
   importDriveFile: (
     file: DriveFolderNode,
-    options: { manageLoading?: boolean }
+    options: DriveImportOptions
+  ) => Promise<void>;
+  importDriveImageFile?: (
+    file: DriveFolderNode,
+    options: DriveImportOptions
   ) => Promise<void>;
   focusGptPanel: () => boolean;
 };
@@ -276,6 +338,7 @@ export async function runDriveFolderImport({
   ensureAccessToken,
   appendUiMessage,
   importDriveFile,
+  importDriveImageFile,
   focusGptPanel,
 }: RunDriveFolderImportArgs) {
   const accessToken = await ensureAccessToken();
@@ -294,7 +357,21 @@ export async function runDriveFolderImport({
   if (mode === "index") return;
 
   const files = entries.filter((file) => canImportDriveMimeType(file.mimeType));
+  const pairedSidecarIds = new Set<string>();
   for (const file of files) {
+    if (!isDriveImageMimeType(file.mimeType)) continue;
+    const sidecar = findMatchingDriveTextSidecar(file, files);
+    if (sidecar) pairedSidecarIds.add(sidecar.id);
+  }
+  for (const file of files) {
+    if (importDriveImageFile && pairedSidecarIds.has(file.id)) continue;
+    if (isDriveImageMimeType(file.mimeType) && importDriveImageFile) {
+      await importDriveImageFile(file, {
+        manageLoading: false,
+        sidecarFile: findMatchingDriveTextSidecar(file, files),
+      });
+      continue;
+    }
     await importDriveFile(file, { manageLoading: false });
   }
 }
@@ -442,6 +519,61 @@ function imageExtension(mimeType?: string) {
   if (mimeType === "image/jpeg") return "jpg";
   if (mimeType === "image/webp") return "webp";
   return "png";
+}
+
+function findMatchingDriveTextSidecar(
+  imageFile: DriveImportFile,
+  files: Array<DriveImportFile | DrivePickedImportAction>
+): DriveImportFile | undefined {
+  const imageKey = driveSidecarKey(imageFile.name);
+  if (!imageKey) return undefined;
+  const imageFolder = driveFolderPath(imageFile.path);
+  for (const candidate of files) {
+    const file = "kind" in candidate
+      ? candidate.kind === "file"
+        ? candidate.file
+        : null
+      : candidate;
+    if (!file || file.id === imageFile.id) continue;
+    if (isDriveImageMimeType(file.mimeType)) continue;
+    if (!canImportDriveMimeType(file.mimeType)) continue;
+    const candidatePath =
+      "path" in file && typeof file.path === "string" ? file.path : undefined;
+    if (driveFolderPath(candidatePath) !== imageFolder) {
+      continue;
+    }
+    if (driveSidecarKey(file.name) === imageKey) return file;
+  }
+  return undefined;
+}
+
+function driveFolderPath(path?: string) {
+  if (!path) return "";
+  const slashIndex = path.lastIndexOf("/");
+  return slashIndex >= 0 ? path.slice(0, slashIndex) : "";
+}
+
+function driveSidecarKey(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
+    .replace(/\.generated-image$/u, "")
+    .replace(/\.(?:txt|md|json)$/u, "")
+    .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
+    .trim();
+}
+
+async function readDriveSidecarText(args: {
+  accessToken: string;
+  sidecarFile?: DriveImportFile;
+}) {
+  if (!args.sidecarFile) return "";
+  const blob = await fetchDriveFileBlob({
+    fileId: args.sidecarFile.id,
+    mimeType: args.sidecarFile.mimeType,
+    accessToken: args.accessToken,
+  });
+  return blob.text();
 }
 
 async function buildPresentationPptxDriveArtifact(

@@ -23,12 +23,17 @@ const LIBRARY_AUTO_REFERENCE_ENABLED_KEY = "library_auto_reference_enabled";
 const LIBRARY_REFERENCE_COUNT_KEY = "library_reference_count";
 const LIBRARY_REFERENCE_MODE_KEY = "library_reference_mode";
 const LIBRARY_INDEX_RESPONSE_COUNT_KEY = "library_index_response_count";
+const IMAGE_LIBRARY_REFERENCE_ENABLED_KEY = "image_library_reference_enabled";
+const IMAGE_LIBRARY_REFERENCE_COUNT_KEY = "image_library_reference_count";
+const IMAGE_LIBRARY_CARD_LIMIT_KEY = "image_library_card_limit";
 const LIBRARY_ITEM_MODE_OVERRIDES_KEY = "library_item_mode_overrides";
 const SELECTED_TASK_LIBRARY_ITEM_ID_KEY = "selected_task_library_item_id";
 
 export const DEFAULT_LIBRARY_REFERENCE_COUNT = 4;
 export const DEFAULT_LIBRARY_REFERENCE_MODE: LibraryReferenceMode = "summary_only";
 export const DEFAULT_LIBRARY_INDEX_RESPONSE_COUNT = 12;
+export const DEFAULT_IMAGE_LIBRARY_REFERENCE_COUNT = 6;
+export const DEFAULT_IMAGE_LIBRARY_CARD_LIMIT = 50;
 
 function loadInitialReferenceLibraryState() {
   const initialState = {
@@ -37,6 +42,9 @@ function loadInitialReferenceLibraryState() {
     libraryReferenceCount: DEFAULT_LIBRARY_REFERENCE_COUNT,
     libraryReferenceMode: DEFAULT_LIBRARY_REFERENCE_MODE,
     libraryIndexResponseCount: DEFAULT_LIBRARY_INDEX_RESPONSE_COUNT,
+    imageLibraryReferenceEnabled: true,
+    imageLibraryReferenceCount: DEFAULT_IMAGE_LIBRARY_REFERENCE_COUNT,
+    imageLibraryCardLimit: DEFAULT_IMAGE_LIBRARY_CARD_LIMIT,
     libraryItemModeOverrides: {} as Record<string, LibraryItemModeOverride>,
     selectedTaskLibraryItemId: "",
   };
@@ -53,6 +61,15 @@ function loadInitialReferenceLibraryState() {
   const savedMode = window.localStorage.getItem(LIBRARY_REFERENCE_MODE_KEY);
   const savedIndexCount = window.localStorage.getItem(
     LIBRARY_INDEX_RESPONSE_COUNT_KEY
+  );
+  const savedImageLibraryReferenceEnabled = window.localStorage.getItem(
+    IMAGE_LIBRARY_REFERENCE_ENABLED_KEY
+  );
+  const savedImageLibraryReferenceCount = window.localStorage.getItem(
+    IMAGE_LIBRARY_REFERENCE_COUNT_KEY
+  );
+  const savedImageLibraryCardLimit = window.localStorage.getItem(
+    IMAGE_LIBRARY_CARD_LIMIT_KEY
   );
   const savedOverrides = window.localStorage.getItem(
     LIBRARY_ITEM_MODE_OVERRIDES_KEY
@@ -89,6 +106,25 @@ function loadInitialReferenceLibraryState() {
     const parsed = Number(savedIndexCount);
     if (Number.isFinite(parsed) && parsed >= 1) {
       initialState.libraryIndexResponseCount = parsed;
+    }
+  }
+
+  if (savedImageLibraryReferenceEnabled) {
+    initialState.imageLibraryReferenceEnabled =
+      savedImageLibraryReferenceEnabled === "true";
+  }
+
+  if (savedImageLibraryReferenceCount) {
+    const parsed = Number(savedImageLibraryReferenceCount);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      initialState.imageLibraryReferenceCount = parsed;
+    }
+  }
+
+  if (savedImageLibraryCardLimit) {
+    const parsed = Number(savedImageLibraryCardLimit);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      initialState.imageLibraryCardLimit = parsed;
     }
   }
 
@@ -167,6 +203,14 @@ export function useReferenceLibrary(params: {
   const [libraryIndexResponseCount, setLibraryIndexResponseCount] = useState(
     initialState.libraryIndexResponseCount
   );
+  const [imageLibraryReferenceEnabled, setImageLibraryReferenceEnabled] =
+    useState(initialState.imageLibraryReferenceEnabled);
+  const [imageLibraryReferenceCount, setImageLibraryReferenceCount] = useState(
+    initialState.imageLibraryReferenceCount
+  );
+  const [imageLibraryCardLimit, setImageLibraryCardLimit] = useState(
+    initialState.imageLibraryCardLimit
+  );
   const [libraryItemModeOverrides, setLibraryItemModeOverrides] = useState<
     Record<string, LibraryItemModeOverride>
   >(initialState.libraryItemModeOverrides);
@@ -202,6 +246,30 @@ export function useReferenceLibrary(params: {
       String(libraryIndexResponseCount)
     );
   }, [libraryIndexResponseCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      IMAGE_LIBRARY_REFERENCE_ENABLED_KEY,
+      String(imageLibraryReferenceEnabled)
+    );
+  }, [imageLibraryReferenceEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      IMAGE_LIBRARY_REFERENCE_COUNT_KEY,
+      String(imageLibraryReferenceCount)
+    );
+  }, [imageLibraryReferenceCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      IMAGE_LIBRARY_CARD_LIMIT_KEY,
+      String(imageLibraryCardLimit)
+    );
+  }, [imageLibraryCardLimit]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -352,6 +420,12 @@ export function useReferenceLibrary(params: {
     setLibraryReferenceMode,
     libraryIndexResponseCount,
     setLibraryIndexResponseCount,
+    imageLibraryReferenceEnabled,
+    setImageLibraryReferenceEnabled,
+    imageLibraryReferenceCount,
+    setImageLibraryReferenceCount,
+    imageLibraryCardLimit,
+    setImageLibraryCardLimit,
     libraryReferenceCount,
     setLibraryReferenceCount,
     libraryStorageMB,

@@ -219,5 +219,85 @@ export function LibrarySettingsSection(props: {
   );
 }
 
+export function ImageLibraryReferenceSettingsSection(props: {
+  isMobile?: boolean;
+  imageLibraryReferenceEnabled: boolean;
+  imageLibraryReferenceCount: number;
+  imageLibraryCardLimit: number;
+  onChangeImageLibraryReferenceEnabled: (value: boolean) => void;
+  onChangeImageLibraryReferenceCount: (value: number) => void;
+  onChangeImageLibraryCardLimit: (value: number) => void;
+}) {
+  return (
+    <div style={sectionCard}>
+      <div style={{ ...labelStyle, marginBottom: 10 }}>
+        {GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceTitle}
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: props.isMobile
+            ? "1fr"
+            : "repeat(3, minmax(0, 1fr))",
+          gap: 10,
+        }}
+      >
+        <ToggleButtons
+          label={GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceEnabledLabel}
+          checked={props.imageLibraryReferenceEnabled}
+          onChange={props.onChangeImageLibraryReferenceEnabled}
+          help={GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceEnabledHelp}
+        />
+        <CommittedNumberField
+          label={GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceCountLabel}
+          value={props.imageLibraryReferenceCount}
+          min={0}
+          max={50}
+          onCommit={props.onChangeImageLibraryReferenceCount}
+        />
+        <CommittedNumberField
+          label={GPT_SETTINGS_SECTION_TEXT.imageLibraryCardLimitLabel}
+          value={props.imageLibraryCardLimit}
+          min={0}
+          max={200}
+          onCommit={props.onChangeImageLibraryCardLimit}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CommittedNumberField(props: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onCommit: (value: number) => void;
+}) {
+  const [input, setInput] = React.useState(String(props.value));
+
+  React.useEffect(() => {
+    setInput(String(props.value));
+  }, [props.value]);
+
+  const commit = () => {
+    const digits = input.replace(/[^\d]/g, "");
+    const parsed = digits ? Number(digits) : props.value;
+    const next = Math.max(props.min, Math.min(props.max, parsed));
+    setInput(String(next));
+    if (next !== props.value) props.onCommit(next);
+  };
+
+  return (
+    <NumberField
+      label={props.label}
+      value={input}
+      onChange={(value) => setInput(value.replace(/[^\d]/g, ""))}
+      onBlur={commit}
+      onEnter={commit}
+    />
+  );
+}
+
 export { SEARCH_MODE_PRESETS, tabButton, sectionCard, subtleCard, selectStyle, textAreaStyle };
 

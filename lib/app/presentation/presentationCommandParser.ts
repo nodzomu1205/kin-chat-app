@@ -1,8 +1,8 @@
 export type PptCommandIntent =
-  | "createDraft"
-  | "reviseDraft"
   | "renderPptx"
   | "showPreview";
+
+export type PptImageMode = "off" | "library" | "api" | "hybrid";
 
 export type ParsedPptCommand = {
   isPptCommand: boolean;
@@ -10,13 +10,14 @@ export type ParsedPptCommand = {
   documentId?: string;
   density?: "concise" | "standard" | "detailed" | "dense";
   generateImages?: boolean;
+  imageMode?: PptImageMode;
   intent?: PptCommandIntent;
 };
 
 const PPT_PREFIX_PATTERN = /^\s*\/ppt(?:\s|$)/i;
 const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:-]+)/im;
 const DENSITY_PATTERN = /^\s*Density\s*:\s*(concise|standard|detailed|dense)\s*$/gim;
-const GENERATE_IMAGES_PATTERN = /^\s*(?:Generate Images|Images)\s*:\s*(true|false|yes|no|on|off)\s*$/gim;
+const GENERATE_IMAGES_PATTERN = /^\s*(?:Generate Images|Images)\s*:\s*([^\r\n]+)\s*$/gim;
 
 function stripPptPrefix(text: string) {
   return text.replace(PPT_PREFIX_PATTERN, "").replace(/^\s*\r?\n?/, "").trim();
@@ -47,11 +48,32 @@ function parseDensity(text: string): ParsedPptCommand["density"] {
 }
 
 function parseGenerateImages(text: string) {
+  const mode = parseImageMode(text);
+  if (!mode) return undefined;
+  return mode === "api" || mode === "hybrid" || mode === "library";
+}
+
+function parseImageMode(text: string): PptImageMode | undefined {
   GENERATE_IMAGES_PATTERN.lastIndex = 0;
   const match = GENERATE_IMAGES_PATTERN.exec(text);
-  const raw = match?.[1]?.toLowerCase();
+  const raw = match?.[1]?.toLowerCase().trim();
   if (!raw) return undefined;
-  return raw === "true" || raw === "yes" || raw === "on";
+  const parts = raw
+    .split(/[,\s]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const enabled = parts.some((part) =>
+    part === "true" || part === "yes" || part === "on"
+  );
+  if (parts.some((part) => part === "false" || part === "no" || part === "off")) {
+    return "off";
+  }
+  const wantsLibrary = parts.includes("library");
+  const wantsApi = parts.includes("api");
+  if (wantsLibrary && wantsApi) return "hybrid";
+  if (wantsLibrary) return "library";
+  if (wantsApi) return "api";
+  return enabled ? "hybrid" : undefined;
 }
 
 function isRenderRequest(body: string) {
@@ -85,17 +107,16 @@ export function parsePptCommand(text: string): ParsedPptCommand {
   const body = stripPptPrefix(text);
   const documentId = body.match(DOCUMENT_ID_PATTERN)?.[1]?.trim();
   const density = parseDensity(body);
+  const imageMode = parseImageMode(body);
   const generateImages = parseGenerateImages(body);
   const bodyWithoutDocumentId = stripGenerateImagesLines(
     stripDensityLines(stripDocumentIdLine(body))
   );
-  const intent: PptCommandIntent = isRenderRequest(bodyWithoutDocumentId)
+  const intent: PptCommandIntent | undefined = isRenderRequest(bodyWithoutDocumentId)
     ? "renderPptx"
-    : !documentId
-      ? "createDraft"
-      : isPreviewRequest(bodyWithoutDocumentId)
+    : documentId && isPreviewRequest(bodyWithoutDocumentId)
         ? "showPreview"
-        : "reviseDraft";
+        : undefined;
 
   return {
     isPptCommand: true,
@@ -103,6 +124,7 @@ export function parsePptCommand(text: string): ParsedPptCommand {
     documentId,
     density,
     generateImages,
+    imageMode,
     intent,
   };
 }
