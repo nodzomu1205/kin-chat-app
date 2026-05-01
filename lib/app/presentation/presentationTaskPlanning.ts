@@ -1,5 +1,6 @@
 import type {
   PresentationTaskPlan,
+  PresentationTaskSlideFrame,
   PresentationTaskSlidePlan,
   TaskResult,
 } from "@/types/task";
@@ -18,8 +19,16 @@ import {
   slideDisplayTitle,
   slideDisplayVisual,
 } from "@/lib/app/presentation/slidePartsParser";
+import {
+  buildPresentationSpecFromSlideFrames,
+  formatPresentationSlideFramePlanLines,
+  hasRenderablePresentationSlideFrames,
+  parsePresentationSlideFrameDocumentFromJsonLines,
+  sanitizeSlideFrameTitle,
+} from "@/lib/app/presentation/presentationSlideFrames";
 
 const PPT_MARKER = /(?:^|\s)\/ppt(?:\s|$)/i;
+const DOCUMENT_ID_LINE = /^Document ID\s*:\s*(.+)$/im;
 
 export function isPresentationTaskInstruction(text: string) {
   return PPT_MARKER.test(text);
@@ -81,35 +90,23 @@ export function resolvePresentationTaskTitle(args: {
 
 export function buildPresentationTaskConstraints(mode: "create" | "update") {
   return [
-    "これは通常タスクではなく、PPT設計書を作るためのタスク形成である",
-    "PowerPointファイルをまだ作らない。まず人間が目視・修正できる設計書を作る",
-    "出力はユーザーがチャット画面とタスク形成タブで読む前提で、日本語の設計書として整理する",
-    "DETAIL_BLOCKS には必ず [BLOCK: 抽出事項] [BLOCK: Presentation Strategy] [BLOCK: キーメッセージ] [BLOCK: スライド設計JSON] を含める",
-    "KEY_POINTS は空にする。設計ポイントという独立セクションは出力しない",
-    "抽出事項は意味でグループ化されたRaw factsとして、素材に明示された内容を細かく箇条書きにする",
-    "抽出事項では重要度・評価・ランキングを勝手に付けない",
-    "Presentation Strategyには audience, purpose, tone, density, visual policy, structure policy, slide count range を含める",
-    "キーメッセージブロックでは、各スライドで何を言い切るのかを素材中の具体事実に基づく主張文として書く",
-    "配置‣構成はスライド全体のレイアウト指示であり、PPTX上に本文として表示される素材ではない前提で書く",
-    "[BLOCK: スライド設計JSON] は必須であり、省略してはいけない。作れない場合は STATUS: NEEDS_MORE にして MISSING_INFO に理由を書く",
-    "[BLOCK: スライド設計JSON] のbodyは、必ず1つの箇条書きだけにする。先頭は - { で始め、1行のcompact JSONだけを書く。説明文、markdown fence、自然文を混ぜない",
-    "スライド設計JSONブロックだけはJSONで返す。このJSONを各スライドの正本とし、自然文のスライド設計ブロックは出力しない",
-    "スライド設計JSONは {\"slides\":[{\"slideNumber\":1,\"placementComposition\":\"...\",\"parts\":[{\"role\":\"タイトル\",\"text\":\"...\"}]}]} の形にする",
-    "partsには、スライド上に実際に置く要素だけを role/text の形で列挙する",
-    "partsは1パーツ1オブジェクトで書く。複数の役割を同じtextに連結しない",
-    "タイトル、狙い、主メッセージ、ポイント、キービジュアルなど、スライドに表示する文言は配置するパーツに入れる。別項目として重複表示しない",
-    "配置‣構成には、画面上に置く要素の位置関係を具体的に書く",
-    "配置‣構成に登場する要素名は、必ず配置するパーツにも同じ意味で登場させる。配置‣構成だけに存在するアイコン、図、説明、リスト、矢印、ラベルを作らない",
-    "アイコン、図、説明、リスト、チャート、矢印などを配置する場合は、それぞれを独立したパーツとして、実際の表示文言または生成プロンプトまで書く",
-    "図表や模式図を使う場合は、図中に表示するラベルや短文も配置するパーツに明記する",
-    "partsには『説明』『テキスト』『ポイント』『一文ずつ』『例』などのプレースホルダーを書かず、実際に表示する文言を書く",
-    "各ページに背景という項目は出力しない",
-    "全ページを同じ配置に固定せず、内容に応じてビジュアル有無や構成を変える",
-    "素材にない事実を補わない。不足する情報は MISSING_INFO に出す",
-    "ユーザーが修正指示を出した場合は、既存設計書を保持しつつ該当箇所を更新する",
+    "This is a PPT design task inside task formation, not a normal task.",
+    "Create or revise a Japanese PPT design document that the user can review in chat before PPTX output.",
+    "Preserve source breadth first; the user will reduce density later through revision instructions.",
+    "Keep extractedItems as atomic facts: one process step, country group, risk, or initiative per bullet. Do not collapse distinct facts into one generic summary.",
+    "The canonical slide design source is deckFrame + slideFrames JSON. Natural-language slide design text is only a projection from that JSON.",
+    "deckFrame holds deck-wide settings such as page count, common master, background/wallpaper, page number, and logo. Do not repeat common settings on every slide.",
+    "Do not create slideDesign.slides[].parts as the preferred path. Do not rely on natural-language slide text and a parser to recover JSON.",
+    "Use the fixed frame package: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4.",
+    "Block styles define fields: listCompact = heading + items; textStackTopLeft = heading + text; visualContain/visualCover = visualRequest only; headlineCenter/callout = one emphasized text.",
+    "Choose slide count from the material and strategy. If the source naturally implies 5-7 slides, create 5-7 slideFrames.",
+    "The visible chat text must show the actual messages that will appear in PPTX. Do not replace display text or items with counts such as '+ 6 items'.",
+    "For visual blocks, include the full visual prompt in visualRequest.prompt. If the visual is too complex to prompt yet, leave prompt empty and explain why in visualRequest.promptNote.",
+    "If the user gives a revision instruction, preserve reusable frame choices where valid and update the affected slideFrame fields.",
+    "Do not invent facts missing from the material. Put missing material in MISSING_INFO.",
     mode === "create"
-      ? "初回生成では、素材を広く拾い、あとで削れる状態にする"
-      : "更新では、ユーザー指示を優先し、既存の有用な設計を不用意に薄めない",
+      ? "For initial creation, use generic frames but keep the deck broad enough that it can be reduced later."
+      : "For updates, prioritize the user instruction and modify only the relevant slideFrames while preserving valid existing design.",
   ];
 }
 
@@ -186,26 +183,94 @@ export function buildPresentationTaskPlanFromText(args: {
   updatedAt?: string;
 }): PresentationTaskPlan {
   const sections = parseSectionLines(args.text);
+  const slideFrameItems = findSection(sections, [
+    "slide frame json",
+    "slide frames json",
+    "slideframes",
+    "slide frames",
+  ]);
   const slideJsonItems = findSection(sections, [
     "Debug: スライド設計JSON",
     "スライド設計JSON",
     "slide design json",
   ]);
   const slideItems = findExactSection(sections, ["スライド設計", "slides", "slide"]);
+  const slideFrameDocument = parsePresentationSlideFrameDocumentFromJsonLines(slideFrameItems);
+  const slideFrames = slideFrameDocument.slideFrames;
   const slidesFromJson = parsePresentationTaskSlidesFromJsonLines(slideJsonItems);
   const slidesFromText = parsePresentationTaskSlidesFromLines(slideItems);
   const slides = slidesFromJson.length > 0 ? slidesFromJson : slidesFromText;
+  const slideSource =
+    slideFrames.length > 0
+      ? "slideFrameJson"
+      : slidesFromJson.length > 0
+        ? "slideDesignJson"
+        : slidesFromText.length > 0
+          ? "legacySlideText"
+          : "none";
   return {
     version: "0.1-presentation-task-plan",
+    documentId: extractPresentationPlanDocumentId(args.text) || createPresentationPlanDocumentId(),
     title: args.title,
     sourceSummary: extractSummaryFromText(args.text),
     extractedItems: findSection(sections, ["抽出事項", "raw facts", "facts"]),
     strategyItems: findSection(sections, ["Presentation Strategy", "strategy"]),
     keyMessages: findSection(sections, ["キーメッセージ", "key message"]),
     slideItems,
+    deckFrame: slideFrameDocument.deckFrame,
+    slideFrames,
     slides,
     missingInfo: findSection(sections, ["不足情報", "missing"]),
     nextSuggestions: findSection(sections, ["次の提案", "next"]),
+    latestPptx: null,
+    debug: {
+      slideSource,
+      slideJsonRaw: slideFrameItems.length > 0 ? slideFrameItems : slideJsonItems,
+      slideJsonParsed: slideFrames.length > 0 || slidesFromJson.length > 0,
+      slideCount: slideFrames.length || slides.length,
+      generatedAt: args.updatedAt || new Date().toISOString(),
+    },
+    updatedAt: args.updatedAt || new Date().toISOString(),
+  };
+}
+
+function buildLegacyPresentationTaskPlan(args: {
+  title: string;
+  result: TaskResult | null;
+  rawText: string;
+  updatedAt?: string;
+}): PresentationTaskPlan {
+  const result = args.result;
+  const slideFrameItems = findBlock(result, [
+    "slide frame json",
+    "slide frames json",
+    "slideframes",
+    "slide frames",
+  ]);
+  const slideJsonItems = findBlock(result, [
+    "スライド設計JSON",
+    "slide design json",
+    "slides json",
+  ]);
+  const slideItems = findExactBlock(result, ["スライド設計", "slides", "slide"]);
+  const slidesFromJson = parsePresentationTaskSlidesFromJsonLines(slideJsonItems);
+  const slidesFromText = parsePresentationTaskSlidesFromLines(slideItems);
+  const slides = slidesFromJson.length > 0 ? slidesFromJson : slidesFromText;
+  const slideFrames: PresentationTaskSlideFrame[] = [];
+  return {
+    version: "0.1-presentation-task-plan",
+    documentId: extractPresentationPlanDocumentId(args.rawText) || createPresentationPlanDocumentId(),
+    title: args.title,
+    sourceSummary: result?.summary || "",
+    extractedItems: findBlock(result, ["抽出事項", "raw facts", "facts"]),
+    strategyItems: findBlock(result, ["Presentation Strategy", "strategy"]),
+    keyMessages: findBlock(result, ["キーメッセージ", "key message"]),
+    slideItems,
+    deckFrame: undefined,
+    slideFrames,
+    slides,
+    missingInfo: result?.missingInfo || [],
+    nextSuggestions: result?.nextSuggestion || [],
     latestPptx: null,
     debug: {
       slideSource:
@@ -229,41 +294,28 @@ export function buildPresentationTaskPlan(args: {
   rawText: string;
   updatedAt?: string;
 }): PresentationTaskPlan {
-  const result = args.result;
-  const slideJsonItems = findBlock(result, [
-    "スライド設計JSON",
-    "slide design json",
-    "slides json",
+  const legacyPlan = buildLegacyPresentationTaskPlan(args);
+  const slideFrameItems = findBlock(args.result, [
+    "slide frame json",
+    "slide frames json",
+    "slideframes",
+    "slide frames",
   ]);
-  const slideItems = findExactBlock(result, ["スライド設計", "slides", "slide"]);
-  const slidesFromJson = parsePresentationTaskSlidesFromJsonLines(slideJsonItems);
-  const slidesFromText = parsePresentationTaskSlidesFromLines(slideItems);
-  const slides = slidesFromJson.length > 0 ? slidesFromJson : slidesFromText;
+  const slideFrameDocument = parsePresentationSlideFrameDocumentFromJsonLines(slideFrameItems);
+  const slideFrames = slideFrameDocument.slideFrames;
+  if (slideFrames.length === 0) return legacyPlan;
+
   return {
-    version: "0.1-presentation-task-plan",
-    title: args.title,
-    sourceSummary: result?.summary || "",
-    extractedItems: findBlock(result, ["抽出事項", "raw facts", "facts"]),
-    strategyItems: findBlock(result, ["Presentation Strategy", "strategy"]),
-    keyMessages: findBlock(result, ["キーメッセージ", "key message"]),
-    slideItems,
-    slides,
-    missingInfo: result?.missingInfo || [],
-    nextSuggestions: result?.nextSuggestion || [],
-    latestPptx: null,
+    ...legacyPlan,
+    deckFrame: slideFrameDocument.deckFrame,
+    slideFrames,
     debug: {
-      slideSource:
-        slidesFromJson.length > 0
-          ? "slideDesignJson"
-          : slidesFromText.length > 0
-            ? "legacySlideText"
-            : "none",
-      slideJsonRaw: slideJsonItems,
-      slideJsonParsed: slidesFromJson.length > 0,
-      slideCount: slides.length,
+      slideSource: "slideFrameJson",
+      slideJsonRaw: slideFrameItems,
+      slideJsonParsed: true,
+      slideCount: slideFrames.length,
       generatedAt: args.updatedAt || new Date().toISOString(),
     },
-    updatedAt: args.updatedAt || new Date().toISOString(),
   };
 }
 
@@ -403,6 +455,13 @@ function buildVisualLayoutSlide(
 export function buildPresentationSpecFromTaskPlan(
   plan: PresentationTaskPlan
 ): PresentationSpec {
+  if (hasRenderablePresentationSlideFrames(plan.slideFrames)) {
+    return buildPresentationSpecFromSlideFrames({
+      title: plan.title,
+      frames: plan.slideFrames,
+      strategyItems: plan.strategyItems,
+    });
+  }
   const plannedSlides = plan.slides.length > 0 ? plan.slides : [];
   if (plannedSlides.length === 0) {
     throw new Error(
@@ -454,12 +513,33 @@ export function buildPresentationSpecFromTaskPlan(
   };
 }
 
+export function buildFramePresentationSpecFromTaskPlan(plan: PresentationTaskPlan) {
+  if (!hasRenderablePresentationSlideFrames(plan.slideFrames)) {
+    return null;
+  }
+  const slideFrames = plan.slideFrames.map((frame) => ({
+    ...frame,
+    title: sanitizeSlideFrameTitle(frame.title),
+  }));
+  return {
+    version: "0.1-frame" as const,
+    title: plan.title || "Presentation",
+    language: "ja" as const,
+    theme: "business-clean" as const,
+    density: "standard" as const,
+    deckFrame: plan.deckFrame,
+    slideFrames,
+  };
+}
+
 export function hasRenderablePresentationTaskPlan(value: unknown) {
   return (
     !!value &&
     typeof value === "object" &&
-    Array.isArray((value as { slides?: unknown }).slides) &&
-    ((value as { slides: unknown[] }).slides.length > 0)
+    ((Array.isArray((value as { slideFrames?: unknown }).slideFrames) &&
+      ((value as { slideFrames: unknown[] }).slideFrames.length > 0)) ||
+      (Array.isArray((value as { slides?: unknown }).slides) &&
+        ((value as { slides: unknown[] }).slides.length > 0)))
   );
 }
 
@@ -510,6 +590,7 @@ export function formatPresentationTaskResultText(
 export function formatPresentationTaskPlanText(plan: PresentationTaskPlan) {
   const lines: string[] = [];
   lines.push("【PPT設計書】");
+  lines.push(`Document ID: ${resolvePresentationPlanDocumentId(plan)}`);
   if (plan.sourceSummary) lines.push(`概要: ${plan.sourceSummary}`);
 
   if (plan.extractedItems.length > 0) {
@@ -534,9 +615,11 @@ export function formatPresentationTaskPlanText(plan: PresentationTaskPlan) {
 
   lines.push("", "■ スライド設計");
   const slideLines =
-    slides.length > 0
-      ? formatPresentationSlidePlanLines(slides)
-      : [
+    plan.slideFrames?.length > 0
+      ? formatPresentationSlideFramePlanLines(plan.slideFrames, plan.deckFrame)
+      : slides.length > 0
+        ? formatPresentationSlidePlanLines(slides)
+        : [
           "未生成: スライド設計JSONがありません。PPTX出力前に設計書を更新してください。",
         ];
   slideLines.forEach((line) => {
@@ -558,4 +641,22 @@ export function formatPresentationTaskPlanText(plan: PresentationTaskPlan) {
   }
 
   return lines.join("\n");
+}
+
+export function ensurePresentationPlanDocumentId(
+  plan: PresentationTaskPlan
+): PresentationTaskPlan {
+  return plan.documentId ? plan : { ...plan, documentId: createPresentationPlanDocumentId() };
+}
+
+export function resolvePresentationPlanDocumentId(plan: PresentationTaskPlan) {
+  return plan.documentId || createPresentationPlanDocumentId();
+}
+
+function extractPresentationPlanDocumentId(text: string) {
+  return text.match(DOCUMENT_ID_LINE)?.[1]?.trim() || "";
+}
+
+function createPresentationPlanDocumentId() {
+  return `ppt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }

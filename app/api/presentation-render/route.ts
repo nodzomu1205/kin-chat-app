@@ -2,6 +2,10 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { NextResponse } from "next/server";
+import {
+  hydrateFrameSpecVisualAssets,
+  stripFrameSpecVisualAssets,
+} from "@/lib/server/presentation/imageGeneration";
 
 export const runtime = "nodejs";
 
@@ -14,19 +18,41 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       documentId?: unknown;
       spec?: unknown;
+      frameSpec?: unknown;
+      generateImages?: unknown;
     };
     const documentId =
       typeof body.documentId === "string" && body.documentId.trim()
         ? sanitizeFileSegment(body.documentId.trim())
         : `presentation_${Date.now()}`;
 
-    if (!body.spec || typeof body.spec !== "object") {
+    if (
+      (!body.spec || typeof body.spec !== "object") &&
+      (!body.frameSpec || typeof body.frameSpec !== "object")
+    ) {
       return NextResponse.json({ error: "spec missing" }, { status: 400 });
     }
 
-    const { parsePresentationSpec, renderPresentationToFile } =
+    const {
+      parseFramePresentationSpec,
+      parsePresentationSpec,
+      renderFramePresentationToFile,
+      renderPresentationToFile,
+    } =
       await loadPresentationRenderer();
-    const parsedSpec = parsePresentationSpec(body.spec);
+    const parsedFrameSpecInput =
+      body.frameSpec && typeof body.frameSpec === "object"
+        ? parseFramePresentationSpec(body.frameSpec)
+        : null;
+    const shouldGenerateImages = body.generateImages === true;
+    const parsedFrameSpec = parsedFrameSpecInput
+      ? shouldGenerateImages
+        ? await hydrateFrameSpecVisualAssets(parsedFrameSpecInput, {
+            enabled: true,
+          })
+        : stripFrameSpecVisualAssets(parsedFrameSpecInput)
+      : null;
+    const parsedSpec = parsedFrameSpec ? null : parsePresentationSpec(body.spec);
 
     const tempDir = join(tmpdir(), "kin-presentation-render");
     await mkdir(tempDir, { recursive: true });
@@ -37,8 +63,16 @@ export async function POST(req: Request) {
     const outputFilename = `${baseName}.pptx`;
     const outputPath = join(tempDir, outputFilename);
 
-    await writeFile(inputPath, `${JSON.stringify(parsedSpec, null, 2)}\n`, "utf8");
-    await renderPresentationToFile(parsedSpec, outputPath);
+    const parsedInput = parsedFrameSpec || parsedSpec;
+    if (!parsedInput) {
+      return NextResponse.json({ error: "spec missing" }, { status: 400 });
+    }
+    await writeFile(inputPath, `${JSON.stringify(parsedInput, null, 2)}\n`, "utf8");
+    if (parsedFrameSpec) {
+      await renderFramePresentationToFile(parsedFrameSpec, outputPath);
+    } else if (parsedSpec) {
+      await renderPresentationToFile(parsedSpec, outputPath);
+    }
     const outputBuffer = await readFile(outputPath);
     await Promise.allSettled([
       rm(inputPath, { force: true }),
@@ -54,11 +88,16 @@ export async function POST(req: Request) {
         mimeType:
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         createdAt: new Date().toISOString(),
-        slideCount: parsedSpec.slides.length,
+        slideCount: parsedFrameSpec?.slideFrames.length || parsedSpec?.slides.length || 0,
+        generatedImages:
+          parsedFrameSpec && shouldGenerateImages
+            ? collectGeneratedImages(parsedFrameSpec as never)
+            : [],
+        frameSpec: parsedFrameSpec && shouldGenerateImages ? parsedFrameSpec : undefined,
       },
       metadata: {
-        title: parsedSpec.title,
-        theme: parsedSpec.theme || "business-clean",
+        title: parsedInput.title,
+        theme: parsedInput.theme || "business-clean",
       },
     });
   } catch (error) {
@@ -70,12 +109,73 @@ export async function POST(req: Request) {
   }
 }
 
+function collectGeneratedImages(frameSpec: {
+  slideFrames: Array<{
+    slideNumber?: number;
+    title?: string;
+    blocks?: Array<{
+      id?: string;
+      visualRequest?: {
+        brief?: string;
+        prompt?: string;
+        asset?: {
+          imageId?: string;
+          mimeType?: string;
+          base64?: string;
+          usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
+        };
+      };
+    }>;
+  }>;
+}) {
+  return frameSpec.slideFrames.flatMap((slide) =>
+    (slide.blocks || []).flatMap((block) => {
+      const visual = block.visualRequest;
+      const asset = visual?.asset;
+      if (!asset?.base64) return [];
+      return [
+        {
+          imageId: asset.imageId || "",
+          slideNumber: slide.slideNumber || 0,
+          blockId: block.id || "",
+          title: visual?.brief || slide.title || "",
+          prompt: visual?.prompt || "",
+          mimeType: asset.mimeType || "image/png",
+          contentBase64: asset.base64,
+          usage: asset.usage,
+        },
+      ];
+    })
+  );
+}
+
 async function loadPresentationRenderer() {
-  const [{ renderPresentationToFile }, { parsePresentationSpec }] =
+  const [rendererModule, schemaModule] =
     await Promise.all([
       import("@/kin-presentation-renderer/dist/renderer.js"),
       import("@/kin-presentation-renderer/dist/schema.js"),
     ]);
+  const renderer = rendererModule as unknown as {
+    renderFramePresentationToFile: (spec: unknown, outputPath: string) => Promise<void>;
+    renderPresentationToFile: (spec: unknown, outputPath: string) => Promise<void>;
+  };
+  const schema = schemaModule as unknown as {
+    parseFramePresentationSpec: (input: unknown) => {
+      title: string;
+      theme?: string;
+      slideFrames: unknown[];
+    };
+    parsePresentationSpec: (input: unknown) => {
+      title: string;
+      theme?: string;
+      slides: unknown[];
+    };
+  };
 
-  return { parsePresentationSpec, renderPresentationToFile };
+  return {
+    parseFramePresentationSpec: schema.parseFramePresentationSpec,
+    parsePresentationSpec: schema.parsePresentationSpec,
+    renderFramePresentationToFile: renderer.renderFramePresentationToFile,
+    renderPresentationToFile: renderer.renderPresentationToFile,
+  };
 }

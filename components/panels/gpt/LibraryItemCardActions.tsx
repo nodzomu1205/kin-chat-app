@@ -52,6 +52,7 @@ export default function LibraryItemCardActions({
   const canRenderPresentationPlan =
     item.artifactType === "presentation_plan" &&
     hasRenderablePresentationTaskPlan(item.structuredPayload);
+  const isGeneratedImage = item.artifactType === "generated_image";
 
   return (
     <div
@@ -65,18 +66,20 @@ export default function LibraryItemCardActions({
       }}
     >
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          onClick={() => onSelectTaskLibraryItem(item.id)}
-          style={{
-            ...pillButton,
-            background: item.id === selectedTaskLibraryItemId ? "#f3e8ff" : "#ffffff",
-            color: "#7c3aed",
-            border: "1px solid #d8b4fe",
-          }}
-        >
-          {GPT_LIBRARY_DRAWER_TEXT.useForTask}
-        </button>
+        {!isGeneratedImage ? (
+          <button
+            type="button"
+            onClick={() => onSelectTaskLibraryItem(item.id)}
+            style={{
+              ...pillButton,
+              background: item.id === selectedTaskLibraryItemId ? "#f3e8ff" : "#ffffff",
+              color: "#7c3aed",
+              border: "1px solid #d8b4fe",
+            }}
+          >
+            {GPT_LIBRARY_DRAWER_TEXT.useForTask}
+          </button>
+        ) : null}
 
         {item.itemType !== "search" ? (
           <button
@@ -97,29 +100,31 @@ export default function LibraryItemCardActions({
           </button>
         ) : null}
 
-        <select
-          value={item.modeOverride || "default"}
-          onChange={(event) =>
-            onChangeLibraryItemMode(
-              item.id,
-              event.target.value as LibraryItemModeOverride
-            )
-          }
-          style={{
-            height: 32,
-            borderRadius: 999,
-            border: "1px solid #cbd5e1",
-            background: "#fff",
-            color: "#334155",
-            fontSize: 12,
-            fontWeight: 700,
-            padding: "0 10px",
-          }}
-        >
-          <option value="default">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.default}</option>
-          <option value="summary_only">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.summary_only}</option>
-          <option value="summary_with_excerpt">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.summary_with_excerpt}</option>
-        </select>
+        {!isGeneratedImage ? (
+          <select
+            value={item.modeOverride || "default"}
+            onChange={(event) =>
+              onChangeLibraryItemMode(
+                item.id,
+                event.target.value as LibraryItemModeOverride
+              )
+            }
+            style={{
+              height: 32,
+              borderRadius: 999,
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              color: "#334155",
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "0 10px",
+            }}
+          >
+            <option value="default">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.default}</option>
+            <option value="summary_only">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.summary_only}</option>
+            <option value="summary_with_excerpt">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.summary_with_excerpt}</option>
+          </select>
+        ) : null}
 
         {item.itemType !== "search" ? (
           <button

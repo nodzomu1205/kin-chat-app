@@ -13,6 +13,12 @@ import LibraryItemSearchPreview, {
   LibraryItemPreviewTextArea,
 } from "@/components/panels/gpt/LibraryItemSearchPreview";
 import LibraryItemStoredDocumentEditor from "@/components/panels/gpt/LibraryItemStoredDocumentEditor";
+import {
+  isGeneratedImageLibraryPayload,
+  type GeneratedImageLibraryPayload,
+} from "@/lib/app/image/imageLibrary";
+import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText";
+import { loadGeneratedImageAsset } from "@/lib/app/image/imageAssetStorage";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import type { MultipartAssembly, ReferenceLibraryItem } from "@/types/chat";
 
@@ -101,6 +107,9 @@ export default function LibraryItemCard({
     item.artifactType === "presentation"
       ? parsePresentationPayload(item.excerptText)
       : null;
+  const imagePayload = isGeneratedImageLibraryPayload(item.structuredPayload)
+    ? item.structuredPayload
+    : null;
 
   return (
     <div
@@ -154,6 +163,7 @@ export default function LibraryItemCard({
           multipartSource={multipartSource}
           askAiModeCandidates={askAiModeCandidates}
           presentationPayload={presentationPayload}
+          imagePayload={imagePayload}
           sourceDisplayCount={sourceDisplayCount}
           isMobile={isMobile}
           isEditing={isEditing}
@@ -179,6 +189,7 @@ function LibraryItemCardBody({
   multipartSource,
   askAiModeCandidates,
   presentationPayload,
+  imagePayload,
   sourceDisplayCount,
   isMobile,
   isEditing,
@@ -198,6 +209,7 @@ function LibraryItemCardBody({
   multipartSource: MultipartAssembly | null;
   askAiModeCandidates: AskAiModeCandidate[];
   presentationPayload: ReturnType<typeof parsePresentationPayload>;
+  imagePayload: GeneratedImageLibraryPayload | null;
   sourceDisplayCount: number;
   isMobile: boolean;
   isEditing: boolean;
@@ -231,6 +243,8 @@ function LibraryItemCardBody({
         <PresentationOutputLinks payload={presentationPayload} />
       ) : null}
 
+      {imagePayload ? <GeneratedImagePreview payload={imagePayload} /> : null}
+
       {item.itemType === "search" ? (
         <LibraryItemSearchPreview
           item={item}
@@ -255,8 +269,59 @@ function LibraryItemCardBody({
           onSaveStoredDocument={onSaveStoredDocument}
         />
       ) : (
-        <LibraryItemPreviewTextArea value={item.excerptText} isMobile={isMobile} />
+        <LibraryItemPreviewTextArea
+          value={
+            imagePayload
+              ? buildGeneratedImageDisplayText({ payload: imagePayload })
+              : item.excerptText
+          }
+          isMobile={isMobile}
+        />
       )}
+    </div>
+  );
+}
+
+function GeneratedImagePreview({
+  payload,
+}: {
+  payload: GeneratedImageLibraryPayload;
+}) {
+  const [imageBase64, setImageBase64] = React.useState(payload.base64 || "");
+  React.useEffect(() => {
+    let cancelled = false;
+    setImageBase64(payload.base64 || "");
+    if (!payload.base64) {
+      void loadGeneratedImageAsset(payload.imageId).then((asset) => {
+        if (!cancelled) setImageBase64(asset?.base64 || "");
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [payload.base64, payload.imageId]);
+  const imageSrc = imageBase64
+    ? `data:${payload.mimeType};base64,${imageBase64}`
+    : "";
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {imageSrc ? (
+        <img
+          src={imageSrc}
+          alt={payload.alt || payload.imageId}
+          style={{
+            width: "100%",
+            maxHeight: 280,
+            objectFit: "contain",
+            borderRadius: 6,
+            border: "1px solid #cbd5e1",
+            background: "#f8fafc",
+          }}
+        />
+      ) : null}
+      <div style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>
+        Image ID: {payload.imageId}
+      </div>
     </div>
   );
 }

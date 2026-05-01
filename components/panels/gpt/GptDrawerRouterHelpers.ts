@@ -28,6 +28,8 @@ type DeviceImportSettings = Pick<
   | "fileReadPolicy"
   | "compactCharLimit"
   | "simpleImageCharLimit"
+  | "imageLibraryImportEnabled"
+  | "imageLibraryImportMode"
 >;
 
 type MemorySettingsSaveInput = {
@@ -89,10 +91,7 @@ type LibraryDrawerProps = ComponentProps<typeof LibraryDrawer>;
 export function getDeviceImportAccept(
   kind: GptPanelSettingsProps["uploadKind"]
 ) {
-  if (kind === "image" || kind === "pdf" || kind === "mixed") {
-    return ".pdf,image/*";
-  }
-  return ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
+  return ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,image/*,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
 }
 
 export function buildDeviceImportOptions(
@@ -105,6 +104,8 @@ export function buildDeviceImportOptions(
     readPolicy: settings.fileReadPolicy,
     compactCharLimit: settings.compactCharLimit,
     simpleImageCharLimit: settings.simpleImageCharLimit,
+    imageLibraryImportEnabled: settings.imageLibraryImportEnabled,
+    imageLibraryImportMode: settings.imageLibraryImportMode,
   };
 }
 
@@ -265,8 +266,11 @@ export function buildLibraryDrawerProps({
     onImportGoogleDriveFile: settings.onImportGoogleDriveFile,
     onIndexGoogleDriveFolder: settings.onIndexGoogleDriveFolder,
     onImportGoogleDriveFolder: settings.onImportGoogleDriveFolder,
+    onImportGoogleDriveImageFile: references.onImportGoogleDriveImageFile,
     onImportDeviceFile,
+    onImportDeviceImageFile: references.onImportDeviceImageFile,
     deviceImportAccept: getDeviceImportAccept(settings.uploadKind),
+    imageImportAccept: "image/*",
     deviceImportDisabled: settings.ingestLoading || !settings.canInjectFile,
     isMobile: header.isMobile,
   };
@@ -314,6 +318,11 @@ export function buildGptSettingsDrawerProps({
     onChangeSimpleImageCharLimit: settings.onChangeSimpleImageCharLimit,
     fileReadPolicy: settings.fileReadPolicy,
     onChangeFileReadPolicy: settings.onChangeFileReadPolicy,
+    imageLibraryImportEnabled: settings.imageLibraryImportEnabled,
+    onChangeImageLibraryImportEnabled:
+      settings.onChangeImageLibraryImportEnabled,
+    imageLibraryImportMode: settings.imageLibraryImportMode,
+    onChangeImageLibraryImportMode: settings.onChangeImageLibraryImportMode,
     searchMode: settings.searchMode,
     searchEngines: settings.searchEngines,
     searchLocation: settings.searchLocation,

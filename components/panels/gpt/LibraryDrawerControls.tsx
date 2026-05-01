@@ -30,6 +30,7 @@ type ImportControlsProps = {
   setDriveImportMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   onOpenGoogleDriveFolder: () => void;
   onImportGoogleDriveFile: () => void | Promise<void>;
+  onImportGoogleDriveImageFile: () => void | Promise<void>;
   onIndexGoogleDriveFolder: () => void | Promise<void>;
   onImportGoogleDriveFolder: () => void | Promise<void>;
   deviceInputId: string;
@@ -38,6 +39,7 @@ type ImportControlsProps = {
   deviceImportDisabled: boolean;
   onShowAllLibraryItemsInChat: (mode: LibraryBulkActionMode) => void | Promise<void>;
   onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
+  importTarget: "library" | "images";
   initialBulkActionsOpen?: boolean;
 };
 
@@ -46,6 +48,7 @@ export function LibraryImportControls({
   setDriveImportMenuOpen,
   onOpenGoogleDriveFolder,
   onImportGoogleDriveFile,
+  onImportGoogleDriveImageFile,
   onIndexGoogleDriveFolder,
   onImportGoogleDriveFolder,
   deviceInputId,
@@ -54,6 +57,7 @@ export function LibraryImportControls({
   deviceImportDisabled,
   onShowAllLibraryItemsInChat,
   onSendAllLibraryItemsToKin,
+  importTarget,
   initialBulkActionsOpen = false,
 }: ImportControlsProps) {
   const [bulkActionsOpen, setBulkActionsOpen] = React.useState(initialBulkActionsOpen);
@@ -257,7 +261,9 @@ export function LibraryImportControls({
               <DriveMenuButton
                 onClick={() => {
                   setDriveImportMenuOpen(false);
-                  void onImportGoogleDriveFile();
+                  void (importTarget === "images"
+                    ? onImportGoogleDriveImageFile()
+                    : onImportGoogleDriveFile());
                 }}
               >
                 {GPT_GOOGLE_DRIVE_TEXT.settings.importFile}

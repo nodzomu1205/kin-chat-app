@@ -5,6 +5,7 @@ import type {
   FileReadPolicy,
   UploadKind,
   ImageDetail,
+  ImageLibraryImportMode,
   IngestMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 import {
@@ -12,6 +13,8 @@ import {
   AUTO_GENERATE_LIBRARY_SUMMARY_KEY,
   FILE_READ_POLICY_KEY,
   IMAGE_DETAIL_KEY,
+  IMAGE_LIBRARY_IMPORT_ENABLED_KEY,
+  IMAGE_LIBRARY_IMPORT_MODE_KEY,
   INGEST_MODE_KEY,
   SIMPLE_IMAGE_CHAR_LIMIT_KEY,
   UPLOAD_KIND_KEY,
@@ -41,6 +44,11 @@ export function usePersistedGptOptions() {
   );
   const [fileReadPolicy, setFileReadPolicy] =
     useState<FileReadPolicy>(initialState.fileReadPolicy);
+  const [imageLibraryImportEnabled, setImageLibraryImportEnabled] = useState(
+    initialState.imageLibraryImportEnabled
+  );
+  const [imageLibraryImportMode, setImageLibraryImportMode] =
+    useState<ImageLibraryImportMode>(initialState.imageLibraryImportMode);
   const [autoGenerateLibrarySummary, setAutoGenerateLibrarySummary] = useState(
     initialState.autoGenerateLibrarySummary
   );
@@ -81,6 +89,22 @@ export function usePersistedGptOptions() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
+      IMAGE_LIBRARY_IMPORT_ENABLED_KEY,
+      String(imageLibraryImportEnabled)
+    );
+  }, [imageLibraryImportEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      IMAGE_LIBRARY_IMPORT_MODE_KEY,
+      imageLibraryImportMode
+    );
+  }, [imageLibraryImportMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
       AUTO_GENERATE_LIBRARY_SUMMARY_KEY,
       String(autoGenerateLibrarySummary)
     );
@@ -99,6 +123,10 @@ export function usePersistedGptOptions() {
     setSimpleImageCharLimit,
     fileReadPolicy,
     setFileReadPolicy,
+    imageLibraryImportEnabled,
+    setImageLibraryImportEnabled,
+    imageLibraryImportMode,
+    setImageLibraryImportMode,
     autoGenerateLibrarySummary,
     setAutoGenerateLibrarySummary,
   };

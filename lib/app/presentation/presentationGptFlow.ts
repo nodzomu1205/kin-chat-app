@@ -1,6 +1,12 @@
 import { generateId } from "@/lib/shared/uuid";
 import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
 import {
+  buildFramePresentationSpecFromTaskPlan,
+  formatPresentationTaskPlanText,
+} from "@/lib/app/presentation/presentationTaskPlanning";
+import { findPresentationPlanByDocumentId } from "@/lib/app/presentation/presentationPlanLibrary";
+import { applyPresentationPlanInstruction } from "@/lib/app/presentation/presentationPlanRevision";
+import {
   buildPresentationLibraryPayload,
   buildPresentationStoredDocument,
   rebuildPresentationLibraryPayload,
@@ -13,25 +19,14 @@ import {
   buildPresentationCommandFailureMessage,
   buildPresentationDraftSavedMessage,
   buildPresentationRenderedMessage,
-  buildPresentationRevisionSavedMessage,
-  buildRepairPresentationRevisionSpecPrompt,
   buildRepairPresentationSpecPrompt,
-  buildReviseInformationInventoryPrompt,
-  buildRevisePresentationStrategyPrompt,
 } from "@/lib/app/presentation/presentationGptPrompts";
 import {
-  parsePresentationPatchFromText,
   parsePresentationDraftFromText,
   parseInformationInventoryFromText,
   parsePresentationStrategyFromText,
-  parsePresentationSpecFromText,
 } from "@/lib/app/presentation/presentationJsonParsing";
-import { findPresentationPayloadByDocumentId } from "@/lib/app/presentation/presentationLibraryLookup";
-import {
-  applyPresentationPatchToSpec,
-  buildFallbackPresentationRevisionPatch,
-  buildPresentationReplacementPatch,
-} from "@/lib/app/presentation/presentationPatchApply";
+import { normalizeImageGenerationUsage } from "@/lib/app/image/imageDisplayText";
 import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlowRequest";
 import {
   applySendToGptRequestStart,
@@ -39,6 +34,7 @@ import {
 import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
 import type { ChatApiSearchLike } from "@/lib/app/send-to-gpt/sendToGptApiTypes";
 import type { Message } from "@/types/chat";
+import type { PresentationTaskSlideFrame } from "@/types/task";
 
 export async function runPresentationGptCommandFlow(args: {
   rawText: string;
@@ -85,6 +81,7 @@ export async function runPresentationGptCommandFlow(args: {
     if (command.intent === "renderPptx") {
       await runRenderPresentationPptxFlow({
         documentId: command.documentId,
+        generateImages: command.generateImages,
         flowArgs: args.flowArgs,
       });
       return true;
@@ -116,54 +113,67 @@ export async function runPresentationGptCommandFlow(args: {
 
 async function runRenderPresentationPptxFlow(args: {
   documentId?: string;
+  generateImages?: boolean;
   flowArgs: SendToGptFlowStepArgs;
 }) {
   if (!args.documentId) {
     throw new Error("Document ID is required for PPTX rendering.");
   }
 
-  const found = findPresentationPayloadByDocumentId({
+  const foundPlan = findPresentationPlanByDocumentId({
     documentId: args.documentId,
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
   });
-  if (!found) {
-    throw new Error(`Presentation document not found: ${args.documentId}`);
+  if (foundPlan) {
+    const frameSpec = buildFramePresentationSpecFromTaskPlan(foundPlan.plan);
+    if (!frameSpec) {
+      throw new Error(`Presentation plan is not renderable: ${args.documentId}`);
+    }
+    const output = await renderPresentationPptx({
+      documentId: args.documentId,
+      frameSpec,
+      generateImages: args.generateImages,
+    });
+    applyGeneratedImageUsage({
+      generatedImages: output.generatedImages,
+      flowArgs: args.flowArgs,
+    });
+    const updatedPlan = {
+      ...foundPlan.plan,
+      slideFrames: Array.isArray(output.frameSpec?.slideFrames)
+        ? output.frameSpec.slideFrames
+        : foundPlan.plan.slideFrames,
+      latestPptx: output,
+      updatedAt: new Date().toISOString(),
+    };
+    args.flowArgs.updateStoredDocument(foundPlan.sourceId, {
+      title: foundPlan.item.title,
+      text: formatPresentationTaskPlanText(updatedPlan),
+      structuredPayload: updatedPlan,
+      summary: foundPlan.item.summary,
+    });
+    appendPresentationAssistantMessage({
+      flowArgs: args.flowArgs,
+      text: buildPresentationRenderedMessage({
+        documentId: args.documentId,
+        title: updatedPlan.title,
+        slideCount: output.slideCount,
+        outputPath: output.path || "",
+        filename: output.filename,
+        generatedImages: output.generatedImages,
+      }),
+    });
+    return;
   }
 
-  const normalizedSpec = parsePresentationSpecFromText(
-    JSON.stringify(found.payload.spec)
-  );
-  const output = await renderPresentationPptx({
-    documentId: args.documentId,
-    spec: normalizedSpec,
-  });
-  const updatedPayload = rebuildPresentationLibraryPayload(found.payload, {
-    spec: normalizedSpec,
-    outputs: [...found.payload.outputs, output],
-    status: "rendered",
-  });
-
-  args.flowArgs.updateStoredDocument(found.sourceId, {
-    title: updatedPayload.spec.title,
-    text: serializePresentationPayload(updatedPayload),
-    summary: updatedPayload.summary,
-  });
-
-  appendPresentationAssistantMessage({
-    flowArgs: args.flowArgs,
-    text: buildPresentationRenderedMessage({
-      documentId: args.documentId,
-      title: updatedPayload.spec.title,
-      slideCount: output.slideCount,
-      outputPath: output.path || "",
-      filename: output.filename,
-    }),
-  });
+  throw new Error(`Presentation plan document not found: ${args.documentId}`);
 }
 
 async function renderPresentationPptx(args: {
   documentId: string;
-  spec: unknown;
+  spec?: unknown;
+  frameSpec?: unknown;
+  generateImages?: boolean;
 }) {
   const res = await fetch("/api/presentation-render", {
     method: "POST",
@@ -182,6 +192,17 @@ async function renderPresentationPptx(args: {
       mimeType?: string;
       createdAt?: string;
       slideCount?: number;
+      generatedImages?: Array<{
+        imageId?: string;
+        title?: string;
+        prompt?: string;
+        mimeType?: string;
+        contentBase64?: string;
+        usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
+      }>;
+      frameSpec?: {
+        slideFrames?: PresentationTaskSlideFrame[];
+      };
     };
     error?: unknown;
   };
@@ -203,10 +224,34 @@ async function renderPresentationPptx(args: {
       createPresentationBlobUrl({
         contentBase64: data.output.contentBase64,
         mimeType: data.output.mimeType,
-      }),
+      }) ||
+      "",
     createdAt: data.output.createdAt || new Date().toISOString(),
     slideCount: data.output.slideCount || 0,
+    generatedImages: (data.output.generatedImages || []).map((image) => ({
+      imageId: image.imageId || "",
+      title: image.title || "",
+      prompt: image.prompt || "",
+      path: createPresentationBlobUrl({
+        contentBase64: image.contentBase64,
+        mimeType: image.mimeType,
+      }) || "",
+      usage: image.usage,
+    })),
+    frameSpec: data.output.frameSpec,
   };
+}
+
+function applyGeneratedImageUsage(args: {
+  generatedImages?: Array<{
+    usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
+  }>;
+  flowArgs: SendToGptFlowStepArgs;
+}) {
+  for (const image of args.generatedImages || []) {
+    const usage = normalizeImageGenerationUsage(image.usage);
+    if (usage) args.flowArgs.applyImageUsage?.(usage);
+  }
 }
 
 function createPresentationBlobUrl(args: {
@@ -318,90 +363,35 @@ async function runRevisePresentationDraftFlow(args: {
     throw new Error("Document ID is required for presentation revisions.");
   }
 
-  const found = findPresentationPayloadByDocumentId({
+  const foundPlan = findPresentationPlanByDocumentId({
     documentId: args.documentId,
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
   });
-  if (!found) {
-    throw new Error(`Presentation document not found: ${args.documentId}`);
+  if (foundPlan) {
+    const revision = applyPresentationPlanInstruction(foundPlan.plan, args.commandBody);
+    if (!revision.changed) {
+      throw new Error("No supported presentation plan edit was detected in the instruction.");
+    }
+    args.flowArgs.updateStoredDocument(foundPlan.sourceId, {
+      title: foundPlan.item.title,
+      text: formatPresentationTaskPlanText(revision.plan),
+      structuredPayload: revision.plan,
+      summary: foundPlan.item.summary,
+    });
+    appendPresentationAssistantMessage({
+      flowArgs: args.flowArgs,
+      text: [
+        "PPT design plan updated.",
+        "",
+        `Document ID: ${args.documentId}`,
+        `Title: ${revision.plan.title}`,
+        ...revision.notes.map((note) => `- ${note}`),
+      ].join("\n"),
+    });
+    return;
   }
 
-  const inventoryReply = await requestPresentationJsonReply({
-    assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildReviseInformationInventoryPrompt({
-      userInstruction: args.commandBody,
-      payload: found.payload,
-    }),
-  });
-  applyPresentationChatUsage({ data: inventoryReply.data, flowArgs: args.flowArgs });
-
-  const informationInventory = parseInformationInventoryFromText(
-    inventoryReply.assistantText
-  );
-
-  const strategyReply = await requestPresentationJsonReply({
-    assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildRevisePresentationStrategyPrompt({
-      userInstruction: args.commandBody,
-      payload: found.payload,
-      inventory: informationInventory,
-      density: args.density,
-    }),
-  });
-  applyPresentationChatUsage({ data: strategyReply.data, flowArgs: args.flowArgs });
-
-  const presentationStrategy = parsePresentationStrategyFromText(
-    strategyReply.assistantText,
-    {
-      renderDensity: args.density,
-    }
-  );
-
-  const specReply = await requestPresentationJsonReply({
-    assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildCreatePresentationSpecPrompt({
-      userInstruction: args.commandBody,
-      inventory: informationInventory,
-      strategy: presentationStrategy,
-      currentSpec: found.payload.spec,
-    }),
-  });
-  applyPresentationChatUsage({ data: specReply.data, flowArgs: args.flowArgs });
-
-  const patch = await parseOrRepairPresentationRevision({
-    assistantText: specReply.assistantText,
-    userInstruction: args.commandBody,
-    currentSpec: found.payload.spec,
-    flowArgs: args.flowArgs,
-    assistantRequestArgs: args.assistantRequestArgs,
-  });
-  const updatedSpec = applyPresentationPatchToSpec(found.payload.spec, patch);
-  const output = await renderPresentationPptx({
-    documentId: args.documentId,
-    spec: updatedSpec,
-  });
-  const updatedPayload = rebuildPresentationLibraryPayload(found.payload, {
-    spec: updatedSpec,
-    informationInventory,
-    presentationStrategy,
-    patches: [...found.payload.patches, patch],
-    outputs: [...found.payload.outputs, output],
-    status: "rendered",
-  });
-
-  args.flowArgs.updateStoredDocument(found.sourceId, {
-    title: updatedPayload.spec.title,
-    text: serializePresentationPayload(updatedPayload),
-    summary: updatedPayload.summary,
-  });
-
-  appendPresentationAssistantMessage({
-    flowArgs: args.flowArgs,
-    text: buildPresentationRevisionSavedMessage({
-      documentId: args.documentId,
-      payload: updatedPayload,
-    }),
-  });
+  throw new Error(`Presentation plan document not found: ${args.documentId}`);
 }
 
 async function parseOrRepairPresentationDraft(args: {
@@ -427,57 +417,6 @@ async function parseOrRepairPresentationDraft(args: {
     return parsePresentationDraftFromText(assistantText, {
       renderDensity: args.density || "standard",
     });
-  }
-}
-
-async function parseOrRepairPresentationRevision(args: {
-  assistantText: string;
-  userInstruction: string;
-  currentSpec: Parameters<typeof buildRepairPresentationRevisionSpecPrompt>[0]["currentSpec"];
-  flowArgs: SendToGptFlowStepArgs;
-  assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
-}) {
-  try {
-    const nextSpec = parsePresentationSpecFromText(args.assistantText);
-    return buildPresentationReplacementPatch({
-      currentSpec: args.currentSpec,
-      nextSpec,
-      description: "GPT returned a full PresentationSpec for this revision.",
-    });
-  } catch {
-    try {
-      return parsePresentationPatchFromText(args.assistantText);
-    } catch {
-      // Ask GPT to repair the revision as a full spec below.
-    }
-  }
-
-  const { data, assistantText } = await requestPresentationJsonReply({
-    assistantRequestArgs: args.assistantRequestArgs,
-    finalRequestText: buildRepairPresentationRevisionSpecPrompt({
-      originalUserInstruction: args.userInstruction,
-      currentSpec: args.currentSpec,
-      invalidResponse: args.assistantText,
-    }),
-  });
-  applyPresentationChatUsage({ data, flowArgs: args.flowArgs });
-
-  try {
-    const nextSpec = parsePresentationSpecFromText(assistantText);
-    return buildPresentationReplacementPatch({
-      currentSpec: args.currentSpec,
-      nextSpec,
-      description: "GPT repair returned a full PresentationSpec for this revision.",
-    });
-  } catch {
-    try {
-      return parsePresentationPatchFromText(assistantText);
-    } catch {
-      return buildFallbackPresentationRevisionPatch({
-        currentSpec: args.currentSpec,
-        userInstruction: args.userInstruction,
-      });
-    }
   }
 }
 
@@ -549,23 +488,23 @@ function buildPresentationPreviewMessage(args: {
   documentId: string;
   flowArgs: SendToGptFlowStepArgs;
 }) {
-  const found = findPresentationPayloadByDocumentId({
+  const foundPlan = findPresentationPlanByDocumentId({
     documentId: args.documentId,
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
   });
-  if (!found) {
-    return `Presentation document not found: ${args.documentId}`;
+  if (foundPlan) {
+    return [
+      "Presentation design preview.",
+      "",
+      `Document ID: ${args.documentId}`,
+      `Title: ${foundPlan.plan.title}`,
+      `Slides: ${foundPlan.plan.slideFrames.length || foundPlan.plan.slides.length}`,
+      "",
+      formatPresentationTaskPlanText(foundPlan.plan),
+    ].join("\n");
   }
-  return [
-    "Presentation preview.",
-    "",
-    `Document ID: ${args.documentId}`,
-    `Title: ${found.payload.spec.title}`,
-    `Slides: ${found.payload.spec.slides.length}`,
-    `Density: ${found.payload.spec.density || "standard"}`,
-    "",
-    found.payload.previewText,
-  ].join("\n");
+
+  return `Presentation plan document not found: ${args.documentId}`;
 }
 
 function applyPresentationChatUsage(args: {

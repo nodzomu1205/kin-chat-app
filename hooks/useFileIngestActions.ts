@@ -4,6 +4,7 @@ import type {
   ImageDetail,
   IngestMode,
   UploadKind,
+  ImageLibraryImportMode,
 } from "@/components/panels/gpt/gptPanelTypes";
 import type { UseFileIngestActionsArgs } from "@/hooks/chatPageActionTypes";
 
@@ -17,6 +18,8 @@ function buildRunFileIngestFlowArgs(
     readPolicy: FileReadPolicy;
     compactCharLimit: number;
     simpleImageCharLimit: number;
+    imageLibraryImportEnabled: boolean;
+    imageLibraryImportMode: ImageLibraryImportMode;
   }
 ) {
   return {
@@ -54,6 +57,8 @@ export function useFileIngestActions(args: UseFileIngestActionsArgs) {
       readPolicy: FileReadPolicy;
       compactCharLimit: number;
       simpleImageCharLimit: number;
+      imageLibraryImportEnabled: boolean;
+      imageLibraryImportMode: ImageLibraryImportMode;
     }
   ) => {
     await runFileIngestFlow(buildRunFileIngestFlowArgs(args, file, options));

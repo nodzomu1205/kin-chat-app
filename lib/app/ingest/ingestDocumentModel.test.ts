@@ -206,6 +206,29 @@ describe("ingestDocumentModel", () => {
     ).toBe("different-source-name [88chars].txt");
   });
 
+  it("shows presentation plan document ids on library cards", () => {
+    expect(
+      buildReferenceLibraryDocumentItem({
+        id: "doc-plan",
+        sourceType: "ingested_file",
+        artifactType: "presentation_plan",
+        title: "PPT Design - Investor deck",
+        filename: "PPT Design - Investor deck [120chars].txt",
+        text: "【PPT設計書】\nDocument ID: ppt_abc123",
+        summary: "Deck",
+        charCount: 120,
+        structuredPayload: {
+          version: "0.1-presentation-task-plan",
+          documentId: "ppt_abc123",
+        },
+        createdAt: "2026-04-18T00:00:00.000Z",
+        updatedAt: "2026-04-18T00:00:00.000Z",
+      })
+    ).toMatchObject({
+      subtitle: "Document ID: ppt_abc123",
+    });
+  });
+
   it("builds reference-library search items with char-count filenames", () => {
     expect(
       buildReferenceLibrarySearchItem({

@@ -206,8 +206,13 @@ export default function GptMetaDrawer({
   const taskTotal = toTokenUsage(tokenStats.threadTaskTotal);
   const compressionTotal = toTokenUsage(tokenStats.threadCompressionTotal);
   const ingestTotal = toTokenUsage(tokenStats.threadIngestTotal);
+  const imageTotal = toTokenUsage(tokenStats.threadImageTotal);
   const threadChatTotal = toTokenUsage(tokenStats.threadChatTotal);
   const conversationTrackedTotal = mergeUsage(threadChatTotal, compressionTotal);
+  const otherTrackedTotal = mergeUsage(
+    searchTotal,
+    mergeUsage(taskTotal, mergeUsage(ingestTotal, imageTotal))
+  );
 
   const facts = Array.isArray(gptState.memory?.facts) ? gptState.memory.facts : [];
   const preferences = Array.isArray(gptState.memory?.preferences)
@@ -443,7 +448,7 @@ export default function GptMetaDrawer({
 
         <div style={{ ...tokenLineStyle, marginBottom: 8 }}>
           {GPT_META_DRAWER_TEXT.cumulative}{" "}
-          <UsageTriple usage={mergeUsage(searchTotal, mergeUsage(taskTotal, ingestTotal))} />
+          <UsageTriple usage={otherTrackedTotal} />
         </div>
 
         <div style={{ ...tokenMetaStyle, fontSize: 12, lineHeight: 1.8 }}>
@@ -455,6 +460,9 @@ export default function GptMetaDrawer({
           <br />
           {GPT_META_DRAWER_TEXT.task} <RunCount count={toNumber(tokenStats.taskRunCount)} />{" "}
           <UsageTriple usage={taskTotal} />
+          <br />
+          {GPT_META_DRAWER_TEXT.image} <RunCount count={toNumber(tokenStats.imageRunCount)} />{" "}
+          <UsageTriple usage={imageTotal} />
         </div>
       </div>
 

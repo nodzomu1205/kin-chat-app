@@ -104,10 +104,18 @@ export type ChatPageWorkspaceViewGptArgs = {
   onChangeSimpleImageCharLimit:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeSimpleImageCharLimit"];
   fileReadPolicy: ChatPageGptPanelCompositionArgs["settings"]["fileReadPolicy"];
+  imageLibraryImportEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["imageLibraryImportEnabled"];
+  imageLibraryImportMode:
+    ChatPageGptPanelCompositionArgs["settings"]["imageLibraryImportMode"];
   autoGenerateLibrarySummary:
     ChatPageGptPanelCompositionArgs["settings"]["autoGenerateLibrarySummary"];
   onChangeFileReadPolicy:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeFileReadPolicy"];
+  onChangeImageLibraryImportEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeImageLibraryImportEnabled"];
+  onChangeImageLibraryImportMode:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeImageLibraryImportMode"];
   onChangeAutoGenerateLibrarySummary:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeAutoGenerateLibrarySummary"];
   defaultMemorySettings:
@@ -158,6 +166,10 @@ export type ChatPageWorkspaceViewUsageArgs = Pick<
   | "applyCompressionUsage"
   | "applyTaskUsage"
   | "applyIngestUsage"
+  | "applyImageUsage"
+  | "imageLibraryImportEnabled"
+  | "imageLibraryImportMode"
+  | "imageDescriptionIngestOptions"
   | "recordIngestedDocument"
 >;
 

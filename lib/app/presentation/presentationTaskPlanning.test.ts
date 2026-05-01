@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFramePresentationSpecFromTaskPlan,
   buildPresentationTaskConstraints,
   buildPresentationSpecFromTaskPlan,
   buildPresentationTaskPlan,
@@ -31,6 +32,390 @@ const result: TaskResult = {
 };
 
 describe("presentationTaskPlanning", () => {
+  it("uses slideFrames as the canonical slide source for visible text and renderer projection", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-frame",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Frame-based plan",
+      keyPoints: [],
+      detailBlocks: [
+        { title: "Presentation Strategy", body: ["audience: operators", "purpose: explain workflow"] },
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Deck promise",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "singleCenter",
+                  speakerIntent: "Set the promise.",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "textStack",
+                      styleId: "headlineCenter",
+                      text: "A clearer workflow starts here.",
+                    },
+                  ],
+                },
+                {
+                  slideNumber: 2,
+                  title: "Workflow",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "visualLeftTextRight",
+                  speakerIntent: "Explain the workflow.",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "visual",
+                      styleId: "visualContain",
+                      visualRequest: {
+                        type: "diagram",
+                        brief: "Three-step workflow diagram",
+                        prompt: "Draw intake, review, and output as connected steps.",
+                      },
+                    },
+                    {
+                      id: "block2",
+                      kind: "textStack",
+                      styleId: "textStackTopLeft",
+                      heading: "Workflow",
+                      text: "The process has three clear steps.",
+                      items: ["Intake", "Review", "Output"],
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Workflow Deck",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-04-30T00:00:00.000Z",
+    });
+    const visibleText = formatPresentationTaskPlanText(plan);
+    const spec = buildPresentationSpecFromTaskPlan(plan);
+
+    expect(plan.debug.slideSource).toBe("slideFrameJson");
+    expect(visibleText).toContain("Frame: titleLineFooter / visualLeftTextRight");
+    expect(visibleText).toContain("- block2 textStack (textStackTopLeft)");
+    expect(visibleText).toContain("- 表示本文: The process has three clear steps.");
+    expect(visibleText).toContain("- Intake");
+    expect(visibleText).toContain("- Review");
+    expect(visibleText).toContain("- Output");
+    expect(visibleText).toContain(
+      "- ビジュアルプロンプト: Draw intake, review, and output as connected steps."
+    );
+    expect(spec.slides[1]).toMatchObject({
+      type: "twoColumn",
+      title: "Workflow",
+      layoutVariant: "visualLeftTextRight",
+      left: {
+        heading: "Three-step workflow diagram",
+      },
+      right: {
+        heading: "Workflow",
+        body: "The process has three clear steps.",
+      },
+    });
+  });
+
+  it("normalizes deck settings, layout block counts, and list display fields", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-frame",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Frame normalization plan",
+      keyPoints: [],
+      detailBlocks: [
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              deckFrame: {
+                slideCount: 1,
+                masterFrameId: "titleLineFooter",
+                pageNumber: { enabled: true, position: "bottomRight" },
+              },
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Risks and responses",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "threeColumns",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "textStack",
+                      styleId: "listCompact",
+                      heading: "環境・社会課題と対応",
+                      text: "コットンサプライチェーンが直面する問題と業界の対応策を紹介します。",
+                      items: [
+                        "水リスク：生産地で水不足や水質汚染の問題が深刻化",
+                        "人権問題：児童労働や強制労働のリスクが存在",
+                      ],
+                    },
+                    {
+                      id: "block2",
+                      kind: "visual",
+                      styleId: "visualContain",
+                      visualRequest: {
+                        type: "map",
+                        brief: "主要生産国マップ",
+                        prompt: "インド、中国、アメリカ、ブラジルを世界地図上で強調表示する。",
+                      },
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton risks",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-04-30T00:00:00.000Z",
+    });
+    const visibleText = formatPresentationTaskPlanText(plan);
+
+    expect(plan.deckFrame).toMatchObject({
+      slideCount: 1,
+      masterFrameId: "titleLineFooter",
+    });
+    expect(plan.slideFrames[0].layoutFrameId).toBe("textLeftVisualRight");
+    expect(plan.slideFrames[0].blocks[0].text).toBeUndefined();
+    expect(buildPresentationSpecFromTaskPlan(plan).slides[0]).toMatchObject({
+      type: "twoColumn",
+      layoutVariant: "textLeftVisualRight",
+    });
+    expect(visibleText).toContain("全体設定");
+    expect(visibleText).toContain("共通マスター: titleLineFooter");
+    expect(visibleText).toContain("- 表示項目:");
+    expect(visibleText).not.toContain("コットンサプライチェーンが直面する問題と業界の対応策を紹介します。");
+  });
+
+  it("removes no-heading edit notes from slide titles", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-no-heading",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "No heading edit",
+      keyPoints: [],
+      detailBlocks: [
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "コットンの主要生産国（見出しなし）",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "titleBody",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "list",
+                      styleId: "listCompact",
+                      items: ["インド、中国、アメリカ、ブラジルが生産シェア上位。"],
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton deck",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-04-30T00:00:00.000Z",
+    });
+
+    expect(plan.slideFrames[0].title).toBe("コットンの主要生産国");
+    expect(formatPresentationTaskPlanText(plan)).not.toContain("見出しなし");
+  });
+
+  it("removes no-heading edit notes when building frame specs from saved plans", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-saved-no-heading",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Saved no heading edit",
+      keyPoints: [],
+      detailBlocks: [],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton deck",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-04-30T00:00:00.000Z",
+    });
+    plan.slideFrames = [
+      {
+        slideNumber: 1,
+        title: "コットンの主要生産国（見出しなし）",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "titleBody",
+        blocks: [
+          {
+            id: "block1",
+            kind: "list",
+            styleId: "listCompact",
+            items: ["インド、中国、アメリカ、ブラジルが生産シェア上位。"],
+          },
+        ],
+      },
+    ];
+
+    expect(buildFramePresentationSpecFromTaskPlan(plan)?.slideFrames[0].title).toBe(
+      "コットンの主要生産国"
+    );
+  });
+
+  it("projects grid frames to cards instead of table slides", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-grid",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Grid plan",
+      keyPoints: [],
+      detailBlocks: [
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Supply chain overview",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "twoByTwoGrid",
+                  blocks: [
+                    { id: "block1", kind: "list", styleId: "listCompact", heading: "Countries", items: ["India", "China"] },
+                    {
+                      id: "block2",
+                      kind: "visual",
+                      styleId: "visualContain",
+                      visualRequest: { type: "map", brief: "Production map", prompt: "Show India and China on a world map." },
+                    },
+                    { id: "block3", kind: "list", styleId: "listCompact", heading: "Water risk", items: ["Water scarcity", "Water pollution"] },
+                    { id: "block4", kind: "list", styleId: "listCompact", heading: "Labor risk", items: ["Child labor", "Low wages"] },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Grid deck",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-04-30T00:00:00.000Z",
+    });
+
+    expect(buildPresentationSpecFromTaskPlan(plan).slides[0]).toMatchObject({
+      type: "cards",
+      layoutVariant: "twoByTwoGrid",
+      cards: [
+        { title: "Countries" },
+        { title: "Production map", kind: "visual" },
+        { title: "Water risk" },
+        { title: "Labor risk" },
+      ],
+    });
+  });
+
+  it("projects heroTopDetailsBottom frames to cards without duplicating callout text", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-hero",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Hero plan",
+      keyPoints: [],
+      detailBlocks: [
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Risks",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "heroTopDetailsBottom",
+                  blocks: [
+                    { id: "block1", kind: "callout", styleId: "callout", text: "環境と社会の課題" },
+                    { id: "block2", kind: "list", styleId: "listCompact", heading: "主な課題", items: ["水リスク", "労働問題"] },
+                    {
+                      id: "block3",
+                      kind: "visual",
+                      styleId: "visualContain",
+                      visualRequest: { type: "illustration", brief: "課題の象徴", promptNote: "要相談" },
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Hero deck",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-04-30T00:00:00.000Z",
+    });
+
+    expect(buildPresentationSpecFromTaskPlan(plan).slides[0]).toMatchObject({
+      type: "cards",
+      layoutVariant: "heroTopDetailsBottom",
+      cards: [
+        { title: "block1", body: "環境と社会の課題", kind: "callout" },
+        { title: "主な課題" },
+        { title: "課題の象徴", kind: "visual" },
+      ],
+    });
+  });
+
   it("detects and removes the initial /ppt marker", () => {
     expect(isPresentationTaskInstruction("/ppt 事業提案資料を作る")).toBe(true);
     expect(stripPresentationTaskMarker("/ppt 事業提案資料を作る")).toBe(
@@ -53,18 +438,14 @@ describe("presentationTaskPlanning", () => {
     expect(input).toContain("取込素材:");
   });
 
-  it("uses placement/composition wording instead of frame in the task constraints", () => {
+  it("uses slideFrames wording in the task constraints", () => {
     const constraints = buildPresentationTaskConstraints("create").join("\n");
 
-    expect(constraints).toContain("配置‣構成");
-    expect(constraints).not.toContain("背景、フレーム");
-    expect(constraints).toContain("背景という項目は出力しない");
-    expect(constraints).toContain("スライド設計JSON");
-    expect(constraints).toContain("このJSONを各スライドの正本");
-    expect(constraints).toContain("[BLOCK: スライド設計JSON] は必須");
-    expect(constraints).toContain("先頭は - { で始め");
-    expect(constraints).toContain("配置‣構成に登場する要素名は、必ず配置するパーツにも同じ意味で登場させる");
-    expect(constraints).toContain("実際の表示文言または生成プロンプトまで書く");
+    expect(constraints).toContain("The canonical slide design source is deckFrame + slideFrames JSON.");
+    expect(constraints).toContain("Do not create slideDesign.slides[].parts as the preferred path.");
+    expect(constraints).toContain("one-block layouts need 1 block");
+    expect(constraints).toContain("Preserve source breadth first;");
+    expect(constraints).toContain("The visible chat text must show the actual messages that will appear in PPTX.");
   });
 
   it("keeps the existing title for presentation task updates unless title is explicit", () => {

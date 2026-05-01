@@ -49,10 +49,11 @@ describe("parsePptCommand", () => {
 
   it("detects render requests", () => {
     expect(
-      parsePptCommand("/ppt\nDocument ID: pres_123\nCreate PPT")
+      parsePptCommand("/ppt\nDocument ID: pres_123\nImages: on\nCreate PPT")
     ).toMatchObject({
       documentId: "pres_123",
       intent: "renderPptx",
+      generateImages: true,
       body: "Create PPT",
     });
   });

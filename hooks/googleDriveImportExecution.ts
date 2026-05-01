@@ -8,8 +8,15 @@ import {
   type DriveFolderNode,
 } from "@/lib/app/google-drive/googleDriveApi";
 import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
+import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
+import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
+import {
+  importImageFileToLibrary,
+  type ImageLibraryImportMode,
+} from "@/lib/app/image/imageImportFlow";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import {
+  buildFramePresentationSpecFromTaskPlan,
   buildPresentationSpecFromTaskPlan,
   buildPresentationTaskPlanFromText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
@@ -188,6 +195,66 @@ export async function runDriveFileImport({
   focusGptPanel();
 }
 
+export async function runDriveImageFileImport(args: {
+  file: DriveImportFile;
+  ensureAccessToken: () => Promise<string>;
+  ingestOptions: SharedIngestOptions;
+  autoGenerateLibrarySummary: boolean;
+  currentTaskId?: string;
+  imageLibraryImportEnabled: boolean;
+  imageLibraryImportMode: ImageLibraryImportMode;
+  recordIngestedDocument: (
+    document: Omit<StoredDocument, "id" | "sourceType">
+  ) => StoredDocument;
+  appendUiMessage: (
+    text: string,
+    sourceType?: DriveUiMessageSourceType
+  ) => void;
+  applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  focusGptPanel: () => boolean;
+}) {
+  const accessToken = await args.ensureAccessToken();
+  const blob = await fetchDriveFileBlob({
+    fileId: args.file.id,
+    mimeType: args.file.mimeType,
+    accessToken,
+  });
+  if (!blob.type.startsWith("image/") && !args.file.mimeType.startsWith("image/")) {
+    args.appendUiMessage(
+      buildDriveImportFailedMessage({
+        errorMessage: `Image import supports image files only: ${args.file.name}`,
+      })
+    );
+    args.focusGptPanel();
+    return;
+  }
+  const downloadedFile = new File([blob], args.file.name, {
+    type: blob.type || args.file.mimeType || "image/png",
+  });
+  const { payload } = await importImageFileToLibrary({
+    file: downloadedFile,
+    imageLibraryImportEnabled: args.imageLibraryImportEnabled,
+    mode: args.imageLibraryImportMode,
+    ingestOptions: args.ingestOptions,
+    autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
+    currentTaskId: args.currentTaskId,
+    recordIngestedDocument: args.recordIngestedDocument,
+    applyIngestUsage: args.applyIngestUsage,
+  });
+  args.appendUiMessage(
+    [
+      payload
+        ? "Image imported to the image library."
+        : "Image imported as text to the library.",
+      "",
+      ...(payload ? [`Image ID: ${payload.imageId}`] : []),
+      `File: ${payload?.fileName || args.file.name}`,
+    ].join("\n"),
+    "file_ingest"
+  );
+  args.focusGptPanel();
+}
+
 export type RunDriveFolderImportArgs = {
   folder: DriveImportFolder;
   mode: DriveFolderImportMode;
@@ -344,8 +411,37 @@ async function buildDriveUploadArtifacts(
     kind: "text" as const,
     ...buildLibraryItemDriveExport(item),
   };
+  const imageArtifact = await buildGeneratedImageDriveArtifact(item);
+  if (imageArtifact) return [primary, imageArtifact];
   const pptxArtifact = await buildPresentationPptxDriveArtifact(item);
   return pptxArtifact ? [primary, pptxArtifact] : [primary];
+}
+
+async function buildGeneratedImageDriveArtifact(
+  item: ReferenceLibraryItem
+): Promise<Extract<DriveUploadArtifact, { kind: "blob" }> | null> {
+  const payload = isGeneratedImageLibraryPayload(item.structuredPayload)
+    ? await hydrateGeneratedImagePayload(item.structuredPayload)
+    : null;
+  if (!payload || typeof atob === "undefined") return null;
+  if (!payload.base64) return null;
+  const binary = atob(payload.base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return {
+    kind: "blob",
+    fileName: `${payload.imageId}.${imageExtension(payload.mimeType)}`,
+    blob: new Blob([bytes], { type: payload.mimeType || "image/png" }),
+    mimeType: payload.mimeType || "image/png",
+  };
+}
+
+function imageExtension(mimeType?: string) {
+  if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/webp") return "webp";
+  return "png";
 }
 
 async function buildPresentationPptxDriveArtifact(
@@ -411,7 +507,8 @@ async function buildPresentationPlanPptxDriveArtifact(
           latestPptx: storedPlan?.latestPptx || null,
         }
       : storedPlan || parsedPlan;
-  const spec = buildPresentationSpecFromTaskPlan(plan);
+  const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
+  const spec = frameSpec ? null : buildPresentationSpecFromTaskPlan(plan);
   const latest = plan.latestPptx;
   const fetchedBlob = latest?.path
     ? await fetch(latest.path)
@@ -422,7 +519,7 @@ async function buildPresentationPlanPptxDriveArtifact(
     fetchedBlob ||
     (await renderPresentationPptxBlob({
       documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
-      spec,
+      ...(frameSpec ? { frameSpec } : { spec }),
     }));
   if (!blob) return null;
 
@@ -430,7 +527,7 @@ async function buildPresentationPlanPptxDriveArtifact(
     kind: "blob",
     fileName:
       latest?.filename ||
-      `${(spec.title || item.title || "presentation-plan")
+      `${((frameSpec?.title || spec?.title) || item.title || "presentation-plan")
         .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
         .slice(0, 100)}.pptx`,
     blob,
@@ -441,7 +538,8 @@ async function buildPresentationPlanPptxDriveArtifact(
 
 async function renderPresentationPptxBlob(args: {
   documentId: string;
-  spec: unknown;
+  spec?: unknown;
+  frameSpec?: unknown;
 }): Promise<Blob | null> {
   const response = await fetch("/api/presentation-render", {
     method: "POST",

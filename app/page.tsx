@@ -71,6 +71,8 @@ export default function ChatApp() {
     ingestMode: gptOptions.ingestMode,
     imageDetail: gptOptions.imageDetail,
     fileReadPolicy: gptOptions.fileReadPolicy,
+    imageLibraryImportEnabled: gptOptions.imageLibraryImportEnabled,
+    imageLibraryImportMode: gptOptions.imageLibraryImportMode,
     compactCharLimit: gptOptions.compactCharLimit,
     simpleImageCharLimit: gptOptions.simpleImageCharLimit,
     autoGenerateLibrarySummary: gptOptions.autoGenerateLibrarySummary,

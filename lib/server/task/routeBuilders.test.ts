@@ -40,7 +40,8 @@ describe("task route builders", () => {
 
     expect(request.input).toContain("<<SYS_PRESENTATION_PLAN_TASK>>");
     expect(request.input).toContain("Return only one valid JSON object.");
-    expect(request.input).toContain('"slideDesign"');
+    expect(request.input).toContain('"slideFrames"');
+    expect(request.input).toContain("Do not output slideDesign or free-form parts.");
   });
 
   it("builds the task route response payload", () => {

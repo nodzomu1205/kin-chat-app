@@ -198,6 +198,10 @@ export type ChatPageServicesArgs = {
     options?: BucketUsageOptions
   ) => void;
   applyIngestUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
+  applyImageUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
+  imageLibraryImportEnabled: boolean;
+  imageLibraryImportMode: import("@/components/panels/gpt/gptPanelTypes").ImageLibraryImportMode;
+  imageDescriptionIngestOptions: import("@/lib/app/ingest/ingestClient").SharedIngestOptions;
   buildLibraryReferenceContext: () => string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
@@ -239,6 +243,10 @@ export type UseGptMessageActionsArgs = Pick<
   | "applySearchUsage"
   | "applyCompressionUsage"
   | "applyIngestUsage"
+  | "applyImageUsage"
+  | "imageLibraryImportEnabled"
+  | "imageLibraryImportMode"
+  | "imageDescriptionIngestOptions"
   | "autoGenerateLibrarySummary"
   | "buildLibraryReferenceContext"
   | "chatBridgeSettings"

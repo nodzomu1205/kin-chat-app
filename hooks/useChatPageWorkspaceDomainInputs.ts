@@ -193,6 +193,8 @@ export function useChatPageWorkspaceDomainInputs(
           referenceDomain.uploadLibraryItemToGoogleDrive,
         onRenderPresentationPlanToPpt:
           referenceDomain.renderPresentationPlanToPpt,
+        onImportDeviceImageFile: referenceDomain.importDeviceImageFile,
+        onImportGoogleDriveImageFile: referenceDomain.importGoogleDriveImageFile,
       onChangeAutoLibraryReferenceEnabled:
         referenceDomain.setAutoLibraryReferenceEnabled,
       onChangeLibraryReferenceMode: referenceDomain.setLibraryReferenceMode,
@@ -217,6 +219,8 @@ export function useChatPageWorkspaceDomainInputs(
       compactCharLimit: gptOptions.compactCharLimit,
       simpleImageCharLimit: gptOptions.simpleImageCharLimit,
       fileReadPolicy: gptOptions.fileReadPolicy,
+      imageLibraryImportEnabled: gptOptions.imageLibraryImportEnabled,
+      imageLibraryImportMode: gptOptions.imageLibraryImportMode,
       autoGenerateLibrarySummary: gptOptions.autoGenerateLibrarySummary,
       defaultMemorySettings: taskProtocolDomain.defaultMemorySettings,
       resetGptForCurrentKin: taskProtocolDomain.resetGptForCurrentKin,
@@ -226,6 +230,9 @@ export function useChatPageWorkspaceDomainInputs(
       onChangeCompactCharLimit: gptOptions.setCompactCharLimit,
       onChangeSimpleImageCharLimit: gptOptions.setSimpleImageCharLimit,
       onChangeFileReadPolicy: gptOptions.setFileReadPolicy,
+      onChangeImageLibraryImportEnabled:
+        gptOptions.setImageLibraryImportEnabled,
+      onChangeImageLibraryImportMode: gptOptions.setImageLibraryImportMode,
       onChangeAutoGenerateLibrarySummary: gptOptions.setAutoGenerateLibrarySummary,
       gptMemoryRuntime: taskProtocolDomain.gptMemoryRuntime,
       gptMemorySettingsControls: taskProtocolDomain.gptMemorySettingsControls,
@@ -255,6 +262,18 @@ export function useChatPageWorkspaceDomainInputs(
       applyCompressionUsage: tokenUsage.applyCompressionUsage,
       applyTaskUsage: tokenUsage.applyTaskUsage,
       applyIngestUsage: tokenUsage.applyIngestUsage,
+      applyImageUsage: tokenUsage.applyImageUsage,
+      imageLibraryImportEnabled: gptOptions.imageLibraryImportEnabled,
+      imageLibraryImportMode: gptOptions.imageLibraryImportMode,
+      imageDescriptionIngestOptions: {
+        kind: "image",
+        mode: gptOptions.ingestMode,
+        detail:
+          gptOptions.imageDetail,
+        readPolicy: gptOptions.fileReadPolicy,
+        compactCharLimit: gptOptions.compactCharLimit,
+        simpleImageCharLimit: gptOptions.simpleImageCharLimit,
+      },
       recordIngestedDocument: referenceDomain.recordIngestedDocument,
     },
     kin: {

@@ -356,6 +356,11 @@ export function buildPresentationRenderedMessage(args: {
   slideCount: number;
   outputPath: string;
   filename: string;
+  generatedImages?: Array<{
+    imageId: string;
+    title?: string;
+    path?: string;
+  }>;
 }) {
   return [
     "Presentation PPTX created.",
@@ -366,6 +371,12 @@ export function buildPresentationRenderedMessage(args: {
     "",
     args.outputPath ? `PPTX: [${args.filename}](${args.outputPath})` : "",
     `File: ${args.filename}`,
+    args.generatedImages?.length ? "" : "",
+    ...(args.generatedImages || []).flatMap((image) => [
+      `Image ID: ${image.imageId}`,
+      image.title ? `Image: ${image.title}` : "",
+      image.path ? `![${image.imageId}](${image.path})` : "",
+    ]),
   ].filter(Boolean).join("\n");
 }
 

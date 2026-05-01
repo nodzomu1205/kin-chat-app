@@ -1,6 +1,6 @@
 # Presentation Renderer Next Implementation Notes
 
-Last updated: 2026-04-30
+Last updated: 2026-05-01
 
 ## Current State
 
@@ -30,6 +30,9 @@ Last updated: 2026-04-30
   `content.title`, `content.bullets`, `leftContent`, `rightContent`,
   `content.leftBullets`, `content.rightBullets`, `content.leftColumn`, and
   `content.rightColumn`.
+- The app now has an image library for generated/imported image assets. The
+  next renderer-facing step is to route those assets into PPTX rendering. See
+  `../HANDOFF-2026-05-01.md`.
 
 ## Cleanup Notes
 
@@ -112,9 +115,28 @@ Candidate additions:
 - Optional `visualBrief` field for GPT to describe desired imagery without
   directly generating assets
 
-Keep external asset handling conservative at first. Start with deterministic
-charts and simple diagram primitives before adding image search or generated
-images.
+For image assets, use the current image library before generating new images
+when the user asks for `Images: on` or `Images: on, library, API`.
+
+Planned `/ppt` image modes:
+
+- `Images: off`: no images
+- `Images: on, library`: image library only
+- `Images: on, API`: generate new images only
+- `Images: on` or `Images: on, library, API`: library first, API fallback
+
+Image-library matching needs image metadata:
+
+- width / height
+- aspect ratio
+- orientation
+- MIME type
+- Description
+
+Keep external asset handling conservative. Do not special-case only one
+orientation such as landscape. Treat landscape, portrait, square, and extreme
+aspect ratios as general layout signals, and prefer `contain` placement unless
+the selected frame explicitly allows cropping.
 
 ### 3. GPT JSON Templates
 

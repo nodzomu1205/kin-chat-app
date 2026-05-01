@@ -13,6 +13,7 @@ import { extractInlineUrlTarget } from "@/lib/app/send-to-gpt/sendToGptShortcutF
 import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlowRequest";
 import { finalizeSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlowFinalize";
 import { resolveSendToGptFlowStart } from "@/lib/app/send-to-gpt/sendToGptFlowDecisionState";
+import { runImageGptCommandFlow } from "@/lib/app/image/imageGptFlow";
 import { runPresentationGptCommandFlow } from "@/lib/app/presentation/presentationGptFlow";
 import {
   appendSendToGptFailureMessage,
@@ -54,6 +55,15 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
     preparedRequestBundle: { preparedRequestContexts },
     executionBundle,
   } = preparedFlowPhase;
+
+  if (
+    await runImageGptCommandFlow({
+      rawText,
+      flowArgs,
+    })
+  ) {
+    return;
+  }
 
   if (
     await runPresentationGptCommandFlow({

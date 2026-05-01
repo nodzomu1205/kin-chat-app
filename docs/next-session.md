@@ -1,19 +1,27 @@
 # Next Session Handover
 
-Updated: 2026-04-30
+Updated: 2026-05-01
 
 ## Latest Handoff
 
-The newest active handoff is for PPT design task planning:
+The newest active handoff is for PPT image-library asset routing:
 
-- [`HANDOFF-2026-04-30.md`](./HANDOFF-2026-04-30.md)
+- [`HANDOFF-2026-05-01.md`](./HANDOFF-2026-05-01.md)
 - [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
-If the next session is about PPT design, start there before touching code. The
-main direction is to replace free-form slide `parts: [{ role, text }]` with a
-frame-based JSON model, then derive both the visible design text and renderer
-input from that canonical frame JSON.
+If the next session is about PPT design or PPTX rendering, start with the
+2026-05-01 handoff before touching code. The immediate next slice is to route
+saved image-library assets into PPTX output:
+
+1. add image dimensions to image payloads
+2. extend `/ppt Images:` from boolean to `off / library / api / hybrid`
+3. hydrate browser-side image assets before `/api/presentation-render`
+4. resolve visuals by library match first, then API fallback when requested
+
+Keep the frame-based slide JSON direction from the 2026-04-30 handoff. Do not
+return to the older approach of generating natural-language slide specs first
+and parsing them into JSON later.
 
 ## Stop Rule
 

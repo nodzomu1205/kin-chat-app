@@ -324,6 +324,12 @@ export function buildReferenceLibraryDocumentItem(
   item: StoredDocument
 ): ReferenceLibraryItem {
   const normalizedItem = normalizeStoredDocument(item);
+  const documentId = presentationPlanDocumentId(normalizedItem.structuredPayload);
+  const imageId = generatedImageId(normalizedItem.structuredPayload);
+  const baseSubtitle = buildCompactLibraryFilenameLabel({
+    filename: normalizedItem.filename,
+    title: normalizedItem.title,
+  });
 
   return {
     id: `doc:${normalizedItem.id}`,
@@ -331,10 +337,11 @@ export function buildReferenceLibraryDocumentItem(
     itemType: normalizedItem.sourceType,
     artifactType: normalizedItem.artifactType,
     title: normalizedItem.title,
-    subtitle: buildCompactLibraryFilenameLabel({
-      filename: normalizedItem.filename,
-      title: normalizedItem.title,
-    }),
+    subtitle: documentId
+      ? `Document ID: ${documentId}`
+      : imageId
+        ? `Image ID: ${imageId}`
+        : baseSubtitle,
     summary: normalizedItem.summary || "",
     excerptText: normalizedItem.text,
     createdAt: normalizedItem.createdAt,
@@ -346,6 +353,24 @@ export function buildReferenceLibraryDocumentItem(
     completedAt: normalizedItem.completedAt,
     structuredPayload: normalizedItem.structuredPayload,
   };
+}
+
+function presentationPlanDocumentId(value: unknown) {
+  return value &&
+    typeof value === "object" &&
+    (value as { version?: unknown }).version === "0.1-presentation-task-plan" &&
+    typeof (value as { documentId?: unknown }).documentId === "string"
+    ? (value as { documentId: string }).documentId
+    : "";
+}
+
+function generatedImageId(value: unknown) {
+  return value &&
+    typeof value === "object" &&
+    (value as { version?: unknown }).version === "0.1-generated-image" &&
+    typeof (value as { imageId?: unknown }).imageId === "string"
+    ? (value as { imageId: string }).imageId
+    : "";
 }
 
 export function buildReferenceLibrarySearchItem(args: {

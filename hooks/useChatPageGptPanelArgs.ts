@@ -139,6 +139,8 @@ export function useChatPageGptPanelArgs(
         args.references.onUploadLibraryItemToGoogleDrive,
       onRenderPresentationPlanToPpt:
         args.references.onRenderPresentationPlanToPpt,
+      onImportDeviceImageFile: args.references.onImportDeviceImageFile,
+      onImportGoogleDriveImageFile: args.references.onImportGoogleDriveImageFile,
     },
     settings: {
       ...args.settings,

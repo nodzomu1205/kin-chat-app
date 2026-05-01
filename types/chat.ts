@@ -71,7 +71,8 @@ export type StoredDocument = {
     | "task_snapshot"
     | "reference_note"
     | "presentation"
-    | "presentation_plan";
+    | "presentation_plan"
+    | "generated_image";
   title: string;
   filename: string;
   text: string;
@@ -95,7 +96,8 @@ export type ReferenceLibraryItem = {
     | "task_snapshot"
     | "reference_note"
     | "presentation"
-    | "presentation_plan";
+    | "presentation_plan"
+    | "generated_image";
   title: string;
   subtitle: string;
   summary: string;

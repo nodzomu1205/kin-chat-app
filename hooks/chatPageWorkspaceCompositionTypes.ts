@@ -87,6 +87,8 @@ export type ChatPageWorkspaceCompositionState = {
     | "compactCharLimit"
     | "simpleImageCharLimit"
     | "fileReadPolicy"
+    | "imageLibraryImportEnabled"
+    | "imageLibraryImportMode"
     | "autoGenerateLibrarySummary"
     | "defaultMemorySettings"
   >;
@@ -177,6 +179,8 @@ export type ChatPageWorkspaceCompositionActions = {
       | "onSendAllLibraryItemsToKin"
       | "onUploadLibraryItemToGoogleDrive"
       | "onRenderPresentationPlanToPpt"
+      | "onImportDeviceImageFile"
+      | "onImportGoogleDriveImageFile"
     | "onChangeAutoLibraryReferenceEnabled"
     | "onChangeLibraryReferenceMode"
     | "onChangeLibraryIndexResponseCount"
@@ -196,6 +200,8 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onChangeCompactCharLimit"
     | "onChangeSimpleImageCharLimit"
     | "onChangeFileReadPolicy"
+    | "onChangeImageLibraryImportEnabled"
+    | "onChangeImageLibraryImportMode"
     | "onChangeAutoGenerateLibrarySummary"
   >;
   bridge: Pick<

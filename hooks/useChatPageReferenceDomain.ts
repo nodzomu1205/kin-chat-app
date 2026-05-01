@@ -10,6 +10,10 @@ import type { TaskCharConstraint } from "@/lib/app/multipart/multipartAssemblyFl
 import type { GptMemoryRuntime } from "@/lib/app/ui-state/chatPageGptMemoryControls";
 import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import type { SharedIngestOptions } from "@/lib/app/ingest/ingestClient";
+import {
+  importImageFileToLibrary,
+  type ImageLibraryImportMode,
+} from "@/lib/app/image/imageImportFlow";
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import type { SearchContext } from "@/types/task";
@@ -22,6 +26,8 @@ type UseChatPageReferenceDomainArgs = {
   ingestMode: SharedIngestOptions["mode"];
   imageDetail: SharedIngestOptions["detail"];
   fileReadPolicy: SharedIngestOptions["readPolicy"];
+  imageLibraryImportEnabled: boolean;
+  imageLibraryImportMode: ImageLibraryImportMode;
   compactCharLimit: number;
   simpleImageCharLimit: number;
   autoGenerateLibrarySummary: boolean;
@@ -114,6 +120,7 @@ export function useChatPageReferenceDomain(
     openFolderIndexPicker,
     openFolderImportPicker,
     uploadLibraryItemToDrive,
+    openImageFileImportPicker,
   } = useGoogleDrivePicker({
     folderLink: googleDriveFolderLink,
     setFolderLink: setGoogleDriveFolderLink,
@@ -132,7 +139,52 @@ export function useChatPageReferenceDomain(
     setIngestLoading: args.setIngestLoading,
     applyIngestUsage: args.applyIngestUsage,
     focusGptPanel: args.focusGptPanel,
+    imageLibraryImportEnabled: args.imageLibraryImportEnabled,
+    imageLibraryImportMode: args.imageLibraryImportMode,
   });
+
+  const imageIngestOptions: SharedIngestOptions = {
+    kind: "image",
+    mode: args.ingestMode,
+    detail: args.imageDetail,
+    readPolicy: args.fileReadPolicy,
+    compactCharLimit: args.compactCharLimit,
+    simpleImageCharLimit: args.simpleImageCharLimit,
+  };
+
+  const importDeviceImageFile = async (file: File) => {
+    args.setIngestLoading(true);
+    try {
+      const { payload } = await importImageFileToLibrary({
+        file,
+        imageLibraryImportEnabled: args.imageLibraryImportEnabled,
+        mode: args.imageLibraryImportMode,
+        ingestOptions: imageIngestOptions,
+        autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
+        currentTaskId: args.currentTaskId,
+        recordIngestedDocument,
+        applyIngestUsage: args.applyIngestUsage,
+      });
+      args.setGptMessages((prev) => [
+        ...prev,
+        {
+          id: `image-import-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "gpt",
+          text: [
+            payload
+              ? "Image imported to the image library."
+              : "Image imported as text to the library.",
+            "",
+            ...(payload ? [`Image ID: ${payload.imageId}`] : []),
+            `File: ${payload?.fileName || file.name}`,
+          ].join("\n"),
+        },
+      ]);
+      args.focusGptPanel();
+    } finally {
+      args.setIngestLoading(false);
+    }
+  };
 
   const {
     processMultipartTaskDoneText,
@@ -236,7 +288,9 @@ export function useChatPageReferenceDomain(
     sendAllLibraryItemsToKin,
     uploadLibraryItemToGoogleDrive,
     renderPresentationPlanToPpt,
+    importDeviceImageFile,
     importGoogleDriveFile,
+    importGoogleDriveImageFile: openImageFileImportPicker,
     indexGoogleDriveFolder,
     importGoogleDriveFolder,
   };

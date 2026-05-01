@@ -57,6 +57,8 @@ export function buildChatPageWorkspaceGptReferences(
       args.references.onUploadLibraryItemToGoogleDrive,
     onRenderPresentationPlanToPpt:
       args.references.onRenderPresentationPlanToPpt,
+    onImportDeviceImageFile: args.references.onImportDeviceImageFile,
+    onImportGoogleDriveImageFile: args.references.onImportGoogleDriveImageFile,
   };
 }
 
@@ -139,6 +141,8 @@ export function buildChatPageWorkspaceGptSettings(
     ingestMode: args.gpt.ingestMode,
     imageDetail: args.gpt.imageDetail,
     fileReadPolicy: args.gpt.fileReadPolicy,
+    imageLibraryImportEnabled: args.gpt.imageLibraryImportEnabled,
+    imageLibraryImportMode: args.gpt.imageLibraryImportMode,
     autoGenerateLibrarySummary: args.gpt.autoGenerateLibrarySummary,
     compactCharLimit: args.gpt.compactCharLimit,
     simpleImageCharLimit: args.gpt.simpleImageCharLimit,
@@ -172,6 +176,9 @@ export function buildChatPageWorkspaceGptSettings(
     onChangeCompactCharLimit: args.gpt.onChangeCompactCharLimit,
     onChangeSimpleImageCharLimit: args.gpt.onChangeSimpleImageCharLimit,
     onChangeFileReadPolicy: args.gpt.onChangeFileReadPolicy,
+    onChangeImageLibraryImportEnabled:
+      args.gpt.onChangeImageLibraryImportEnabled,
+    onChangeImageLibraryImportMode: args.gpt.onChangeImageLibraryImportMode,
     onChangeAutoGenerateLibrarySummary: args.gpt.onChangeAutoGenerateLibrarySummary,
     onChangeSearchMode: args.search.onChangeSearchMode,
     onChangeSearchEngines: args.search.onChangeSearchEngines,

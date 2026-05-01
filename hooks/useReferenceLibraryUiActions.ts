@@ -6,10 +6,14 @@ import {
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import {
+  buildFramePresentationSpecFromTaskPlan,
   buildPresentationSpecFromTaskPlan,
   buildPresentationTaskPlanFromText,
   hasRenderablePresentationTaskPlan,
 } from "@/lib/app/presentation/presentationTaskPlanning";
+import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
+import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
+import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText";
 import {
   buildLibraryItemsAggregateKinSysInfo,
   buildLibraryItemsAggregateText,
@@ -112,6 +116,36 @@ function createPresentationBlobUrl(args: {
   );
 }
 
+function createImageBlobUrl(args: { contentBase64?: string; mimeType?: string }) {
+  if (!args.contentBase64 || typeof window === "undefined") return "";
+  const binary = window.atob(args.contentBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return URL.createObjectURL(
+    new Blob([bytes], {
+      type: args.mimeType || "image/png",
+    })
+  );
+}
+
+async function buildGeneratedImageChatDisplayText(item: ReferenceLibraryItem) {
+  const payload = isGeneratedImageLibraryPayload(item.structuredPayload)
+    ? item.structuredPayload
+    : null;
+  if (!payload) return buildLibraryItemChatDisplayText(item);
+  const hydrated = await hydrateGeneratedImagePayload(payload);
+  const path = createImageBlobUrl({
+    contentBase64: hydrated.base64,
+    mimeType: hydrated.mimeType,
+  });
+  return buildGeneratedImageDisplayText({
+    payload: hydrated,
+    imagePath: path,
+  });
+}
+
 export function useReferenceLibraryUiActions({
   libraryItems,
   getLibraryItemById,
@@ -160,9 +194,13 @@ export function useReferenceLibraryUiActions({
   const showLibraryItemInChat = async (itemId: string) => {
     const item = getLibraryItemById(itemId);
     if (!item) return;
+    const displayText =
+      item.artifactType === "generated_image"
+        ? await buildGeneratedImageChatDisplayText(item)
+        : buildLibraryItemChatDisplayText(item);
     const nextMessages = [
       ...gptMessages,
-      createLibraryUiMessage(buildLibraryItemChatDisplayText(item)),
+      createLibraryUiMessage(displayText),
     ];
     setGptMessages(nextMessages);
     focusGptPanel();
@@ -277,13 +315,14 @@ export function useReferenceLibraryUiActions({
       focusGptPanel();
       return;
     }
-    const spec = buildPresentationSpecFromTaskPlan(plan);
+    const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
+    const spec = frameSpec ? null : buildPresentationSpecFromTaskPlan(plan);
     const response = await fetch("/api/presentation-render", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
-        spec,
+        ...(frameSpec ? { frameSpec } : { spec }),
       }),
     });
     const data = (await response.json().catch(() => ({}))) as {
@@ -309,14 +348,17 @@ export function useReferenceLibraryUiActions({
         contentBase64: data.output.contentBase64,
         mimeType: data.output.mimeType,
       });
-    const filename = data.output.filename || `${spec.title}.pptx`;
+    const title = frameSpec?.title || spec?.title || item.title;
+    const slideCount =
+      frameSpec?.slideFrames.length || spec?.slides.length || data.output.slideCount || 0;
+    const filename = data.output.filename || `${title}.pptx`;
     const nextPlan: PresentationTaskPlan = {
       ...plan,
       latestPptx: {
         filename,
         path,
         createdAt: data.output.createdAt || new Date().toISOString(),
-        slideCount: data.output.slideCount || spec.slides.length,
+        slideCount: data.output.slideCount || slideCount,
       },
       updatedAt: new Date().toISOString(),
     };
@@ -330,8 +372,8 @@ export function useReferenceLibraryUiActions({
         [
           "Presentation PPTX created from design plan.",
           "",
-          `Title: ${spec.title}`,
-          `Slides: ${spec.slides.length}`,
+          `Title: ${title}`,
+          `Slides: ${slideCount}`,
           path ? `PPTX: [${filename}](${path})` : `File: ${filename}`,
         ].join("\n")
       ),

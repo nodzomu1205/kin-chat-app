@@ -77,6 +77,10 @@ export type SendToGptFlowMemoryArgs = {
   ) => Promise<MemoryResultLike>;
   applyCompressionUsage: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
   applyIngestUsage?: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
+  applyImageUsage?: (usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0]) => void;
+  imageLibraryImportEnabled?: boolean;
+  imageLibraryImportMode?: import("@/components/panels/gpt/gptPanelTypes").ImageLibraryImportMode;
+  imageDescriptionIngestOptions?: import("@/lib/app/ingest/ingestClient").SharedIngestOptions;
   applyTaskUsage: (
     usage: Parameters<typeof import("@/lib/shared/tokenStats").normalizeUsage>[0],
     options?: BucketUsageOptions
@@ -117,12 +121,13 @@ export type SendToGptFlowRequestArgs = {
     summary?: string;
     taskId?: string;
     charCount: number;
+    structuredPayload?: import("@/types/chat").StoredDocument["structuredPayload"];
     createdAt: string;
     updatedAt: string;
   }) => { id: string };
   updateStoredDocument: (
     documentId: string,
-    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary">>
+    patch: Partial<Pick<StoredDocument, "title" | "text" | "summary" | "structuredPayload">>
   ) => void | null;
   onHandleYoutubeTranscriptRequest?: (params: {
     userMessage: Message;

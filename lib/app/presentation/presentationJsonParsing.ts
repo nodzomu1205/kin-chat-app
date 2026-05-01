@@ -706,6 +706,35 @@ function coerceSlide(value: unknown, index: number): unknown {
     };
   }
 
+  if (
+    rawType === "cards" ||
+    rawType === "grid" ||
+    rawType === "cardgrid" ||
+    Array.isArray(candidate.cards)
+  ) {
+    const cards = Array.isArray(candidate.cards)
+      ? candidate.cards.map(coerceCard).filter((card) => card.title)
+      : [];
+    return {
+      ...candidate,
+      type: "cards",
+      title,
+      lead: stringValue(candidate.lead || contentObject?.lead || candidate.summary) || undefined,
+      layoutVariant:
+        candidate.layoutVariant === "threeColumns" ||
+        candidate.layoutVariant === "twoByTwoGrid" ||
+        candidate.layoutVariant === "heroTopDetailsBottom"
+          ? candidate.layoutVariant
+          : cards.length === 4
+            ? "twoByTwoGrid"
+            : "threeColumns",
+      cards: cards.length > 0 ? cards : [{ title: "Item", bullets: [{ text: "Content to be refined" }] }],
+      takeaway:
+        stringValue(candidate.takeaway || contentObject?.takeaway || candidate.conclusion) ||
+        undefined,
+    };
+  }
+
   if (rawType === "table" || Array.isArray(candidate.rows)) {
     const columns = coerceStringArray(candidate.columns).slice(0, 5);
     const rows = Array.isArray(candidate.rows)
@@ -796,6 +825,28 @@ function coerceColumn(value: unknown, fallbackHeading: string) {
       fallbackHeading,
     body: stringValue(candidate.body || candidate.summary || candidate.content) || undefined,
     bullets: coerceBulletItems(candidate.bullets || candidate.items || candidate.points),
+  };
+}
+
+function coerceCard(value: unknown) {
+  const candidate = value as Record<string, unknown> | null;
+  if (!candidate || typeof candidate !== "object") {
+    return {
+      title: stringValue(value) || "Item",
+      bullets: [{ text: "Content to be refined" }],
+    };
+  }
+  return {
+    title:
+      stringValue(candidate.title || candidate.heading || candidate.name) || "Item",
+    body: stringValue(candidate.body || candidate.summary || candidate.content) || undefined,
+    bullets: coerceBulletItems(candidate.bullets || candidate.items || candidate.points),
+    kind:
+      candidate.kind === "visual" ||
+      candidate.kind === "callout" ||
+      candidate.kind === "text"
+        ? candidate.kind
+        : undefined,
   };
 }
 
@@ -1112,6 +1163,19 @@ function isSlideSpec(value: unknown): value is SlideSpec {
       candidate.rows.length > 0 &&
       candidate.rows.every(
         (row) => Array.isArray(row) && row.length === candidate.columns.length
+      )
+    );
+  }
+
+  if (candidate.type === "cards") {
+    return (
+      Array.isArray(candidate.cards) &&
+      candidate.cards.length > 0 &&
+      candidate.cards.every(
+        (card) =>
+          card &&
+          typeof card === "object" &&
+          typeof (card as { title?: unknown }).title === "string"
       )
     );
   }

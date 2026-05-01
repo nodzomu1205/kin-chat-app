@@ -12,6 +12,7 @@ import {
 } from "@/hooks/googleDrivePickerBuilders";
 import {
   runDriveFileImport,
+  runDriveImageFileImport,
   runDriveFolderImport,
   runDrivePickedDocumentsImport,
   runDriveLibraryItemUpload,
@@ -21,6 +22,7 @@ import {
   openGoogleDrivePicker,
 } from "@/hooks/googleDrivePickerRuntime";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
+import type { ImageLibraryImportMode } from "@/lib/app/image/imageImportFlow";
 
 type UseGoogleDrivePickerArgs = {
   folderLink: string;
@@ -35,6 +37,8 @@ type UseGoogleDrivePickerArgs = {
   setIngestLoading: React.Dispatch<React.SetStateAction<boolean>>;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   focusGptPanel: () => boolean;
+  imageLibraryImportEnabled: boolean;
+  imageLibraryImportMode: ImageLibraryImportMode;
 };
 
 function appendUiMessage(
@@ -63,6 +67,8 @@ export function useGoogleDrivePicker({
   setIngestLoading,
   applyIngestUsage,
   focusGptPanel,
+  imageLibraryImportEnabled,
+  imageLibraryImportMode,
 }: UseGoogleDrivePickerArgs) {
   const { pickerReady, ensureAccessToken } = useGoogleDrivePickerRuntime();
   const folderId = useMemo(() => resolveGoogleDriveFolderId(folderLink), [folderLink]);
@@ -106,6 +112,49 @@ export function useGoogleDrivePicker({
     ]
   );
 
+  const importDriveImageFile = useCallback(
+    async (
+      file: { id: string; name: string; mimeType: string; path?: string },
+      options: { manageLoading?: boolean } = {}
+    ) => {
+      const manageLoading = options.manageLoading !== false;
+      if (manageLoading) setIngestLoading(true);
+
+      try {
+        await runDriveImageFileImport({
+          file,
+          ensureAccessToken,
+          ingestOptions,
+          autoGenerateLibrarySummary,
+          currentTaskId,
+          imageLibraryImportEnabled,
+          imageLibraryImportMode,
+          recordIngestedDocument,
+          appendUiMessage: (text, sourceType) => {
+            appendUiMessage(setGptMessages, text, sourceType);
+          },
+          applyIngestUsage,
+          focusGptPanel,
+        });
+      } finally {
+        if (manageLoading) setIngestLoading(false);
+      }
+    },
+    [
+      applyIngestUsage,
+      autoGenerateLibrarySummary,
+      currentTaskId,
+      ensureAccessToken,
+      focusGptPanel,
+      imageLibraryImportEnabled,
+      imageLibraryImportMode,
+      ingestOptions,
+      recordIngestedDocument,
+      setGptMessages,
+      setIngestLoading,
+    ]
+  );
+
   const importDriveFolder = useCallback(
     async (folder: { id: string; name: string }, mode: "index" | "import") => {
       setIngestLoading(true);
@@ -144,6 +193,31 @@ export function useGoogleDrivePicker({
     });
   }, [ensureAccessToken, folderId, importDriveFile, importDriveFolder]);
 
+  const openPickerForModeWithImporter = useCallback(
+    async (
+      mode: DrivePickerMode,
+      fileImporter: (
+        file: { id: string; name: string; mimeType: string; path?: string }
+      ) => Promise<void>
+    ) => {
+      const accessToken = await ensureAccessToken();
+      await openGoogleDrivePicker({
+        mode,
+        folderId,
+        accessToken,
+        onPickedDocs: async (docs) => {
+          await runDrivePickedDocumentsImport({
+            docs,
+            mode,
+            importDriveFile: fileImporter,
+            importDriveFolder,
+          });
+        },
+      });
+    },
+    [ensureAccessToken, folderId, importDriveFolder]
+  );
+
   const uploadLibraryItemToDrive = useCallback(
     async (item: ReferenceLibraryItem) => {
       if (typeof window === "undefined" || !folderId) {
@@ -180,6 +254,8 @@ export function useGoogleDrivePicker({
     pickerReady,
     googleDriveFolderId: folderId,
     openFileImportPicker: () => openPickerForMode("file_import"),
+    openImageFileImportPicker: () =>
+      openPickerForModeWithImporter("file_import", importDriveImageFile),
     openFolderIndexPicker: () => openPickerForMode("folder_index"),
     openFolderImportPicker: () => openPickerForMode("folder_import"),
     uploadLibraryItemToDrive,

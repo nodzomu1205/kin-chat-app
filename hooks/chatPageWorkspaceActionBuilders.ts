@@ -101,6 +101,8 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onSendAllLibraryItemsToKin: args.onSendAllLibraryItemsToKin,
     onUploadLibraryItemToGoogleDrive: args.onUploadLibraryItemToGoogleDrive,
     onRenderPresentationPlanToPpt: args.onRenderPresentationPlanToPpt,
+    onImportDeviceImageFile: args.onImportDeviceImageFile,
+    onImportGoogleDriveImageFile: args.onImportGoogleDriveImageFile,
     onChangeAutoLibraryReferenceEnabled: args.onChangeAutoLibraryReferenceEnabled,
     onChangeLibraryReferenceMode: args.onChangeLibraryReferenceMode,
     onChangeLibraryIndexResponseCount: args.onChangeLibraryIndexResponseCount,
@@ -122,6 +124,9 @@ function buildWorkspaceActionsGpt(args: ChatPageWorkspaceActionsGpt) {
     onChangeCompactCharLimit: args.onChangeCompactCharLimit,
     onChangeSimpleImageCharLimit: args.onChangeSimpleImageCharLimit,
     onChangeFileReadPolicy: args.onChangeFileReadPolicy,
+    onChangeImageLibraryImportEnabled:
+      args.onChangeImageLibraryImportEnabled,
+    onChangeImageLibraryImportMode: args.onChangeImageLibraryImportMode,
     onChangeAutoGenerateLibrarySummary: args.onChangeAutoGenerateLibrarySummary,
   } satisfies ChatPageWorkspaceActionsGpt;
 }

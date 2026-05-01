@@ -43,12 +43,17 @@ export function getTaskLibraryItemBySelection(
   libraryItems: ReferenceLibraryItem[],
   selectedTaskLibraryItemId: string
 ) {
+  const referenceableItems = libraryItems.filter(isReferenceableLibraryItem);
   const resolvedId = resolveSelectedLibraryItemId(
     selectedTaskLibraryItemId,
-    libraryItems
+    referenceableItems
   );
   if (!resolvedId) return null;
-  return libraryItems.find((item) => item.id === resolvedId) || null;
+  return referenceableItems.find((item) => item.id === resolvedId) || null;
+}
+
+export function isReferenceableLibraryItem(item: ReferenceLibraryItem) {
+  return item.artifactType !== "generated_image";
 }
 
 export function getEffectiveLibraryItemMode(params: {
@@ -74,7 +79,9 @@ export function buildReferenceLibraryContext(params: {
     return "";
   }
 
-  const targets = params.libraryItems.slice(0, params.libraryReferenceCount);
+  const targets = params.libraryItems
+    .filter(isReferenceableLibraryItem)
+    .slice(0, params.libraryReferenceCount);
   if (targets.length === 0) return "";
 
   const lines = ["<<STORED_LIBRARY_CONTEXT>>"];

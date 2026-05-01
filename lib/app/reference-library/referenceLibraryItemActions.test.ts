@@ -105,4 +105,27 @@ describe("buildLibraryItemDriveExport", () => {
       documentId: "pres_1",
     });
   });
+
+  it("exports generated image metadata without embedding image bytes in the text file", () => {
+    const exported = buildLibraryItemDriveExport(
+      createLibraryItem({
+        artifactType: "generated_image",
+        title: "Image",
+        subtitle: "Image ID: img_123",
+        structuredPayload: {
+          version: "0.1-generated-image",
+          imageId: "img_123",
+          mimeType: "image/png",
+          base64: "abc",
+          prompt: "Prompt text",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      })
+    );
+
+    expect(exported.fileName).toBe("img_123.generated-image.json");
+    expect(exported.mimeType).toBe("application/json");
+    expect(exported.text).toContain('"imageId": "img_123"');
+    expect(exported.text).not.toContain('"base64"');
+  });
 });

@@ -42,6 +42,18 @@ export function buildOpenAIIngestRequestBody(args: {
   mimeType: string;
   base64: string;
 }) {
+  const dataUrl = `data:${args.mimeType};base64,${args.base64}`;
+  const fileContent = args.mimeType.startsWith("image/")
+    ? {
+        type: "input_image",
+        image_url: dataUrl,
+      }
+    : {
+        type: "input_file",
+        filename: args.fileName,
+        file_data: dataUrl,
+      };
+
   return {
     model: args.model,
     input: [
@@ -52,11 +64,7 @@ export function buildOpenAIIngestRequestBody(args: {
             type: "input_text",
             text: args.prompt,
           },
-          {
-            type: "input_file",
-            filename: args.fileName,
-            file_data: `data:${args.mimeType};base64,${args.base64}`,
-          },
+          fileContent,
         ],
       },
     ],

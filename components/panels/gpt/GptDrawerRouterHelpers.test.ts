@@ -25,10 +25,10 @@ import {
 describe("GptDrawerRouterHelpers", () => {
   const noop = () => {};
 
-  it("limits visual upload kinds to pdf and image files", () => {
-    expect(getDeviceImportAccept("image")).toBe(".pdf,image/*");
-    expect(getDeviceImportAccept("pdf")).toBe(".pdf,image/*");
-    expect(getDeviceImportAccept("mixed")).toBe(".pdf,image/*");
+  it("allows mixed file import because the route auto-detects file types", () => {
+    expect(getDeviceImportAccept("image")).toContain("image/*");
+    expect(getDeviceImportAccept("pdf")).toContain(".pdf");
+    expect(getDeviceImportAccept("mixed")).toContain(".docx");
     expect(getDeviceImportAccept("text")).toContain(".txt");
     expect(getDeviceImportAccept("auto")).toContain(".docx");
   });
@@ -42,6 +42,8 @@ describe("GptDrawerRouterHelpers", () => {
         fileReadPolicy: "text_and_layout",
         compactCharLimit: 1200,
         simpleImageCharLimit: 340,
+        imageLibraryImportEnabled: true,
+        imageLibraryImportMode: "image_only",
       })
     ).toEqual({
       kind: "mixed",
@@ -50,6 +52,8 @@ describe("GptDrawerRouterHelpers", () => {
       readPolicy: "text_and_layout",
       compactCharLimit: 1200,
       simpleImageCharLimit: 340,
+      imageLibraryImportEnabled: true,
+      imageLibraryImportMode: "image_only",
     });
   });
 
@@ -266,7 +270,7 @@ describe("GptDrawerRouterHelpers", () => {
     expect(props.selectedTaskLibraryItemId).toBe("item-1");
     expect(props.libraryReferenceCount).toBe(4);
     expect(props.sourceDisplayCount).toBe(3);
-    expect(props.deviceImportAccept).toBe(".pdf,image/*");
+    expect(props.deviceImportAccept).toContain("image/*");
     expect(props.deviceImportDisabled).toBe(true);
     expect(props.onImportDeviceFile).toBe(onImportDeviceFile);
   });

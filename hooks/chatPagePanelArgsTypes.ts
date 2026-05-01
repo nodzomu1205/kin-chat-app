@@ -130,6 +130,10 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
         BuildGptPanelArgs["references"]["onUploadLibraryItemToGoogleDrive"];
       onRenderPresentationPlanToPpt:
         BuildGptPanelArgs["references"]["onRenderPresentationPlanToPpt"];
+      onImportDeviceImageFile:
+        BuildGptPanelArgs["references"]["onImportDeviceImageFile"];
+      onImportGoogleDriveImageFile:
+        BuildGptPanelArgs["references"]["onImportGoogleDriveImageFile"];
   };
   settings: Omit<
     BuildGptPanelArgs["settings"],

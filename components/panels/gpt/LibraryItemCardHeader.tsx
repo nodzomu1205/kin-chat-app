@@ -4,6 +4,8 @@ import React from "react";
 import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { iconButton } from "@/components/panels/gpt/LibraryDrawerControls";
+import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
+import { loadGeneratedImageAsset } from "@/lib/app/image/imageAssetStorage";
 import type { LibraryDrawerProps } from "@/components/panels/gpt/LibraryDrawerTypes";
 import type { MultipartAssembly, ReferenceLibraryItem } from "@/types/chat";
 
@@ -36,6 +38,22 @@ export default function LibraryItemCardHeader({
   onDeleteMultipartAssembly: LibraryDrawerProps["onDeleteMultipartAssembly"];
   onDeleteStoredDocument: LibraryDrawerProps["onDeleteStoredDocument"];
 }) {
+  const imagePayload = isGeneratedImageLibraryPayload(item.structuredPayload)
+    ? item.structuredPayload
+    : null;
+  const [imageBase64, setImageBase64] = React.useState(imagePayload?.base64 || "");
+  React.useEffect(() => {
+    let cancelled = false;
+    setImageBase64(imagePayload?.base64 || "");
+    if (imagePayload && !imagePayload.base64) {
+      void loadGeneratedImageAsset(imagePayload.imageId).then((asset) => {
+        if (!cancelled) setImageBase64(asset?.base64 || "");
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [imagePayload?.base64, imagePayload?.imageId]);
   return (
     <div
       role="button"
@@ -57,6 +75,21 @@ export default function LibraryItemCardHeader({
         minWidth: 0,
       }}
     >
+      {imagePayload && imageBase64 ? (
+        <img
+          src={`data:${imagePayload.mimeType};base64,${imageBase64}`}
+          alt={imagePayload.alt || item.title}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 6,
+            objectFit: "cover",
+            border: "1px solid #cbd5e1",
+            flexShrink: 0,
+          }}
+        />
+      ) : null}
+
       <div style={{ minWidth: 0, flex: 1 }}>
         <div
           style={{
@@ -92,7 +125,9 @@ export default function LibraryItemCardHeader({
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
-        {priorityIndex > 0 && priorityIndex <= libraryReferenceCount ? (
+        {item.artifactType !== "generated_image" &&
+        priorityIndex > 0 &&
+        priorityIndex <= libraryReferenceCount ? (
           <span
             style={{
               fontSize: 11,

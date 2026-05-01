@@ -143,6 +143,21 @@ export function useTokenTracking() {
     }));
   }, []);
 
+  const applyImageUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
+    if (!usage) return;
+    const safeUsage = normalizeUsage(usage);
+    if (isZeroUsage(safeUsage)) {
+      return;
+    }
+
+    setTokenStats((prev) => ({
+      ...prev,
+      lastImageUsage: safeUsage,
+      threadImageTotal: addUsage(prev.threadImageTotal, safeUsage),
+      imageRunCount: prev.imageRunCount + 1,
+    }));
+  }, []);
+
   const resetTokenStats = useCallback(() => {
     setTokenStats(emptyTokenStats());
   }, []);
@@ -159,6 +174,7 @@ export function useTokenTracking() {
     applySearchUsage,
     applyTaskUsage,
     applyIngestUsage,
+    applyImageUsage,
     resetTokenStats,
     totalTrackedUsage: displayTokenStats.cumulative,
   };

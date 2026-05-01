@@ -9,12 +9,14 @@ export type ParsedPptCommand = {
   body: string;
   documentId?: string;
   density?: "concise" | "standard" | "detailed" | "dense";
+  generateImages?: boolean;
   intent?: PptCommandIntent;
 };
 
 const PPT_PREFIX_PATTERN = /^\s*\/ppt(?:\s|$)/i;
 const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:-]+)/im;
 const DENSITY_PATTERN = /^\s*Density\s*:\s*(concise|standard|detailed|dense)\s*$/gim;
+const GENERATE_IMAGES_PATTERN = /^\s*(?:Generate Images|Images)\s*:\s*(true|false|yes|no|on|off)\s*$/gim;
 
 function stripPptPrefix(text: string) {
   return text.replace(PPT_PREFIX_PATTERN, "").replace(/^\s*\r?\n?/, "").trim();
@@ -28,6 +30,10 @@ function stripDensityLines(text: string) {
   return text.replace(DENSITY_PATTERN, "").trim();
 }
 
+function stripGenerateImagesLines(text: string) {
+  return text.replace(GENERATE_IMAGES_PATTERN, "").trim();
+}
+
 function parseDensity(text: string): ParsedPptCommand["density"] {
   DENSITY_PATTERN.lastIndex = 0;
   const match = DENSITY_PATTERN.exec(text);
@@ -38,6 +44,14 @@ function parseDensity(text: string): ParsedPptCommand["density"] {
     raw === "dense"
     ? raw
     : undefined;
+}
+
+function parseGenerateImages(text: string) {
+  GENERATE_IMAGES_PATTERN.lastIndex = 0;
+  const match = GENERATE_IMAGES_PATTERN.exec(text);
+  const raw = match?.[1]?.toLowerCase();
+  if (!raw) return undefined;
+  return raw === "true" || raw === "yes" || raw === "on";
 }
 
 function isRenderRequest(body: string) {
@@ -71,7 +85,10 @@ export function parsePptCommand(text: string): ParsedPptCommand {
   const body = stripPptPrefix(text);
   const documentId = body.match(DOCUMENT_ID_PATTERN)?.[1]?.trim();
   const density = parseDensity(body);
-  const bodyWithoutDocumentId = stripDensityLines(stripDocumentIdLine(body));
+  const generateImages = parseGenerateImages(body);
+  const bodyWithoutDocumentId = stripGenerateImagesLines(
+    stripDensityLines(stripDocumentIdLine(body))
+  );
   const intent: PptCommandIntent = isRenderRequest(bodyWithoutDocumentId)
     ? "renderPptx"
     : !documentId
@@ -85,6 +102,7 @@ export function parsePptCommand(text: string): ParsedPptCommand {
     body: bodyWithoutDocumentId,
     documentId,
     density,
+    generateImages,
     intent,
   };
 }

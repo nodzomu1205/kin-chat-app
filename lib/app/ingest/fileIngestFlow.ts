@@ -10,10 +10,12 @@ import { normalizeUsage } from "@/lib/shared/tokenStats";
 import type {
   FileReadPolicy,
   ImageDetail,
+  ImageLibraryImportMode,
   IngestMode,
   UploadKind,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { Message } from "@/types/chat";
+import { saveImportedImageFileToLibrary } from "@/lib/app/image/imageImportFlow";
+import type { Message, StoredDocument } from "@/types/chat";
 import type { KinMemoryState } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
@@ -37,6 +39,8 @@ type IngestFlowArgs = {
     readPolicy: FileReadPolicy;
     compactCharLimit: number;
     simpleImageCharLimit: number;
+    imageLibraryImportEnabled: boolean;
+    imageLibraryImportMode: ImageLibraryImportMode;
   };
   ingestLoading: boolean;
   currentTaskDraft: TaskDraft;
@@ -57,16 +61,9 @@ type IngestFlowArgs = {
   setGptState: Dispatch<SetStateAction<KinMemoryState>>;
   persistCurrentGptState?: (state: KinMemoryState) => void;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
-  recordIngestedDocument: (document: {
-    title: string;
-    filename: string;
-    text: string;
-    summary?: string;
-    taskId?: string;
-    charCount: number;
-    createdAt: string;
-    updatedAt: string;
-  }) => unknown;
+  recordIngestedDocument: (
+    document: Omit<StoredDocument, "id" | "sourceType">
+  ) => StoredDocument;
   setActiveTabToKin?: () => void;
 };
 
@@ -242,6 +239,24 @@ export async function runFileIngestFlow({
       })
     );
 
+    if (options.imageLibraryImportEnabled && isImageFile(file)) {
+      const { payload } = await saveImportedImageFileToLibrary({
+        file,
+        description: canonicalDocumentText,
+        mode: options.imageLibraryImportMode,
+        recordIngestedDocument,
+      });
+      appendInfo(
+        setGptMessages,
+        [
+          "Image also saved to the image library.",
+          "",
+          `Image ID: ${payload.imageId}`,
+          `File: ${payload.fileName || file.name}`,
+        ].join("\n")
+      );
+    }
+
     const chatContextBody = buildSummaryPrefixedContent(
       storedDocumentText,
       documentSummary
@@ -282,4 +297,9 @@ export async function runFileIngestFlow({
   } finally {
     setIngestLoading(false);
   }
+}
+
+function isImageFile(file: File) {
+  if (file.type.startsWith("image/")) return true;
+  return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name);
 }

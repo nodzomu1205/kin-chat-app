@@ -174,12 +174,15 @@ export type TaskDraftMode = "normal" | "presentation";
 
 export type PresentationTaskPlan = {
   version: "0.1-presentation-task-plan";
+  documentId?: string;
   title: string;
   sourceSummary: string;
   extractedItems: string[];
   strategyItems: string[];
   keyMessages: string[];
   slideItems: string[];
+  deckFrame?: PresentationTaskDeckFrame;
+  slideFrames: PresentationTaskSlideFrame[];
   slides: PresentationTaskSlidePlan[];
   missingInfo: string[];
   nextSuggestions: string[];
@@ -194,11 +197,108 @@ export type PresentationTaskPlan = {
 };
 
 export type PresentationTaskPlanDebug = {
-  slideSource: "slideDesignJson" | "legacySlideText" | "none";
+  slideSource: "slideFrameJson" | "slideDesignJson" | "legacySlideText" | "none";
   slideJsonRaw: string[];
   slideJsonParsed: boolean;
   slideCount: number;
   generatedAt: string;
+};
+
+export type PresentationTaskMasterFrameId =
+  | "plain"
+  | "titleLineFooter"
+  | "logoHeaderFooter"
+  | "fullBleedVisual";
+
+export type PresentationTaskLayoutFrameId =
+  | "singleCenter"
+  | "titleBody"
+  | "leftRight50"
+  | "visualLeftTextRight"
+  | "textLeftVisualRight"
+  | "heroTopDetailsBottom"
+  | "threeColumns"
+  | "twoByTwoGrid";
+
+export type PresentationTaskBlockStyleId =
+  | "headlineCenter"
+  | "textStackTopLeft"
+  | "listCompact"
+  | "visualContain"
+  | "visualCover"
+  | "callout";
+
+export type PresentationTaskDeckFrame = {
+  slideCount?: number;
+  masterFrameId: PresentationTaskMasterFrameId;
+  background?: string;
+  wallpaper?: string;
+  typography?: {
+    fontFamily?: string;
+    bodyScale?: number;
+    itemScale?: number;
+  };
+  pageNumber?: {
+    enabled: boolean;
+    position?: "bottomRight" | "bottomCenter" | "bottomLeft";
+    style?: string;
+  };
+  logo?: {
+    enabled: boolean;
+    position?: "topRight" | "topLeft" | "bottomRight" | "bottomLeft";
+    label?: string;
+  };
+};
+
+export type PresentationTaskVisualRequest = {
+  type:
+    | "none"
+    | "photo"
+    | "illustration"
+    | "diagram"
+    | "chart"
+    | "map"
+    | "iconSet"
+    | "table";
+  brief: string;
+  prompt?: string;
+  promptNote?: string;
+  labels?: string[];
+  asset?: {
+    imageId?: string;
+    mimeType: string;
+    base64: string;
+    alt?: string;
+    sourcePromptHash?: string;
+  };
+  renderStyle?: {
+    orientation?: "horizontal" | "vertical";
+    showBrief?: boolean;
+  };
+};
+
+export type PresentationTaskSlideBlock = {
+  id: string;
+  kind: "textStack" | "visual" | "list" | "callout";
+  styleId: PresentationTaskBlockStyleId;
+  heading?: string;
+  text?: string;
+  items?: string[];
+  renderStyle?: {
+    fontSize?: "small" | "standard" | "large" | "xlarge";
+    itemFontSize?: "small" | "standard" | "large" | "xlarge";
+    showHeading?: boolean;
+  };
+  visualRequest?: PresentationTaskVisualRequest;
+};
+
+export type PresentationTaskSlideFrame = {
+  slideNumber: number;
+  title: string;
+  masterFrameId: PresentationTaskMasterFrameId;
+  layoutFrameId: PresentationTaskLayoutFrameId;
+  speakerIntent?: string;
+  blocks: PresentationTaskSlideBlock[];
 };
 
 export type PresentationTaskSlidePlan = {

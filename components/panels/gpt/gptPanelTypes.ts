@@ -42,6 +42,7 @@ export type ImageDetail = "simple" | "detailed" | "max";
 export type LibraryReferenceMode = "summary_only" | "summary_with_excerpt";
 export type LibraryItemModeOverride = "default" | LibraryReferenceMode;
 export type FileReadPolicy = "text_first" | "visual_first" | "text_and_layout";
+export type ImageLibraryImportMode = "image_only" | "image_with_description";
 
 export type TokenTriplet = {
   input?: number;
@@ -127,6 +128,8 @@ export type GptPanelChatProps = {
       readPolicy: FileReadPolicy;
       compactCharLimit: number;
       simpleImageCharLimit: number;
+      imageLibraryImportEnabled: boolean;
+      imageLibraryImportMode: ImageLibraryImportMode;
     }
   ) => void | Promise<void>;
   resetGptForCurrentKin: () => void;
@@ -257,6 +260,8 @@ export type GptPanelReferenceProps = {
     onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
     onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
     onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
+    onImportDeviceImageFile: (file: File) => void | Promise<void>;
+    onImportGoogleDriveImageFile: () => void | Promise<void>;
   };
 
 export type GptPanelSettingsProps = {
@@ -268,6 +273,8 @@ export type GptPanelSettingsProps = {
   ingestMode: IngestMode;
   imageDetail: ImageDetail;
   fileReadPolicy: FileReadPolicy;
+  imageLibraryImportEnabled: boolean;
+  imageLibraryImportMode: ImageLibraryImportMode;
   autoGenerateLibrarySummary: boolean;
   compactCharLimit: number;
   simpleImageCharLimit: number;
@@ -302,6 +309,8 @@ export type GptPanelSettingsProps = {
   onChangeCompactCharLimit: (value: number) => void;
   onChangeSimpleImageCharLimit: (value: number) => void;
   onChangeFileReadPolicy: (value: FileReadPolicy) => void;
+  onChangeImageLibraryImportEnabled: (value: boolean) => void;
+  onChangeImageLibraryImportMode: (value: ImageLibraryImportMode) => void;
   onChangeAutoGenerateLibrarySummary: (value: boolean) => void;
   onChangeSearchMode: (value: SearchMode) => void;
   onChangeSearchEngines: (value: SearchEngine[]) => void;

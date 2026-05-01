@@ -229,7 +229,15 @@ export function LibrarySettingsWorkspaceView(props: {
         onChangeCompactCharLimit={props.settings.onChangeCompactCharLimit}
         onChangeSimpleImageCharLimit={props.settings.onChangeSimpleImageCharLimit}
         fileReadPolicy={props.settings.fileReadPolicy}
+        imageLibraryImportEnabled={props.settings.imageLibraryImportEnabled}
+        imageLibraryImportMode={props.settings.imageLibraryImportMode}
         onChangeFileReadPolicy={props.settings.onChangeFileReadPolicy}
+        onChangeImageLibraryImportEnabled={
+          props.settings.onChangeImageLibraryImportEnabled
+        }
+        onChangeImageLibraryImportMode={
+          props.settings.onChangeImageLibraryImportMode
+        }
       />
 
       <LibraryCardSummarySettingsSection

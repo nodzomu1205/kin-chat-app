@@ -232,4 +232,37 @@ describe("LibraryDrawer", () => {
     expect(emptyHtml).not.toContain("PPTX出力");
     expect(renderableHtml).toContain("PPTX出力");
   });
+
+  it("renders image library tab and keeps generated images out of the default library view", () => {
+    const item: ReferenceLibraryItem = {
+      id: "doc:image",
+      sourceId: "image",
+      itemType: "ingested_file",
+      artifactType: "generated_image",
+      title: "Image img_test",
+      subtitle: "Image ID: img_test",
+      summary: "生成画像",
+      excerptText: "Image ID: img_test\n\nPrompt:\n生成プロンプト",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      structuredPayload: {
+        version: "0.1-generated-image",
+        imageId: "img_test",
+        mimeType: "image/png",
+        base64:
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
+        prompt: "生成プロンプト",
+        createdAt: new Date().toISOString(),
+      },
+    };
+
+    const html = renderLibraryDrawer({
+      referenceLibraryItems: [item],
+      libraryReferenceCount: 1,
+    });
+
+    expect(html).toContain(">画像<");
+    expect(html).not.toContain("Image ID: img_test");
+    expect(html).not.toContain("data:image/png;base64");
+  });
 });

@@ -35,6 +35,21 @@ describe("ingest route builders", () => {
     });
   });
 
+  it("sends image uploads as input images", () => {
+    expect(
+      buildOpenAIIngestRequestBody({
+        model: "gpt-4.1-mini",
+        prompt: "prompt",
+        fileName: "photo.png",
+        mimeType: "image/png",
+        base64: "YWJj",
+      }).input[0].content[1]
+    ).toEqual({
+      type: "input_image",
+      image_url: "data:image/png;base64,YWJj",
+    });
+  });
+
   it("builds the UTF-8 text shortcut response", () => {
     const response = buildTextIngestShortcutResponse({
       fileName: "notes.txt",

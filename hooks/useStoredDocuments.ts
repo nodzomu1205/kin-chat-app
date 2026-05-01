@@ -5,6 +5,9 @@ import {
   buildIngestedStoredDocument,
   normalizeStoredDocument,
 } from "@/lib/app/ingest/ingestDocumentModel";
+import {
+  persistGeneratedImageAssetsFromDocuments,
+} from "@/lib/app/image/imageAssetStorage";
 
 const INGESTED_DOCUMENTS_KEY = "ingested_documents";
 const DOCUMENT_ORDER_KEY = "stored_document_order";
@@ -119,10 +122,19 @@ export function useStoredDocuments() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      INGESTED_DOCUMENTS_KEY,
-      JSON.stringify(ingestedDocuments)
-    );
+    void persistGeneratedImageAssetsFromDocuments(ingestedDocuments);
+    try {
+      window.localStorage.setItem(
+        INGESTED_DOCUMENTS_KEY,
+        JSON.stringify(stripHeavyStoredDocumentPayloads(ingestedDocuments))
+      );
+    } catch (error) {
+      console.warn("Stored document persistence exceeded localStorage quota", error);
+      window.localStorage.setItem(
+        INGESTED_DOCUMENTS_KEY,
+        JSON.stringify(stripHeavyStoredDocumentPayloads(ingestedDocuments, { aggressive: true }))
+      );
+    }
   }, [ingestedDocuments]);
 
   useEffect(() => {
@@ -225,7 +237,10 @@ export function useStoredDocuments() {
   const documentStorageMB = useMemo(() => {
     try {
       const bytes = new TextEncoder().encode(
-        JSON.stringify({ ingestedDocuments, documentOrder })
+        JSON.stringify({
+          ingestedDocuments: stripHeavyStoredDocumentPayloads(ingestedDocuments),
+          documentOrder,
+        })
       ).length;
       return bytes / (1024 * 1024);
     } catch {
@@ -244,4 +259,39 @@ export function useStoredDocuments() {
     moveStoredDocument,
     getStoredDocument,
   };
+}
+
+function stripHeavyStoredDocumentPayloads(
+  documents: StoredDocument[],
+  options: { aggressive?: boolean } = {}
+) {
+  return documents.map((document) => ({
+    ...document,
+    structuredPayload: stripHeavyPayload(document.structuredPayload, options),
+  }));
+}
+
+function stripHeavyPayload(value: unknown, options: { aggressive?: boolean }): unknown {
+  if (!value || typeof value !== "object") return value;
+  if (Array.isArray(value)) return value.map((item) => stripHeavyPayload(item, options));
+
+  const record = value as Record<string, unknown>;
+  if (
+    record.version === "0.1-generated-image" &&
+    typeof record.imageId === "string"
+  ) {
+    const { base64: _base64, ...rest } = record;
+    return rest;
+  }
+
+  if (options.aggressive && typeof record.base64 === "string") {
+    const { base64: _base64, ...rest } = record;
+    return Object.fromEntries(
+      Object.entries(rest).map(([key, item]) => [key, stripHeavyPayload(item, options)])
+    );
+  }
+
+  return Object.fromEntries(
+    Object.entries(record).map(([key, item]) => [key, stripHeavyPayload(item, options)])
+  );
 }

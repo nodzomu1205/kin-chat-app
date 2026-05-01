@@ -114,6 +114,10 @@ export type ChatPageControllerCompositionArgs = {
     applyCompressionUsage: UseChatPageActionsArgs["applyCompressionUsage"];
     applyTaskUsage: UseChatPageActionsArgs["applyTaskUsage"];
     applyIngestUsage: UseChatPageActionsArgs["applyIngestUsage"];
+    applyImageUsage: UseChatPageActionsArgs["applyImageUsage"];
+    imageLibraryImportEnabled: UseChatPageActionsArgs["imageLibraryImportEnabled"];
+    imageLibraryImportMode: UseChatPageActionsArgs["imageLibraryImportMode"];
+    imageDescriptionIngestOptions: UseChatPageActionsArgs["imageDescriptionIngestOptions"];
     buildLibraryReferenceContext: () => string;
     referenceLibraryItems: ReferenceLibraryItem[];
     libraryIndexResponseCount: number;

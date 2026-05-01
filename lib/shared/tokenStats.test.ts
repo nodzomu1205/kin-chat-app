@@ -139,6 +139,11 @@ describe("tokenStats helpers", () => {
         outputTokens: 5,
         totalTokens: 30,
       },
+      threadImageTotal: {
+        inputTokens: 7,
+        outputTokens: 120,
+        totalTokens: 127,
+      },
     };
 
     const displayTokenStats = buildDisplayTokenStats(tokenStats);
@@ -149,13 +154,13 @@ describe("tokenStats helpers", () => {
       total: 40,
     });
     expect(displayTokenStats.cumulative).toEqual({
-      input: 235,
-      output: 75,
-      total: 310,
+      input: 242,
+      output: 195,
+      total: 437,
     });
-    expect(displayTokenStats.cumulativeInput).toBe(235);
-    expect(displayTokenStats.cumulativeOutput).toBe(75);
-    expect(displayTokenStats.cumulativeTotal).toBe(310);
+    expect(displayTokenStats.cumulativeInput).toBe(242);
+    expect(displayTokenStats.cumulativeOutput).toBe(195);
+    expect(displayTokenStats.cumulativeTotal).toBe(437);
   });
 
   it("normalizes and preserves the latest prompt metrics", () => {

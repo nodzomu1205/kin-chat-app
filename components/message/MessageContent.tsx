@@ -23,7 +23,7 @@ export default function MessageContent({ text }: Props) {
 
 function renderMessageText(text: string) {
   const parts: React.ReactNode[] = [];
-  const pattern = /\[([^\]]+)\]\((\/[^)\s]+|https?:\/\/[^)\s]+|blob:[^)\s]+)\)|(https?:\/\/[^\s]+|\/generated-presentations\/[^\s]+|blob:[^\s]+)/g;
+  const pattern = /(!?)\[([^\]]+)\]\((\/[^)\s]+|https?:\/\/[^)\s]+|blob:[^)\s]+|data:image\/[^)\s]+)\)|(https?:\/\/[^\s]+|\/generated-presentations\/[^\s]+|blob:[^\s]+)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -32,8 +32,30 @@ function renderMessageText(text: string) {
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    const label = match[1] || match[3];
-    const href = match[2] || match[3];
+    const isImageMarkdown = match[1] === "!";
+    const label = match[2] || match[4];
+    const href = match[3] || match[4];
+    if (isImageMarkdown && (href.startsWith("blob:") || href.startsWith("data:image/"))) {
+      parts.push(
+        <img
+          key={`${href}-${match.index}`}
+          src={href}
+          alt={label}
+          style={{
+            display: "block",
+            maxWidth: "100%",
+            maxHeight: 360,
+            objectFit: "contain",
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            background: "#f8fafc",
+            margin: "8px 0",
+          }}
+        />
+      );
+      lastIndex = pattern.lastIndex;
+      continue;
+    }
     const isLegacyGeneratedPresentation = href.startsWith(
       "/generated-presentations/"
     );

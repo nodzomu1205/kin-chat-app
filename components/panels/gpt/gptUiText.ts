@@ -92,6 +92,7 @@ export const GPT_META_DRAWER_TEXT = {
   search: "検索",
   ingest: "取込",
   task: "タスク",
+  image: "画像",
 } as const;
 
 export const GPT_TASK_TEXT = {

@@ -46,7 +46,11 @@ function parsePresentationPlanTaskResult(text: string): TaskResult | null {
   }
 
   const root = objectValue(parsed);
-  if (!root || !objectValue(root.slideDesign)) return null;
+  if (!root) return null;
+  const slideFrames = Array.isArray(root.slideFrames) ? root.slideFrames : [];
+  const deckFrame = objectValue(root.deckFrame);
+  const hasLegacySlideDesign = !!objectValue(root.slideDesign);
+  if (slideFrames.length === 0 && !hasLegacySlideDesign) return null;
 
   const type = stringValue(root.type);
   const status = stringValue(root.status);
@@ -61,6 +65,14 @@ function parsePresentationPlanTaskResult(text: string): TaskResult | null {
     detailBlocks: [
       { title: "抽出事項", body: stringArray(root.extractedItems) },
       { title: "Presentation Strategy", body: stringArray(root.strategyItems) },
+      ...(slideFrames.length > 0
+        ? [
+            {
+              title: "Slide Frame JSON",
+              body: [JSON.stringify({ ...(deckFrame ? { deckFrame } : {}), slideFrames })],
+            },
+          ]
+        : []),
       { title: "キーメッセージ", body: stringArray(root.keyMessages) },
       {
         title: "スライド設計JSON",

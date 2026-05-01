@@ -18,6 +18,9 @@ function slideDetail(slide: SlideSpec): string {
   if (slide.type === "table") {
     return `${slide.columns?.length || 0} columns x ${slide.rows?.length || 0} rows`;
   }
+  if (slide.type === "cards") {
+    return `${slide.cards?.length || 0} cards`;
+  }
   if (slide.type === "closing") {
     return `${slide.nextSteps?.length || 0} next steps`;
   }

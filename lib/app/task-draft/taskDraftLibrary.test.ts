@@ -64,8 +64,10 @@ describe("taskDraftLibrary", () => {
       title: "PPT Design - Investor deck",
       structuredPayload: expect.objectContaining({
         version: "0.1-presentation-task-plan",
+        documentId: expect.stringMatching(/^ppt_/),
         title: "Investor deck",
       }),
     });
+    expect(document?.text).toContain("Document ID: ppt_");
   });
 });

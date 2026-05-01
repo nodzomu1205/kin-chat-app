@@ -2,6 +2,7 @@ import type { StoredDocument } from "@/types/chat";
 import type { TaskDraft } from "@/types/task";
 import { buildLibraryFilenameWithCharCount } from "@/lib/app/ingest/ingestDocumentModel";
 import {
+  ensurePresentationPlanDocumentId,
   buildPresentationTaskPlanFromText,
   formatPresentationTaskPlanText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
@@ -76,9 +77,13 @@ export function buildTaskDraftLibrarySummary(taskDraft: TaskDraft) {
 export function buildStoredDocumentFromTaskDraft(
   taskDraft: TaskDraft
 ): Omit<StoredDocument, "id" | "sourceType"> | null {
-  const text =
+  const presentationPlan =
     taskDraft.mode === "presentation" && taskDraft.presentationPlan
-      ? formatPresentationTaskPlanText(taskDraft.presentationPlan)
+      ? ensurePresentationPlanDocumentId(taskDraft.presentationPlan)
+      : null;
+  const text =
+    taskDraft.mode === "presentation" && presentationPlan
+      ? formatPresentationTaskPlanText(presentationPlan)
       : buildTaskDraftLibraryText(taskDraft);
   if (!text) return null;
 
@@ -86,7 +91,7 @@ export function buildStoredDocumentFromTaskDraft(
   const title = getTaskDraftLibraryTitle(taskDraft);
   const structuredPayload =
     taskDraft.mode === "presentation"
-      ? taskDraft.presentationPlan ||
+      ? presentationPlan ||
         buildPresentationTaskPlanFromText({
           title: taskDraft.title || taskDraft.taskName || title,
           text,

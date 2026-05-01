@@ -18,7 +18,7 @@ import {
   resolveActiveSearchMode,
   type PrimarySearchMode,
 } from "@/components/panels/gpt/GptSettingsSearchState";
-import type { FileReadPolicy, ImageDetail, IngestMode, LibraryReferenceMode } from "./gptPanelTypes";
+import type { FileReadPolicy, ImageDetail, ImageLibraryImportMode, IngestMode, LibraryReferenceMode } from "./gptPanelTypes";
 import {
   IngestSettingsSection,
   MemorySettingsSection,
@@ -64,6 +64,10 @@ type Props = {
   onChangeSimpleImageCharLimit: (v: number) => void;
   fileReadPolicy: FileReadPolicy;
   onChangeFileReadPolicy: (v: FileReadPolicy) => void;
+  imageLibraryImportEnabled: boolean;
+  onChangeImageLibraryImportEnabled: (v: boolean) => void;
+  imageLibraryImportMode: ImageLibraryImportMode;
+  onChangeImageLibraryImportMode: (v: ImageLibraryImportMode) => void;
   searchMode: SearchMode;
   searchEngines: SearchEngine[];
   searchLocation: string;
@@ -214,11 +218,17 @@ export default function GptSettingsDrawer(props: Props) {
         <IngestSettingsSection
           isMobile={props.isMobile}
           fileReadPolicy={props.fileReadPolicy}
+          imageLibraryImportEnabled={props.imageLibraryImportEnabled}
+          imageLibraryImportMode={props.imageLibraryImportMode}
           ingestMode={props.ingestMode}
           imageDetail={props.imageDetail}
           compactCharLimit={props.compactCharLimit}
           simpleImageCharLimit={props.simpleImageCharLimit}
           onChangeFileReadPolicy={props.onChangeFileReadPolicy}
+          onChangeImageLibraryImportEnabled={
+            props.onChangeImageLibraryImportEnabled
+          }
+          onChangeImageLibraryImportMode={props.onChangeImageLibraryImportMode}
           onChangeIngestMode={props.onChangeIngestMode}
           onChangeImageDetail={props.onChangeImageDetail}
           onChangeCompactCharLimit={props.onChangeCompactCharLimit}

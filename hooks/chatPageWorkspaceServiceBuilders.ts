@@ -67,6 +67,10 @@ function buildWorkspaceServicesUsage(args: ChatPageWorkspaceServicesUsage) {
     applyCompressionUsage: args.applyCompressionUsage,
     applyTaskUsage: args.applyTaskUsage,
     applyIngestUsage: args.applyIngestUsage,
+    applyImageUsage: args.applyImageUsage,
+    imageLibraryImportEnabled: args.imageLibraryImportEnabled,
+    imageLibraryImportMode: args.imageLibraryImportMode,
+    imageDescriptionIngestOptions: args.imageDescriptionIngestOptions,
     recordIngestedDocument: args.recordIngestedDocument,
   } satisfies ChatPageWorkspaceServicesUsage;
 }

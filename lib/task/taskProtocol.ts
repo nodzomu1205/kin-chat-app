@@ -1,4 +1,4 @@
-import { TaskRequest } from "@/types/task";
+import type { TaskRequest } from "@/types/task";
 
 function buildConstraintSection(task: TaskRequest) {
   return task.constraints.length > 0
@@ -84,34 +84,66 @@ function buildPresentationPlanTaskPrompt(task: TaskRequest) {
       taskId: task.taskId,
       type: task.type,
       status: "OK",
-      summary: "自然文の概要",
-      extractedItems: ["自然文の抽出事項"],
-      strategyItems: ["audience: ...", "purpose: ..."],
-      keyMessages: ["スライドごとの主張文"],
-      slideDesign: {
-        slides: [
-          {
-            slideNumber: 1,
-            placementComposition: "上部にタイトル、中央に図、下部に狙い",
-            parts: [
-              { role: "タイトル", text: "実際に表示するタイトル" },
-              { role: "狙い", text: "実際に表示する短文" },
-            ],
-          },
-        ],
+      summary: "Natural-language summary of the presentation design.",
+      extractedItems: ["Source fact that should inform the deck."],
+      strategyItems: ["audience: ...", "purpose: ...", "tone: ...", "visual policy: ..."],
+      keyMessages: ["Concrete message for a slide."],
+      deckFrame: {
+        slideCount: 5,
+        masterFrameId: "titleLineFooter",
+        background: "business-clean light background",
+        pageNumber: { enabled: true, position: "bottomRight", style: "n / total" },
+        logo: { enabled: false },
       },
+      slideFrames: [
+        {
+          slideNumber: 1,
+          title: "Slide title shown on the page",
+          masterFrameId: "titleLineFooter",
+          layoutFrameId: "visualLeftTextRight",
+          speakerIntent: "What this slide should make the audience understand.",
+          blocks: [
+            {
+              id: "block1",
+              kind: "visual",
+              styleId: "visualContain",
+              visualRequest: {
+                type: "diagram",
+                brief: "Visual shown on the slide.",
+                prompt: "Concrete generation or diagram prompt.",
+                promptNote: "Use only when the prompt cannot be completed in this pass.",
+                labels: ["label A", "label B"],
+              },
+            },
+            {
+              id: "block2",
+              kind: "textStack",
+              styleId: "textStackTopLeft",
+              heading: "Actual heading text",
+              text: "Actual message text",
+              items: ["Actual supporting point 1", "Actual supporting point 2"],
+            },
+          ],
+        },
+      ],
       warnings: [],
       missingInfo: [],
       nextSuggestion: [],
     }),
     "",
     "Rules:",
-    "- summary, extractedItems, strategyItems, and keyMessages may be rich Japanese natural-language strings.",
-    "- slideDesign is the source of truth for every slide. It must not be empty when enough input material exists.",
-    "- Each slideDesign.slides item must contain slideNumber, placementComposition, and parts.",
-    "- Each part must contain role and text. Do not combine multiple roles in one text.",
-    "- Every element mentioned in placementComposition must appear as a concrete part.",
-    "- If slideDesign cannot be created, set status to NEEDS_MORE and explain the reason in missingInfo.",
+    "- Preserve source breadth first; the user will reduce density later.",
+    "- extractedItems must be atomic facts: one process step, country group, risk, or initiative per item.",
+    "- deckFrame holds deck-wide settings. Do not repeat common master, background, page number, or logo choices in every slide description.",
+    "- slideFrames is the source of truth for every slide. Do not output slideDesign or free-form parts.",
+    "- Frame package: masterFrameId = plain | titleLineFooter | logoHeaderFooter | fullBleedVisual. layoutFrameId = singleCenter | titleBody | leftRight50 | visualLeftTextRight | textLeftVisualRight | heroTopDetailsBottom | threeColumns | twoByTwoGrid.",
+    "- Block styles: listCompact uses heading + items, not text. textStackTopLeft uses heading + text, with items only when needed. visualContain/visualCover use visualRequest only. headlineCenter uses one headline text. callout uses one emphasized text.",
+    "- Match block count to layout: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4.",
+    "- Text in heading, text, and items is actual PPTX display text. Do not replace it with counts or summaries.",
+    "- visualRequest.prompt should contain the full visual prompt. If too complex to complete, leave prompt empty and explain the need in promptNote.",
+    "- Choose slide count from the material and strategy. If the source naturally implies 5-7 slides, create 5-7 slideFrames.",
+    "- Do not invent placeholder labels such as explanation, text, point, or example.",
+    "- If slideFrames cannot be created, set status to NEEDS_MORE and explain the reason in missingInfo.",
   ].join("\n");
 }
 

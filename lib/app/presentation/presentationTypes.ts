@@ -141,6 +141,13 @@ export type ColumnContent = {
   bullets?: BulletItem[];
 };
 
+export type CardContent = {
+  title: string;
+  body?: string;
+  bullets?: BulletItem[];
+  kind?: "text" | "visual" | "callout";
+};
+
 export type TitleSlide = {
   id?: string;
   type: "title";
@@ -198,6 +205,17 @@ export type TableSlide = {
   notes?: string;
 };
 
+export type CardsSlide = {
+  id?: string;
+  type: "cards";
+  title: string;
+  lead?: string;
+  layoutVariant?: "threeColumns" | "twoByTwoGrid" | "heroTopDetailsBottom";
+  cards: CardContent[];
+  takeaway?: string;
+  notes?: string;
+};
+
 export type ClosingSlide = {
   id?: string;
   type: "closing";
@@ -214,6 +232,7 @@ export type SlideSpec =
   | BulletsSlide
   | TwoColumnSlide
   | TableSlide
+  | CardsSlide
   | ClosingSlide;
 
 export type PresentationSpec = {
