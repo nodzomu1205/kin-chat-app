@@ -42,6 +42,13 @@ export const frameBlockStyleSchema = z.enum([
   "callout"
 ]);
 
+export const bookendFrameSchema = z.enum([
+  "titleCover",
+  "visualTitleCover",
+  "endSlide",
+  "summaryClosing"
+]);
+
 export const bulletItemSchema = z
   .object({
     text: nonEmptyString,
@@ -225,6 +232,23 @@ export const frameVisualRequestSchema = z
   })
   .passthrough();
 
+export const deckBookendSlideSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    frameId: bookendFrameSchema,
+    title: z.string().trim().optional(),
+    subtitle: z.string().trim().optional(),
+    message: z.string().trim().optional(),
+    kicker: z.string().trim().optional(),
+    presenter: z.string().trim().optional(),
+    date: z.string().trim().optional(),
+    nextSteps: z.array(nonEmptyString).optional(),
+    contact: z.string().trim().optional(),
+    notes: z.string().trim().optional(),
+    visualRequest: frameVisualRequestSchema.optional()
+  })
+  .passthrough();
+
 export const frameBlockSchema = z
   .object({
     id: nonEmptyString,
@@ -237,7 +261,20 @@ export const frameBlockSchema = z
       .object({
         fontSize: z.enum(["small", "standard", "large", "xlarge"]).optional(),
         itemFontSize: z.enum(["small", "standard", "large", "xlarge"]).optional(),
-        showHeading: z.boolean().optional()
+        showHeading: z.boolean().optional(),
+        textStyle: z
+          .object({
+            headingFontSize: z.number().positive().optional(),
+            bodyFontSize: z.number().positive().optional(),
+            itemFontSize: z.number().positive().optional(),
+            headingGapLines: z.number().min(0).max(3).optional(),
+            bodyGapLines: z.number().min(0).max(3).optional(),
+            itemGapLines: z.number().min(0).max(3).optional(),
+            bulletIndent: z.number().min(0).optional(),
+            bulletHanging: z.number().min(0).optional(),
+            lineSpacingMultiple: z.number().positive().max(3).optional()
+          })
+          .optional()
       })
       .optional(),
     visualRequest: frameVisualRequestSchema.optional()
@@ -254,16 +291,22 @@ export const deckFrameSchema = z
       .object({
         fontFamily: z.string().trim().optional(),
         bodyScale: z.number().positive().max(2).optional(),
-        itemScale: z.number().positive().max(2).optional()
+        itemScale: z.number().positive().max(2).optional(),
+        preferUniformTextSize: z.boolean().optional(),
+        minBodyFontSize: z.number().positive().optional(),
+        maxBodyFontSize: z.number().positive().optional()
       })
       .optional(),
     pageNumber: z
       .object({
         enabled: z.boolean().default(true),
         position: z.enum(["bottomRight", "bottomCenter", "bottomLeft"]).optional(),
-        style: z.string().trim().optional()
+        style: z.string().trim().optional(),
+        scope: z.enum(["bodyOnly", "allSlides"]).optional()
       })
       .optional(),
+    openingSlide: deckBookendSlideSchema.optional(),
+    closingSlide: deckBookendSlideSchema.optional(),
     logo: z
       .object({
         enabled: z.boolean().default(false),

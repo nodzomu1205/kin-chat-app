@@ -1,5 +1,8 @@
 import { generateId } from "@/lib/shared/uuid";
-import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
+import {
+  parsePptCommand,
+  parsePptFrameCommand,
+} from "@/lib/app/presentation/presentationCommandParser";
 import {
   buildFramePresentationSpecFromTaskPlan,
   formatPresentationTaskPlanText,
@@ -12,6 +15,10 @@ import {
 import {
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
+import {
+  buildPresentationFrameIndexText,
+  buildPresentationFrameJsonText,
+} from "@/lib/app/presentation/presentationFrameRegistry";
 import { loadGeneratedImageAsset } from "@/lib/app/image/imageAssetStorage";
 import { normalizeImageGenerationUsage } from "@/lib/app/image/imageDisplayText";
 import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlowRequest";
@@ -27,6 +34,27 @@ export async function runPresentationGptCommandFlow(args: {
   flowArgs: SendToGptFlowStepArgs;
   assistantRequestArgs: Parameters<typeof requestGptAssistantArtifacts>[0];
 }): Promise<boolean> {
+  const frameCommand = parsePptFrameCommand(args.rawText);
+  if (frameCommand.isFrameCommand) {
+    const userMessage: Message = {
+      id: generateId(),
+      role: "user",
+      text: args.rawText,
+    };
+    applySendToGptRequestStart({
+      userMessage,
+      setGptMessages: args.flowArgs.setGptMessages,
+      setGptInput: args.flowArgs.setGptInput,
+      setGptLoading: args.flowArgs.setGptLoading,
+    });
+    appendPresentationAssistantMessage({
+      flowArgs: args.flowArgs,
+      text: buildPresentationFrameCommandResponse(frameCommand),
+    });
+    args.flowArgs.setGptLoading(false);
+    return true;
+  }
+
   const command = parsePptCommand(args.rawText);
   if (!command.isPptCommand) return false;
 
@@ -92,6 +120,26 @@ export async function runPresentationGptCommandFlow(args: {
   }
 }
 
+function buildPresentationFrameCommandResponse(
+  command: ReturnType<typeof parsePptFrameCommand>
+) {
+  if (command.intent === "showFrameIndex") {
+    return buildPresentationFrameIndexText();
+  }
+
+  if (command.intent === "showFrameJson" && command.frameId) {
+    return buildPresentationFrameJsonText(command.frameId);
+  }
+
+  return [
+    "Unsupported PPT frame command.",
+    "",
+    "Supported commands:",
+    "- PPT frames: Show index",
+    "- PPT frames: Show JSON / <frameId>",
+  ].join("\n");
+}
+
 async function runRenderPresentationPptxFlow(args: {
   documentId?: string;
   generateImages?: boolean;
@@ -118,6 +166,7 @@ async function runRenderPresentationPptxFlow(args: {
       imageMode: args.imageMode,
       libraryImageAssets: await hydratePresentationLibraryImageAssets({
         flowArgs: args.flowArgs,
+        frameSpec,
       }),
     });
     applyGeneratedImageUsage({
@@ -247,11 +296,13 @@ type PresentationRenderLibraryImageAsset = {
 
 async function hydratePresentationLibraryImageAssets(args: {
   flowArgs: SendToGptFlowStepArgs;
+  frameSpec?: ReturnType<typeof buildFramePresentationSpecFromTaskPlan>;
 }): Promise<PresentationRenderLibraryImageAsset[]> {
   const candidates = getPresentationImageLibraryCandidates({
     enabled: args.flowArgs.imageLibraryReferenceEnabled,
     count: args.flowArgs.imageLibraryReferenceCount,
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+    requiredImageIds: collectFrameSpecPreferredImageIds(args.frameSpec),
   });
   const hydrated = await Promise.all(
     candidates.map(async (candidate) => {
@@ -272,6 +323,19 @@ async function hydratePresentationLibraryImageAssets(args: {
     })
   );
   return hydrated.filter(Boolean) as PresentationRenderLibraryImageAsset[];
+}
+
+export function collectFrameSpecPreferredImageIds(
+  frameSpec?: ReturnType<typeof buildFramePresentationSpecFromTaskPlan> | null
+) {
+  const imageIds = new Set<string>();
+  for (const slide of frameSpec?.slideFrames || []) {
+    for (const block of slide.blocks || []) {
+      const imageId = block.visualRequest?.preferredImageId?.trim();
+      if (imageId) imageIds.add(imageId);
+    }
+  }
+  return imageIds;
 }
 
 function applyGeneratedImageUsage(args: {

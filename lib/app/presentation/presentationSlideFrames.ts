@@ -1,5 +1,6 @@
 import type {
   PresentationTaskBlockStyleId,
+  PresentationTaskBookendFrameId,
   PresentationTaskDeckFrame,
   PresentationTaskLayoutFrameId,
   PresentationTaskMasterFrameId,
@@ -99,8 +100,35 @@ export const PRESENTATION_LAYOUT_FRAMES: Array<
   },
 ];
 
+export const PRESENTATION_BOOKEND_FRAMES: Array<
+  FrameDefinition<PresentationTaskBookendFrameId>
+> = [
+  {
+    id: "titleCover",
+    label: "Title cover",
+    description: "Opening title slide with title, subtitle, and optional presenter/date.",
+  },
+  {
+    id: "visualTitleCover",
+    label: "Visual title cover",
+    description: "Opening slide that pairs a large visual mood with deck title metadata.",
+  },
+  {
+    id: "endSlide",
+    label: "End slide",
+    description: "Minimal closing slide with an END or thank-you message.",
+  },
+  {
+    id: "summaryClosing",
+    label: "Summary closing",
+    description: "Closing slide with a short final message and next-step bullets.",
+  },
+];
+
 export const PRESENTATION_BLOCK_STYLES: Array<
-  FrameDefinition<PresentationTaskBlockStyleId>
+  FrameDefinition<PresentationTaskBlockStyleId> & {
+    textStyle?: NonNullable<PresentationTaskSlideBlock["renderStyle"]>["textStyle"];
+  }
 > = [
   {
     id: "headlineCenter",
@@ -111,11 +139,31 @@ export const PRESENTATION_BLOCK_STYLES: Array<
     id: "textStackTopLeft",
     label: "Text stack top-left",
     description: "Heading plus body/items aligned to the top-left.",
+    textStyle: {
+      headingFontSize: 18,
+      bodyFontSize: 16.5,
+      itemFontSize: 16,
+      headingGapLines: 2,
+      bodyGapLines: 2,
+      itemGapLines: 2,
+      bulletIndent: 18,
+      bulletHanging: 5,
+      lineSpacingMultiple: 1.08,
+    },
   },
   {
     id: "listCompact",
     label: "Compact list",
     description: "Dense list treatment for supporting points.",
+    textStyle: {
+      headingFontSize: 18,
+      itemFontSize: 16,
+      headingGapLines: 2,
+      itemGapLines: 2,
+      bulletIndent: 18,
+      bulletHanging: 5,
+      lineSpacingMultiple: 1.08,
+    },
   },
   {
     id: "visualContain",
@@ -131,6 +179,10 @@ export const PRESENTATION_BLOCK_STYLES: Array<
     id: "callout",
     label: "Callout",
     description: "Emphasized note or conclusion.",
+    textStyle: {
+      bodyFontSize: 17,
+      lineSpacingMultiple: 1.12,
+    },
   },
 ];
 
@@ -206,10 +258,20 @@ export function formatPresentationSlideFramePlanLines(
     lines.push(
       `- ページ番号: ${
         deckFrame.pageNumber?.enabled
-          ? `${deckFrame.pageNumber.position || "bottomRight"} / ${deckFrame.pageNumber.style || "n / total"}`
+          ? `${deckFrame.pageNumber.position || "bottomRight"} / ${deckFrame.pageNumber.style || "n / total"} / ${deckFrame.pageNumber.scope || "bodyOnly"}`
           : "なし"
       }`
     );
+    if (deckFrame.openingSlide?.enabled) {
+      lines.push(
+        `- Opening slide: ${deckFrame.openingSlide.frameId} / ${deckFrame.openingSlide.title || "deck title"}`
+      );
+    }
+    if (deckFrame.closingSlide?.enabled) {
+      lines.push(
+        `- Closing slide: ${deckFrame.closingSlide.frameId} / ${deckFrame.closingSlide.title || "- END -"}`
+      );
+    }
     lines.push(
       `- ロゴ: ${
         deckFrame.logo?.enabled
@@ -346,7 +408,10 @@ function normalizeDeckFrame(
           : stringValue(candidate.pageNumber).toLowerCase() !== "none",
       position: supportedPageNumberPosition(pageNumber?.position),
       style: stringValue(pageNumber?.style) || "n / total",
+      scope: supportedPageNumberScope(pageNumber?.scope),
     },
+    openingSlide: normalizeBookendSlide(candidate.openingSlide, "titleCover"),
+    closingSlide: normalizeBookendSlide(candidate.closingSlide, "endSlide"),
     logo: {
       enabled:
         typeof logo?.enabled === "boolean"
@@ -355,6 +420,36 @@ function normalizeDeckFrame(
       position: supportedLogoPosition(logo?.position),
       label: stringValue(logo?.label || candidate.logo) || undefined,
     },
+  };
+}
+
+function normalizeBookendSlide(
+  value: unknown,
+  fallbackFrameId: PresentationTaskBookendFrameId
+): PresentationTaskDeckFrame["openingSlide"] | undefined {
+  const candidate = objectValue(value);
+  if (!candidate) return undefined;
+  const enabled =
+    typeof candidate.enabled === "boolean" ? candidate.enabled : stringValue(value) !== "none";
+  if (!enabled) {
+    return {
+      enabled: false,
+      frameId: fallbackFrameId,
+    };
+  }
+  return {
+    enabled: true,
+    frameId: supportedBookendFrameId(candidate.frameId, fallbackFrameId),
+    title: stringValue(candidate.title) || undefined,
+    subtitle: stringValue(candidate.subtitle) || undefined,
+    message: stringValue(candidate.message) || undefined,
+    kicker: stringValue(candidate.kicker) || undefined,
+    presenter: stringValue(candidate.presenter) || undefined,
+    date: stringValue(candidate.date) || undefined,
+    nextSteps: stringArray(candidate.nextSteps),
+    contact: stringValue(candidate.contact) || undefined,
+    notes: stringValue(candidate.notes) || undefined,
+    visualRequest: normalizeVisualRequest(candidate.visualRequest) || undefined,
   };
 }
 
@@ -382,6 +477,21 @@ function supportedPageNumberPosition(
     return position;
   }
   return "bottomRight";
+}
+
+function supportedPageNumberScope(value: unknown): "bodyOnly" | "allSlides" {
+  const scope = stringValue(value);
+  return scope === "allSlides" ? "allSlides" : "bodyOnly";
+}
+
+function supportedBookendFrameId(
+  value: unknown,
+  fallback: PresentationTaskBookendFrameId
+): PresentationTaskBookendFrameId {
+  const id = stringValue(value);
+  return PRESENTATION_BOOKEND_FRAMES.some((frame) => frame.id === id)
+    ? (id as PresentationTaskBookendFrameId)
+    : fallback;
 }
 
 function supportedLogoPosition(
@@ -456,8 +566,44 @@ function normalizeBlockRenderStyle(
   const itemFontSize = supportedFontSize(candidate.itemFontSize);
   const showHeading =
     typeof candidate.showHeading === "boolean" ? candidate.showHeading : undefined;
-  if (!fontSize && !itemFontSize && showHeading === undefined) return undefined;
-  return { fontSize, itemFontSize, showHeading };
+  const textStyle = normalizeTextStyle(candidate.textStyle);
+  if (!fontSize && !itemFontSize && showHeading === undefined && !textStyle) {
+    return undefined;
+  }
+  return { fontSize, itemFontSize, showHeading, textStyle };
+}
+
+function normalizeTextStyle(
+  value: unknown
+): NonNullable<PresentationTaskSlideBlock["renderStyle"]>["textStyle"] | undefined {
+  const candidate = objectValue(value);
+  if (!candidate) return undefined;
+  const textStyle = {
+    headingFontSize: positiveNumber(candidate.headingFontSize),
+    bodyFontSize: positiveNumber(candidate.bodyFontSize),
+    itemFontSize: positiveNumber(candidate.itemFontSize),
+    headingGapLines: nonNegativeNumber(candidate.headingGapLines),
+    bodyGapLines: nonNegativeNumber(candidate.bodyGapLines),
+    itemGapLines: nonNegativeNumber(candidate.itemGapLines),
+    bulletIndent: nonNegativeNumber(candidate.bulletIndent),
+    bulletHanging: nonNegativeNumber(candidate.bulletHanging),
+    lineSpacingMultiple: positiveNumber(candidate.lineSpacingMultiple),
+  };
+  return Object.values(textStyle).some((item) => item !== undefined)
+    ? textStyle
+    : undefined;
+}
+
+function positiveNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : undefined;
+}
+
+function nonNegativeNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
 }
 
 function normalizeVisualRenderStyle(

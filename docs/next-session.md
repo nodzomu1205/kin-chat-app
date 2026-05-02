@@ -1,24 +1,75 @@
 # Next Session Handover
 
-Updated: 2026-05-01
+Updated: 2026-05-02
 
 ## Latest Handoff
 
-The newest active handoff is for PPT image-library asset routing:
+The newest active handoff is for the completed PPT creation slice and the next
+Kin-task execution slice:
 
 - [`HANDOFF-2026-05-01.md`](./HANDOFF-2026-05-01.md)
 - [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
-If the next session is about PPT design or PPTX rendering, start with the
-2026-05-01 handoff before touching code. The immediate next slice is no longer
-image routing; it is PPT frame viewing/editing:
+The PPT creation feature is now at a practical stopping point. Do not continue
+polishing it by default. The likely next product slice is:
 
-1. implement `PPT frames: Show index`
-2. implement `PPT frames: Show JSON / <frameId>`
-3. implement `PPT frames: Edit JSON / <frameId>` with schema/error validation
-4. implement `PPT frames: Delete JSON / <frameId>`
-5. wire the editable registry into PPT design generation and renderer mapping
+**Have Kin perform PPT creation as a registered task/process.**
+
+Treat the current PPT feature as the callable capability. The next work should
+design how Kin requests, monitors, revises, and completes that capability
+through the task/protocol system.
+
+If the next session is about PPT design or PPTX rendering, start with the
+2026-05-01 handoff before touching code. Otherwise, start from the Kin task
+process plan below.
+
+Before making any PPT renderer/image-routing claim, follow the handoff's
+non-negotiable debugging rule: distinguish observed facts from hypotheses,
+trace `preferredImageId` through library metadata, hydration, resolver output,
+frameSpec, and PPTX XML/media, and do not use fallback behavior as a substitute
+for proving the primary route.
+
+For text/body layout, keep style decisions in frame/block-style data. Renderer
+V2 should execute `renderStyle.textStyle` and conservative defaults, not bake in
+one-off typography rules that will be hard to change later.
+
+Latest PPT layout normalization note:
+
+- Main text/list block styles currently use 2-line paragraph gaps through
+  `renderStyle.textStyle`, not renderer hard-coding.
+- Long slash-separated slide titles are compacted during presentation plan
+  normalization so `titleLineFooter` stays visually one line.
+- Dense `heroTopDetailsBottom` slides can be normalized to `leftRight50` before
+  rendering when the detail row is too cramped. Treat this as design-frame
+  correction, not as a renderer fallback.
+- Title/closing bookends are deck-level fields:
+  `deckFrame.openingSlide` and `deckFrame.closingSlide`. Do not put cover or
+  END/summary slides into body `slideFrames`. Renderer V2 inserts them around
+  the body slides, and `pageNumber.scope: "bodyOnly"` keeps those bookends
+  unnumbered.
+- Bookend normalization now chooses `visualTitleCover` when early body slides
+  have a representative visual and chooses `summaryClosing` when the final body
+  slide is a summary/next-priority slide. Bookend visuals use
+  `openingSlide.visualRequest` and are hydrated by the same image-library route
+  as ordinary slide visuals.
+
+Completed in this PPT slice:
+
+1. `PPT frames: Show index` - implemented.
+2. `PPT frames: Show JSON / <frameId>` - implemented.
+3. Renderer V2 is active for frame-native PPTX output.
+4. Image-library and API image modes are routed through deterministic resolver
+   behavior.
+5. Frame/block typography is style-data-driven via `renderStyle.textStyle`.
+6. Deck-level title/closing bookends are implemented and normalized.
+
+Deferred unless explicitly requested:
+
+1. `PPT frames: Edit JSON / <frameId>` with schema/error validation.
+2. `PPT frames: Delete JSON / <frameId>`.
+3. Editable registry persistence wired into design generation and renderer
+   mapping.
 
 Keep the frame-based slide JSON direction from the 2026-04-30 handoff. Do not
 return to the older approach of generating natural-language slide specs first
@@ -44,7 +95,54 @@ end before changing code:
 If only part of that path was inspected, record it as partial verification. Do
 not call a path removed or fixed from a nearby helper read alone.
 
-## Session Close Status
+## Next Slice: Kin-Run PPT Tasks
+
+Goal: let Kin initiate and operate the PPT creation workflow as a task, without
+turning the PPT renderer into another hidden side channel.
+
+Recommended implementation order:
+
+1. Define the Kin protocol surface.
+   - Add or extend a protocol block for presentation work, likely a
+     `SYS_TASK_PROPOSAL` or `SYS_TASK` whose output format is
+     `presentation_plan`.
+   - The request should carry source material, intended audience, target slide
+     count, image policy, and whether Kin expects design-only or PPTX output.
+2. Route the protocol into the existing task-registration/draft path.
+   - Kin should propose the PPT task.
+   - GPT/user can inspect the task draft.
+   - The registered task should then invoke the existing PPT design and render
+     capabilities.
+3. Keep task state explicit.
+   - `design_requested`
+   - `design_ready`
+   - `revision_requested`
+   - `pptx_requested`
+   - `pptx_ready`
+   - `completed`
+4. Reuse current PPT document IDs.
+   - The task should persist and reference `Document ID`.
+   - Revisions should target the same document unless the user/Kin explicitly
+     asks for a new deck.
+5. Make evidence visible.
+   - When Kin asks for PPT creation, record the source input and image policy in
+     task state.
+   - When rendering, record the resulting PPTX filename, slide count, image
+     mode, and unresolved visual placeholders.
+6. Do not add fallback routing as a shortcut.
+   - If a Kin-triggered PPT task fails, trace protocol block -> task draft ->
+     presentation plan -> frameSpec -> render route -> PPTX output.
+
+Open design choices for the next session:
+
+- Whether Kin should request design only first by default, with PPTX output
+  requiring user approval.
+- Whether image mode should default to `library` for cost/control or `hybrid`
+  for completeness.
+- Whether generated PPTX should be auto-shared back to Kin as `SYS_INFO`, or
+  only summarized with a document/PPTX reference until the user approves.
+
+## Prior Session Close Status
 
 Closeout verification passed:
 
@@ -64,6 +162,11 @@ Stable enough to avoid broad refactor by default:
 - send-to-GPT request/finalize/gate boundaries are split and should stay
   orchestration-oriented
 - page/controller/panel composition is in regrowth-watch, not active teardown
+- PPTX two-column frame rendering now adapts visual/text column widths from
+  selected image aspect ratio for portrait/square/landscape assets
+- Frame-native PPTX output now uses `rendererV2`, with borderless visual
+  placement, hero rendering for `singleCenter` visual slides, and text blocks
+  rendered as a single flow box instead of overlapping per-bullet shapes
 
 ## Latest Implemented Slice
 
@@ -399,6 +502,24 @@ Do not let `SYS_TASK_PROPOSAL` start execution automatically.
 20. `app/page.tsx`
 
 ## Verification Commands
+
+Latest PPT renderer checks:
+
+```bash
+npm test --prefix kin-presentation-renderer
+```
+
+```bash
+npm run build --prefix kin-presentation-renderer
+```
+
+```bash
+npm test -- lib/app/presentation/presentationPlanValidation.test.ts lib/server/presentation/imageGeneration.test.ts
+```
+
+```bash
+npm run build
+```
 
 ```bash
 npm run check:utf8

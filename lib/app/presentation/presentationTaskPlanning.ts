@@ -20,12 +20,17 @@ import {
   slideDisplayVisual,
 } from "@/lib/app/presentation/slidePartsParser";
 import {
+  PRESENTATION_BLOCK_STYLES,
   buildPresentationSpecFromSlideFrames,
   formatPresentationSlideFramePlanLines,
   hasRenderablePresentationSlideFrames,
   parsePresentationSlideFrameDocumentFromJsonLines,
   sanitizeSlideFrameTitle,
 } from "@/lib/app/presentation/presentationSlideFrames";
+import {
+  normalizePresentationVisualMainPolicy,
+  syncDeckFrameSlideCount,
+} from "@/lib/app/presentation/presentationPlanValidation";
 
 const PPT_MARKER = /(?:^|\s)\/ppt(?:\s|$)/i;
 const DOCUMENT_ID_LINE = /^Document ID\s*:\s*(.+)$/im;
@@ -101,7 +106,9 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "Preserve source breadth first; the user will reduce density later through revision instructions.",
     "Keep extractedItems as atomic facts: one process step, country group, risk, or initiative per bullet. Do not collapse distinct facts into one generic summary.",
     "The canonical slide design source is deckFrame + slideFrames JSON. Natural-language slide design text is only a projection from that JSON.",
-    "deckFrame holds deck-wide settings such as page count, common master, background/wallpaper, page number, and logo. Do not repeat common settings on every slide.",
+    "deckFrame holds deck-wide settings such as body slide count, common master, background/wallpaper, page number, logo, openingSlide, and closingSlide. Do not repeat common settings on every slide.",
+    "Use deckFrame.openingSlide and deckFrame.closingSlide for title-cover and END/summary slides. Do not include those bookend slides in slideFrames; slideFrames are the body slides only.",
+    "If page numbers are enabled and bookend slides exist, prefer pageNumber.scope: \"bodyOnly\" so the cover and ending slide stay unnumbered unless the user asks for all-slide numbering.",
     "In slideFrames, omit masterFrameId unless a slide intentionally overrides deckFrame.masterFrameId.",
     "Do not create slideDesign.slides[].parts as the preferred path. Do not rely on natural-language slide text and a parser to recover JSON.",
     "Use the fixed frame package: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4.",
@@ -112,6 +119,8 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "If an image-library candidate semantically fits a visual block, set visualRequest.preferredImageId to its Image ID and still keep a brief/prompt explaining why it fits.",
     "Image-library selection is a two-step decision: first choose whether a candidate is semantically relevant; only after selecting it, use Orientation, Size, and Aspect ratio to choose layoutFrameId, block order, and visual role. Do not reject a semantically fitting image because of aspect ratio alone.",
     "For layout after image selection, landscape images should go in wide/hero visual areas, portrait images should go in vertical/narrow visual areas, and square images should go in balanced visual areas. Avoid defaulting to 50/50 left-right layouts when the selected asset shape would make the image feel cramped or distorted.",
+    "When an image-library asset is the main information carrier, do not duplicate the same information as a large neighboring text list. Prefer singleCenter for visual-only slides, or use a second block only for short annotation, conclusion, source note, or guidance that is not already visible in the image.",
+    "If a selected image leaves natural empty space after aspect-preserving placement, use that space for concise annotation only; do not fill it with repeated transcription of the image contents.",
     "If the user gives a revision instruction, preserve reusable frame choices where valid and update the affected slideFrame fields.",
     "Do not invent facts missing from the material. Put missing material in MISSING_INFO.",
     mode === "create"
@@ -206,7 +215,13 @@ export function buildPresentationTaskPlanFromText(args: {
   ]);
   const slideItems = findExactSection(sections, ["スライド設計", "slides", "slide"]);
   const slideFrameDocument = parsePresentationSlideFrameDocumentFromJsonLines(slideFrameItems);
-  const slideFrames = slideFrameDocument.slideFrames;
+  const slideFrames = normalizePresentationVisualMainPolicy(
+    slideFrameDocument.slideFrames
+  );
+  const deckFrame = syncDeckFrameSlideCount(
+    slideFrameDocument.deckFrame,
+    slideFrames
+  );
   const slidesFromJson = parsePresentationTaskSlidesFromJsonLines(slideJsonItems);
   const slidesFromText = parsePresentationTaskSlidesFromLines(slideItems);
   const slides = slidesFromJson.length > 0 ? slidesFromJson : slidesFromText;
@@ -227,7 +242,7 @@ export function buildPresentationTaskPlanFromText(args: {
     strategyItems: findSection(sections, ["Presentation Strategy", "strategy"]),
     keyMessages: findSection(sections, ["キーメッセージ", "key message"]),
     slideItems,
-    deckFrame: slideFrameDocument.deckFrame,
+    deckFrame,
     slideFrames,
     slides,
     missingInfo: findSection(sections, ["不足情報", "missing"]),
@@ -312,12 +327,18 @@ export function buildPresentationTaskPlan(args: {
     "slide frames",
   ]);
   const slideFrameDocument = parsePresentationSlideFrameDocumentFromJsonLines(slideFrameItems);
-  const slideFrames = slideFrameDocument.slideFrames;
+  const slideFrames = normalizePresentationVisualMainPolicy(
+    slideFrameDocument.slideFrames
+  );
+  const deckFrame = syncDeckFrameSlideCount(
+    slideFrameDocument.deckFrame,
+    slideFrames
+  );
   if (slideFrames.length === 0) return legacyPlan;
 
   return {
     ...legacyPlan,
-    deckFrame: slideFrameDocument.deckFrame,
+    deckFrame,
     slideFrames,
     debug: {
       slideSource: "slideFrameJson",
@@ -530,15 +551,34 @@ export function buildFramePresentationSpecFromTaskPlan(plan: PresentationTaskPla
   const slideFrames = plan.slideFrames.map((frame) => ({
     ...frame,
     title: sanitizeSlideFrameTitle(frame.title),
+    blocks: frame.blocks.map(applyBlockStylePreset),
   }));
+  const deckFrame = syncDeckFrameSlideCount(plan.deckFrame, slideFrames);
   return {
     version: "0.1-frame" as const,
     title: plan.title || "Presentation",
     language: "ja" as const,
     theme: "business-clean" as const,
     density: "standard" as const,
-    deckFrame: plan.deckFrame,
+    deckFrame,
     slideFrames,
+  };
+}
+
+function applyBlockStylePreset(block: PresentationTaskSlideFrame["blocks"][number]) {
+  const preset = PRESENTATION_BLOCK_STYLES.find(
+    (style) => style.id === block.styleId
+  )?.textStyle;
+  if (!preset) return block;
+  return {
+    ...block,
+    renderStyle: {
+      ...block.renderStyle,
+      textStyle: {
+        ...preset,
+        ...(block.renderStyle?.textStyle || {}),
+      },
+    },
   };
 }
 

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
+import {
+  parsePptCommand,
+  parsePptFrameCommand,
+} from "@/lib/app/presentation/presentationCommandParser";
 
 describe("parsePptCommand", () => {
   it("does not route new draft requests through the legacy /ppt draft flow", () => {
@@ -106,6 +109,34 @@ describe("parsePptCommand", () => {
   it("ignores normal messages", () => {
     expect(parsePptCommand("normal message")).toMatchObject({
       isPptCommand: false,
+      body: "normal message",
+    });
+  });
+});
+
+describe("parsePptFrameCommand", () => {
+  it("detects frame index requests without requiring /ppt", () => {
+    expect(parsePptFrameCommand("PPT frames: Show index")).toMatchObject({
+      isFrameCommand: true,
+      body: "Show index",
+      intent: "showFrameIndex",
+    });
+  });
+
+  it("detects frame JSON requests", () => {
+    expect(
+      parsePptFrameCommand("PPT frames: Show JSON / titleLineFooter")
+    ).toMatchObject({
+      isFrameCommand: true,
+      body: "Show JSON / titleLineFooter",
+      frameId: "titleLineFooter",
+      intent: "showFrameJson",
+    });
+  });
+
+  it("leaves unrelated input alone", () => {
+    expect(parsePptFrameCommand("normal message")).toMatchObject({
+      isFrameCommand: false,
       body: "normal message",
     });
   });

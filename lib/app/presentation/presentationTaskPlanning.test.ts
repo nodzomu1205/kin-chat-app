@@ -212,6 +212,81 @@ describe("presentationTaskPlanning", () => {
     expect(visibleText).not.toContain("コットンサプライチェーンが直面する問題と業界の対応策を紹介します。");
   });
 
+  it("keeps opening and closing slides as deck-level bookends", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-bookends",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Bookend plan",
+      keyPoints: [],
+      detailBlocks: [
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              deckFrame: {
+                slideCount: 1,
+                masterFrameId: "titleLineFooter",
+                pageNumber: { enabled: true, position: "bottomRight", scope: "bodyOnly" },
+                openingSlide: {
+                  enabled: true,
+                  frameId: "titleCover",
+                  title: "Opening title",
+                  subtitle: "Deck scope",
+                },
+                closingSlide: {
+                  enabled: true,
+                  frameId: "endSlide",
+                  title: "- END -",
+                  message: "Thank you",
+                },
+              },
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Body",
+                  layoutFrameId: "titleBody",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "list",
+                      styleId: "listCompact",
+                      items: ["Body point"],
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Bookend deck",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-05-02T00:00:00.000Z",
+    });
+    const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
+    const visibleText = formatPresentationTaskPlanText(plan);
+
+    expect(plan.slideFrames).toHaveLength(1);
+    expect(plan.deckFrame).toMatchObject({
+      slideCount: 1,
+      pageNumber: { scope: "bodyOnly" },
+      openingSlide: { enabled: true, frameId: "titleCover" },
+      closingSlide: { enabled: true, frameId: "endSlide" },
+    });
+    expect(frameSpec?.deckFrame?.openingSlide?.title).toBe("Opening title");
+    expect(frameSpec?.deckFrame?.closingSlide?.title).toBe("- END -");
+    expect(visibleText).toContain("Opening slide: titleCover / Opening title");
+    expect(visibleText).toContain("Closing slide: endSlide / - END -");
+  });
+
   it("removes no-heading edit notes from slide titles", () => {
     const frameResult: TaskResult = {
       taskId: "task-no-heading",
@@ -446,6 +521,7 @@ describe("presentationTaskPlanning", () => {
     expect(constraints).toContain("one-block layouts need 1 block");
     expect(constraints).toContain("Preserve source breadth first;");
     expect(constraints).toContain("The visible chat text must show the actual messages that will appear in PPTX.");
+    expect(constraints).toContain("When an image-library asset is the main information carrier");
   });
 
   it("keeps the existing title for presentation task updates unless title is explicit", () => {

@@ -25,6 +25,10 @@ type FrameBlockWithVisual = {
 };
 
 type FrameSpecWithVisuals = {
+  deckFrame?: {
+    openingSlide?: { visualRequest?: VisualRequestWithAsset };
+    closingSlide?: { visualRequest?: VisualRequestWithAsset };
+  };
   slideFrames?: Array<{
     blocks?: FrameBlockWithVisual[];
   }>;
@@ -105,9 +109,7 @@ export async function hydrateFrameSpecVisualAssets<T>(
   }
 
   const next = JSON.parse(JSON.stringify(frameSpec)) as T & FrameSpecWithVisuals;
-  for (const slide of next.slideFrames || []) {
-    for (const block of slide.blocks || []) {
-      const visual = block.visualRequest;
+  for (const visual of collectFrameSpecVisualRequests(next)) {
       if (!shouldGenerateVisual(visual)) continue;
       const prompt = buildImagePrompt(visual);
       const sourcePromptHash = hashPrompt(prompt);
@@ -124,7 +126,6 @@ export async function hydrateFrameSpecVisualAssets<T>(
         sourcePromptHash,
         usage: generated.usage,
       };
-    }
   }
   return next as T;
 }
@@ -141,9 +142,7 @@ export async function resolveFrameSpecVisualAssets<T>(
 
   const next = JSON.parse(JSON.stringify(frameSpec)) as T & FrameSpecWithVisuals;
   const usedImageIds = new Set<string>();
-  for (const slide of next.slideFrames || []) {
-    for (const block of slide.blocks || []) {
-      const visual = block.visualRequest;
+  for (const visual of collectFrameSpecVisualRequests(next)) {
       if (!shouldGenerateVisual(visual)) continue;
       if (mode === "library" || mode === "hybrid") {
         const matched = findBestLibraryImageAsset({
@@ -153,6 +152,7 @@ export async function resolveFrameSpecVisualAssets<T>(
         });
         if (matched) {
           usedImageIds.add(matched.imageId);
+          visual.preferredImageId = matched.imageId;
           visual.asset = {
             imageId: matched.imageId,
             mimeType: matched.mimeType || "image/png",
@@ -188,21 +188,28 @@ export async function resolveFrameSpecVisualAssets<T>(
           usage: generated.usage,
         };
       }
-    }
   }
   return next as T;
 }
 
 export function stripFrameSpecVisualAssets<T>(frameSpec: T): T {
   const next = JSON.parse(JSON.stringify(frameSpec)) as T & FrameSpecWithVisuals;
-  for (const slide of next.slideFrames || []) {
-    for (const block of slide.blocks || []) {
-      if (block.visualRequest?.asset) {
-        delete block.visualRequest.asset;
-      }
+  for (const visual of collectFrameSpecVisualRequests(next)) {
+    if (visual.asset) {
+      delete visual.asset;
     }
   }
   return next as T;
+}
+
+function collectFrameSpecVisualRequests(frameSpec: FrameSpecWithVisuals) {
+  return [
+    frameSpec.deckFrame?.openingSlide?.visualRequest,
+    frameSpec.deckFrame?.closingSlide?.visualRequest,
+    ...(frameSpec.slideFrames || []).flatMap((slide) =>
+      (slide.blocks || []).map((block) => block.visualRequest)
+    ),
+  ].filter((visual): visual is VisualRequestWithAsset => !!visual);
 }
 
 export async function generateImageAsset(args: {
@@ -251,11 +258,11 @@ function findBestLibraryImageAsset(args: {
   usedImageIds: Set<string>;
 }) {
   const preferredImageId = args.visual.preferredImageId?.trim();
-  if (preferredImageId && !args.usedImageIds.has(preferredImageId)) {
+  if (preferredImageId) {
     const exact = args.assets.find(
-      (asset) => asset.base64 && asset.imageId === preferredImageId
+      (asset) => asset.base64 && matchesImageAssetId(asset, preferredImageId)
     );
-    if (exact) return exact;
+    return exact || null;
   }
 
   const visualText = normalizeMatchText([
@@ -275,6 +282,17 @@ function findBestLibraryImageAsset(args: {
     .filter((item) => item.score >= 2)
     .sort((a, b) => b.score - a.score);
   return scored[0]?.asset || null;
+}
+
+function matchesImageAssetId(
+  asset: PresentationLibraryImageAsset,
+  imageIdOrAlias: string
+) {
+  return (
+    asset.imageId === imageIdOrAlias ||
+    asset.title === imageIdOrAlias ||
+    asset.fileName === imageIdOrAlias
+  );
 }
 
 function scoreLibraryImageMatch(

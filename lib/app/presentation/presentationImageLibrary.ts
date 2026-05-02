@@ -23,9 +23,11 @@ export function getPresentationImageLibraryCandidates(args: {
   enabled?: boolean;
   referenceLibraryItems: ReferenceLibraryItem[];
   count?: number;
+  requiredImageIds?: Iterable<string>;
 }): PresentationImageLibraryCandidate[] {
-  if (!args.enabled || (args.count ?? 0) <= 0) return [];
-  return args.referenceLibraryItems
+  if (!args.enabled) return [];
+  const requiredImageIds = new Set(args.requiredImageIds || []);
+  const candidates = args.referenceLibraryItems
     .filter((item) => item.artifactType === "generated_image")
     .flatMap((item) => {
       const payload = item.structuredPayload;
@@ -46,8 +48,25 @@ export function getPresentationImageLibraryCandidates(args: {
           orientation: payload.orientation,
         },
       ];
-    })
-    .slice(0, Math.max(0, args.count ?? 0));
+    });
+  const limited = candidates.slice(0, Math.max(0, args.count ?? 0));
+  const included = new Set(limited.map((candidate) => candidate.imageId));
+  const required = candidates.filter(
+    (candidate) =>
+      matchesRequiredImageId(candidate, requiredImageIds) &&
+      !included.has(candidate.imageId)
+  );
+  return [...limited, ...required];
+}
+
+function matchesRequiredImageId(
+  candidate: PresentationImageLibraryCandidate,
+  requiredImageIds: Set<string>
+) {
+  if (requiredImageIds.has(candidate.imageId)) return true;
+  if (candidate.title && requiredImageIds.has(candidate.title)) return true;
+  if (candidate.fileName && requiredImageIds.has(candidate.fileName)) return true;
+  return false;
 }
 
 export function buildPresentationImageLibraryContext(
@@ -59,6 +78,7 @@ export function buildPresentationImageLibraryContext(
     "Use these existing image-library assets when they semantically fit a slide visual request. Prefer the Image ID in visual planning instead of inventing a new visual.",
     "First decide whether to use an image by semantic fit. After an image has been selected, use Orientation, Size, and Aspect ratio only to choose the slide/frame layout and visual block placement. Do not reject a semantically fitting image just because its aspect ratio differs from the default frame.",
     "For layout after selection: landscape assets fit wide/hero visual areas, portrait assets fit vertical/narrow visual areas, and square assets fit balanced/callout visual areas. Do not assume every selected image belongs in a 50/50 two-column block.",
+    "If the selected image already carries most of the slide information, make it the primary slide object. Prefer a visual-only singleCenter frame, or add only a concise annotation/takeaway block instead of repeating the same content as neighboring text.",
   ];
   candidates.forEach((image, index) => {
     lines.push(`[IMAGE ${index + 1}]`);

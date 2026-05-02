@@ -10,6 +10,7 @@ import type {
   SlideSpec
 } from "./schema.js";
 import { resolveTheme, type RendererTheme } from "./themes.js";
+import { renderFramePresentationV2 } from "./rendererV2.js";
 
 const layout = {
   width: 13.333,
@@ -23,6 +24,8 @@ type FrameRenderContext = {
   density: PresentationDensity;
   typography?: NonNullable<FramePresentationSpec["deckFrame"]>["typography"];
 };
+
+type FrameBox = { x: number; y: number; w: number; h: number };
 
 export async function renderPresentationToFile(
   spec: PresentationSpec,
@@ -70,36 +73,7 @@ export function renderPresentation(spec: PresentationSpec): PptxGenJS {
 }
 
 export function renderFramePresentation(spec: FramePresentationSpec): PptxGenJS {
-  const pptx = new PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
-  pptx.author = "Kin Presentation Renderer";
-  pptx.subject = spec.title;
-  pptx.title = spec.title;
-  pptx.company = "Kin";
-  pptx.theme = {
-    headFontFace: "Aptos Display",
-    bodyFontFace: "Aptos"
-  };
-
-  const theme = resolveTheme(spec.theme);
-  spec.slideFrames.forEach((frame, index) => {
-    const slide = pptx.addSlide();
-    slide.background = { color: theme.background };
-    renderFrameSlide(
-      slide,
-      frame,
-      theme,
-      {
-        density: spec.density ?? "standard",
-        typography: spec.deckFrame?.typography
-      },
-      index + 1,
-      spec.deckFrame?.slideCount || spec.slideFrames.length,
-      spec.deckFrame?.pageNumber?.enabled ?? true
-    );
-  });
-
-  return pptx;
+  return renderFramePresentationV2(spec);
 }
 
 function renderSlide(
@@ -160,7 +134,14 @@ function renderFrameSlide(
       case "visualLeftTextRight":
       case "textLeftVisualRight":
       case "leftRight50":
-        renderFrameTwoColumn(slide, frame.blocks[0], frame.blocks[1], theme, context);
+        renderFrameTwoColumn(
+          slide,
+          frame.layoutFrameId,
+          frame.blocks[0],
+          frame.blocks[1],
+          theme,
+          context
+        );
         break;
       case "heroTopDetailsBottom":
         renderFrameHeroDetails(slide, frame.title, frame.blocks, theme, context);
@@ -239,14 +220,100 @@ function renderFrameSingleCenter(
 
 function renderFrameTwoColumn(
   slide: PptxGenJS.Slide,
+  layoutFrameId: FramePresentationSpec["slideFrames"][number]["layoutFrameId"],
   leftBlock: FrameBlock | undefined,
   rightBlock: FrameBlock | undefined,
   theme: RendererTheme,
   context: FrameRenderContext
 ): void {
+  const boxes = resolveFrameTwoColumnBoxes(layoutFrameId, leftBlock, rightBlock);
+  renderFrameBlock(slide, leftBlock, theme, boxes.left, context);
+  renderFrameBlock(slide, rightBlock, theme, boxes.right, context);
+}
+
+export function resolveFrameTwoColumnBoxes(
+  layoutFrameId: FramePresentationSpec["slideFrames"][number]["layoutFrameId"],
+  leftBlock: FrameBlock | undefined,
+  rightBlock: FrameBlock | undefined
+): { left: FrameBox; right: FrameBox } {
   const y = 1.56;
-  renderFrameBlock(slide, leftBlock, theme, { x: 0.76, y, w: 5.65, h: 4.75 }, context);
-  renderFrameBlock(slide, rightBlock, theme, { x: 6.92, y, w: 5.65, h: 4.75 }, context);
+  const h = 4.75;
+  const leftX = 0.76;
+  const totalW = 11.81;
+  const gap = 0.51;
+  const availableW = totalW - gap;
+  const defaultW = availableW / 2;
+
+  if (layoutFrameId === "leftRight50") {
+    return {
+      left: { x: leftX, y, w: defaultW, h },
+      right: { x: leftX + defaultW + gap, y, w: defaultW, h }
+    };
+  }
+
+  const leftVisual = isFrameVisualBlock(leftBlock);
+  const rightVisual = isFrameVisualBlock(rightBlock);
+  const visualOnLeft =
+    layoutFrameId === "visualLeftTextRight" || (leftVisual && !rightVisual);
+  const visualOnRight =
+    layoutFrameId === "textLeftVisualRight" || (!leftVisual && rightVisual);
+  const visualBlock = visualOnLeft ? leftBlock : visualOnRight ? rightBlock : undefined;
+  const visualW = visualBlock
+    ? resolveAspectAwareVisualColumnWidth(availableW, resolveBlockAspectRatio(visualBlock))
+    : defaultW;
+  const textW = availableW - visualW;
+
+  if (visualOnLeft) {
+    return {
+      left: { x: leftX, y, w: visualW, h },
+      right: { x: leftX + visualW + gap, y, w: textW, h }
+    };
+  }
+
+  if (visualOnRight) {
+    return {
+      left: { x: leftX, y, w: textW, h },
+      right: { x: leftX + textW + gap, y, w: visualW, h }
+    };
+  }
+
+  return {
+    left: { x: leftX, y, w: defaultW, h },
+    right: { x: leftX + defaultW + gap, y, w: defaultW, h }
+  };
+}
+
+function resolveAspectAwareVisualColumnWidth(
+  availableW: number,
+  aspectRatio?: number
+) {
+  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+    return availableW * 0.5;
+  }
+  if (aspectRatio <= 0.82) {
+    return availableW * 0.34;
+  }
+  if (aspectRatio <= 1.22) {
+    return availableW * 0.42;
+  }
+  if (aspectRatio >= 1.75) {
+    return availableW * 0.56;
+  }
+  return availableW * 0.5;
+}
+
+function isFrameVisualBlock(block: FrameBlock | undefined) {
+  return !!(
+    block?.visualRequest ||
+    block?.kind === "visual" ||
+    block?.styleId === "visualContain" ||
+    block?.styleId === "visualCover"
+  );
+}
+
+function resolveBlockAspectRatio(block: FrameBlock | undefined) {
+  const asset = block?.visualRequest?.asset;
+  return asset ? resolveAssetAspectRatio(asset) : undefined;
 }
 
 function renderFrameHeroDetails(

@@ -210,6 +210,12 @@ export type PresentationTaskMasterFrameId =
   | "logoHeaderFooter"
   | "fullBleedVisual";
 
+export type PresentationTaskBookendFrameId =
+  | "titleCover"
+  | "visualTitleCover"
+  | "endSlide"
+  | "summaryClosing";
+
 export type PresentationTaskLayoutFrameId =
   | "singleCenter"
   | "titleBody"
@@ -237,17 +243,38 @@ export type PresentationTaskDeckFrame = {
     fontFamily?: string;
     bodyScale?: number;
     itemScale?: number;
+    preferUniformTextSize?: boolean;
+    minBodyFontSize?: number;
+    maxBodyFontSize?: number;
   };
   pageNumber?: {
     enabled: boolean;
     position?: "bottomRight" | "bottomCenter" | "bottomLeft";
     style?: string;
+    scope?: "bodyOnly" | "allSlides";
   };
+  openingSlide?: PresentationTaskBookendSlide;
+  closingSlide?: PresentationTaskBookendSlide;
   logo?: {
     enabled: boolean;
     position?: "topRight" | "topLeft" | "bottomRight" | "bottomLeft";
     label?: string;
   };
+};
+
+export type PresentationTaskBookendSlide = {
+  enabled: boolean;
+  frameId: PresentationTaskBookendFrameId;
+  title?: string;
+  subtitle?: string;
+  message?: string;
+  kicker?: string;
+  presenter?: string;
+  date?: string;
+  nextSteps?: string[];
+  contact?: string;
+  notes?: string;
+  visualRequest?: PresentationTaskVisualRequest;
 };
 
 export type PresentationTaskVisualRequest = {
@@ -293,8 +320,21 @@ export type PresentationTaskSlideBlock = {
     fontSize?: "small" | "standard" | "large" | "xlarge";
     itemFontSize?: "small" | "standard" | "large" | "xlarge";
     showHeading?: boolean;
+    textStyle?: PresentationTaskTextStyle;
   };
   visualRequest?: PresentationTaskVisualRequest;
+};
+
+export type PresentationTaskTextStyle = {
+  headingFontSize?: number;
+  bodyFontSize?: number;
+  itemFontSize?: number;
+  headingGapLines?: number;
+  bodyGapLines?: number;
+  itemGapLines?: number;
+  bulletIndent?: number;
+  bulletHanging?: number;
+  lineSpacingMultiple?: number;
 };
 
 export type PresentationTaskSlideFrame = {

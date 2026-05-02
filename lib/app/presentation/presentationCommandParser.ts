@@ -4,6 +4,10 @@ export type PptCommandIntent =
 
 export type PptImageMode = "off" | "library" | "api" | "hybrid";
 
+export type PptFrameCommandIntent =
+  | "showFrameIndex"
+  | "showFrameJson";
+
 export type ParsedPptCommand = {
   isPptCommand: boolean;
   body: string;
@@ -14,7 +18,15 @@ export type ParsedPptCommand = {
   intent?: PptCommandIntent;
 };
 
+export type ParsedPptFrameCommand = {
+  isFrameCommand: boolean;
+  body: string;
+  frameId?: string;
+  intent?: PptFrameCommandIntent;
+};
+
 const PPT_PREFIX_PATTERN = /^\s*\/ppt(?:\s|$)/i;
+const PPT_FRAME_PREFIX_PATTERN = /^\s*PPT\s+frames\s*:\s*/i;
 const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:-]+)/im;
 const DENSITY_PATTERN = /^\s*Density\s*:\s*(concise|standard|detailed|dense)\s*$/gim;
 const GENERATE_IMAGES_PATTERN = /^\s*(?:Generate Images|Images)\s*:\s*([^\r\n]+)\s*$/gim;
@@ -126,5 +138,38 @@ export function parsePptCommand(text: string): ParsedPptCommand {
     generateImages,
     imageMode,
     intent,
+  };
+}
+
+export function parsePptFrameCommand(text: string): ParsedPptFrameCommand {
+  if (!PPT_FRAME_PREFIX_PATTERN.test(text)) {
+    return {
+      isFrameCommand: false,
+      body: text,
+    };
+  }
+
+  const body = text.replace(PPT_FRAME_PREFIX_PATTERN, "").trim();
+  if (/^show\s+index$/i.test(body)) {
+    return {
+      isFrameCommand: true,
+      body,
+      intent: "showFrameIndex",
+    };
+  }
+
+  const showJsonMatch = body.match(/^show\s+json\s*\/\s*([A-Za-z0-9_.:-]+)\s*$/i);
+  if (showJsonMatch) {
+    return {
+      isFrameCommand: true,
+      body,
+      frameId: showJsonMatch[1],
+      intent: "showFrameJson",
+    };
+  }
+
+  return {
+    isFrameCommand: true,
+    body,
   };
 }

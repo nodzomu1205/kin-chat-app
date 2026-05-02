@@ -8,6 +8,7 @@ import {
   type PresentationImageMode,
   type PresentationLibraryImageAsset,
 } from "@/lib/server/presentation/imageGeneration";
+import { sanitizeFrameSpecInputForParse } from "@/lib/server/presentation/frameSpecSanitizer";
 
 export const runtime = "nodejs";
 
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
       await loadPresentationRenderer();
     const parsedFrameSpecInput =
       body.frameSpec && typeof body.frameSpec === "object"
-        ? parseFramePresentationSpec(body.frameSpec)
+        ? parseFramePresentationSpec(sanitizeFrameSpecInputForParse(body.frameSpec))
         : null;
     const shouldGenerateImages = body.generateImages === true;
     const imageMode = normalizeImageMode(body.imageMode, shouldGenerateImages);
@@ -95,7 +96,9 @@ export async function POST(req: Request) {
         mimeType:
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         createdAt: new Date().toISOString(),
-        slideCount: parsedFrameSpec?.slideFrames.length || parsedSpec?.slides.length || 0,
+        slideCount: parsedFrameSpec
+          ? countRenderedFrameSlides(parsedFrameSpec)
+          : parsedSpec?.slides.length || 0,
         generatedImages:
           parsedFrameSpec && imageMode !== "off"
             ? collectGeneratedImages(parsedFrameSpec as never)
@@ -114,6 +117,20 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+function countRenderedFrameSlides(spec: {
+  deckFrame?: {
+    openingSlide?: { enabled?: boolean };
+    closingSlide?: { enabled?: boolean };
+  };
+  slideFrames: unknown[];
+}) {
+  return (
+    spec.slideFrames.length +
+    (spec.deckFrame?.openingSlide?.enabled ? 1 : 0) +
+    (spec.deckFrame?.closingSlide?.enabled ? 1 : 0)
+  );
 }
 
 function normalizeImageMode(

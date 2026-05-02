@@ -1,8 +1,13 @@
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderPresentationRequest } from "./renderRequest.js";
-import { extractFlowSteps, extractTwoAxisLabels, renderFramePresentationToFile } from "./renderer.js";
+import {
+  extractFlowSteps,
+  extractTwoAxisLabels,
+  renderFramePresentationToFile,
+  resolveFrameTwoColumnBoxes
+} from "./renderer.js";
 import type { PresentationSpec } from "./schema.js";
 
 const spec: PresentationSpec = {
@@ -18,6 +23,73 @@ const spec: PresentationSpec = {
 };
 
 describe("renderPresentationRequest", () => {
+  it("allocates more text space when a two-column visual asset is portrait", () => {
+    const visualBlock = {
+      id: "block1",
+      kind: "visual" as const,
+      styleId: "visualContain" as const,
+      visualRequest: {
+        type: "photo" as const,
+        asset: {
+          mimeType: "image/png",
+          base64: "image",
+          aspectRatio: 0.667,
+          orientation: "portrait" as const
+        }
+      }
+    };
+    const textBlock = {
+      id: "block2",
+      kind: "list" as const,
+      styleId: "listCompact" as const,
+      items: ["One", "Two"]
+    };
+
+    const leftVisual = resolveFrameTwoColumnBoxes(
+      "visualLeftTextRight",
+      visualBlock,
+      textBlock
+    );
+    const rightVisual = resolveFrameTwoColumnBoxes(
+      "textLeftVisualRight",
+      textBlock,
+      visualBlock
+    );
+
+    expect(leftVisual.left.w).toBeLessThan(leftVisual.right.w);
+    expect(leftVisual.left.w).toBeCloseTo(3.84, 1);
+    expect(leftVisual.right.w).toBeCloseTo(7.46, 1);
+    expect(rightVisual.right.w).toBeCloseTo(leftVisual.left.w, 2);
+    expect(rightVisual.left.w).toBeCloseTo(leftVisual.right.w, 2);
+  });
+
+  it("keeps explicit 50/50 frames fixed even when a visual asset is portrait", () => {
+    const visualBlock = {
+      id: "block1",
+      kind: "visual" as const,
+      styleId: "visualContain" as const,
+      visualRequest: {
+        type: "photo" as const,
+        asset: {
+          mimeType: "image/png",
+          base64: "image",
+          aspectRatio: 0.667,
+          orientation: "portrait" as const
+        }
+      }
+    };
+    const textBlock = {
+      id: "block2",
+      kind: "list" as const,
+      styleId: "listCompact" as const,
+      items: ["One", "Two"]
+    };
+
+    const boxes = resolveFrameTwoColumnBoxes("leftRight50", visualBlock, textBlock);
+
+    expect(boxes.left.w).toBeCloseTo(boxes.right.w, 2);
+  });
+
   it("extracts arrow flow steps without treating a leading description as a node", () => {
     expect(
       extractFlowSteps(
@@ -254,6 +326,59 @@ describe("renderPresentationRequest", () => {
       outputPath
     );
 
+    expect((await stat(outputPath)).size).toBeGreaterThan(0);
+  });
+
+  it("renders opening and closing bookend slides outside the body slide count", async () => {
+    const outputDir = join(process.cwd(), ".tmp-render-tests");
+    await mkdir(outputDir, { recursive: true });
+    const outputPath = join(outputDir, "frame-bookends.pptx");
+
+    await renderFramePresentationToFile(
+      {
+        version: "0.1-frame",
+        title: "Frame Bookends",
+        theme: "business-clean",
+        deckFrame: {
+          slideCount: 1,
+          masterFrameId: "titleLineFooter",
+          pageNumber: { enabled: true, position: "bottomRight", scope: "bodyOnly" },
+          openingSlide: {
+            enabled: true,
+            frameId: "titleCover",
+            title: "Frame Bookends",
+            subtitle: "Opening and closing slides are deck-level bookends"
+          },
+          closingSlide: {
+            enabled: true,
+            frameId: "endSlide",
+            title: "- END -",
+            message: "Thank you"
+          }
+        },
+        slideFrames: [
+          {
+            slideNumber: 1,
+            title: "Body",
+            masterFrameId: "titleLineFooter",
+            layoutFrameId: "titleBody",
+            blocks: [
+              {
+                id: "block1",
+                kind: "list",
+                styleId: "listCompact",
+                items: ["Body slide"]
+              }
+            ]
+          }
+        ]
+      },
+      outputPath
+    );
+
+    const pptxText = (await readFile(outputPath)).toString("latin1");
+    const slideEntries = new Set(pptxText.match(/ppt\/slides\/slide\d+\.xml/g) || []);
+    expect(slideEntries.size).toBe(3);
     expect((await stat(outputPath)).size).toBeGreaterThan(0);
   });
 });
