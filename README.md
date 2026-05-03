@@ -40,8 +40,10 @@ The current product direction is:
   - `SYS_SEARCH_REQUEST / RESPONSE`
   - `SYS_YOUTUBE_TRANSCRIPT_REQUEST / RESPONSE`
   - `SYS_LIBRARY_DATA_REQUEST / RESPONSE`
+  - `SYS_LIBRARY_IMAGE_DATA_REQUEST / RESPONSE`
   - `SYS_DRAFT_PREPARATION_REQUEST / RESPONSE`
   - `SYS_DRAFT_MODIFICATION_REQUEST / RESPONSE`
+  - `SYS_PPT_DESIGN_REQUEST / RESPONSE`
   - `SYS_FILE_SAVING_REQUEST / RESPONSE`
   - `SYS_GPT_RESPONSE`
   - `SYS_INFO`
@@ -111,7 +113,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `167 files / 753 tests`
+- current test count: `183 files / 882 tests`
 
 Current maintenance status:
 
@@ -247,9 +249,23 @@ Recent regression fixes and maintainability wins include:
   latest-draft fallback coverage
 - memory fact extraction now uses fair, content-based pickup across meaningful
   chat-visible responses while filtering system/noise messages
+- library operations now support compact ordinary-library and image-library
+  bulk display / Kin send controls; image-library bulk display shows images,
+  while image-library Kin sends remain metadata-only
+- Kin PPT design work now uses `SYS_PPT_DESIGN_REQUEST / RESPONSE`, counts as
+  separate `PPT作業`, and saves finalized design documents through the existing
+  `SYS_FILE_SAVING_REQUEST` route
+- PPT direct edit now uses approval-based structured `edits[]` candidates
+  instead of whole-plan regeneration and diffing; approved edits update both the
+  rendered PPTX and the saved PPT design document
+- PPT direct edit text replacement clears stale old `items` on text blocks so
+  replacement content is not rendered together with previous bullet items
 
 Current caution after the latest task/constraint stabilization:
 
+- direct-edit text overflow remains a design issue. Do not solve it with
+  renderer-wide emergency font shrinking; design block/frame capacity handling
+  or block-level style hints first
 - the task-intent / task-progress / compiler residue cleanup is substantially complete,
   and the dead GPT settings/persistence response-mode path is now removed; remaining
   `responseMode` references are protocol/task payload fields and should not be
@@ -275,6 +291,8 @@ The current goal is not a rewrite. The goal is to keep shipping while shrinking 
 - [Memory Lifecycle](./docs/memory-lifecycle.md)
 - [Repository Review 2026-04-25](./docs/repository-review-2026-04-25.md)
 - [Next Session Handover](./docs/next-session.md)
+- [Handoff 2026-05-03](./docs/HANDOFF-2026-05-03.md)
+- [Presentation Renderer Notes](./docs/presentation-renderer/next-implementation-notes.md)
 - [Handoff 2026-04-26](./docs/HANDOFF-2026-04-26.md)
 - [Handoff 2026-04-25](./docs/HANDOFF-2026-04-25.md)
 - [Handoff 2026-04-18](./docs/HANDOFF-2026-04-18.md)

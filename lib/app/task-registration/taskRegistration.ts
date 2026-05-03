@@ -7,6 +7,8 @@ export type TaskRegistrationLibrarySettings = {
   enabled: boolean;
   mode: LibraryReferenceMode;
   count: number;
+  imageEnabled: boolean;
+  imageCount: number;
 };
 
 export const TASK_REGISTRATION_LIBRARY_COUNT_MAX = 50;
@@ -28,8 +30,17 @@ export function normalizeTaskRegistrationLibraryCountInput(rawValue: string) {
   );
 
   return {
-    displayValue: String(count),
+    displayValue: digits,
     count,
+  };
+}
+
+export function clampTaskRegistrationLibraryCountDisplay(rawValue: string) {
+  const normalized = normalizeTaskRegistrationLibraryCountInput(rawValue);
+  return {
+    displayValue:
+      normalized.count === null ? "0" : String(normalized.count),
+    count: normalized.count ?? 0,
   };
 }
 
@@ -54,6 +65,18 @@ export function createDefaultTaskRegistrationLibrarySettings(): TaskRegistration
     enabled: true,
     mode: "summary_only",
     count: 3,
+    imageEnabled: true,
+    imageCount: 3,
+  };
+}
+
+export function normalizeTaskRegistrationLibrarySettings(
+  settings: Partial<TaskRegistrationLibrarySettings> | undefined
+): TaskRegistrationLibrarySettings {
+  const defaults = createDefaultTaskRegistrationLibrarySettings();
+  return {
+    ...defaults,
+    ...settings,
   };
 }
 
@@ -89,7 +112,7 @@ export function buildRegisteredTask(params: {
       updatedAt: params.draft.updatedAt || new Date().toISOString(),
     },
     intent: params.intent,
-    librarySettings: { ...params.librarySettings },
+    librarySettings: normalizeTaskRegistrationLibrarySettings(params.librarySettings),
     recurrence: {
       ...params.recurrence,
       weekdays: [...params.recurrence.weekdays],

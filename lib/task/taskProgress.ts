@@ -14,6 +14,8 @@ const USER_PROGRESS_LABEL = "ユーザー確認";
 const MATERIAL_PROGRESS_LABEL = "資料依頼";
 const TRANSCRIPT_PROGRESS_LABEL = "文字起こし取得";
 const LIBRARY_PROGRESS_LABEL = "ライブラリ参照";
+const IMAGE_LIBRARY_PROGRESS_LABEL = "画像ライブラリ参照";
+const PPT_DESIGN_PROGRESS_LABEL = "PPT作業";
 const FINALIZE_PROGRESS_LABEL = "最終成果物";
 
 const SEARCH_KEYWORDS = ["search", "検索"];
@@ -27,6 +29,15 @@ const TRANSCRIPT_KEYWORDS = [
   "書き起こし",
 ];
 const LIBRARY_KEYWORDS = ["library", "ライブラリ"];
+const IMAGE_LIBRARY_KEYWORDS = ["image-library", "image library"];
+const PPT_DESIGN_KEYWORDS = [
+  "ppt",
+  "powerpoint",
+  "presentation",
+  "slide",
+  "スライド",
+  "PPT作業",
+];
 const FINALIZE_KEYWORDS = [
   "final output",
   "summarize",
@@ -43,9 +54,6 @@ const AT_LEAST_KEYWORDS = [
   "no less than",
   "not less than",
   "or more",
-  "以上",
-  "最低",
-  "少なくとも",
 ];
 const UP_TO_KEYWORDS = [
   "up to",
@@ -53,18 +61,9 @@ const UP_TO_KEYWORDS = [
   "no more than",
   "not more than",
   "or less",
-  "まで",
-  "以下",
 ];
-const AROUND_KEYWORDS = [
-  "around",
-  "about",
-  "approximately",
-  "前後",
-  "程度",
-  "くらい",
-];
-const EXACT_KEYWORDS = ["exactly", "ちょうど", "ぴったり", "正確に"];
+const AROUND_KEYWORDS = ["around", "about", "approximately"];
+const EXACT_KEYWORDS = ["exactly"];
 
 function buildRequirementProgressItem(params: {
   id: string;
@@ -122,6 +121,12 @@ function inferConstraintKind(text: string): ProgressKind | null {
   if (includesAnyKeyword(normalized, TRANSCRIPT_KEYWORDS)) {
     return "youtube_transcript_request";
   }
+  if (includesAnyKeyword(normalized, PPT_DESIGN_KEYWORDS)) {
+    return "ppt_design_request";
+  }
+  if (includesAnyKeyword(normalized, IMAGE_LIBRARY_KEYWORDS)) {
+    return "image_library_reference";
+  }
   if (includesAnyKeyword(normalized, LIBRARY_KEYWORDS)) return "library_reference";
   if (includesAnyKeyword(normalized, USER_KEYWORDS)) return "ask_user";
   if (includesAnyKeyword(normalized, GPT_KEYWORDS)) return "ask_gpt";
@@ -151,6 +156,10 @@ function resolveConstraintLabel(kind: ProgressKind) {
       return TRANSCRIPT_PROGRESS_LABEL;
     case "library_reference":
       return LIBRARY_PROGRESS_LABEL;
+    case "image_library_reference":
+      return IMAGE_LIBRARY_PROGRESS_LABEL;
+    case "ppt_design_request":
+      return PPT_DESIGN_PROGRESS_LABEL;
     case "finalize":
     default:
       return FINALIZE_PROGRESS_LABEL;
@@ -195,6 +204,8 @@ function buildWorkflowFallbackRequirement(
     | "search_request"
     | "youtube_transcript_request"
     | "library_reference"
+    | "image_library_reference"
+    | "ppt_design_request"
   >,
   count?: number,
   rule: ProgressRule = "up_to"
@@ -262,6 +273,18 @@ export function buildInitialRequirementProgress(
       intent.workflow?.libraryReferenceCount ??
         (intent.workflow?.allowLibraryReference ? 1 : undefined),
       intent.workflow?.libraryReferenceCountRule ?? "up_to"
+    ),
+    buildWorkflowFallbackRequirement(
+      "image_library_reference",
+      intent.workflow?.imageLibraryReferenceCount ??
+        (intent.workflow?.allowImageLibraryReference ? 1 : undefined),
+      intent.workflow?.imageLibraryReferenceCountRule ?? "up_to"
+    ),
+    buildWorkflowFallbackRequirement(
+      "ppt_design_request",
+      intent.workflow?.pptDesignRequestCount ??
+        (intent.workflow?.allowPptDesignRequest ? 1 : undefined),
+      intent.workflow?.pptDesignRequestCountRule ?? "up_to"
     ),
   ];
 

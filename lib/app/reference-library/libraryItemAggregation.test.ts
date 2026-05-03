@@ -88,4 +88,22 @@ describe("buildLibraryItemsAggregateKinSysInfo", () => {
     expect(text).toContain("2. Beta");
     expect(text).toContain("<<END_SYS_INFO>>");
   });
+
+  it("labels image library aggregate data separately for Kin", () => {
+    const text = buildLibraryItemsAggregateKinSysInfo({
+      items: [
+        createItem({
+          id: "img:1",
+          title: "Cotton field",
+          artifactType: "generated_image",
+        }),
+      ],
+      mode: "detail",
+      scope: "images",
+    });
+
+    expect(text).toContain("TITLE: Image Library Data");
+    expect(text).toContain("Image IDs");
+    expect(text).toContain("Cotton field");
+  });
 });

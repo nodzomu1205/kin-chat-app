@@ -41,6 +41,9 @@ function toIntentPhraseKind(
   if (kind === "gpt_request") return "ask_gpt";
   if (kind === "search_request") return "search_request";
   if (kind === "youtube_transcript_request") return "youtube_transcript_request";
+  if (kind === "image_library_reference") return "image_library_reference";
+  if (kind === "ppt_slide_count") return "ppt_slide_count";
+  if (kind === "ppt_design_request") return "ppt_design_request";
   if (kind === "ask_user") return "ask_user";
   return "library_reference";
 }

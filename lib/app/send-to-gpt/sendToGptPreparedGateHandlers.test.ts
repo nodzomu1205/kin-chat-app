@@ -129,6 +129,61 @@ describe("handleFileSaveRequestGate", () => {
     );
   });
 
+  it("saves PPT design responses as presentation plan library items without a response document id header", async () => {
+    const recordIngestedDocument = vi.fn(() => ({ id: "stored-1" }));
+    const setGptMessages = vi.fn((updater: (prev: Message[]) => Message[]) =>
+      updater([])
+    );
+
+    const handled = await handleFileSaveRequestGate({
+      fileSaveRequestEvent: {
+        taskId: "TASK-1",
+        actionId: "F006",
+        body: "Save the PPT design.",
+        documentId: "Unknown",
+      },
+      userMsg: { id: "u1", role: "user", text: "save" },
+      gptStateRef: {
+        current: {
+          recentMessages: [
+            {
+              id: "g1",
+              role: "gpt",
+              text: [
+                "<<SYS_PPT_DESIGN_RESPONSE>>",
+                "TASK_ID: TASK-1",
+                "ACTION_ID: P001",
+                "BODY:",
+                "【PPT設計書】",
+                "Document ID: ppt_TASK-1_001",
+                "Title: Cotton deck",
+                "Slide 1: Overview",
+                "<<END_SYS_PPT_DESIGN_RESPONSE>>",
+              ].join("\n"),
+            },
+          ],
+        },
+      },
+      recordIngestedDocument,
+      autoGenerateLibrarySummary: false,
+      setGptMessages: setGptMessages as never,
+      setGptInput: vi.fn(),
+    });
+
+    expect(handled).toBe(true);
+    expect(recordIngestedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactType: "presentation_plan",
+        filename: "ppt_TASK-1_001.txt",
+        text: expect.stringContaining("Document ID: ppt_TASK-1_001"),
+        structuredPayload: expect.any(Object),
+      })
+    );
+    expect(setGptMessages.mock.results[0]?.value[1]?.text).toContain(
+      "DOCUMENT_ID: ppt_TASK-1_001"
+    );
+  });
+
   it("saves a latest full modification response with a blank document id under the previous draft id", async () => {
     const recordIngestedDocument = vi.fn(() => ({ id: "stored-1" }));
     const setGptMessages = vi.fn((updater: (prev: Message[]) => Message[]) =>

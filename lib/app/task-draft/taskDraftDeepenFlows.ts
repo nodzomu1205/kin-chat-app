@@ -96,6 +96,7 @@ export async function runDeepenTaskFromLastFlow(
         currentPlanText: text,
         body: parsedInput.freeText || normalizedInput || "PPT設計書を深掘り",
         material: text,
+        libraryReferenceContext: args.buildLibraryReferenceContext(),
       })
     : buildTaskInput({
         title: resolvedTitle,
@@ -103,6 +104,7 @@ export async function runDeepenTaskFromLastFlow(
         actionInstruction: parsedInput.freeText || normalizedInput,
         body: text,
         material: text,
+        libraryReferenceContext: args.buildLibraryReferenceContext(),
       });
 
   const userMsg: Message = {

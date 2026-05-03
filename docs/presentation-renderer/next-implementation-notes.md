@@ -1,6 +1,6 @@
 # Presentation Renderer Next Implementation Notes
 
-Last updated: 2026-05-01
+Last updated: 2026-05-03
 
 ## Current State
 
@@ -43,8 +43,14 @@ Last updated: 2026-05-01
 - `kin-presentation-renderer/.tmp-render-tests/` is test output and should stay
   ignored.
 - The older patch-first GPT revision path has been removed from active code.
-  Revision now asks GPT for a full revised `PresentationSpec`, then the app
-  converts it into patch history internally.
+  Direct PPTX edits now use a structured approval candidate (`edits[]`) that
+  targets slide/block addresses and applies only after user approval.
+- Direct PPTX edit text replacement must not preserve stale old bullet items.
+  Text-stack/callout replacement clears `items`; list replacement clears `text`
+  and writes the approved lines as `items`.
+- Do not add renderer-wide typography shrink rules to compensate for one direct
+  edit overflow. Future fit handling should be designed through block/frame
+  capacity policy or block-level `renderStyle.textStyle`.
 
 ## Deployment Notes
 
@@ -177,6 +183,21 @@ Review goals:
   warnings.
 - Decide whether debug output belongs in internal metadata, logs, or dev-only UI
   rather than in the user-facing PPT design text.
+
+### 5. Direct Edit Capacity And Retry
+
+PPT direct edit is now approval-based, but the next improvement should be
+designed rather than patched locally.
+
+Open items:
+
+- add a retry/reinterpret button that sends edited target/instruction/proposal
+  context back through the direct-edit interpreter
+- give the interpreter layout-capacity hints so proposed text is concise enough
+  for the target block
+- surface overflow/fit risk in approval before rendering where practical
+- handle large structural rewrites by sending the user back to PPT design
+  revision instead of trying to force them into one direct block edit
 
 The expected outcome is a smaller set of prompts with clearer ownership:
 

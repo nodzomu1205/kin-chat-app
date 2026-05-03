@@ -1,6 +1,6 @@
 # Protocol Actions
 
-Updated: 2026-04-27
+Updated: 2026-05-03
 
 ## Purpose
 This document defines the current authority boundaries for protocol-related user actions.
@@ -131,8 +131,10 @@ Should not do:
 
 Examples:
 - `SYS_LIBRARY_DATA_REQUEST`
+- `SYS_LIBRARY_IMAGE_DATA_REQUEST`
 - `SYS_DRAFT_PREPARATION_REQUEST`
 - `SYS_DRAFT_MODIFICATION_REQUEST`
+- `SYS_PPT_DESIGN_REQUEST`
 - `SYS_FILE_SAVING_REQUEST`
 - `SYS_TASK_PROPOSAL`
 
@@ -146,6 +148,12 @@ Owned by:
 Should do:
 - keep library reference on the single `SYS_LIBRARY_DATA_REQUEST / RESPONSE`
   path
+- keep image-library reference on the separate
+  `SYS_LIBRARY_IMAGE_DATA_REQUEST / RESPONSE` path; image responses describe
+  Image IDs, dimensions, orientation, and usable content without embedding
+  image binaries
+- route Kin PPT design work through
+  `SYS_PPT_DESIGN_REQUEST / RESPONSE`, and count it separately as `PPT作業`
 - save protocol-created documents only through File Saving
 - validate active length constraints before saving
 - generate library-card summaries through the shared library-summary path
@@ -163,6 +171,10 @@ Should not do:
 - add a second latest-draft heuristic near the save gate
 - add another multipart splitting implementation for library sends
 - start task execution directly from `SYS_TASK_PROPOSAL`
+- save PPT design documents through a PPT-specific side route; use
+  `SYS_FILE_SAVING_REQUEST` after the design response is finalized
+- confuse task-time auto-reference settings with explicit Kin data-request
+  protocols
 
 ## 6. Task Registration / Sharing Actions
 

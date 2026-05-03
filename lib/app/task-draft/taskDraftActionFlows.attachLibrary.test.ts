@@ -83,6 +83,7 @@ describe("runAttachSearchResultToTaskFlow", () => {
       },
       chatRecentLimit: 8,
       referenceLibraryItems: [],
+      buildLibraryReferenceContext: vi.fn(() => ""),
       imageLibraryReferenceEnabled: false,
       imageLibraryReferenceCount: 0,
       applyChatUsage: vi.fn(),

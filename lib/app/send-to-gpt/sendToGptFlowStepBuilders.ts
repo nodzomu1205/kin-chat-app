@@ -66,6 +66,7 @@ export function buildPreparedSendToGptRequestBundle(args: {
       args.flowArgs.shouldInjectTaskContextWithSettings,
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
     libraryIndexResponseCount: args.flowArgs.libraryIndexResponseCount,
+    imageLibraryReferenceCount: args.flowArgs.imageLibraryReferenceCount,
     buildLibraryReferenceContext: args.flowArgs.buildLibraryReferenceContext,
     recentMessages: args.flowArgs.gptStateRef.current.recentMessages || [],
     currentTaskCharConstraint: args.flowArgs.currentTaskCharConstraint,
@@ -116,6 +117,10 @@ export function buildSendToGptPreparedRequestGateArgs(args: {
     applyChatUsage: args.flowArgs.applyChatUsage,
     applyCompressionUsage: args.flowArgs.applyCompressionUsage,
     applyIngestUsage: args.flowArgs.applyIngestUsage,
+    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+    imageLibraryReferenceEnabled: args.flowArgs.imageLibraryReferenceEnabled,
+    imageLibraryReferenceCount: args.flowArgs.imageLibraryReferenceCount,
+    applyTaskUsage: args.flowArgs.applyTaskUsage,
   };
 }
 

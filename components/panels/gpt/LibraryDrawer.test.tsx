@@ -14,6 +14,7 @@ function renderLibraryDrawer(
       multipartAssemblies={[]}
       referenceLibraryItems={[]}
       libraryReferenceCount={0}
+      imageLibraryReferenceCount={0}
       sourceDisplayCount={1}
       selectedTaskLibraryItemId=""
       onSelectTaskLibraryItem={() => {}}
@@ -91,8 +92,8 @@ describe("LibraryDrawer", () => {
     expect(html).toContain("Google Drive");
     expect(html).toContain('aria-label="デバイスから取り込む"');
     expect(html).toContain(">デバイス<");
-    expect(html).toContain("画面に一括表示");
-    expect(html).toContain("Kinに一括送信");
+    expect(html).toContain("画面に表示");
+    expect(html).toContain("Kinに送信");
     expect(html).toContain("Index");
     expect(html).toContain("Summary");
     expect(html).toContain("Summary + Detail");

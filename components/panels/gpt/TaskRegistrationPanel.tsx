@@ -5,6 +5,7 @@ import type { GptPanelTaskProps } from "@/components/panels/gpt/gptPanelTypes";
 import { sectionCardStyle, formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { GPT_TASK_TEXT } from "@/components/panels/gpt/gptUiText";
 import {
+  clampTaskRegistrationLibraryCountDisplay,
   normalizeTaskRegistrationLibraryCountInput,
   type RegisteredTask,
 } from "@/lib/app/task-registration/taskRegistration";
@@ -51,6 +52,8 @@ function LibraryCountInput(props: {
   onChange?: (count: number) => void;
 }) {
   const [text, setText] = useState(String(props.count));
+  const [editing, setEditing] = useState(false);
+  const displayValue = editing ? text : String(props.count);
 
   const handleChange = (rawValue: string) => {
     const normalized = normalizeTaskRegistrationLibraryCountInput(rawValue);
@@ -61,9 +64,9 @@ function LibraryCountInput(props: {
   };
 
   const handleBlur = () => {
-    if (text) return;
-    props.onChange?.(0);
-    setText("0");
+    const normalized = clampTaskRegistrationLibraryCountDisplay(text);
+    props.onChange?.(normalized.count);
+    setText(normalized.displayValue);
   };
 
   return (
@@ -71,9 +74,16 @@ function LibraryCountInput(props: {
       type="text"
       inputMode="numeric"
       pattern="[0-9]*"
-      value={text}
+      value={displayValue}
+      onFocus={() => {
+        setText(String(props.count));
+        setEditing(true);
+      }}
       onChange={(event) => handleChange(event.target.value)}
-      onBlur={handleBlur}
+      onBlur={() => {
+        handleBlur();
+        setEditing(false);
+      }}
       style={{ ...buttonStyle, width: 92, fontWeight: 700 }}
       aria-label={props.ariaLabel}
     />
@@ -301,11 +311,48 @@ export default function TaskRegistrationPanel({
               <option value="summary_with_excerpt">summary + excerpt</option>
             </select>
             <LibraryCountInput
-              key={taskRegistrationLibrarySettings.count}
               count={taskRegistrationLibrarySettings.count}
               ariaLabel={GPT_TASK_TEXT.registration.libraryCount}
               onChange={(count) =>
                 onChangeTaskRegistrationLibrarySettings?.({ count })
+              }
+            />
+          </div>
+          <div style={{ marginTop: 14, fontSize: 13, fontWeight: 900, color: "#0f172a" }}>
+            {GPT_TASK_TEXT.registration.imageLibraryTitle}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              style={
+                taskRegistrationLibrarySettings.imageEnabled
+                  ? primaryButtonStyle
+                  : buttonStyle
+              }
+              onClick={() =>
+                onChangeTaskRegistrationLibrarySettings?.({ imageEnabled: true })
+              }
+            >
+              {GPT_TASK_TEXT.registration.libraryOn}
+            </button>
+            <button
+              type="button"
+              style={
+                !taskRegistrationLibrarySettings.imageEnabled
+                  ? primaryButtonStyle
+                  : buttonStyle
+              }
+              onClick={() =>
+                onChangeTaskRegistrationLibrarySettings?.({ imageEnabled: false })
+              }
+            >
+              {GPT_TASK_TEXT.registration.libraryOff}
+            </button>
+            <LibraryCountInput
+              count={taskRegistrationLibrarySettings.imageCount}
+              ariaLabel={GPT_TASK_TEXT.registration.imageLibraryCount}
+              onChange={(imageCount) =>
+                onChangeTaskRegistrationLibrarySettings?.({ imageCount })
               }
             />
           </div>

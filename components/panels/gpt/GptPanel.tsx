@@ -46,6 +46,7 @@ import {
 import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
 import { GPT_COMPOSER_TEXT, GPT_PANEL_TEXT } from "@/components/panels/gpt/gptUiText";
+import { usePptDirectEditApprovals } from "@/hooks/usePptDirectEditApprovals";
 
 function headerIconButtonStyle(params: {
   active: boolean;
@@ -258,6 +259,8 @@ export default function GptPanel(props: GptPanelProps) {
   const hasPendingMemoryApprovals =
     settings.pendingMemoryRuleCandidates.length > 0;
   const hasPendingSysApprovals = protocol.pendingIntentCandidates.length > 0;
+  const pptDirectEditApprovals = usePptDirectEditApprovals();
+  const hasPendingLibraryApprovals = pptDirectEditApprovals.pending.length > 0;
   const busy = isGptPanelBusy({
     gptLoading: chat.loading,
     ingestLoading: settings.ingestLoading,
@@ -385,7 +388,7 @@ export default function GptPanel(props: GptPanelProps) {
             <HeaderIconButton
               label={GPT_PANEL_TEXT.librarySettings}
               active={viewState.activeSettingsWorkspace === "library"}
-              hasPending={false}
+              hasPending={hasPendingLibraryApprovals}
               onClick={() => toggleSettingsWorkspace("library")}
             >
               <LibrarySettingsIcon />

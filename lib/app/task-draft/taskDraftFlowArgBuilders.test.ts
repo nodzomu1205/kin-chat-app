@@ -76,6 +76,7 @@ function createBaseArgs(
     imageLibraryReferenceEnabled: false,
     imageLibraryReferenceCount: 0,
     lastSearchContext: null,
+    buildLibraryReferenceContext: vi.fn(() => ""),
     referenceLibraryItems: [],
     setCurrentTaskDraft: vi.fn(),
     setGptInput: vi.fn(),

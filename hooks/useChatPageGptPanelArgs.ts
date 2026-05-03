@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChatPageGptPanelCompositionArgs } from "@/hooks/chatPagePanelCompositionTypes";
+import { applyPptDirectEditCandidate } from "@/lib/app/presentation/presentationGptFlow";
 import type { BuildGptPanelArgs } from "@/lib/app/ui-state/panelPropsBuilders";
 
 export function useChatPageGptPanelArgs(
@@ -159,6 +160,18 @@ export function useChatPageGptPanelArgs(
       onRejectMemoryRuleCandidate: args.memoryState.onRejectMemoryRuleCandidate,
       onUpdateMemoryRuleCandidate: args.memoryState.onUpdateMemoryRuleCandidate,
       onDeleteApprovedMemoryRule: args.memoryState.onDeleteApprovedMemoryRule,
+      applyImageUsage: args.usage.applyImageUsage,
+      onApplyPptDirectEditCandidate: (candidate) =>
+        applyPptDirectEditCandidate({
+          candidate,
+          referenceLibraryItems: args.references.referenceLibraryItems,
+          imageLibraryReferenceEnabled:
+            args.settings.imageLibraryReferenceEnabled,
+          imageLibraryReferenceCount: args.settings.imageLibraryReferenceCount,
+          updateStoredDocument: args.references.onSaveStoredDocument,
+          setGptMessages: args.gptState.setGptMessages,
+          applyImageUsage: args.usage.applyImageUsage,
+        }),
     },
   };
 }

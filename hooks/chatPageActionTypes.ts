@@ -343,6 +343,7 @@ export type UseTaskDraftActionsArgs = Pick<
   | "imageLibraryReferenceEnabled"
   | "imageLibraryReferenceCount"
   | "lastSearchContext"
+  | "buildLibraryReferenceContext"
   | "referenceLibraryItems"
   | "setCurrentTaskDraft"
   | "setGptInput"

@@ -18,6 +18,20 @@ import {
   requestGeneratedLibrarySummary,
   normalizeLibrarySummaryUsage,
 } from "@/lib/app/reference-library/librarySummaryClient";
+import {
+  buildPresentationTaskPlan,
+  buildPresentationTaskStructuredInput,
+  formatPresentationTaskPlanText,
+  formatPresentationTaskResultText,
+  buildPresentationTaskPlanFromText,
+  resolvePresentationTaskTitle,
+} from "@/lib/app/presentation/presentationTaskPlanning";
+import {
+  buildPresentationImageLibraryContext,
+  getPresentationImageLibraryCandidates,
+} from "@/lib/app/presentation/presentationImageLibrary";
+import { runAutoPrepPresentationTask } from "@/lib/app/gpt-task/gptTaskClient";
+import type { ReferenceLibraryItem } from "@/types/chat";
 
 export function handleTaskDirectiveOnlyGate(args: {
   isTaskDirectiveOnly: boolean;
@@ -89,12 +103,14 @@ export async function handleYoutubeTranscriptGate(args: {
   >;
   setActiveTabToKin?: () => void;
   recordIngestedDocument: (document: {
+    artifactType?: import("@/types/chat").StoredDocument["artifactType"];
     title: string;
     filename: string;
     text: string;
     summary?: string;
     taskId?: string;
     charCount: number;
+    structuredPayload?: import("@/types/chat").StoredDocument["structuredPayload"];
     createdAt: string;
     updatedAt: string;
   }) => { id: string };
@@ -142,18 +158,123 @@ export async function handleYoutubeTranscriptGate(args: {
   return true;
 }
 
+export async function handlePptDesignRequestGate(args: {
+  pptDesignRequestEvent?: ProtocolTaskEventLike;
+  userMsg: Message;
+  libraryReferenceContext?: string;
+  referenceLibraryItems: ReferenceLibraryItem[];
+  imageLibraryReferenceEnabled?: boolean;
+  imageLibraryReferenceCount?: number;
+  applyTaskUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  setGptMessages: Dispatch<SetStateAction<Message[]>>;
+  setGptInput: Dispatch<SetStateAction<string>>;
+  setGptLoading: Dispatch<SetStateAction<boolean>>;
+  ingestProtocolMessage: (
+    text: string,
+    direction: "kin_to_gpt" | "gpt_to_kin" | "user_to_kin" | "system"
+  ) => void;
+}) {
+  const event = args.pptDesignRequestEvent;
+  if (!event) return false;
+
+  args.setGptMessages((prev) => [...prev, args.userMsg]);
+  args.setGptInput("");
+  args.setGptLoading(true);
+
+  try {
+    const body = event.body || event.summary || "";
+    const title = resolvePresentationTaskTitle({
+      presentationMode: true,
+      fallbackTitle: "PPT design",
+      generatedTitle: event.taskId ? `PPT design ${event.taskId}` : "PPT design",
+      preserveExistingTitle: false,
+    });
+    const imageLibraryContext = buildPresentationImageLibraryContext(
+      getPresentationImageLibraryCandidates({
+        enabled: args.imageLibraryReferenceEnabled,
+        count: args.imageLibraryReferenceCount,
+        referenceLibraryItems: args.referenceLibraryItems,
+      })
+    );
+    const input = buildPresentationTaskStructuredInput({
+      title,
+      userInstruction: body,
+      body: ["/ppt", "Create PPT design", body].filter(Boolean).join("\n"),
+      libraryReferenceContext: args.libraryReferenceContext,
+      imageLibraryContext,
+    });
+    const data = await runAutoPrepPresentationTask(input, "sys-ppt-design-request");
+    const plan = buildPresentationTaskPlan({
+      title,
+      result: data?.parsed,
+      rawText: data?.raw,
+    });
+    const designText = plan
+      ? formatPresentationTaskPlanText(plan)
+      : formatPresentationTaskResultText(data?.parsed, data?.raw);
+    const responseText = [
+      "<<SYS_PPT_DESIGN_RESPONSE>>",
+      `TASK_ID: ${event.taskId || ""}`,
+      `ACTION_ID: ${event.actionId || ""}`,
+      "BODY:",
+      designText,
+      "<<END_SYS_PPT_DESIGN_RESPONSE>>",
+    ].join("\n");
+
+    if (data?.usage) args.applyTaskUsage?.(data.usage);
+    args.ingestProtocolMessage(responseText, "gpt_to_kin");
+    args.setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: responseText,
+        meta: { kind: "task_info", sourceType: "manual" },
+      },
+    ]);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "PPT design request failed.";
+    const responseText = [
+      "<<SYS_PPT_DESIGN_RESPONSE>>",
+      `TASK_ID: ${event.taskId || ""}`,
+      `ACTION_ID: ${event.actionId || ""}`,
+      "STATUS: NEEDS_MORE",
+      "BODY:",
+      `PPT design request failed: ${message}`,
+      "<<END_SYS_PPT_DESIGN_RESPONSE>>",
+    ].join("\n");
+    args.ingestProtocolMessage(responseText, "gpt_to_kin");
+    args.setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "gpt",
+        text: responseText,
+        meta: { kind: "task_info", sourceType: "manual" },
+      },
+    ]);
+  } finally {
+    args.setGptLoading(false);
+  }
+
+  return true;
+}
+
 export async function handleFileSaveRequestGate(args: {
   fileSaveRequestEvent?: ProtocolTaskEventLike;
   userMsg: Message;
   gptStateRef: { current: { recentMessages?: Message[] } };
   currentTaskCharConstraint?: TaskCharConstraint;
   recordIngestedDocument: (document: {
+    artifactType?: import("@/types/chat").StoredDocument["artifactType"];
     title: string;
     filename: string;
     text: string;
     summary?: string;
     taskId?: string;
     charCount: number;
+    structuredPayload?: import("@/types/chat").StoredDocument["structuredPayload"];
     createdAt: string;
     updatedAt: string;
   }) => { id: string };
@@ -217,12 +338,21 @@ export async function handleFileSaveRequestGate(args: {
       }
 
       args.recordIngestedDocument({
+        artifactType: isPptDesignDocument(document.text)
+          ? "presentation_plan"
+          : undefined,
         title: document.title,
         filename: `${responseDocumentId}.txt`,
         text: document.text,
         summary: generatedSummary || undefined,
         taskId: event.taskId,
         charCount: document.text.length,
+        structuredPayload: isPptDesignDocument(document.text)
+          ? buildPresentationTaskPlanFromText({
+              title: document.title,
+              text: document.text,
+            })
+          : undefined,
         createdAt: now,
         updatedAt: now,
       });
@@ -260,4 +390,8 @@ export async function handleFileSaveRequestGate(args: {
   ]);
   args.setGptInput("");
   return true;
+}
+
+function isPptDesignDocument(text: string) {
+  return /^【PPT設計書】/m.test(text) || /^Document ID\s*:\s*ppt_/im.test(text);
 }

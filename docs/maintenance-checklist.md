@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-04-28
+Updated: 2026-05-03
 
 ## Purpose
 
@@ -47,6 +47,15 @@ Working estimate:
 
 Latest status update:
 
+- PPT direct edit has been reworked to an approval-based structured `edits[]`
+  model. The old diff-based direct-edit compatibility branch was removed from
+  active code during closeout.
+- Direct edit replacement now clears stale old text/list fields in the touched
+  block, but text-fit/overflow policy remains under watch and should not be
+  solved by renderer-wide emergency shrink rules.
+- Kin PPT design protocols and image-library data request protocols are wired;
+  keep task-time auto-reference settings separate from explicit Kin
+  `SYS_LIBRARY_*_DATA_REQUEST` protocols.
 - Task registration workspace is implemented with separated task formation,
   task registration, and Kin task progress roles.
 - Registered task progress runtime and task-time library overrides are triggered
@@ -82,9 +91,9 @@ Latest status update:
   force-summary exception.
 - UTF-8 source validation is available as `npm run check:utf8` after a
   PowerShell bulk-edit encoding regression was found and repaired.
-- Full verification on 2026-04-28 passed:
+- Full verification on 2026-05-03 passed:
   `npm run check:utf8`, `npx tsc --noEmit`, `npm run lint`,
-  `npm test` (`167 files / 753 tests`), and `npm run build`.
+  `npm test` (`183 files / 882 tests`), and `npm run build`.
 
 ## Exit Checklist
 
@@ -144,6 +153,9 @@ Treat the maintainability program as complete only when every item below is
 - next task-registration work should add focused tests for
   `SYS_TASK_PROPOSAL`, task draft registration/edit/start, task-time library
   setting restore, and recurrence validation
+- PPT direct-edit follow-up should add focused coverage around retry/reinterpret
+  behavior and at least one visual replacement flow before the path is called
+  fully settled
 
 ### F. Docs / Handoff Hygiene
 

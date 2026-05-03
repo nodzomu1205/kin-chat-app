@@ -26,6 +26,14 @@ function allowsFileSaving(intent: TaskIntent) {
   return isDocumentOutput(intent) || intent.workflow?.allowFileSaving;
 }
 
+function allowsPptDesignRequest(intent: TaskIntent) {
+  return (
+    intent.output.type === "presentation" ||
+    intent.workflow?.allowPptDesignRequest ||
+    (intent.workflow?.pptDesignRequestCount ?? 0) > 0
+  );
+}
+
 export function buildRuleLines(intent: TaskIntent): string[] {
   const lines = [
     "- Use ACTION_ID for every request or dependency you create.",
@@ -93,6 +101,27 @@ export function buildRuleLines(intent: TaskIntent): string[] {
     lines.push("- Use <<SYS_LIBRARY_DATA_REQUEST>> when you want GPT to provide stored library reference data.");
     lines.push(
       "- GPT should answer <<SYS_LIBRARY_DATA_REQUEST>> with <<SYS_LIBRARY_DATA_RESPONSE>> using the same TASK_ID and ACTION_ID."
+    );
+  }
+
+  if (intent.workflow?.allowImageLibraryReference) {
+    lines.push(
+      "- Use <<SYS_LIBRARY_IMAGE_DATA_REQUEST>> when you want GPT to provide stored image-library reference data."
+    );
+    lines.push(
+      "- GPT should answer <<SYS_LIBRARY_IMAGE_DATA_REQUEST>> with <<SYS_LIBRARY_IMAGE_DATA_RESPONSE>> using the same TASK_ID and ACTION_ID. The response should describe image IDs, dimensions, and usable visual content without embedding image binaries."
+    );
+  }
+
+  if (allowsPptDesignRequest(intent)) {
+    lines.push(
+      "- Use <<SYS_PPT_DESIGN_REQUEST>> when you want GPT to create or revise a PPT design document. Put your instruction in BODY."
+    );
+    lines.push(
+      "- GPT should answer <<SYS_PPT_DESIGN_REQUEST>> with <<SYS_PPT_DESIGN_RESPONSE>> using the same TASK_ID and ACTION_ID. The response BODY contains the PPT design document, including its own Document ID at the top."
+    );
+    lines.push(
+      "- When the PPT design is ready to save to the library, use the existing <<SYS_FILE_SAVING_REQUEST>> with the Document ID shown in the PPT design."
     );
   }
 
@@ -287,6 +316,44 @@ Summary: Short summary here.
 Detail:
 Key item excerpt here.
 <<END_SYS_LIBRARY_DATA_RESPONSE>>`));
+  }
+
+  if (intent.workflow?.allowImageLibraryReference) {
+    blocks.push(wrapExample("LIBRARY_IMAGE_DATA_REQUEST", `<<SYS_LIBRARY_IMAGE_DATA_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: I001
+BODY: Send the available image-library data with image IDs, dimensions, and short visual descriptions.
+<<END_SYS_LIBRARY_IMAGE_DATA_REQUEST>>`));
+
+    blocks.push(wrapExample("LIBRARY_IMAGE_DATA_RESPONSE", `<<SYS_LIBRARY_IMAGE_DATA_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: I001
+TITLE: Image Library Data
+BODY:
+Image Library Data
+Items: 2
+
+1. Image ID: img_example
+Dimensions: 1024x768
+Summary: Short visual description here.
+<<END_SYS_LIBRARY_IMAGE_DATA_RESPONSE>>`));
+  }
+
+  if (allowsPptDesignRequest(intent)) {
+    blocks.push(wrapExample("PPT_DESIGN_REQUEST", `<<SYS_PPT_DESIGN_REQUEST>>
+TASK_ID: ${taskId}
+ACTION_ID: P001
+BODY: /ppt
+Create PPT design
+Create about 10 slides from the task material. Use library reference once and image-library reference once when useful.
+<<END_SYS_PPT_DESIGN_REQUEST>>`));
+
+    blocks.push(wrapExample("PPT_DESIGN_RESPONSE", `<<SYS_PPT_DESIGN_RESPONSE>>
+TASK_ID: ${taskId}
+ACTION_ID: P001
+BODY:
+<PPT design document here. Keep the Document ID inside the design body, not as a separate header field.>
+<<END_SYS_PPT_DESIGN_RESPONSE>>`));
   }
 
   if (allowsDraftPreparation(intent)) {

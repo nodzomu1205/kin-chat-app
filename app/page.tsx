@@ -28,6 +28,8 @@ type LibraryRuntimeSnapshot = {
   libraryReferenceMode: LibraryReferenceMode;
   libraryReferenceCount: number;
   libraryIndexResponseCount: number;
+  imageLibraryReferenceEnabled: boolean;
+  imageLibraryReferenceCount: number;
 };
 
 export default function ChatApp() {
@@ -114,6 +116,12 @@ export default function ChatApp() {
     referenceDomain.setLibraryIndexResponseCount(
       active.previous.libraryIndexResponseCount
     );
+    referenceDomain.setImageLibraryReferenceEnabled(
+      active.previous.imageLibraryReferenceEnabled
+    );
+    referenceDomain.setImageLibraryReferenceCount(
+      active.previous.imageLibraryReferenceCount
+    );
     activeLibraryOverrideRef.current = null;
   }, [referenceDomain]);
 
@@ -126,12 +134,21 @@ export default function ChatApp() {
         libraryReferenceMode: referenceDomain.libraryReferenceMode,
         libraryReferenceCount: referenceDomain.libraryReferenceCount,
         libraryIndexResponseCount: referenceDomain.libraryIndexResponseCount,
+        imageLibraryReferenceEnabled:
+          referenceDomain.imageLibraryReferenceEnabled,
+        imageLibraryReferenceCount: referenceDomain.imageLibraryReferenceCount,
       },
     };
 
     referenceDomain.setAutoLibraryReferenceEnabled(task.librarySettings.enabled);
     referenceDomain.setLibraryReferenceMode(task.librarySettings.mode);
     referenceDomain.setLibraryReferenceCount(task.librarySettings.count);
+    referenceDomain.setImageLibraryReferenceEnabled(
+      task.librarySettings.imageEnabled ?? true
+    );
+    referenceDomain.setImageLibraryReferenceCount(
+      task.librarySettings.imageCount ?? 3
+    );
     if (task.librarySettings.count > referenceDomain.libraryIndexResponseCount) {
       referenceDomain.setLibraryIndexResponseCount(task.librarySettings.count);
     }

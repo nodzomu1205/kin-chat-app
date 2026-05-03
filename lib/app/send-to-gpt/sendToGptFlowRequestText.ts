@@ -4,7 +4,9 @@ import {
   buildDraftPreparationRequestBlock,
   buildFileSaveRequestBlock,
   buildLibraryIndexResponseDraft,
+  buildLibraryImageDataResponseDraft,
   buildLibraryItemResponseDraft,
+  buildPptDesignRequestInstruction,
   buildSearchRequestInstruction,
   buildUserResponseRequestBlock,
 } from "@/lib/app/send-to-gpt/sendToGptProtocolBuilders";
@@ -33,11 +35,14 @@ export function buildFinalRequestText(params: {
   effectiveSearchLocation: string;
   libraryIndexRequestEvent?: ProtocolTaskEventLike;
   libraryItemRequestEvent?: ProtocolTaskEventLike;
+  libraryImageDataRequestEvent?: ProtocolTaskEventLike;
+  pptDesignRequestEvent?: ProtocolTaskEventLike;
   draftPreparationRequestEvent?: ProtocolTaskEventLike;
   draftModificationRequestEvent?: ProtocolTaskEventLike;
   fileSaveRequestEvent?: ProtocolTaskEventLike;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceCount?: number;
   recentMessages?: Message[];
   taskContext?: string;
 }) {
@@ -51,12 +56,15 @@ export function buildFinalRequestText(params: {
     effectiveSearchLocation: params.effectiveSearchLocation,
     libraryIndexRequestEvent: params.libraryIndexRequestEvent,
     libraryItemRequestEvent: params.libraryItemRequestEvent,
+    libraryImageDataRequestEvent: params.libraryImageDataRequestEvent,
+    pptDesignRequestEvent: params.pptDesignRequestEvent,
     draftPreparationRequestEvent: params.draftPreparationRequestEvent,
     draftModificationRequestEvent: params.draftModificationRequestEvent,
     fileSaveRequestEvent: params.fileSaveRequestEvent,
     rawText: params.rawText,
     referenceLibraryItems: params.referenceLibraryItems,
     libraryIndexResponseCount: params.libraryIndexResponseCount,
+    imageLibraryReferenceCount: params.imageLibraryReferenceCount,
     recentMessages: params.recentMessages,
     defaultText: buildNormalizedRequestText({
       rawText: params.rawText,
@@ -82,12 +90,15 @@ export function buildProtocolOverrideRequestText(params: {
   effectiveSearchLocation: string;
   libraryIndexRequestEvent?: ProtocolTaskEventLike;
   libraryItemRequestEvent?: ProtocolTaskEventLike;
+  libraryImageDataRequestEvent?: ProtocolTaskEventLike;
+  pptDesignRequestEvent?: ProtocolTaskEventLike;
   draftPreparationRequestEvent?: ProtocolTaskEventLike;
   draftModificationRequestEvent?: ProtocolTaskEventLike;
   fileSaveRequestEvent?: ProtocolTaskEventLike;
   rawText: string;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceCount?: number;
   recentMessages?: Message[];
   defaultText: string;
 }) {
@@ -140,6 +151,27 @@ export function buildProtocolOverrideRequestText(params: {
       actionId: params.libraryItemRequestEvent.actionId || "",
       rawText: params.rawText,
       referenceLibraryItems: params.referenceLibraryItems,
+    });
+  }
+
+  if (params.libraryImageDataRequestEvent) {
+    return buildLibraryImageDataResponseDraft({
+      taskId:
+        params.libraryImageDataRequestEvent.taskId || params.currentTaskId || "",
+      actionId: params.libraryImageDataRequestEvent.actionId || "",
+      referenceLibraryItems: params.referenceLibraryItems,
+      imageLibraryReferenceCount: params.imageLibraryReferenceCount ?? 0,
+    });
+  }
+
+  if (params.pptDesignRequestEvent) {
+    return buildPptDesignRequestInstruction({
+      taskId: params.pptDesignRequestEvent.taskId || params.currentTaskId || "",
+      actionId: params.pptDesignRequestEvent.actionId || "",
+      body:
+        params.pptDesignRequestEvent.body ||
+        params.pptDesignRequestEvent.summary ||
+        params.rawText,
     });
   }
 

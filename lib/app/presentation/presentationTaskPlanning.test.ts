@@ -513,6 +513,18 @@ describe("presentationTaskPlanning", () => {
     expect(input).toContain("取込素材:");
   });
 
+  it("includes library reference context in presentation task input when provided", () => {
+    const input = buildPresentationTaskStructuredInput({
+      title: "Deck",
+      userInstruction: "Use references",
+      body: "Body",
+      libraryReferenceContext: "<<STORED_LIBRARY_CONTEXT>>\nLIB DATA",
+    });
+
+    expect(input).toContain("Library reference context:");
+    expect(input).toContain("LIB DATA");
+  });
+
   it("uses slideFrames wording in the task constraints", () => {
     const constraints = buildPresentationTaskConstraints("create").join("\n");
 

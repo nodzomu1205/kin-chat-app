@@ -68,6 +68,15 @@ function buildTaskDraftImageLibraryContext(
   );
 }
 
+function buildTaskDraftLibraryReferenceContext(
+  args:
+    | PrepTaskFromInputFlowArgs
+    | UpdateTaskFromInputFlowArgs
+    | UpdateTaskFromLastGptMessageFlowArgs
+) {
+  return args.buildLibraryReferenceContext();
+}
+
 export async function runPrepTaskFromInputFlow(
   args: PrepTaskFromInputFlowArgs
 ) {
@@ -119,6 +128,7 @@ export async function runPrepTaskFromInputFlow(
         userInstruction: nextUserInstruction,
         body: taskBodySource,
         material: args.currentTaskDraft.searchContext?.rawText || "",
+        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildTaskStructuredInput({
@@ -126,6 +136,7 @@ export async function runPrepTaskFromInputFlow(
         userInstruction: nextUserInstruction,
         body: taskBodySource,
         searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
+        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
       });
 
   const userMsg: Message = {
@@ -281,6 +292,7 @@ export async function runUpdateTaskFromInputFlow(
         currentPlanText: currentTaskText,
         body: parsedInput.freeText || normalizedAdditionalText,
         material: args.currentTaskDraft.searchContext?.rawText || "",
+        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildMergedTaskInput(
@@ -291,6 +303,7 @@ export async function runUpdateTaskFromInputFlow(
           title: resolvedTitle,
           userInstruction: nextUserInstruction,
           searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
+          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         }
       );
 
@@ -455,6 +468,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
         currentPlanText: currentTaskText,
         body: directionInstruction,
         material: lastGptMessage.text.trim(),
+        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : currentTaskText
@@ -466,6 +480,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
             "Review the latest GPT response, refine the task, and return an updated draft.",
           body: currentTaskText,
           material: lastGptMessage.text.trim(),
+          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         })
       : buildTaskStructuredInput({
           title: resolvedTitle,
@@ -474,6 +489,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
             "Review the latest GPT response and generate a clean task draft from it.",
           body: lastGptMessage.text.trim(),
           searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
+          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         });
 
   const { requestRecentMessages } = buildTaskFlowRecentContext({

@@ -36,6 +36,10 @@ export function resolveTaskExecutionStatus(
     event.type === "search_response" ||
     event.type === "youtube_transcript_request" ||
     event.type === "youtube_transcript_response" ||
+    event.type === "library_image_data_request" ||
+    event.type === "library_image_data_response" ||
+    event.type === "ppt_design_request" ||
+    event.type === "ppt_design_response" ||
     event.type === "draft_preparation_request" ||
     event.type === "draft_preparation_response" ||
     event.type === "draft_modification_request" ||
@@ -57,6 +61,8 @@ function getRequirementByKind(
     | "search_request"
     | "youtube_transcript_request"
     | "library_reference"
+    | "image_library_reference"
+    | "ppt_design_request"
 ) {
   return requirementProgress.find((item) => item.kind === kind);
 }
@@ -161,6 +167,8 @@ export function applyTaskProtocolEvent(
       | "search_request"
       | "youtube_transcript_request"
       | "library_reference"
+      | "image_library_reference"
+      | "ppt_design_request"
   ) =>
     isRequirementProgressAtLimit(
       getRequirementByKind(next.requirementProgress, kind)
@@ -196,6 +204,23 @@ export function applyTaskProtocolEvent(
       next.requirementProgress = markRequirementProgress(
         next.requirementProgress,
         "library_reference"
+      );
+    }
+  } else if (event.type === "library_image_data_response") {
+    if (
+      isSuccessfulTaskArtifact(event) &&
+      !isOverLimit("image_library_reference")
+    ) {
+      next.requirementProgress = markRequirementProgress(
+        next.requirementProgress,
+        "image_library_reference"
+      );
+    }
+  } else if (event.type === "ppt_design_response") {
+    if (isSuccessfulTaskArtifact(event) && !isOverLimit("ppt_design_request")) {
+      next.requirementProgress = markRequirementProgress(
+        next.requirementProgress,
+        "ppt_design_request"
       );
     }
   } else if (event.type === "user_question" || event.type === "material_request") {

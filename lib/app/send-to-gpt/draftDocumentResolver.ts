@@ -24,15 +24,19 @@ function isPartialResponseMode(value: string | undefined) {
 
 function collectDraftResponseBlocks(messages: Message[]): DraftResponseBlock[] {
   const blockRegex =
-    /<<SYS_DRAFT_(?:PREPARATION|MODIFICATION)_RESPONSE>>([\s\S]*?)<<END_SYS_DRAFT_(?:PREPARATION|MODIFICATION)_RESPONSE>>/gi;
+    /<<SYS_(?:DRAFT_(?:PREPARATION|MODIFICATION)|PPT_DESIGN)_RESPONSE>>([\s\S]*?)<<END_SYS_(?:DRAFT_(?:PREPARATION|MODIFICATION)|PPT_DESIGN)_RESPONSE>>/gi;
 
   return messages.flatMap((message) =>
     [...message.text.matchAll(blockRegex)].map((match) => {
       const fields = parseProtocolBlockFields(match[1] ?? "");
+      const body = fields.BODY?.trim() || "";
       return {
-        documentId: fields.DOCUMENT_ID?.trim() || "",
+        documentId:
+          fields.DOCUMENT_ID?.trim() ||
+          body.match(/^Document ID\s*:\s*(.+)$/im)?.[1]?.trim() ||
+          "",
         title: fields.TITLE?.trim() || "",
-        body: fields.BODY?.trim() || "",
+        body,
         responseMode: fields.RESPONSE_MODE,
       };
     })

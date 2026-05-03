@@ -143,13 +143,19 @@ describe("resolveTaskIntentWithFallback", () => {
             count: null,
             rule: null,
           },
-          library_index_request: {
+          library_reference: {
             matched: false,
             phrase: "",
             count: null,
             rule: null,
           },
-          library_item_request: {
+          image_library_reference: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          ppt_slide_count: {
             matched: false,
             phrase: "",
             count: null,
@@ -252,13 +258,19 @@ describe("resolveTaskIntentWithFallback", () => {
             count: null,
             rule: null,
           },
-          library_index_request: {
+          library_reference: {
             matched: false,
             phrase: "",
             count: null,
             rule: null,
           },
-          library_item_request: {
+          image_library_reference: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          ppt_slide_count: {
             matched: false,
             phrase: "",
             count: null,
@@ -332,13 +344,19 @@ describe("resolveTaskIntentWithFallback", () => {
             count: null,
             rule: null,
           },
-          library_index_request: {
+          library_reference: {
             matched: false,
             phrase: "",
             count: null,
             rule: null,
           },
-          library_item_request: {
+          image_library_reference: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          ppt_slide_count: {
             matched: false,
             phrase: "",
             count: null,
@@ -372,6 +390,111 @@ describe("resolveTaskIntentWithFallback", () => {
 
     expect(result.pendingCandidates).toEqual([]);
   });
+
+  it("keeps crowded library, image-library, slide, search, and PPT-work slots independent", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        reply: JSON.stringify({
+          output_limit: {
+            matched: false,
+            phrase: "",
+            charLimit: null,
+            rule: null,
+          },
+          gpt_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          search_request: {
+            matched: true,
+            phrase: "search up to 3 times",
+            count: 3,
+            rule: "up_to",
+          },
+          youtube_transcript_request: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          library_reference: {
+            matched: true,
+            phrase: "normal library reference exactly once",
+            count: 1,
+            rule: "exact",
+          },
+          image_library_reference: {
+            matched: true,
+            phrase: "image-library reference exactly once",
+            count: 1,
+            rule: "exact",
+          },
+          ppt_slide_count: {
+            matched: true,
+            phrase: "create exactly 5 slides",
+            count: 5,
+            rule: "exact",
+          },
+          ppt_design_request: {
+            matched: true,
+            phrase: "PPT design work up to 5 times",
+            count: 5,
+            rule: "up_to",
+          },
+          ask_user: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+        }),
+        usage: null,
+      }),
+    } as Response);
+
+    const result = await resolveTaskIntentWithFallback({
+      input:
+        "Create 5 slides. Use library reference once, image-library reference once, search up to 3 times, and PPT design work up to 5 times.",
+    });
+
+    expect(result.pendingCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "library_reference",
+          count: 1,
+          rule: "exact",
+          draftText: "Use exactly 1 library reference.",
+        }),
+        expect.objectContaining({
+          kind: "image_library_reference",
+          count: 1,
+          rule: "exact",
+          draftText: "Use exactly 1 image-library reference.",
+        }),
+        expect.objectContaining({
+          kind: "ppt_slide_count",
+          count: 5,
+          rule: "exact",
+          draftText: "Create exactly 5 PPT slides.",
+        }),
+        expect.objectContaining({
+          kind: "search_request",
+          count: 3,
+          rule: "up_to",
+          draftText: "Perform up to 3 searches.",
+        }),
+        expect.objectContaining({
+          kind: "ppt_design_request",
+          count: 5,
+          rule: "up_to",
+          draftText: "Request up to 5 PPT design work items.",
+        }),
+      ])
+    );
+  });
 });
 
 describe("taskIntentFallback prompt", () => {
@@ -385,8 +508,9 @@ describe("taskIntentFallback prompt", () => {
     expect(prompt).toContain('"gpt_request": {');
     expect(prompt).toContain('"search_request": {');
     expect(prompt).toContain('"youtube_transcript_request": {');
-    expect(prompt).toContain('"library_index_request": {');
-    expect(prompt).toContain('"library_item_request": {');
+    expect(prompt).toContain('"library_reference": {');
+    expect(prompt).toContain('"image_library_reference": {');
+    expect(prompt).toContain('"ppt_slide_count": {');
     expect(prompt).toContain('"ask_user": {');
     expect(prompt).toContain("- Always return every slot above.");
     expect(prompt).toContain(
@@ -394,6 +518,9 @@ describe("taskIntentFallback prompt", () => {
     );
     expect(prompt).toContain(
       "- Write phrase as a snippet around the number including the subject, but not necessarily the whole sentence."
+    );
+    expect(prompt).toContain(
+      "- Treat every slot independently. One matched slot must not suppress another matched slot."
     );
     expect(prompt).not.toContain("Use output_limit");
     expect(prompt).not.toContain("Use gpt_request");
@@ -427,13 +554,19 @@ describe("taskIntentFallback prompt", () => {
             count: null,
             rule: null,
           },
-          library_index_request: {
+          library_reference: {
             matched: false,
             phrase: "",
             count: null,
             rule: null,
           },
-          library_item_request: {
+          image_library_reference: {
+            matched: false,
+            phrase: "",
+            count: null,
+            rule: null,
+          },
+          ppt_slide_count: {
             matched: false,
             phrase: "",
             count: null,

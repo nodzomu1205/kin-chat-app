@@ -62,6 +62,7 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     gptMessages: Message[];
     gptInput: string;
     setGptInput: BuildGptPanelArgs["chat"]["setGptInput"];
+    setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     gptBottomRef: BuildGptPanelArgs["chat"]["gptBottomRef"];
     loading: boolean;
     ingestLoading: boolean;
@@ -147,6 +148,9 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     | "onUpdateMemoryRuleCandidate"
     | "onDeleteApprovedMemoryRule"
   >;
+  usage: {
+    applyImageUsage: BuildGptPanelArgs["settings"]["applyImageUsage"];
+  };
   protocolState: {
     protocolPrompt: string;
     protocolRulebook: string;

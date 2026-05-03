@@ -58,6 +58,15 @@ function createRuntime(): TaskRuntimeState {
         status: "not_started",
       },
       {
+        id: "ppt_design_request",
+        label: "PPT work",
+        category: "optional",
+        kind: "ppt_design_request",
+        targetCount: 2,
+        completedCount: 0,
+        status: "not_started",
+      },
+      {
         id: "finalize",
         label: "Finalize",
         category: "required",
@@ -236,6 +245,30 @@ describe("taskProtocolRuntime", () => {
         (item) => item.kind === "youtube_transcript_request"
       )?.completedCount
     ).toBe(2);
+  });
+
+  it("increments PPT work progress on successful PPT design responses", () => {
+    const next = applyTaskProtocolEvent(
+      createRuntime(),
+      createEvent({
+        type: "ppt_design_response",
+        taskId: "123456",
+        actionId: "P001",
+        body: "【PPT設計書】\nDocument ID: ppt_123456_001",
+      }),
+      {
+        direction: "gpt_to_kin",
+        resolvedTaskId: "123456",
+        actionId: "P001",
+        now: 103,
+      }
+    );
+
+    expect(
+      next.requirementProgress.find(
+        (item) => item.kind === "ppt_design_request"
+      )?.completedCount
+    ).toBe(1);
   });
 
   it("creates a pending user-facing request for user questions", () => {

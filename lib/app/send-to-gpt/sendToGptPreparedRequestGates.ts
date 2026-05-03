@@ -12,6 +12,7 @@ import type { PreparedRequestGateContext } from "@/lib/app/send-to-gpt/sendToGpt
 import {
   handleProtocolLimitViolationGate,
   handleFileSaveRequestGate,
+  handlePptDesignRequestGate,
   handleTaskDirectiveOnlyGate,
   handleYoutubeTranscriptGate,
 } from "@/lib/app/send-to-gpt/sendToGptPreparedGateHandlers";
@@ -21,6 +22,7 @@ import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMulti
 export {
   handleProtocolLimitViolationGate,
   handleFileSaveRequestGate,
+  handlePptDesignRequestGate,
   handleTaskDirectiveOnlyGate,
   handleYoutubeTranscriptGate,
 } from "@/lib/app/send-to-gpt/sendToGptPreparedGateHandlers";
@@ -49,12 +51,14 @@ export async function runPreparedRequestGates(args: {
   >;
   setActiveTabToKin?: () => void;
   recordIngestedDocument: (document: {
+    artifactType?: import("@/types/chat").StoredDocument["artifactType"];
     title: string;
     filename: string;
     text: string;
     summary?: string;
     taskId?: string;
     charCount: number;
+    structuredPayload?: import("@/types/chat").StoredDocument["structuredPayload"];
     createdAt: string;
     updatedAt: string;
   }) => { id: string };
@@ -75,6 +79,10 @@ export async function runPreparedRequestGates(args: {
   ) => void;
   applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applyIngestUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  referenceLibraryItems: import("@/types/chat").ReferenceLibraryItem[];
+  imageLibraryReferenceEnabled?: boolean;
+  imageLibraryReferenceCount?: number;
+  applyTaskUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
 }) {
   const taskDirectiveOnlyGateContext = buildTaskDirectiveOnlyGateContext({
     preparedRequest: args.preparedRequest,
@@ -113,6 +121,24 @@ export async function runPreparedRequestGates(args: {
       ...protocolLimitViolationGateContext,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
+    })
+  ) {
+    return true;
+  }
+
+  if (
+    await handlePptDesignRequestGate({
+      pptDesignRequestEvent: args.preparedRequest.pptDesignRequestEvent,
+      userMsg: args.preparedRequest.userMsg,
+      libraryReferenceContext: args.preparedRequest.libraryReferenceContext,
+      referenceLibraryItems: args.referenceLibraryItems,
+      imageLibraryReferenceEnabled: args.imageLibraryReferenceEnabled,
+      imageLibraryReferenceCount: args.imageLibraryReferenceCount,
+      applyTaskUsage: args.applyTaskUsage,
+      setGptMessages: args.setGptMessages,
+      setGptInput: args.setGptInput,
+      setGptLoading: args.setGptLoading,
+      ingestProtocolMessage: args.ingestProtocolMessage,
     })
   ) {
     return true;

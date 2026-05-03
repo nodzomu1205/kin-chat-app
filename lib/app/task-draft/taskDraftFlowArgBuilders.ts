@@ -43,6 +43,7 @@ export function buildCommonTaskDraftFlowArgs(
     gptStateRef: args.gptMemoryRuntime.gptStateRef,
     chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
     referenceLibraryItems: args.referenceLibraryItems,
+    buildLibraryReferenceContext: args.buildLibraryReferenceContext,
     imageLibraryReferenceEnabled: args.imageLibraryReferenceEnabled,
     imageLibraryReferenceCount: args.imageLibraryReferenceCount,
     applyChatUsage: args.applyChatUsage,

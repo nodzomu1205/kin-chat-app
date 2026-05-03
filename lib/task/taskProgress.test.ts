@@ -120,13 +120,13 @@ describe("taskProgress", () => {
     );
   });
 
-  it("parses Japanese constraint wording through the same constraints path", () => {
+  it("parses approved canonical constraint wording through the same constraints path", () => {
     const progress = buildInitialRequirementProgress(
       createIntent({
         constraints: [
-          "検索は3回までにしてください。",
-          "ユーザー確認は1回ちょうど行ってください。",
-          "最終成果物は1000文字前後で要約してください。",
+          "Perform up to 3 searches.",
+          "Ask exactly 1 question to the user.",
+          "Please summarize the final output around 1000 characters.",
         ],
         workflow: {},
       })
@@ -173,6 +173,28 @@ describe("taskProgress", () => {
       progress.find((item) => item.kind === "search_request")?.targetCount
     ).toBe(1);
     expect(progress.find((item) => item.kind === "finalize")).toBeTruthy();
+  });
+
+  it("adds PPT work progress from workflow hints", () => {
+    const progress = buildInitialRequirementProgress(
+      createIntent({
+        constraints: [],
+        workflow: {
+          pptDesignRequestCount: 2,
+          pptDesignRequestCountRule: "up_to",
+          allowPptDesignRequest: true,
+        },
+      })
+    );
+
+    expect(progress.find((item) => item.kind === "ppt_design_request")).toEqual(
+      expect.objectContaining({
+        label: "PPT作業",
+        targetCount: 2,
+        rule: "up_to",
+        category: "optional",
+      })
+    );
   });
 
   it("marks requirement progress with increment and done status", () => {

@@ -7,8 +7,10 @@ export type TaskIntentFallbackSlotKind =
   | "gpt_request"
   | "search_request"
   | "youtube_transcript_request"
-  | "library_index_request"
-  | "library_item_request"
+  | "library_reference"
+  | "image_library_reference"
+  | "ppt_slide_count"
+  | "ppt_design_request"
   | "ask_user";
 
 export type TaskIntentFallbackCandidate = {
@@ -36,8 +38,10 @@ const SLOT_KINDS: TaskIntentFallbackSlotKind[] = [
   "gpt_request",
   "search_request",
   "youtube_transcript_request",
-  "library_index_request",
-  "library_item_request",
+  "library_reference",
+  "image_library_reference",
+  "ppt_slide_count",
+  "ppt_design_request",
   "ask_user",
 ];
 
@@ -117,7 +121,7 @@ function buildSlotSchemaLines(kind: TaskIntentFallbackSlotKind) {
     '    "matched": boolean,',
     '    "phrase": string,',
     '    "count": number | null,',
-    '    "rule": "up_to" | "exact" | "at_least" | null',
+    '    "rule": "up_to" | "around" | "exact" | "at_least" | null',
     "  }",
   ];
 }
@@ -144,6 +148,14 @@ export function buildTaskIntentFallbackPrompt(input: string, _baseline: TaskInte
     "- Always return every slot above.",
     "- Set matched=true only when USER_TEXT explicitly contains that requirement.",
     "- Write phrase as a snippet around the number including the subject, but not necessarily the whole sentence.",
+    "- Infer rule from the semantic meaning of the user wording: upper bound => up_to, approximate target => around, lower bound => at_least, fixed number => exact.",
+    "- Do not default approximate wording to up_to. Do not default upper-bound wording to at_least.",
+    "- Use library_reference for normal text/library data reference requirements.",
+    "- Use image_library_reference only for image-library reference requirements.",
+    "- Use ppt_slide_count for requested number of presentation slides. Use ppt_design_request for count/limit of PPT design work requests.",
+    "- Treat every slot independently. One matched slot must not suppress another matched slot.",
+    "- If USER_TEXT requests both normal library reference and image-library reference, set both library_reference and image_library_reference matched=true.",
+    "- If USER_TEXT requests both a number of slides and a limit/count for PPT design work requests, set both ppt_slide_count and ppt_design_request matched=true.",
     "",
     "USER_TEXT_START",
     input,

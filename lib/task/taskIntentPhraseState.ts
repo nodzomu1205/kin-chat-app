@@ -6,6 +6,9 @@ export type IntentPhraseKind =
   | "search_request"
   | "youtube_transcript_request"
   | "library_reference"
+  | "image_library_reference"
+  | "ppt_slide_count"
+  | "ppt_design_request"
   | "char_limit";
 
 export type ApprovedIntentPhrase = {
@@ -31,7 +34,9 @@ type DraftTextKind =
   | "output_limit"
   | "gpt_request"
   | "library_index_request"
-  | "library_item_request";
+  | "library_item_request"
+  | "image_library_reference"
+  | "ppt_slide_count";
 
 export const STRONG_APPROVED_INTENT_MATCH_SCORE = 6;
 
@@ -281,6 +286,22 @@ export function formatIntentCandidateDraftText(candidate: {
   if (candidate.kind === "library_item_request") {
     return formatCountInstruction("Request", "library data response", "library data responses");
   }
+  if (candidate.kind === "library_reference") {
+    return formatCountInstruction("Use", "library reference", "library references");
+  }
+  if (candidate.kind === "image_library_reference") {
+    return formatCountInstruction(
+      "Use",
+      "image-library reference",
+      "image-library references"
+    );
+  }
+  if (candidate.kind === "ppt_slide_count") {
+    return formatCountInstruction("Create", "PPT slide", "PPT slides");
+  }
+  if (candidate.kind === "ppt_design_request") {
+    return formatCountInstruction("Request", "PPT design work", "PPT design work items");
+  }
   return formatCountInstruction("Request", "library data response", "library data responses");
 }
 
@@ -293,20 +314,29 @@ export function parseIntentCandidateDraftText(
   const rule = detectTaskCountRule(normalized, fallback.rule || "exact");
   const lower = normalized.toLowerCase();
 
-  const kind: IntentPhraseKind =
-    /final output|summari[sz]e|characters?/.test(lower)
-      ? "char_limit"
-      : includesAnyKeyword(lower, ["search"])
-        ? "search_request"
-        : includesAnyKeyword(lower, ["youtube", "transcript"])
-          ? "youtube_transcript_request"
-          : includesAnyKeyword(lower, ["library"])
-            ? "library_reference"
-            : includesAnyKeyword(lower, ["ask user", "user"])
-              ? "ask_user"
-              : includesAnyKeyword(lower, ["gpt", "chatgpt"])
-                ? "ask_gpt"
-                : fallback.kind;
+  let kind: IntentPhraseKind = fallback.kind;
+  if (/final output|summari[sz]e|characters?/.test(lower)) {
+    kind = "char_limit";
+  } else if (includesAnyKeyword(lower, ["search"])) {
+    kind = "search_request";
+  } else if (includesAnyKeyword(lower, ["youtube", "transcript"])) {
+    kind = "youtube_transcript_request";
+  } else if (includesAnyKeyword(lower, ["image-library", "image library"])) {
+    kind = "image_library_reference";
+  } else if (
+    includesAnyKeyword(lower, ["ppt", "powerpoint", "presentation", "slide"]) &&
+    includesAnyKeyword(lower, ["create", "slides"])
+  ) {
+    kind = "ppt_slide_count";
+  } else if (includesAnyKeyword(lower, ["library"])) {
+    kind = "library_reference";
+  } else if (includesAnyKeyword(lower, ["ppt", "powerpoint", "presentation", "slide"])) {
+    kind = "ppt_design_request";
+  } else if (includesAnyKeyword(lower, ["ask user", "user"])) {
+    kind = "ask_user";
+  } else if (includesAnyKeyword(lower, ["gpt", "chatgpt"])) {
+    kind = "ask_gpt";
+  }
 
   return {
     kind,

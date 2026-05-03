@@ -90,6 +90,7 @@ export function buildChatPageWorkspaceGptState(
     gptMessages: args.ui.gptMessages,
     gptInput: args.ui.gptInput,
     setGptInput: args.ui.setGptInput,
+    setGptMessages: args.ui.setGptMessages,
     gptBottomRef: args.ui.gptBottomRef,
     loading: args.ui.gptLoading,
     ingestLoading: args.ui.ingestLoading,

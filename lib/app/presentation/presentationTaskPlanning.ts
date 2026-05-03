@@ -54,6 +54,7 @@ export function buildPresentationTaskStructuredInput(args: {
   body?: string;
   material?: string;
   currentPlanText?: string;
+  libraryReferenceContext?: string;
   imageLibraryContext?: string;
 }) {
   return [
@@ -64,7 +65,11 @@ export function buildPresentationTaskStructuredInput(args: {
       : "",
     args.body?.trim() ? `入力本文:\n${args.body.trim()}` : "",
     args.material?.trim() ? `取込素材:\n${args.material.trim()}` : "",
-  ]
+  ].concat(
+    args.libraryReferenceContext?.trim()
+      ? [`Library reference context:\n${args.libraryReferenceContext.trim()}`]
+      : []
+  )
     .concat(
       args.imageLibraryContext?.trim()
         ? [`Image library reference candidates:\n${args.imageLibraryContext.trim()}`]

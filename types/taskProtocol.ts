@@ -31,10 +31,16 @@ export type TaskIntent = {
     youtubeTranscriptRequestCountRule?: TaskCountRule;
     libraryReferenceCount?: number;
     libraryReferenceCountRule?: TaskCountRule;
+    imageLibraryReferenceCount?: number;
+    imageLibraryReferenceCountRule?: TaskCountRule;
+    pptDesignRequestCount?: number;
+    pptDesignRequestCountRule?: TaskCountRule;
     allowMaterialRequest?: boolean;
     allowSearchRequest?: boolean;
     allowYoutubeTranscriptRequest?: boolean;
     allowLibraryReference?: boolean;
+    allowImageLibraryReference?: boolean;
+    allowPptDesignRequest?: boolean;
     allowDraftPreparation?: boolean;
     allowDraftModification?: boolean;
     allowFileSaving?: boolean;
@@ -73,6 +79,8 @@ export type TaskRequirementProgress = {
     | "search_request"
     | "youtube_transcript_request"
     | "library_reference"
+    | "image_library_reference"
+    | "ppt_design_request"
     | "finalize";
   targetCount?: number;
   completedCount?: number;
@@ -113,6 +121,10 @@ export type TaskProtocolEventType =
   | "library_index_response"
   | "library_item_request"
   | "library_item_response"
+  | "library_image_data_request"
+  | "library_image_data_response"
+  | "ppt_design_request"
+  | "ppt_design_response"
   | "draft_preparation_request"
   | "draft_preparation_response"
   | "draft_modification_request"

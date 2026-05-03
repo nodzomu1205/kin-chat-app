@@ -312,6 +312,7 @@ export function buildTaskDraftActionArgs(
       groups.services.imageLibraryReferenceEnabled,
     imageLibraryReferenceCount: groups.services.imageLibraryReferenceCount,
     lastSearchContext: groups.search.lastSearchContext,
+    buildLibraryReferenceContext: groups.services.buildLibraryReferenceContext,
     referenceLibraryItems: groups.services.referenceLibraryItems,
     setCurrentTaskDraft: groups.task.setCurrentTaskDraft,
     setGptInput: groups.uiState.setGptInput,

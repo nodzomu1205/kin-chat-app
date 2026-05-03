@@ -43,6 +43,12 @@ export function buildProtocolInteractionContext(params: {
     libraryItemRequestEvent: protocolEvents.find(
       (event) => event.type === "library_item_request"
     ),
+    libraryImageDataRequestEvent: protocolEvents.find(
+      (event) => event.type === "library_image_data_request"
+    ),
+    pptDesignRequestEvent: protocolEvents.find(
+      (event) => event.type === "ppt_design_request"
+    ),
     draftPreparationRequestEvent: protocolEvents.find(
       (event) => event.type === "draft_preparation_request"
     ),

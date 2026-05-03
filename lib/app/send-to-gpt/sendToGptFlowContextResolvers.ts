@@ -66,6 +66,14 @@ export function resolveProtocolLimitViolation(params: {
     taskId?: string;
     actionId?: string;
   };
+  libraryImageDataRequestEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
+  pptDesignRequestEvent?: {
+    taskId?: string;
+    actionId?: string;
+  };
   currentTaskId?: string | null;
   getProtocolLimitViolation: (event: ProtocolLimitEvent) => string | null;
 }) {
@@ -105,6 +113,21 @@ export function resolveProtocolLimitViolation(params: {
         actionId:
           params.libraryIndexRequestEvent?.actionId ||
           params.libraryItemRequestEvent?.actionId,
+      })) ||
+    (params.libraryImageDataRequestEvent &&
+      params.getProtocolLimitViolation({
+        type: "image_library_reference",
+        taskId:
+          params.libraryImageDataRequestEvent.taskId ||
+          params.currentTaskId ||
+          undefined,
+        actionId: params.libraryImageDataRequestEvent.actionId,
+      })) ||
+    (params.pptDesignRequestEvent &&
+      params.getProtocolLimitViolation({
+        type: "ppt_design_request",
+        taskId: params.pptDesignRequestEvent.taskId || params.currentTaskId || undefined,
+        actionId: params.pptDesignRequestEvent.actionId,
       })) ||
     null
   );

@@ -4,6 +4,37 @@ import {
   stripFrameSpecVisualAssets,
 } from "@/lib/server/presentation/imageGeneration";
 
+type ResolvedFrameSpecForTest = {
+  deckFrame?: {
+    openingSlide?: {
+      visualRequest: {
+        asset?: {
+          imageId?: string;
+          base64?: string;
+          widthPx?: number;
+          heightPx?: number;
+          aspectRatio?: number;
+          orientation?: string;
+        };
+      };
+    };
+  };
+  slideFrames: Array<{
+    blocks: Array<{
+      visualRequest: {
+        asset?: {
+          imageId?: string;
+          base64?: string;
+          widthPx?: number;
+          heightPx?: number;
+          aspectRatio?: number;
+          orientation?: string;
+        };
+      };
+    }>;
+  }>;
+};
+
 describe("stripFrameSpecVisualAssets", () => {
   it("removes generated assets without changing visual prompts", () => {
     const spec = {
@@ -74,7 +105,7 @@ describe("resolveFrameSpecVisualAssets", () => {
       ],
     };
 
-    const resolved = await resolveFrameSpecVisualAssets(spec, {
+    const resolved = (await resolveFrameSpecVisualAssets(spec, {
       mode: "library",
       libraryImageAssets: [
         {
@@ -88,7 +119,7 @@ describe("resolveFrameSpecVisualAssets", () => {
           orientation: "landscape",
         },
       ],
-    });
+    })) as ResolvedFrameSpecForTest;
 
     expect(resolved.slideFrames[0].blocks[0].visualRequest.asset).toMatchObject({
       imageId: "img_cotton",
@@ -115,7 +146,7 @@ describe("resolveFrameSpecVisualAssets", () => {
       slideFrames: [],
     };
 
-    const resolved = await resolveFrameSpecVisualAssets(spec, {
+    const resolved = (await resolveFrameSpecVisualAssets(spec, {
       mode: "library",
       libraryImageAssets: [
         {
@@ -129,9 +160,9 @@ describe("resolveFrameSpecVisualAssets", () => {
           orientation: "landscape",
         },
       ],
-    });
+    })) as ResolvedFrameSpecForTest;
 
-    expect(resolved.deckFrame.openingSlide.visualRequest.asset).toMatchObject({
+    expect(resolved.deckFrame?.openingSlide?.visualRequest.asset).toMatchObject({
       imageId: "img_cover",
       base64: "cover-base64",
       orientation: "landscape",
@@ -164,7 +195,7 @@ describe("resolveFrameSpecVisualAssets", () => {
       ],
     };
 
-    const resolved = await resolveFrameSpecVisualAssets(spec, {
+    const resolved = (await resolveFrameSpecVisualAssets(spec, {
       mode: "library",
       libraryImageAssets: [
         {
@@ -174,7 +205,7 @@ describe("resolveFrameSpecVisualAssets", () => {
           description: "process chart",
         },
       ],
-    });
+    })) as ResolvedFrameSpecForTest;
 
     expect(resolved.slideFrames[0].blocks[0].visualRequest.asset?.imageId).toBe(
       "img_process"
@@ -200,7 +231,7 @@ describe("resolveFrameSpecVisualAssets", () => {
       ],
     };
 
-    const resolved = await resolveFrameSpecVisualAssets(spec, {
+    const resolved = (await resolveFrameSpecVisualAssets(spec, {
       mode: "library",
       libraryImageAssets: [
         {
@@ -210,7 +241,7 @@ describe("resolveFrameSpecVisualAssets", () => {
           description: "cotton flower photo",
         },
       ],
-    });
+    })) as ResolvedFrameSpecForTest;
 
     expect(resolved.slideFrames[0].blocks[0].visualRequest.asset).toBeUndefined();
   });
@@ -231,7 +262,7 @@ describe("resolveFrameSpecVisualAssets", () => {
       ],
     };
 
-    const resolved = await resolveFrameSpecVisualAssets(spec, {
+    const resolved = (await resolveFrameSpecVisualAssets(spec, {
       mode: "library",
       libraryImageAssets: [
         {
@@ -242,7 +273,7 @@ describe("resolveFrameSpecVisualAssets", () => {
           description: "cotton flower photo",
         },
       ],
-    });
+    })) as ResolvedFrameSpecForTest;
 
     expect(resolved.slideFrames[0].blocks[0].visualRequest).toMatchObject({
       preferredImageId: "img_18cc183c-a3f0-4650-aeac-bf2891738715",
@@ -268,7 +299,7 @@ describe("resolveFrameSpecVisualAssets", () => {
       ],
     };
 
-    const resolved = await resolveFrameSpecVisualAssets(spec, {
+    const resolved = (await resolveFrameSpecVisualAssets(spec, {
       mode: "library",
       libraryImageAssets: [
         {
@@ -278,7 +309,7 @@ describe("resolveFrameSpecVisualAssets", () => {
           description: "インドの綿花畑で農民が収穫している写真",
         },
       ],
-    });
+    })) as ResolvedFrameSpecForTest;
 
     expect(resolved.slideFrames[0].blocks[0].visualRequest.asset?.imageId).toBe(
       "img_field"

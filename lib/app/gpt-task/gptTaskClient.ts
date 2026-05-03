@@ -22,6 +22,33 @@ type TaskApiResponse = {
   usage: UsageSummary;
 };
 
+export type PresentationDirectEditInterpretation = {
+  taskId?: string;
+  status?: "OK" | "NEEDS_MORE" | "PARTIAL" | string;
+  documentId?: string;
+  edits?: Array<{
+    slideNumber?: number;
+    blockNumber?: number;
+    blockId?: string;
+    blockType?: "text" | "visual" | string;
+    blockKind?: string;
+    instruction?: string;
+    currentText?: string;
+    proposedText?: string;
+    visualMode?:
+      | "library_image"
+      | "generate_image"
+      | "revise_prompt"
+      | "none"
+      | string;
+    imageId?: string;
+    generationPrompt?: string;
+    visualBrief?: string;
+  }>;
+  warnings?: string[];
+  missingInfo?: string[];
+};
+
 export function formatTaskResultText(parsed: TaskResult | null, raw: string) {
   if (!parsed) {
     return raw?.trim() || "⚠️ タスク結果の解析に失敗しました";
@@ -71,6 +98,7 @@ export type BuildTaskStructuredInputArgs = {
   userInstruction?: string;
   body?: string;
   searchRawText?: string;
+  libraryReferenceContext?: string;
 };
 
 export function buildTaskStructuredInput({
@@ -78,13 +106,18 @@ export function buildTaskStructuredInput({
   userInstruction,
   body,
   searchRawText,
+  libraryReferenceContext,
 }: BuildTaskStructuredInputArgs) {
   return [
     `タスクタイトル: ${title?.trim() || "未設定"}`,
     `ユーザー追加指示: ${userInstruction?.trim() || "なし"}`,
     body?.trim() ? `入力本文:\n${body.trim()}` : "",
     searchRawText?.trim() ? `検索素材:\n${searchRawText.trim()}` : "",
-  ]
+  ].concat(
+    libraryReferenceContext?.trim()
+      ? [`Library reference context:\n${libraryReferenceContext.trim()}`]
+      : []
+  )
     .filter(Boolean)
     .join("\n\n");
 }
@@ -214,6 +247,46 @@ export async function runAutoUpdatePresentationTask(
   });
 }
 
+function parseJsonObject(raw: string): unknown {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const first = trimmed.indexOf("{");
+    const last = trimmed.lastIndexOf("}");
+    if (first >= 0 && last > first) {
+      return JSON.parse(trimmed.slice(first, last + 1));
+    }
+    throw new Error("Presentation direct edit response was not valid JSON.");
+  }
+}
+
+export async function runInterpretPresentationDirectEdit(
+  inputText: string,
+  label = "pptx-direct-edit"
+) {
+  const data = await callTaskApi({
+    type: "PREP_TASK",
+    goal:
+      "Interpret a user's direct PPTX edit instruction into address-specific text or visual block edits for approval before applying them.",
+    inputRef: label,
+    inputSummary: inputText,
+    constraints: [
+      "Return only the JSON object requested by the system prompt.",
+      "Identify slide number, block number, block id, and whether each target block is text or visual.",
+      "For text targets, provide the full revised text.",
+      "For visual targets, provide the image replacement or generation instruction fields.",
+      "Do not rewrite the whole presentation plan.",
+    ],
+    outputFormat: "presentation_direct_edit",
+  });
+  return {
+    ...data,
+    directEdit: parseJsonObject(data.raw) as PresentationDirectEditInterpretation,
+  };
+}
+
 export async function runAutoDeepenTask(inputText: string, label = "prep-result") {
   return callTaskApi({
     type: "DEEPEN_TASK",
@@ -246,6 +319,7 @@ export function buildMergedTaskInput(
     title?: string;
     userInstruction?: string;
     searchRawText?: string;
+    libraryReferenceContext?: string;
   }
 ) {
   return [
@@ -261,7 +335,11 @@ export function buildMergedTaskInput(
     "上記を統合し、現在タスクを更新してください。",
     "出力では、重複を整理し、不足情報・次アクションも必要に応じて更新してください。",
     "不要な網羅は避けてください。",
-  ]
+  ].concat(
+    options?.libraryReferenceContext?.trim()
+      ? [`Library reference context:\n${options.libraryReferenceContext.trim()}`]
+      : []
+  )
     .filter(Boolean)
     .join("\n");
 }
@@ -272,12 +350,14 @@ export function buildTaskInput({
   actionInstruction,
   body,
   material,
+  libraryReferenceContext,
 }: {
   title: string;
   userInstruction: string;
   actionInstruction: string;
   body: string;
   material: string;
+  libraryReferenceContext?: string;
 }) {
   return [
     `タスクタイトル: ${title || "未設定"}`,
@@ -285,7 +365,11 @@ export function buildTaskInput({
     `今回の実行指示: ${actionInstruction || "なし"}`,
     body ? `現在の本文:\n${body}` : "",
     material ? `取込素材:\n${material}` : "",
-  ]
+  ].concat(
+    libraryReferenceContext?.trim()
+      ? [`Library reference context:\n${libraryReferenceContext.trim()}`]
+      : []
+  )
     .filter(Boolean)
     .join("\n\n");
 }

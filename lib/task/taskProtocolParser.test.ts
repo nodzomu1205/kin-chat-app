@@ -180,6 +180,36 @@ BODY: Save it.
     });
   });
 
+  it("extracts PPT design request and response blocks", () => {
+    const events = extractTaskProtocolEvents(`<<SYS_PPT_DESIGN_REQUEST>>
+TASK_ID: TASK-1
+ACTION_ID: P001
+BODY: Create PPT design
+<<END_SYS_PPT_DESIGN_REQUEST>>
+<<SYS_PPT_DESIGN_RESPONSE>>
+TASK_ID: TASK-1
+ACTION_ID: P001
+BODY:
+【PPT設計書】
+Document ID: ppt_TASK-1_001
+Slide 1: Overview
+<<END_SYS_PPT_DESIGN_RESPONSE>>`);
+
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatchObject({
+      type: "ppt_design_request",
+      taskId: "TASK-1",
+      actionId: "P001",
+      body: "Create PPT design",
+    });
+    expect(events[1]).toMatchObject({
+      type: "ppt_design_response",
+      taskId: "TASK-1",
+      actionId: "P001",
+      body: expect.stringContaining("Document ID: ppt_TASK-1_001"),
+    });
+  });
+
   it("extracts task proposal blocks without starting task execution", () => {
     const events = extractTaskProtocolEvents(`<<SYS_TASK_PROPOSAL>>
 GOAL: 2000文字程度で事業計画の最新版を作ります。ライブラリデータ参照1回。検索5回迄、GPTへの依頼3回迄。

@@ -1,5 +1,9 @@
 import type { ReferenceLibraryItem, SourceItem } from "@/types/chat";
 import { buildLibraryItemsAggregateText } from "@/lib/app/reference-library/libraryItemAggregation";
+import {
+  buildPresentationImageLibraryContext,
+  getPresentationImageLibraryCandidates,
+} from "@/lib/app/presentation/presentationImageLibrary";
 import type { SearchRecord } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
 import {
   buildProtocolBlock,
@@ -234,6 +238,57 @@ export function buildLibraryItemResponseDraft(params: {
     actionId: params.actionId,
     referenceLibraryItems: params.referenceLibraryItems,
   });
+}
+
+export function buildLibraryImageDataResponseDraft(params: {
+  taskId: string;
+  actionId: string;
+  referenceLibraryItems: ReferenceLibraryItem[];
+  imageLibraryReferenceCount: number;
+}) {
+  const imageContext = buildPresentationImageLibraryContext(
+    getPresentationImageLibraryCandidates({
+      enabled: true,
+      referenceLibraryItems: params.referenceLibraryItems,
+      count: params.imageLibraryReferenceCount,
+    })
+  );
+  const lines = [
+    buildProtocolLine("TASK_ID", params.taskId),
+    buildProtocolLine("ACTION_ID", params.actionId),
+    "TITLE: Image Library Data",
+    "BODY:",
+    imageContext || "- No image-library items are currently available.",
+  ];
+
+  return buildProtocolBlock({
+    name: "SYS_LIBRARY_IMAGE_DATA_RESPONSE",
+    lines,
+  });
+}
+
+export function buildPptDesignRequestInstruction(params: {
+  taskId: string;
+  actionId: string;
+  body: string;
+}) {
+  return [
+    "You are responding to a Kindroid SYS_PPT_DESIGN_REQUEST.",
+    "Create or revise a PPT design document by using the same meaning as this user-facing command:",
+    "/ppt",
+    "Create PPT design",
+    "",
+    "Return only this exact protocol block and nothing outside it:",
+    "<<SYS_PPT_DESIGN_RESPONSE>>",
+    `TASK_ID: ${params.taskId}`,
+    `ACTION_ID: ${params.actionId}`,
+    "BODY:",
+    "<PPT design document here. Keep the Document ID inside the design document body; do not add a separate DOCUMENT_ID header to this protocol block.>",
+    "<<END_SYS_PPT_DESIGN_RESPONSE>>",
+    "",
+    "Kin request:",
+    params.body,
+  ].join("\n");
 }
 
 export function buildSearchResponseBlock(params: {

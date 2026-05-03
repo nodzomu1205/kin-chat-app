@@ -10,9 +10,11 @@ import {
 import { findPresentationPlanByDocumentId } from "@/lib/app/presentation/presentationPlanLibrary";
 import {
   buildPresentationCommandFailureMessage,
+  buildPresentationRevisedMessage,
   buildPresentationRenderedMessage,
 } from "@/lib/app/presentation/presentationGptPrompts";
 import {
+  buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
 import {
@@ -25,6 +27,18 @@ import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlo
 import {
   applySendToGptRequestStart,
 } from "@/lib/app/send-to-gpt/sendToGptFlowState";
+import {
+  runInterpretPresentationDirectEdit,
+  type PresentationDirectEditInterpretation,
+} from "@/lib/app/gpt-task/gptTaskClient";
+import {
+  findApprovedPptDirectEdit,
+  findPendingPptDirectEditCandidate,
+  buildPptDirectEditTargetSummary,
+  savePendingPptDirectEditCandidate,
+  type PptDirectEditBlockEdit,
+  type PptDirectEditCandidate,
+} from "@/lib/app/presentation/presentationDirectEditApproval";
 import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
 import type { Message } from "@/types/chat";
 import type { PresentationTaskSlideFrame } from "@/types/task";
@@ -81,6 +95,17 @@ export async function runPresentationGptCommandFlow(args: {
       return true;
     }
 
+    if (command.intent === "reviseRenderedPptx") {
+      await runReviseRenderedPresentationPptxFlow({
+        documentId: command.documentId,
+        instruction: command.body,
+        generateImages: command.generateImages,
+        imageMode: command.imageMode,
+        flowArgs: args.flowArgs,
+      });
+      return true;
+    }
+
     if (!command.intent) {
       appendPresentationAssistantMessage({
         flowArgs: args.flowArgs,
@@ -110,7 +135,10 @@ export async function runPresentationGptCommandFlow(args: {
     appendPresentationAssistantMessage({
       flowArgs: args.flowArgs,
       text: buildPresentationCommandFailureMessage({
-        action: "renderPptx",
+        action:
+          command.intent === "reviseRenderedPptx"
+            ? "reviseRenderedPptx"
+            : "renderPptx",
         error,
       }),
     });
@@ -169,10 +197,10 @@ async function runRenderPresentationPptxFlow(args: {
         frameSpec,
       }),
     });
-    applyGeneratedImageUsage({
-      generatedImages: output.generatedImages,
-      flowArgs: args.flowArgs,
-    });
+    applyGeneratedImageUsage(
+      output.generatedImages,
+      args.flowArgs.applyImageUsage
+    );
     const updatedPlan = {
       ...foundPlan.plan,
       slideFrames: Array.isArray(output.frameSpec?.slideFrames)
@@ -202,6 +230,205 @@ async function runRenderPresentationPptxFlow(args: {
   }
 
   throw new Error(`Presentation plan document not found: ${args.documentId}`);
+}
+
+async function runReviseRenderedPresentationPptxFlow(args: {
+  documentId?: string;
+  instruction: string;
+  generateImages?: boolean;
+  imageMode?: ReturnType<typeof parsePptCommand>["imageMode"];
+  flowArgs: SendToGptFlowStepArgs;
+}) {
+  if (!args.documentId) {
+    throw new Error("Document ID is required for PPTX revision.");
+  }
+  const instruction = args.instruction.trim();
+  if (!instruction) {
+    throw new Error("Revision instruction is required.");
+  }
+
+  const foundPlan = findPresentationPlanByDocumentId({
+    documentId: args.documentId,
+    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+  });
+  if (!foundPlan) {
+    throw new Error(`Presentation plan document not found: ${args.documentId}`);
+  }
+
+  const currentFrameSpec = buildFramePresentationSpecFromTaskPlan(foundPlan.plan);
+  const storage = typeof window === "undefined" ? null : window.localStorage;
+  const approvedEdit = findApprovedPptDirectEdit({
+    storage,
+    documentId: args.documentId,
+    instruction,
+  });
+  if (approvedEdit) {
+    await applyPptDirectEditCandidate({
+      candidate: approvedEdit,
+      referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+      imageLibraryReferenceEnabled: args.flowArgs.imageLibraryReferenceEnabled,
+      imageLibraryReferenceCount: args.flowArgs.imageLibraryReferenceCount,
+      updateStoredDocument: args.flowArgs.updateStoredDocument,
+      setGptMessages: args.flowArgs.setGptMessages,
+      applyImageUsage: args.flowArgs.applyImageUsage,
+      generateImages: args.generateImages ?? true,
+      imageMode: args.imageMode ?? "hybrid",
+    });
+    return;
+  }
+
+  const pendingEdit = findPendingPptDirectEditCandidate({
+    storage,
+    documentId: args.documentId,
+    instruction,
+  });
+  if (pendingEdit) {
+    appendPresentationAssistantMessage({
+      flowArgs: args.flowArgs,
+      text: [
+        "PPT direct edit is waiting for approval.",
+        "",
+        `Document ID: ${args.documentId}`,
+        `Candidate ID: ${pendingEdit.id}`,
+      ].join("\n"),
+    });
+    return;
+  }
+
+  const imageLibraryContext = buildPresentationImageLibraryContext(
+    getPresentationImageLibraryCandidates({
+      enabled: args.flowArgs.imageLibraryReferenceEnabled,
+      count: args.flowArgs.imageLibraryReferenceCount,
+      referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+      requiredImageIds: collectFrameSpecPreferredImageIds(currentFrameSpec),
+    })
+  );
+  const input = buildPptDirectEditStructuredInput({
+    documentId: args.documentId,
+    plan: foundPlan.plan,
+    instruction,
+    imageLibraryContext,
+  });
+  const data = await runInterpretPresentationDirectEdit(
+    input,
+    "pptx-direct-edit"
+  );
+  if (data?.usage) args.flowArgs.applyTaskUsage?.(data.usage);
+
+  const edits = buildPptDirectEditBlockEdits({
+    documentId: args.documentId,
+    plan: foundPlan.plan,
+    instruction,
+    interpretation: data.directEdit,
+  });
+  if (edits.length === 0) {
+    throw new Error(
+      data.directEdit?.missingInfo?.join(" / ") ||
+        "Could not identify an actionable PPT direct edit candidate."
+    );
+  }
+  const targetSummary = buildPptDirectEditTargetSummary(edits);
+  savePendingPptDirectEditCandidate({
+    storage,
+    candidate: {
+      id: `ppt-edit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      documentId: args.documentId,
+      instruction,
+      targetSummary,
+      changeSummary: instruction,
+      edits,
+      planText: "",
+      plan: {
+        ...foundPlan.plan,
+        latestPptx: foundPlan.plan.latestPptx ?? null,
+        updatedAt: new Date().toISOString(),
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  });
+  appendPresentationAssistantMessage({
+    flowArgs: args.flowArgs,
+    text: [
+      "PPT direct edit interpretation is ready for approval.",
+      "",
+      `Document ID: ${args.documentId}`,
+      "Open Library settings and approve the pending PPT direct edit item.",
+    ].join("\n"),
+  });
+}
+
+export async function applyPptDirectEditCandidate(args: {
+  candidate: Pick<PptDirectEditCandidate, "documentId" | "plan">;
+  referenceLibraryItems: Parameters<typeof findPresentationPlanByDocumentId>[0]["referenceLibraryItems"];
+  imageLibraryReferenceEnabled?: boolean;
+  imageLibraryReferenceCount?: number;
+  updateStoredDocument: SendToGptFlowStepArgs["updateStoredDocument"];
+  setGptMessages: SendToGptFlowStepArgs["setGptMessages"];
+  applyImageUsage?: SendToGptFlowStepArgs["applyImageUsage"];
+  generateImages?: boolean;
+  imageMode?: ReturnType<typeof parsePptCommand>["imageMode"];
+}) {
+  const foundPlan = findPresentationPlanByDocumentId({
+    documentId: args.candidate.documentId,
+    referenceLibraryItems: args.referenceLibraryItems,
+  });
+  if (!foundPlan) {
+    throw new Error(
+      `Presentation plan document not found: ${args.candidate.documentId}`
+    );
+  }
+  const syncedPlan = {
+    ...args.candidate.plan,
+    documentId: args.candidate.documentId,
+    latestPptx: foundPlan.plan.latestPptx ?? null,
+    updatedAt: new Date().toISOString(),
+  };
+  const frameSpec = buildFramePresentationSpecFromTaskPlan(syncedPlan);
+  if (!frameSpec) {
+    throw new Error(
+      `Revised presentation plan is not renderable: ${args.candidate.documentId}`
+    );
+  }
+
+  const output = await renderPresentationPptx({
+    documentId: args.candidate.documentId,
+    frameSpec,
+    generateImages: args.generateImages ?? true,
+    imageMode: args.imageMode ?? "hybrid",
+    libraryImageAssets: await hydratePresentationLibraryImageAssets({
+      referenceLibraryItems: args.referenceLibraryItems,
+      imageLibraryReferenceEnabled: args.imageLibraryReferenceEnabled,
+      imageLibraryReferenceCount: args.imageLibraryReferenceCount,
+      frameSpec,
+    }),
+  });
+  applyGeneratedImageUsage(output.generatedImages, args.applyImageUsage);
+  const updatedPlan = {
+    ...syncedPlan,
+    slideFrames: Array.isArray(output.frameSpec?.slideFrames)
+      ? output.frameSpec.slideFrames
+      : syncedPlan.slideFrames,
+    latestPptx: output,
+    updatedAt: new Date().toISOString(),
+  };
+
+  args.updateStoredDocument(foundPlan.sourceId, {
+    title: foundPlan.item.title,
+    text: formatPresentationTaskPlanText(updatedPlan),
+    structuredPayload: updatedPlan,
+    summary: foundPlan.item.summary,
+  });
+  appendPresentationAssistantMessageToSetter({
+    setGptMessages: args.setGptMessages,
+    text: buildPresentationRevisedMessage({
+      documentId: args.candidate.documentId,
+      title: updatedPlan.title,
+      slideCount: output.slideCount,
+      outputPath: output.path || "",
+      filename: output.filename,
+    }),
+  });
 }
 
 async function renderPresentationPptx(args: {
@@ -295,13 +522,21 @@ type PresentationRenderLibraryImageAsset = {
 };
 
 async function hydratePresentationLibraryImageAssets(args: {
-  flowArgs: SendToGptFlowStepArgs;
+  flowArgs?: SendToGptFlowStepArgs;
+  referenceLibraryItems?: SendToGptFlowStepArgs["referenceLibraryItems"];
+  imageLibraryReferenceEnabled?: boolean;
+  imageLibraryReferenceCount?: number;
   frameSpec?: ReturnType<typeof buildFramePresentationSpecFromTaskPlan>;
 }): Promise<PresentationRenderLibraryImageAsset[]> {
   const candidates = getPresentationImageLibraryCandidates({
-    enabled: args.flowArgs.imageLibraryReferenceEnabled,
-    count: args.flowArgs.imageLibraryReferenceCount,
-    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+    enabled:
+      args.imageLibraryReferenceEnabled ??
+      args.flowArgs?.imageLibraryReferenceEnabled,
+    count:
+      args.imageLibraryReferenceCount ??
+      args.flowArgs?.imageLibraryReferenceCount,
+    referenceLibraryItems:
+      args.referenceLibraryItems ?? args.flowArgs?.referenceLibraryItems ?? [],
     requiredImageIds: collectFrameSpecPreferredImageIds(args.frameSpec),
   });
   const hydrated = await Promise.all(
@@ -338,15 +573,155 @@ export function collectFrameSpecPreferredImageIds(
   return imageIds;
 }
 
-function applyGeneratedImageUsage(args: {
-  generatedImages?: Array<{
-    usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
-  }>;
-  flowArgs: SendToGptFlowStepArgs;
+function blockTextForDirectEdit(
+  block: PresentationTaskSlideFrame["blocks"][number]
+) {
+  if (block.visualRequest) {
+    return [
+      block.visualRequest.brief,
+      block.visualRequest.prompt,
+      block.visualRequest.preferredImageId
+        ? `Image ID: ${block.visualRequest.preferredImageId}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" / ");
+  }
+  if (block.kind === "list") return (block.items || []).join("\n");
+  return [block.heading, block.text, ...(block.items || [])]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function buildPptDirectEditStructuredInput(args: {
+  documentId: string;
+  plan: PptDirectEditCandidate["plan"];
+  instruction: string;
+  imageLibraryContext: string;
 }) {
-  for (const image of args.generatedImages || []) {
+  const slideFrames = (args.plan.slideFrames || []).map((slide) => ({
+    slideNumber: slide.slideNumber,
+    title: slide.title,
+    layoutFrameId: slide.layoutFrameId,
+    blocks: (slide.blocks || []).map((block, index) => ({
+      blockNumber: index + 1,
+      blockId: block.id,
+      blockKind: block.kind,
+      blockType: block.kind === "visual" || block.visualRequest ? "visual" : "text",
+      heading: block.heading || "",
+      text: block.text || "",
+      items: block.items || [],
+      currentText: blockTextForDirectEdit(block),
+      visualRequest: block.visualRequest
+        ? {
+            type: block.visualRequest.type,
+            brief: block.visualRequest.brief,
+            prompt: block.visualRequest.prompt || "",
+            preferredImageId: block.visualRequest.preferredImageId || "",
+            labels: block.visualRequest.labels || [],
+          }
+        : null,
+    })),
+  }));
+
+  return [
+    `Document ID: ${args.documentId}`,
+    `Title: ${args.plan.title}`,
+    "",
+    "User direct edit instruction:",
+    args.instruction,
+    "",
+    "Current slide/block map:",
+    JSON.stringify({ slideFrames }, null, 2),
+    args.imageLibraryContext.trim()
+      ? ["", "Image-library candidates:", args.imageLibraryContext.trim()].join("\n")
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function resolveDirectEditBlock(args: {
+  plan: PptDirectEditCandidate["plan"];
+  edit: NonNullable<PresentationDirectEditInterpretation["edits"]>[number];
+}) {
+  const slideNumber = Number(args.edit.slideNumber) || 1;
+  const slide =
+    args.plan.slideFrames.find((item) => item.slideNumber === slideNumber) ||
+    args.plan.slideFrames[0];
+  const blockId = args.edit.blockId?.trim() || "";
+  const blockIndex = slide
+    ? blockId
+      ? slide.blocks.findIndex((block) => block.id === blockId)
+      : Number(args.edit.blockNumber || 1) - 1
+    : -1;
+  const safeBlockIndex =
+    slide && blockIndex >= 0 && blockIndex < slide.blocks.length
+      ? blockIndex
+      : 0;
+  const block = slide?.blocks[safeBlockIndex];
+  return {
+    slide,
+    block,
+    slideNumber: slide?.slideNumber || slideNumber,
+    blockNumber: safeBlockIndex + 1,
+  };
+}
+
+function buildPptDirectEditBlockEdits(args: {
+  documentId: string;
+  plan: PptDirectEditCandidate["plan"];
+  instruction: string;
+  interpretation?: PresentationDirectEditInterpretation | null;
+}): PptDirectEditBlockEdit[] {
+  const rawEdits = Array.isArray(args.interpretation?.edits)
+    ? args.interpretation.edits
+    : [];
+  return rawEdits
+    .map((rawEdit, index): PptDirectEditBlockEdit | null => {
+      const resolved = resolveDirectEditBlock({
+        plan: args.plan,
+        edit: rawEdit,
+      });
+      if (!resolved.slide || !resolved.block) return null;
+      const actualBlockType =
+        resolved.block.kind === "visual" || resolved.block.visualRequest
+          ? "visual"
+          : "text";
+      return {
+        id: `edit-${index + 1}`,
+        slideNumber: resolved.slideNumber,
+        blockNumber: resolved.blockNumber,
+        blockId: resolved.block.id || rawEdit.blockId || "",
+        blockType: actualBlockType,
+        blockKind: resolved.block.kind,
+        instruction: rawEdit.instruction?.trim() || args.instruction,
+        currentText:
+          rawEdit.currentText?.trim() || blockTextForDirectEdit(resolved.block),
+        proposedText: rawEdit.proposedText?.trim() || "",
+        visualMode:
+          actualBlockType === "visual"
+            ? (rawEdit.visualMode as PptDirectEditBlockEdit["visualMode"]) ||
+              "revise_prompt"
+            : "none",
+        imageId: rawEdit.imageId?.trim() || "",
+        generationPrompt: rawEdit.generationPrompt?.trim() || "",
+        visualBrief: rawEdit.visualBrief?.trim() || "",
+        accepted: true,
+      };
+    })
+    .filter(Boolean) as PptDirectEditBlockEdit[];
+}
+
+function applyGeneratedImageUsage(
+  generatedImages: Array<{
+    usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
+  }> | undefined,
+  applyImageUsage?: SendToGptFlowStepArgs["applyImageUsage"]
+) {
+  for (const image of generatedImages || []) {
     const usage = normalizeImageGenerationUsage(image.usage);
-    if (usage) args.flowArgs.applyImageUsage?.(usage);
+    if (usage) applyImageUsage?.(usage);
   }
 }
 
@@ -375,7 +750,17 @@ function appendPresentationAssistantMessage(args: {
   flowArgs: SendToGptFlowStepArgs;
   text: string;
 }) {
-  args.flowArgs.setGptMessages((prev) => [
+  appendPresentationAssistantMessageToSetter({
+    setGptMessages: args.flowArgs.setGptMessages,
+    text: args.text,
+  });
+}
+
+function appendPresentationAssistantMessageToSetter(args: {
+  setGptMessages: SendToGptFlowStepArgs["setGptMessages"];
+  text: string;
+}) {
+  args.setGptMessages((prev) => [
     ...prev,
     {
       id: generateId(),

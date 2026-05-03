@@ -1,18 +1,25 @@
 # Next Session Handover
 
-Updated: 2026-05-02
+Updated: 2026-05-03
 
 ## Latest Handoff
 
-The newest active handoff is for the completed PPT creation slice and the next
-Kin-task execution slice:
+The newest active handoff is for the completed library/task/PPT direct-edit
+slice and the remaining PPT/Kin-task follow-up:
 
+- [`HANDOFF-2026-05-03.md`](./HANDOFF-2026-05-03.md)
 - [`HANDOFF-2026-05-01.md`](./HANDOFF-2026-05-01.md)
 - [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
-The PPT creation feature is now at a practical stopping point. Do not continue
-polishing it by default. The likely next product slice is:
+The latest completed slice added library/image-library bulk operations, Kin PPT
+design protocols, task-time image-library reference settings, and approval-based
+PPT direct edit. Start from `HANDOFF-2026-05-03.md` before changing any of
+those paths.
+
+The PPT creation feature is still close to a practical stopping point. Do not
+continue polishing renderer typography by default. The likely next product slice
+remains:
 
 **Have Kin perform PPT creation as a registered task/process.**
 
@@ -20,9 +27,9 @@ Treat the current PPT feature as the callable capability. The next work should
 design how Kin requests, monitors, revises, and completes that capability
 through the task/protocol system.
 
-If the next session is about PPT design or PPTX rendering, start with the
-2026-05-01 handoff before touching code. Otherwise, start from the Kin task
-process plan below.
+If the next session is about PPT direct edit, start with the 2026-05-03 handoff.
+If it is about PPT frame/image rendering, also review the 2026-05-01 handoff
+before touching code. Otherwise, start from the Kin task process plan below.
 
 Before making any PPT renderer/image-routing claim, follow the handoff's
 non-negotiable debugging rule: distinguish observed facts from hypotheses,
@@ -33,6 +40,19 @@ for proving the primary route.
 For text/body layout, keep style decisions in frame/block-style data. Renderer
 V2 should execute `renderStyle.textStyle` and conservative defaults, not bake in
 one-off typography rules that will be hard to change later.
+
+Latest direct-edit closeout note:
+
+- PPT direct edit now uses structured `edits[]`, not the old whole-plan
+  regeneration and diff path.
+- Old `changes[]` direct-edit candidates are obsolete and should be rejected
+  if they appear from localStorage.
+- Text replacement clears stale old `items` on text blocks, preventing
+  replacement text from being rendered together with old bullet items.
+- The temporary renderer-wide font shrink experiment was reverted. Future text
+  fit work should be designed as a block/frame policy, not as a direct-edit
+  emergency patch.
+- A retry/reinterpret button for direct-edit approval remains pending.
 
 Latest PPT layout normalization note:
 
@@ -149,7 +169,7 @@ Closeout verification passed:
 - `npx tsc --noEmit`
 - `npm run check:utf8`
 - `npm run lint`
-- `npm test` (`167 files / 753 tests`)
+- `npm test` (`183 files / 882 tests`)
 - `npm run build`
 
 The repository is in `late-stage maintenance-watch`, not active rescue.

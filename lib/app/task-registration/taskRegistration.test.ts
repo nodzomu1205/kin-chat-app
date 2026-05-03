@@ -82,11 +82,11 @@ describe("taskRegistration", () => {
       count: 7,
     });
     expect(normalizeTaskRegistrationLibraryCountInput("09")).toEqual({
-      displayValue: "9",
+      displayValue: "09",
       count: 9,
     });
     expect(normalizeTaskRegistrationLibraryCountInput("123")).toEqual({
-      displayValue: "50",
+      displayValue: "123",
       count: 50,
     });
     expect(normalizeTaskRegistrationLibraryCountInput("1件")).toEqual({

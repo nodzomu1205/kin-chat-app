@@ -210,11 +210,11 @@ describe("formatIntentCandidateDraftText", () => {
 
     expect(
       formatIntentCandidateDraftText({
-        kind: "library_index_request",
+        kind: "library_reference",
         count: 1,
-        rule: "up_to",
+        rule: "exact",
       })
-    ).toBe("Request up to 1 library data response.");
+    ).toBe("Use exactly 1 library reference.");
 
     expect(
       formatIntentCandidateDraftText({

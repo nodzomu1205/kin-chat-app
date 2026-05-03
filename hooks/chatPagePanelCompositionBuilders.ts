@@ -49,6 +49,9 @@ export function buildChatPageWorkspaceGptPanelArgs(
     }),
     references: buildChatPageWorkspaceGptReferences(args),
     settings: buildChatPageWorkspaceGptSettings(args),
+    usage: {
+      applyImageUsage: args.usage.applyImageUsage,
+    },
     protocolState: buildChatPageWorkspaceProtocolState(args),
     memoryState: buildChatPageWorkspaceMemoryState(args),
   };

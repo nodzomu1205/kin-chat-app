@@ -573,6 +573,10 @@ BODY: Existing full draft body.
         limitViolation: null,
         userMsg: { id: "u1", role: "user", text: "hello" },
         youtubeTranscriptRequestEvent: undefined,
+        pptDesignRequestEvent: undefined,
+        fileSaveRequestEvent: undefined,
+        libraryReferenceContext: "library ctx",
+        currentTaskCharConstraint: undefined,
       },
       execution: {
         finalRequestText: "final text",
@@ -588,6 +592,10 @@ BODY: Existing full draft body.
         effectiveSearchEngines: ["google_ai_mode"],
         effectiveSearchLocation: "Japan",
         askGptEvent: { taskId: "TASK-1", actionId: "A001" },
+        draftPreparationRequestEvent: undefined,
+        pptDesignRequestEvent: undefined,
+        draftModificationRequestEvent: undefined,
+        fileSaveRequestEvent: undefined,
         requestToAnswer: {
           id: "REQ-1",
           taskId: "TASK-1",

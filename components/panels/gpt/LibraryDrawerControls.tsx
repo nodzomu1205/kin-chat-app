@@ -1,10 +1,11 @@
-"use client";
-
 import React from "react";
 import { pillButton } from "@/components/panels/gpt/gptPanelStyles";
 import { GPT_GOOGLE_DRIVE_TEXT } from "@/components/panels/gpt/gptGoogleDriveText";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
-import type { LibraryBulkActionMode } from "@/lib/app/reference-library/libraryItemAggregation";
+import type {
+  LibraryBulkActionMode,
+  LibraryBulkActionScope,
+} from "@/lib/app/reference-library/libraryItemAggregation";
 import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
 
 export function iconButton(tone: "default" | "danger" = "default"): React.CSSProperties {
@@ -44,8 +45,14 @@ type ImportControlsProps = {
   ) => void | Promise<void>;
   deviceImportAccept: string;
   deviceImportDisabled: boolean;
-  onShowAllLibraryItemsInChat: (mode: LibraryBulkActionMode) => void | Promise<void>;
-  onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
+  onShowAllLibraryItemsInChat: (
+    mode: LibraryBulkActionMode,
+    scope?: LibraryBulkActionScope
+  ) => void | Promise<void>;
+  onSendAllLibraryItemsToKin: (
+    mode: LibraryBulkActionMode,
+    scope?: LibraryBulkActionScope
+  ) => void | Promise<void>;
   initialBulkActionsOpen?: boolean;
 };
 
@@ -112,6 +119,23 @@ export function LibraryImportControls({
     alignItems: "center",
   };
 
+  const tileGridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gap: 8,
+  };
+
+  const tileStyle: React.CSSProperties = {
+    display: "grid",
+    gap: 8,
+    alignContent: "start",
+    border: "1px solid #dbe4e8",
+    borderRadius: 8,
+    padding: 10,
+    background: "#ffffff",
+    minWidth: 0,
+  };
+
   const bulkButtonStyle: React.CSSProperties = {
     ...actionButtonStyle,
     justifyContent: "center",
@@ -143,6 +167,11 @@ export function LibraryImportControls({
       <option value="detail">{GPT_LIBRARY_DRAWER_TEXT.actions.modes.detail}</option>
     </>
   );
+
+  const setLibraryBulkMode = (mode: LibraryBulkActionMode) => {
+    setDisplayMode(mode);
+    setKinSendMode(mode);
+  };
 
   return (
     <div
@@ -186,75 +215,75 @@ export function LibraryImportControls({
             border: "1px solid #dbe4e8",
           }}
         >
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={onOpenGoogleDriveFolder}
-              style={actionButtonStyle}
-              title={GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
-              aria-label={GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
-            >
-              <span style={driveLabelStyle}>Google Drive</span>
-              <span style={driveClusterStyle}>
-                <span>フォルダ</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDriveImportMenuOpen((prev) => !prev)}
-              style={actionButtonStyle}
-              title={GPT_GOOGLE_DRIVE_TEXT.settings.importEntry}
-              aria-label={GPT_GOOGLE_DRIVE_TEXT.settings.importEntry}
-              aria-expanded={driveImportMenuOpen}
-            >
-              <span style={driveLabelStyle}>Google Drive</span>
-              <span style={driveClusterStyle}>
-                <span>取込</span>
-              </span>
-            </button>
-            <label
-              htmlFor={deviceInputId}
-              style={{
-                ...actionButtonStyle,
-                cursor: deviceImportDisabled ? "default" : "pointer",
-                opacity: deviceImportDisabled ? 0.6 : 1,
-              }}
-              title="デバイスから取り込む"
-              aria-label="デバイスから取り込む"
-            >
-              <span style={driveLabelStyle}>デバイス</span>
-              <span style={driveClusterStyle}>
-                <span>取込</span>
-              </span>
-            </label>
-            <input
-              id={deviceInputId}
-              type="file"
-              accept={deviceImportAccept}
-              multiple
-              disabled={deviceImportDisabled}
-              onChange={(event) => {
-                const files = Array.from(event.target.files || []);
-                event.currentTarget.value = "";
-                if (files.length === 0 || deviceImportDisabled) return;
-                void importFilesByType({
-                  files,
-                  onImportDeviceFile,
-                  onImportDeviceImageFile,
-                });
-              }}
-              style={{
-                position: "absolute",
-                width: 1,
-                height: 1,
-                padding: 0,
-                margin: -1,
-                overflow: "hidden",
-                clip: "rect(0, 0, 0, 0)",
-                whiteSpace: "nowrap",
-                border: 0,
-              }}
-            />
+          <div style={tileGridStyle}>
+            <div style={tileStyle}>
+              <div style={driveLabelStyle}>デバイス</div>
+              <label
+                htmlFor={deviceInputId}
+                style={{
+                  ...actionButtonStyle,
+                  justifySelf: "start",
+                  cursor: deviceImportDisabled ? "default" : "pointer",
+                  opacity: deviceImportDisabled ? 0.6 : 1,
+                }}
+                title="デバイスから取り込む"
+                aria-label="デバイスから取り込む"
+              >
+                <span style={driveClusterStyle}>取込</span>
+              </label>
+              <input
+                id={deviceInputId}
+                type="file"
+                accept={deviceImportAccept}
+                multiple
+                disabled={deviceImportDisabled}
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []);
+                  event.currentTarget.value = "";
+                  if (files.length === 0 || deviceImportDisabled) return;
+                  void importFilesByType({
+                    files,
+                    onImportDeviceFile,
+                    onImportDeviceImageFile,
+                  });
+                }}
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  padding: 0,
+                  margin: -1,
+                  overflow: "hidden",
+                  clip: "rect(0, 0, 0, 0)",
+                  whiteSpace: "nowrap",
+                  border: 0,
+                }}
+              />
+            </div>
+            <div style={tileStyle}>
+              <div style={driveLabelStyle}>Google Drive</div>
+              <div style={bulkRowStyle}>
+                <button
+                  type="button"
+                  onClick={onOpenGoogleDriveFolder}
+                  style={actionButtonStyle}
+                  title={GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
+                  aria-label={GPT_GOOGLE_DRIVE_TEXT.settings.openFolder}
+                >
+                  <span style={driveClusterStyle}>参照</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDriveImportMenuOpen((prev) => !prev)}
+                  style={actionButtonStyle}
+                  title={GPT_GOOGLE_DRIVE_TEXT.settings.importEntry}
+                  aria-label={GPT_GOOGLE_DRIVE_TEXT.settings.importEntry}
+                  aria-expanded={driveImportMenuOpen}
+                >
+                  <span style={driveClusterStyle}>取込</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {driveImportMenuOpen ? (
@@ -295,43 +324,63 @@ export function LibraryImportControls({
             </div>
           ) : null}
 
-          <div style={bulkRowStyle}>
-            <button
-              type="button"
-              onClick={() => void onShowAllLibraryItemsInChat(displayMode)}
-              style={bulkButtonStyle}
-            >
-              {GPT_LIBRARY_DRAWER_TEXT.actions.showAll}
-            </button>
-            <select
-              aria-label={`${GPT_LIBRARY_DRAWER_TEXT.actions.showAll} ${GPT_LIBRARY_DRAWER_TEXT.actions.modeLabel}`}
-              value={displayMode}
-              onChange={(event) =>
-                setDisplayMode(event.target.value as LibraryBulkActionMode)
-              }
-              style={bulkSelectStyle}
-            >
-              {renderModeOptions()}
-            </select>
-          </div>
-          <div style={bulkRowStyle}>
-            <button
-              type="button"
-              onClick={() => void onSendAllLibraryItemsToKin(kinSendMode)}
-              style={bulkButtonStyle}
-            >
-              {GPT_LIBRARY_DRAWER_TEXT.actions.sendAllToKin}
-            </button>
-            <select
-              aria-label={`${GPT_LIBRARY_DRAWER_TEXT.actions.sendAllToKin} ${GPT_LIBRARY_DRAWER_TEXT.actions.modeLabel}`}
-              value={kinSendMode}
-              onChange={(event) =>
-                setKinSendMode(event.target.value as LibraryBulkActionMode)
-              }
-              style={bulkSelectStyle}
-            >
-              {renderModeOptions()}
-            </select>
+          <div style={tileGridStyle}>
+            <div style={tileStyle}>
+              {sectionTitle("ライブラリ一括")}
+              <div style={bulkRowStyle}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void onShowAllLibraryItemsInChat(displayMode, "library")
+                  }
+                  style={bulkButtonStyle}
+                >
+                  画面に表示
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void onSendAllLibraryItemsToKin(kinSendMode, "library")
+                  }
+                  style={bulkButtonStyle}
+                >
+                  Kinに送信
+                </button>
+              </div>
+              <select
+                aria-label={GPT_LIBRARY_DRAWER_TEXT.actions.modeLabel}
+                value={displayMode}
+                onChange={(event) =>
+                  setLibraryBulkMode(event.target.value as LibraryBulkActionMode)
+                }
+                style={bulkSelectStyle}
+              >
+                {renderModeOptions()}
+              </select>
+            </div>
+            <div style={tileStyle}>
+              {sectionTitle("画像ライブラリ一括")}
+              <div style={bulkRowStyle}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void onShowAllLibraryItemsInChat("detail", "images")
+                  }
+                  style={bulkButtonStyle}
+                >
+                  画面に表示
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void onSendAllLibraryItemsToKin("detail", "images")
+                  }
+                  style={bulkButtonStyle}
+                >
+                  Kinに送信
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       ) : null}

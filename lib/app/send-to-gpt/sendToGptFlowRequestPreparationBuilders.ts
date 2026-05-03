@@ -23,6 +23,8 @@ type PreparedFinalRequestDerivedContext = {
   effectiveSearchLocation: string;
   libraryIndexRequestEvent?: PreparedRequestContextSource["searchRequestEvent"];
   libraryItemRequestEvent?: PreparedRequestContextSource["searchRequestEvent"];
+  libraryImageDataRequestEvent?: PreparedRequestContextSource["searchRequestEvent"];
+  pptDesignRequestEvent?: PreparedRequestContextSource["pptDesignRequestEvent"];
   draftPreparationRequestEvent?: PreparedRequestContextSource["draftPreparationRequestEvent"];
   draftModificationRequestEvent?: PreparedRequestContextSource["draftModificationRequestEvent"];
   fileSaveRequestEvent?: PreparedRequestContextSource["fileSaveRequestEvent"];
@@ -44,6 +46,7 @@ export function buildPreparedRequestArtifactBase(params: {
   shouldInjectTaskContextWithSettings: (userInput: string) => boolean;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceCount?: number;
   createUserMessage: (rawText: string) => Message;
   buildLibraryReferenceContext: () => string;
   recentMessages?: Message[];
@@ -69,6 +72,7 @@ export function buildPreparedRequestArtifactBase(params: {
       derivedContext: params.derivedContext,
       referenceLibraryItems: params.referenceLibraryItems,
       libraryIndexResponseCount: params.libraryIndexResponseCount,
+      imageLibraryReferenceCount: params.imageLibraryReferenceCount,
       recentMessages: params.recentMessages,
     }),
     libraryReferenceContext: params.buildLibraryReferenceContext(),
@@ -85,7 +89,9 @@ export function buildPreparedRequestGateFields(
     limitViolation: preparedRequest.limitViolation,
     userMsg: preparedRequest.userMsg,
     youtubeTranscriptRequestEvent: preparedRequest.youtubeTranscriptRequestEvent,
+    pptDesignRequestEvent: preparedRequest.pptDesignRequestEvent,
     fileSaveRequestEvent: preparedRequest.fileSaveRequestEvent,
+    libraryReferenceContext: preparedRequest.libraryReferenceContext,
     currentTaskCharConstraint: preparedRequest.currentTaskCharConstraint,
   };
 }
@@ -108,6 +114,7 @@ export function buildPreparedRequestExecutionFields(
     effectiveSearchLocation: preparedRequest.effectiveSearchLocation,
     askGptEvent: preparedRequest.askGptEvent,
     draftPreparationRequestEvent: preparedRequest.draftPreparationRequestEvent,
+    pptDesignRequestEvent: preparedRequest.pptDesignRequestEvent,
     draftModificationRequestEvent: preparedRequest.draftModificationRequestEvent,
     fileSaveRequestEvent: preparedRequest.fileSaveRequestEvent,
     requestToAnswer: preparedRequest.requestToAnswer,
@@ -139,6 +146,7 @@ export function buildPreparedFinalRequestText(params: {
   derivedContext: PreparedFinalRequestDerivedContext;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceCount?: number;
   recentMessages?: Message[];
 }) {
   return buildFinalRequestText({
@@ -154,13 +162,17 @@ export function buildPreparedFinalRequestText(params: {
     effectiveSearchLocation: params.derivedContext.effectiveSearchLocation,
     libraryIndexRequestEvent: params.derivedContext.libraryIndexRequestEvent,
     libraryItemRequestEvent: params.derivedContext.libraryItemRequestEvent,
+    libraryImageDataRequestEvent:
+      params.derivedContext.libraryImageDataRequestEvent,
     draftPreparationRequestEvent:
       params.derivedContext.draftPreparationRequestEvent,
+    pptDesignRequestEvent: params.derivedContext.pptDesignRequestEvent,
     draftModificationRequestEvent:
       params.derivedContext.draftModificationRequestEvent,
     fileSaveRequestEvent: params.derivedContext.fileSaveRequestEvent,
     referenceLibraryItems: params.referenceLibraryItems,
     libraryIndexResponseCount: params.libraryIndexResponseCount,
+    imageLibraryReferenceCount: params.imageLibraryReferenceCount,
     recentMessages: params.recentMessages,
     taskContext: params.taskContext,
   });

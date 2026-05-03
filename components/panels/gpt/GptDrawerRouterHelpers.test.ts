@@ -257,6 +257,7 @@ describe("GptDrawerRouterHelpers", () => {
         },
       settings: {
         libraryReferenceCount: 4,
+        imageLibraryReferenceCount: 5,
         sourceDisplayCount: 3,
         onOpenGoogleDriveFolder: noop,
         onImportGoogleDriveFile: noop,

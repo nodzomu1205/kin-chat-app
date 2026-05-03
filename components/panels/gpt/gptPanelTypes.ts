@@ -18,12 +18,17 @@ import type {
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
 } from "@/lib/memory-domain/memoryInterpreterRules";
+import type { PptDirectEditCandidate } from "@/lib/app/presentation/presentationDirectEditApproval";
+import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
 import type {
   TaskRequirementProgress,
   TaskExecutionStatus,
   UserFacingTaskRequest,
 } from "@/types/taskProtocol";
-import type { LibraryBulkActionMode } from "@/lib/app/reference-library/libraryItemAggregation";
+import type {
+  LibraryBulkActionMode,
+  LibraryBulkActionScope,
+} from "@/lib/app/reference-library/libraryItemAggregation";
 import type {
   RegisteredTask,
   TaskRegistrationLibrarySettings,
@@ -257,8 +262,14 @@ export type GptPanelReferenceProps = {
     ) => void;
     onShowLibraryItemInChat: (itemId: string) => void;
     onSendLibraryItemToKin: (itemId: string) => void | Promise<void>;
-    onShowAllLibraryItemsInChat: (mode: LibraryBulkActionMode) => void | Promise<void>;
-    onSendAllLibraryItemsToKin: (mode: LibraryBulkActionMode) => void | Promise<void>;
+    onShowAllLibraryItemsInChat: (
+      mode: LibraryBulkActionMode,
+      scope?: LibraryBulkActionScope
+    ) => void | Promise<void>;
+    onSendAllLibraryItemsToKin: (
+      mode: LibraryBulkActionMode,
+      scope?: LibraryBulkActionScope
+    ) => void | Promise<void>;
     onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
     onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
     onImportDeviceImageFile: (
@@ -350,6 +361,10 @@ export type GptPanelSettingsProps = {
     patch: Partial<PendingMemoryRuleCandidate>
   ) => void;
   onDeleteApprovedMemoryRule: (ruleId: string) => void;
+  applyImageUsage?: SendToGptFlowStepArgs["applyImageUsage"];
+  onApplyPptDirectEditCandidate?: (
+    candidate: PptDirectEditCandidate
+  ) => Promise<void>;
 };
 
 export type GptPanelProps = {

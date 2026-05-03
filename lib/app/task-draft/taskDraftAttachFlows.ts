@@ -56,6 +56,12 @@ function buildTaskDraftImageLibraryContext(args: AttachSearchResultToTaskFlowArg
   );
 }
 
+function buildTaskDraftLibraryReferenceContext(
+  args: AttachSearchResultToTaskFlowArgs
+) {
+  return args.buildLibraryReferenceContext();
+}
+
 export async function runAttachSearchResultToTaskFlow(
   args: AttachSearchResultToTaskFlowArgs
 ) {
@@ -142,6 +148,7 @@ export async function runAttachSearchResultToTaskFlow(
           userInstruction: nextUserInstruction,
           body: parsedInput.freeText || normalizedInput,
           material: materialText,
+          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
           imageLibraryContext: buildTaskDraftImageLibraryContext(args),
         })
       : buildTaskStructuredInput({
@@ -150,6 +157,7 @@ export async function runAttachSearchResultToTaskFlow(
           body: materialText,
           searchRawText:
             taskLibraryItem?.itemType === "search" ? taskSearchContext?.rawText || "" : "",
+          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         });
 
     startTaskFlowRequest({
@@ -272,6 +280,7 @@ export async function runAttachSearchResultToTaskFlow(
         currentPlanText: currentTaskText,
         body: parsedInput.freeText || normalizedInput,
         material: materialText,
+        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildTaskInput({
@@ -280,6 +289,7 @@ export async function runAttachSearchResultToTaskFlow(
         actionInstruction: parsedInput.freeText || normalizedInput,
         body: currentTaskText,
         material: materialText,
+        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
       });
 
   startTaskFlowRequest({

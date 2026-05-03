@@ -223,6 +223,9 @@ export const GPT_SETTINGS_RULES_TEXT = {
     search_request: "検索依頼回数",
     youtube_transcript_request: "コンテンツ取得回数",
     library_reference: "ライブラリ参照回数",
+    image_library_reference: "画像ライブラリ参照回数",
+    ppt_slide_count: "PPTスライド枚数",
+    ppt_design_request: "PPT作業回数",
     char_limit: "文字数制約",
   },
 } as const;

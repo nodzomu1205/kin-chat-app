@@ -133,6 +133,7 @@ describe("presentationPlanValidation", () => {
             styleId: "visualContain",
             visualRequest: {
               type: "diagram",
+              brief: "Process",
               preferredImageId: "img_process",
             },
           },
@@ -150,6 +151,7 @@ describe("presentationPlanValidation", () => {
             styleId: "visualContain",
             visualRequest: {
               type: "diagram",
+              brief: "Process",
               preferredImageId: "img_process",
             },
           },
@@ -193,7 +195,7 @@ describe("presentationPlanValidation", () => {
             id: "block1",
             kind: "visual",
             styleId: "visualContain",
-            visualRequest: { type: "diagram", preferredImageId: "img_process" },
+            visualRequest: { type: "diagram", brief: "Process", preferredImageId: "img_process" },
           },
         ],
       },
@@ -207,7 +209,7 @@ describe("presentationPlanValidation", () => {
             id: "block1",
             kind: "visual",
             styleId: "visualContain",
-            visualRequest: { type: "diagram", preferredImageId: "img_process" },
+            visualRequest: { type: "diagram", brief: "Process", preferredImageId: "img_process" },
           },
         ],
       },

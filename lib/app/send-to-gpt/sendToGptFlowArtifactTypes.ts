@@ -50,6 +50,8 @@ export type ProtocolInteractionContext = {
   youtubeTranscriptRequestEvent?: TaskProtocolEvent & { url?: string };
   libraryIndexRequestEvent?: SearchResponseEventLike;
   libraryItemRequestEvent?: SearchResponseEventLike;
+  libraryImageDataRequestEvent?: SearchResponseEventLike;
+  pptDesignRequestEvent?: ProtocolTaskEventLike;
   draftPreparationRequestEvent?: ProtocolTaskEventLike;
   draftModificationRequestEvent?: ProtocolTaskEventLike;
   fileSaveRequestEvent?: ProtocolTaskEventLike;

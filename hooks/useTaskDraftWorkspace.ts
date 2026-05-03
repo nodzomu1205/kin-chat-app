@@ -12,6 +12,7 @@ import {
   canRegisterTaskDraft,
   createDefaultTaskRegistrationLibrarySettings,
   createDefaultTaskRegistrationRecurrence,
+  normalizeTaskRegistrationLibrarySettings,
   removeRegisteredTask,
   updateRegisteredTask,
   type RegisteredTask,
@@ -112,7 +113,9 @@ export function useTaskDraftWorkspace() {
       setEditingRegisteredTaskId(task.id);
       setTaskRegistrationDraft(task.draft);
       setTaskRegistrationIntent(task.intent);
-      setTaskRegistrationLibrarySettings(task.librarySettings);
+      setTaskRegistrationLibrarySettings(
+        normalizeTaskRegistrationLibrarySettings(task.librarySettings)
+      );
       setTaskRegistrationRecurrence(task.recurrence);
     },
     []

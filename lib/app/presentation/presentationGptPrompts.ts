@@ -30,13 +30,38 @@ export function buildPresentationRenderedMessage(args: {
     .join("\n");
 }
 
+export function buildPresentationRevisedMessage(args: {
+  documentId: string;
+  title: string;
+  slideCount: number;
+  outputPath: string;
+  filename: string;
+}) {
+  return [
+    "Presentation PPTX revised.",
+    "",
+    `Document ID: ${args.documentId}`,
+    `Title: ${args.title}`,
+    `Slides: ${args.slideCount}`,
+    "",
+    args.outputPath ? `PPTX: [${args.filename}](${args.outputPath})` : "",
+    `File: ${args.filename}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function buildPresentationCommandFailureMessage(args: {
-  action: "renderPptx";
+  action: "renderPptx" | "reviseRenderedPptx";
   error: unknown;
 }) {
   const detail = args.error instanceof Error ? args.error.message : String(args.error);
+  const actionLine =
+    args.action === "reviseRenderedPptx"
+      ? "Could not revise the presentation PPTX."
+      : "Could not create the presentation PPTX.";
   return [
-    "Could not create the presentation PPTX.",
+    actionLine,
     "",
     detail,
     "",

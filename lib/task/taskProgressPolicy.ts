@@ -10,6 +10,9 @@ export function isSuccessfulTaskArtifact(event: TaskProtocolEvent) {
       return !!event.libraryItemId;
     case "library_index_response":
     case "library_item_response":
+    case "library_image_data_response":
+      return !!(event.body || event.summary);
+    case "ppt_design_response":
       return !!(event.body || event.summary);
     default:
       return false;

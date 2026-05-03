@@ -32,6 +32,8 @@ export type ProtocolLimitEvent = {
     | "search_request"
     | "user_question"
     | "library_reference"
+    | "image_library_reference"
+    | "ppt_design_request"
     | "youtube_transcript_request";
   taskId?: string;
   actionId?: string;

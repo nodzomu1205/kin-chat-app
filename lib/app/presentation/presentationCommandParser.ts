@@ -1,5 +1,6 @@
 export type PptCommandIntent =
   | "renderPptx"
+  | "reviseRenderedPptx"
   | "showPreview";
 
 export type PptImageMode = "off" | "library" | "api" | "hybrid";
@@ -128,6 +129,8 @@ export function parsePptCommand(text: string): ParsedPptCommand {
     ? "renderPptx"
     : documentId && isPreviewRequest(bodyWithoutDocumentId)
         ? "showPreview"
+        : documentId && bodyWithoutDocumentId.trim()
+          ? "reviseRenderedPptx"
         : undefined;
 
   return {

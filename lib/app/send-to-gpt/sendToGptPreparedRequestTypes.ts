@@ -15,7 +15,9 @@ export type PreparedRequestGateContext = {
   limitViolation: string | null;
   userMsg: Message;
   youtubeTranscriptRequestEvent?: TaskProtocolEvent & { url?: string };
+  pptDesignRequestEvent?: ProtocolTaskEventLike;
   fileSaveRequestEvent?: ProtocolTaskEventLike;
+  libraryReferenceContext?: string;
   currentTaskCharConstraint?: TaskCharConstraint;
 };
 
@@ -34,6 +36,8 @@ export type PreparedRequestExecutionContext = {
   effectiveSearchLocation: string;
   askGptEvent?: ProtocolTaskEventLike;
   draftPreparationRequestEvent?: ProtocolTaskEventLike;
+  pptDesignRequestEvent?: ProtocolTaskEventLike;
+  libraryImageDataRequestEvent?: ProtocolTaskEventLike;
   draftModificationRequestEvent?: ProtocolTaskEventLike;
   fileSaveRequestEvent?: ProtocolTaskEventLike;
   requestToAnswer?: PendingRequestLike | null;
@@ -57,6 +61,7 @@ export type PreparedRequestContextSource = PreparedRequestGateContext & {
   effectiveSearchLocation: string;
   askGptEvent?: ProtocolTaskEventLike;
   draftPreparationRequestEvent?: ProtocolTaskEventLike;
+  libraryImageDataRequestEvent?: ProtocolTaskEventLike;
   draftModificationRequestEvent?: ProtocolTaskEventLike;
   fileSaveRequestEvent?: ProtocolTaskEventLike;
   requestToAnswer?: PendingRequestLike | null;

@@ -17,6 +17,7 @@ import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText
 import {
   buildLibraryItemsAggregateKinSysInfo,
   buildLibraryItemsAggregateText,
+  type LibraryBulkActionScope,
   type LibraryBulkActionMode,
 } from "@/lib/app/reference-library/libraryItemAggregation";
 import {
@@ -146,6 +147,15 @@ async function buildGeneratedImageChatDisplayText(item: ReferenceLibraryItem) {
   });
 }
 
+function filterLibraryItemsByScope(
+  items: ReferenceLibraryItem[],
+  scope: LibraryBulkActionScope = "library"
+) {
+  return scope === "images"
+    ? items.filter((item) => item.artifactType === "generated_image")
+    : items.filter((item) => item.artifactType !== "generated_image");
+}
+
 export function useReferenceLibraryUiActions({
   libraryItems,
   getLibraryItemById,
@@ -219,13 +229,25 @@ export function useReferenceLibraryUiActions({
     }
   };
 
-  const showAllLibraryItemsInChat = async (mode: LibraryBulkActionMode) => {
-    if (libraryItems.length === 0) return;
+  const showAllLibraryItemsInChat = async (
+    mode: LibraryBulkActionMode,
+    scope: LibraryBulkActionScope = "library"
+  ) => {
+    const scopedItems = filterLibraryItemsByScope(libraryItems, scope);
+    if (scopedItems.length === 0) return;
+    const displayText =
+      scope === "images"
+        ? (
+            await Promise.all(
+              scopedItems.map((item) => buildGeneratedImageChatDisplayText(item))
+            )
+          )
+            .join("\n\n---\n\n")
+            .trim()
+        : buildLibraryItemsAggregateText({ items: scopedItems, mode });
     const nextMessages = [
       ...gptMessages,
-      createLibraryUiMessage(
-        buildLibraryItemsAggregateText({ items: libraryItems, mode })
-      ),
+      createLibraryUiMessage(displayText),
     ];
     setGptMessages(nextMessages);
     focusGptPanel();
@@ -262,10 +284,14 @@ export function useReferenceLibraryUiActions({
     applyKinInputBlocks(buildLibraryItemKinSysInfo(item));
   };
 
-  const sendAllLibraryItemsToKin = (mode: LibraryBulkActionMode) => {
-    if (libraryItems.length === 0) return;
+  const sendAllLibraryItemsToKin = (
+    mode: LibraryBulkActionMode,
+    scope: LibraryBulkActionScope = "library"
+  ) => {
+    const scopedItems = filterLibraryItemsByScope(libraryItems, scope);
+    if (scopedItems.length === 0) return;
     applyKinInputBlocks(
-      buildLibraryItemsAggregateKinSysInfo({ items: libraryItems, mode })
+      buildLibraryItemsAggregateKinSysInfo({ items: scopedItems, mode, scope })
     );
   };
 

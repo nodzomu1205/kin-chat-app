@@ -41,6 +41,7 @@ export function prepareSendToGptRequest(params: {
   shouldInjectTaskContextWithSettings: (userInput: string) => boolean;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceCount?: number;
   buildLibraryReferenceContext: () => string;
   recentMessages?: Message[];
   currentTaskCharConstraint?: TaskCharConstraint;
@@ -64,6 +65,7 @@ export function prepareSendToGptRequest(params: {
     shouldInjectTaskContextWithSettings: params.shouldInjectTaskContextWithSettings,
     referenceLibraryItems: params.referenceLibraryItems,
     libraryIndexResponseCount: params.libraryIndexResponseCount,
+    imageLibraryReferenceCount: params.imageLibraryReferenceCount,
     buildLibraryReferenceContext: params.buildLibraryReferenceContext,
     recentMessages: params.recentMessages,
     currentTaskCharConstraint: params.currentTaskCharConstraint,
@@ -80,6 +82,7 @@ export function buildPreparedRequestArtifacts(params: {
   shouldInjectTaskContextWithSettings: (userInput: string) => boolean;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceCount?: number;
   buildLibraryReferenceContext: () => string;
   recentMessages?: Message[];
   currentTaskCharConstraint?: TaskCharConstraint;
@@ -96,6 +99,7 @@ export function buildPreparedRequestArtifacts(params: {
       params.shouldInjectTaskContextWithSettings,
     referenceLibraryItems: params.referenceLibraryItems,
     libraryIndexResponseCount: params.libraryIndexResponseCount,
+    imageLibraryReferenceCount: params.imageLibraryReferenceCount,
     createUserMessage: params.createUserMessage,
     buildLibraryReferenceContext: params.buildLibraryReferenceContext,
     recentMessages: params.recentMessages,
@@ -202,6 +206,9 @@ export function resolvePreparedRequestLimitViolation(params: {
     userQuestionEvent: params.derivedContext.userQuestionEvent,
     libraryIndexRequestEvent: params.derivedContext.libraryIndexRequestEvent,
     libraryItemRequestEvent: params.derivedContext.libraryItemRequestEvent,
+    libraryImageDataRequestEvent:
+      params.derivedContext.libraryImageDataRequestEvent,
+    pptDesignRequestEvent: params.derivedContext.pptDesignRequestEvent,
     currentTaskId: params.currentTaskId,
     getProtocolLimitViolation: params.getProtocolLimitViolation,
   });
@@ -214,6 +221,7 @@ export function buildPreparedFinalRequestText(params: {
   derivedContext: DerivedProtocolSearchContext;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
+  imageLibraryReferenceCount?: number;
   recentMessages?: Message[];
 }) {
   return buildPreparedFinalRequestTextFromBuilder(params);

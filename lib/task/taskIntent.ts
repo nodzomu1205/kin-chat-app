@@ -44,7 +44,9 @@ const TRANSCRIPT_HINT_KEYWORDS = [
   "文字起こし",
   "書き起こし",
 ];
+const IMAGE_LIBRARY_HINT_KEYWORDS = ["image-library", "image library"];
 const LIBRARY_HINT_KEYWORDS = ["library", "ライブラリ", "資料", "保存資料"];
+const PPT_DESIGN_HINT_KEYWORDS = ["ppt", "powerpoint", "presentation", "slide", "スライド"];
 const USER_HINT_KEYWORDS = ["user", "ask user", "ユーザー", "確認"];
 
 const AT_LEAST_KEYWORDS = [
@@ -52,7 +54,6 @@ const AT_LEAST_KEYWORDS = [
   "minimum",
   "no less than",
   "not less than",
-  "以上",
 ];
 const UP_TO_KEYWORDS = [
   "up to",
@@ -61,11 +62,9 @@ const UP_TO_KEYWORDS = [
   "at most",
   "no more than",
   "not more than",
-  "まで",
-  "以下",
 ];
-const AROUND_KEYWORDS = ["around", "about", "approximately", "前後", "くらい"];
-const EXACT_KEYWORDS = ["exactly", "ちょうど", "正確に"];
+const AROUND_KEYWORDS = ["around", "about", "approximately"];
+const EXACT_KEYWORDS = ["exactly"];
 
 function includesAnyKeyword(text: string, keywords: string[]) {
   const lower = text.toLowerCase();
@@ -165,11 +164,21 @@ function applyConstraintWorkflowHints(intent: TaskIntent): TaskIntent {
       next.workflow!.youtubeTranscriptRequestCount =
         count ?? next.workflow!.youtubeTranscriptRequestCount;
       next.workflow!.youtubeTranscriptRequestCountRule = rule;
+    } else if (includesAnyKeyword(normalized, IMAGE_LIBRARY_HINT_KEYWORDS)) {
+      next.workflow!.allowImageLibraryReference = true;
+      next.workflow!.imageLibraryReferenceCount =
+        count ?? next.workflow!.imageLibraryReferenceCount;
+      next.workflow!.imageLibraryReferenceCountRule = rule;
     } else if (includesAnyKeyword(normalized, LIBRARY_HINT_KEYWORDS)) {
       next.workflow!.allowLibraryReference = true;
       next.workflow!.libraryReferenceCount =
         count ?? next.workflow!.libraryReferenceCount;
       next.workflow!.libraryReferenceCountRule = rule;
+    } else if (includesAnyKeyword(normalized, PPT_DESIGN_HINT_KEYWORDS)) {
+      next.workflow!.allowPptDesignRequest = true;
+      next.workflow!.pptDesignRequestCount =
+        count ?? next.workflow!.pptDesignRequestCount;
+      next.workflow!.pptDesignRequestCountRule = rule;
     } else if (
       includesAnyKeyword(normalized, DRAFT_PREPARATION_HINT_KEYWORDS)
     ) {

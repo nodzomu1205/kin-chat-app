@@ -26,6 +26,14 @@ export function normalizeTaskProtocolEventType(
       return "library_index_request";
     case "LIBRARY_DATA_RESPONSE":
       return "library_index_response";
+    case "LIBRARY_IMAGE_DATA_REQUEST":
+      return "library_image_data_request";
+    case "LIBRARY_IMAGE_DATA_RESPONSE":
+      return "library_image_data_response";
+    case "PPT_DESIGN_REQUEST":
+      return "ppt_design_request";
+    case "PPT_DESIGN_RESPONSE":
+      return "ppt_design_response";
     case "DRAFT_PREPARATION_REQUEST":
       return "draft_preparation_request";
     case "DRAFT_PREPARATION_RESPONSE":

@@ -15,7 +15,7 @@ describe("parsePptCommand", () => {
     expect(parsed.intent).toBeUndefined();
   });
 
-  it("does not route document-scoped edits through the legacy /ppt draft flow", () => {
+  it("routes document-scoped edits to direct PPTX revision", () => {
     const parsed = parsePptCommand(
       "/ppt\nDocument ID: ppt_123\nMake slide 3 richer"
     );
@@ -24,8 +24,8 @@ describe("parsePptCommand", () => {
       isPptCommand: true,
       documentId: "ppt_123",
       body: "Make slide 3 richer",
+      intent: "reviseRenderedPptx",
     });
-    expect(parsed.intent).toBeUndefined();
   });
 
   it("detects concise preview requests", () => {
@@ -94,8 +94,8 @@ describe("parsePptCommand", () => {
       documentId: "ppt_123",
       density: "dense",
       body: "Make it richer",
+      intent: "reviseRenderedPptx",
     });
-    expect(editParsed.intent).toBeUndefined();
   });
 
   it("detects render requests even without a document id", () => {

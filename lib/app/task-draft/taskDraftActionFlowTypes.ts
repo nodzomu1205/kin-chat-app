@@ -37,6 +37,7 @@ export type CommonTaskDraftFlowArgs = {
   gptStateRef: MutableRefObject<KinMemoryState>;
   chatRecentLimit: number;
   referenceLibraryItems: ReferenceLibraryItem[];
+  buildLibraryReferenceContext: () => string;
   imageLibraryReferenceEnabled: boolean;
   imageLibraryReferenceCount: number;
   applyChatUsage: (

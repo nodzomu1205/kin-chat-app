@@ -37,6 +37,8 @@ export function getProtocolLimitViolationForGptActions(
       | "search_request"
       | "user_question"
       | "library_reference"
+      | "image_library_reference"
+      | "ppt_design_request"
       | "youtube_transcript_request";
     taskId?: string;
     actionId?: string;
@@ -49,6 +51,10 @@ export function getProtocolLimitViolationForGptActions(
         ? "search_request"
         : event.type === "youtube_transcript_request"
           ? "youtube_transcript_request"
+          : event.type === "ppt_design_request"
+          ? "ppt_design_request"
+          : event.type === "image_library_reference"
+            ? "image_library_reference"
           : event.type === "library_reference"
             ? "library_reference"
             : "ask_user";
@@ -65,6 +71,10 @@ export function getProtocolLimitViolationForGptActions(
         ? "web search request"
         : kind === "youtube_transcript_request"
           ? "YouTube transcript request"
+          : kind === "ppt_design_request"
+          ? "PPT design request"
+          : kind === "image_library_reference"
+            ? "image-library reference request"
           : kind === "library_reference"
             ? "library reference request"
             : "user question";
