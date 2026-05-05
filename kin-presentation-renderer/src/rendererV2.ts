@@ -99,12 +99,15 @@ function renderOpeningBookend(
   const useVisualTreatment = bookend.frameId === "visualTitleCover";
   if (useVisualTreatment) {
     if (bookend.visualRequest?.asset?.base64) {
-      renderImage(
-        slide,
-        bookend.visualRequest.asset,
-        { x: 7.3, y: 0.58, w: 5.35, h: 6.35 },
-        "visualCover"
-      );
+      renderCoverImageContained(slide, bookend.visualRequest.asset);
+      slide.addShape("rect", {
+        x: 0,
+        y: 0,
+        w: slideLayout.width,
+        h: slideLayout.height,
+        fill: { color: theme.background, transparency: 82 },
+        line: { color: theme.background, transparency: 100 }
+      });
     } else {
       slide.addShape("rect", {
         x: 0,
@@ -345,6 +348,16 @@ function renderLayoutFrame(
   box: Box,
   density: PresentationDensity
 ) {
+  if (frame.layoutFrameId === "adaptiveVisualMain") {
+    renderAdaptiveVisualMainFrame(slide, frame, theme, textFitContext, box, density);
+    return;
+  }
+
+  if (frame.layoutFrameId === "adaptiveTextMain") {
+    renderAdaptiveTextMainFrame(slide, frame, theme, textFitContext, box, density);
+    return;
+  }
+
   if (
     frame.layoutFrameId === "visualLeftTextRight" ||
     frame.layoutFrameId === "textLeftVisualRight" ||
@@ -389,6 +402,325 @@ function renderLayoutFrame(
   }
 
   renderBlock(slide, frame.blocks[0], theme, textFitContext, box, density);
+}
+
+function renderAdaptiveVisualMainFrame(
+  slide: PptxGenJS.Slide,
+  frame: FramePresentationSpec["slideFrames"][number],
+  theme: RendererTheme,
+  textFitContext: TextFitContext,
+  box: Box,
+  density: PresentationDensity
+) {
+  const visualBlock = frame.blocks.find(isVisualBlock) || frame.blocks[0];
+  const annotationBlock = frame.blocks.find((block) => block && !isVisualBlock(block));
+  const boxes = resolveAdaptiveVisualMainBoxes(
+    box,
+    resolveBlockAspectRatio(visualBlock),
+    !!annotationBlock,
+    frame.layoutIntent?.textPlacement
+  );
+  renderVisualBlockExact(slide, visualBlock, theme, boxes.visual, density);
+  if (annotationBlock && boxes.annotation) {
+    renderTextBlock(slide, annotationBlock, theme, textFitContext, boxes.annotation);
+  }
+}
+
+function renderAdaptiveTextMainFrame(
+  slide: PptxGenJS.Slide,
+  frame: FramePresentationSpec["slideFrames"][number],
+  theme: RendererTheme,
+  textFitContext: TextFitContext,
+  box: Box,
+  density: PresentationDensity
+) {
+  const textBlock = frame.blocks.find((block) => block && !isVisualBlock(block)) || frame.blocks[0];
+  const visualBlocks = frame.blocks.filter(isVisualBlock);
+  const boxes = resolveAdaptiveTextMainBoxes(
+    box,
+    textBlock,
+    visualBlocks.length,
+    frame.layoutIntent?.visualPlacement,
+    visualBlocks.map(resolveBlockAspectRatio)
+  );
+  renderTextBlock(slide, textBlock, theme, textFitContext, boxes.text);
+  boxes.visuals.forEach((visualBox, index) => {
+    renderBlock(slide, visualBlocks[index], theme, textFitContext, visualBox, density);
+  });
+}
+
+export function resolveAdaptiveVisualMainBoxes(
+  box: Box,
+  aspectRatio: number | undefined,
+  needsAnnotation: boolean,
+  preferredPlacement?: "right" | "bottomRight" | "topWide" | "leftColumn"
+): { visual: Box; annotation?: Box } {
+  const visual = containTopLeftBox(box, aspectRatio);
+  if (!needsAnnotation) return { visual };
+
+  const gap = 0.24;
+  const rightW = box.x + box.w - (visual.x + visual.w) - gap;
+  const bottomH = box.y + box.h - (visual.y + visual.h) - gap;
+  const rightAnnotation =
+    rightW >= 2.25
+      ? {
+          x: visual.x + visual.w + gap,
+          y: visual.y,
+          w: rightW,
+          h: visual.h
+        }
+      : undefined;
+  const bottomAnnotation =
+    bottomH >= 0.85
+      ? {
+          x: box.x + box.w * 0.54,
+          y: visual.y + visual.h + gap,
+          w: box.w * 0.46,
+          h: bottomH
+        }
+      : undefined;
+
+  if (preferredPlacement === "bottomRight") {
+    return { visual, annotation: bottomAnnotation || rightAnnotation };
+  }
+  return { visual, annotation: rightAnnotation || bottomAnnotation };
+}
+
+export function resolveAdaptiveTextMainBoxes(
+  box: Box,
+  textBlock: FrameBlock | undefined,
+  visualCount: number,
+  preferredPlacement?: "right" | "bottom" | "rightGrid",
+  visualAspectRatios: Array<number | undefined> = []
+): { text: Box; visuals: Box[] } {
+  if (visualCount <= 0) return { text: box, visuals: [] };
+
+  const gap = 0.32;
+  const metrics = estimateTextBlockMetrics(textBlock);
+  const safeVisualCount = Math.max(1, Math.min(3, visualCount));
+  for (let count = safeVisualCount; count >= 1; count -= 1) {
+    const aspects = visualAspectRatios.slice(0, count);
+    const candidates = [
+      buildTextLeftVisualRightLayout(box, count, gap, metrics, aspects),
+      buildTextTopVisualBottomLayout(box, count, gap, metrics, aspects),
+      buildTextLeftVisualRightGridLayout(box, count, gap, metrics, aspects),
+      buildTextTopVisualBottomGridLayout(box, count, gap, metrics, aspects)
+    ]
+      .filter((item) => item.visuals.length === count)
+      .filter((item) => adaptiveTextLayoutFits(item, metrics));
+
+    const preferred = candidates
+      .map((candidate) => ({
+        ...candidate,
+        score:
+          candidate.score +
+          (preferredPlacement === "bottom" && candidate.placement.startsWith("bottom") ? 4 : 0) +
+          (preferredPlacement === "right" && candidate.placement === "right" ? 4 : 0) +
+          (preferredPlacement === "rightGrid" && candidate.placement === "rightGrid" ? 4 : 0)
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    if (preferred[0]) return preferred[0];
+  }
+
+  return { text: box, visuals: [] };
+}
+
+function buildTextLeftVisualRightLayout(
+  box: Box,
+  visualCount: number,
+  gap: number,
+  metrics: TextBlockMetrics,
+  aspects: Array<number | undefined>
+) {
+  const textW = metrics.totalChars > 260 ? box.w * 0.64 : box.w * 0.58;
+  const visualArea = { x: box.x + textW + gap, y: box.y, w: box.w - textW - gap, h: box.h };
+  const visuals = visualCount === 1 ? [visualArea] : splitVerticalBoxes(visualArea, visualCount);
+  return scoreAdaptiveTextLayout({
+    placement: visualCount === 1 ? "right" : "rightGrid",
+    text: { x: box.x, y: box.y, w: textW, h: box.h },
+    visuals,
+    metrics,
+    aspects
+  });
+}
+
+function buildTextLeftVisualRightGridLayout(
+  box: Box,
+  visualCount: number,
+  gap: number,
+  metrics: TextBlockMetrics,
+  aspects: Array<number | undefined>
+) {
+  const textW = metrics.totalChars > 260 ? box.w * 0.6 : box.w * 0.54;
+  const visualArea = { x: box.x + textW + gap, y: box.y, w: box.w - textW - gap, h: box.h };
+  return scoreAdaptiveTextLayout({
+    placement: "rightGrid",
+    text: { x: box.x, y: box.y, w: textW, h: box.h },
+    visuals: splitVerticalBoxes(visualArea, visualCount),
+    metrics,
+    aspects
+  });
+}
+
+function buildTextTopVisualBottomLayout(
+  box: Box,
+  visualCount: number,
+  gap: number,
+  metrics: TextBlockMetrics,
+  aspects: Array<number | undefined>
+) {
+  const neededTextH = estimateTextHeight(metrics, box.w);
+  const maxTextH = Math.max(1.2, box.h - gap - 1.38);
+  const textH = Math.min(maxTextH, Math.max(1.35, neededTextH));
+  const visualArea = { x: box.x, y: box.y + textH + gap, w: box.w, h: box.h - textH - gap };
+  const visuals = visualCount === 1 ? [visualArea] : splitHorizontalBoxes(visualArea, visualCount);
+  return scoreAdaptiveTextLayout({
+    placement: visualCount === 1 ? "bottom" : "bottomGrid",
+    text: { x: box.x, y: box.y, w: box.w, h: textH },
+    visuals,
+    metrics,
+    aspects
+  });
+}
+
+function buildTextTopVisualBottomGridLayout(
+  box: Box,
+  visualCount: number,
+  gap: number,
+  metrics: TextBlockMetrics,
+  aspects: Array<number | undefined>
+) {
+  const neededTextH = estimateTextHeight(metrics, box.w);
+  const maxTextH = Math.max(1.2, box.h - gap - 1.38);
+  const textH = Math.min(maxTextH, Math.max(1.25, neededTextH));
+  const visualArea = { x: box.x, y: box.y + textH + gap, w: box.w, h: box.h - textH - gap };
+  return scoreAdaptiveTextLayout({
+    placement: "bottomGrid",
+    text: { x: box.x, y: box.y, w: box.w, h: textH },
+    visuals: splitHorizontalBoxes(visualArea, visualCount),
+    metrics,
+    aspects
+  });
+}
+
+function scoreAdaptiveTextLayout(args: {
+  placement: "right" | "rightGrid" | "bottom" | "bottomGrid";
+  text: Box;
+  visuals: Box[];
+  metrics: TextBlockMetrics;
+  aspects: Array<number | undefined>;
+}) {
+  const requiredTextH = estimateTextHeight(args.metrics, args.text.w);
+  const textFitScore = Math.min(16, args.text.h / Math.max(0.1, requiredTextH) * 8);
+  const textShapeScore =
+    args.metrics.totalChars > 220
+      ? Math.min(8, args.text.w / Math.max(1, args.text.h) * 2.2)
+      : Math.min(8, args.text.h / Math.max(1, args.text.w) * 9);
+  const visualScore = args.visuals.reduce((score, visual, index) => {
+    const aspect = args.aspects[index];
+    const boxRatio = visual.w / Math.max(0.1, visual.h);
+    const ratioFit =
+      aspect && Number.isFinite(aspect)
+        ? Math.max(0, 8 - Math.abs(Math.log(aspect / boxRatio)) * 5)
+        : 4;
+    const sizeScore = Math.min(8, visual.w * visual.h * 0.55);
+    return score + ratioFit + sizeScore;
+  }, 0);
+  const balanceScore =
+    args.visuals.length > 1 && (args.placement === "rightGrid" || args.placement === "bottomGrid")
+      ? 5
+      : 0;
+  const averageAspect =
+    args.aspects.filter((aspect): aspect is number => !!aspect && Number.isFinite(aspect))
+      .reduce((sum, aspect) => sum + aspect, 0) / Math.max(1, args.aspects.filter(Boolean).length);
+  const shortLandscapeBottomBonus =
+    args.metrics.totalChars < 150 && averageAspect >= 1.25 && args.placement === "bottomGrid" ? 14 : 0;
+  return {
+    placement: args.placement,
+    text: args.text,
+    visuals: args.visuals,
+    score: textFitScore + textShapeScore + visualScore + balanceScore + shortLandscapeBottomBonus
+  };
+}
+
+type TextBlockMetrics = {
+  headingChars: number;
+  textChars: number;
+  itemChars: number[];
+  totalChars: number;
+};
+
+function estimateTextBlockMetrics(block: FrameBlock | undefined): TextBlockMetrics {
+  const headingChars = block?.heading?.length || 0;
+  const textChars = block?.text?.length || 0;
+  const itemChars = (block?.items || []).map((item) => item.length);
+  return {
+    headingChars,
+    textChars,
+    itemChars,
+    totalChars: headingChars + textChars + itemChars.reduce((sum, count) => sum + count, 0)
+  };
+}
+
+function estimateTextHeight(metrics: TextBlockMetrics, width: number) {
+  const contentWidth = Math.max(1, width - 0.2);
+  const charsPerLine = Math.max(7, Math.floor(contentWidth * 8.2));
+  const headingLines = metrics.headingChars ? Math.ceil(metrics.headingChars / charsPerLine) : 0;
+  const bodyLines = metrics.textChars ? Math.ceil(metrics.textChars / charsPerLine) : 0;
+  const itemLines = metrics.itemChars.reduce(
+    (sum, chars) => sum + Math.max(1, Math.ceil(chars / Math.max(7, charsPerLine - 5))),
+    0
+  );
+  const paragraphCount =
+    (metrics.headingChars ? 1 : 0) + (metrics.textChars ? 1 : 0) + metrics.itemChars.length;
+  const lineHeight = 0.28;
+  const spacing = Math.max(0, paragraphCount - 1) * 0.11;
+  const padding = 0.36;
+  return Math.max(0.7, (headingLines + bodyLines + itemLines) * lineHeight + spacing + padding);
+}
+
+function adaptiveTextLayoutFits(
+  layout: { text: Box; visuals: Box[] },
+  metrics: TextBlockMetrics
+) {
+  const requiredTextH = estimateTextHeight(metrics, layout.text.w);
+  if (layout.text.h + 0.03 < requiredTextH) return false;
+  if (layout.visuals.some((visual) => visual.w < 1.6 || visual.h < 1.2)) return false;
+  return layout.visuals.every((visual) => !boxesOverlap(layout.text, visual, 0.04));
+}
+
+function boxesOverlap(a: Box, b: Box, tolerance = 0) {
+  return !(
+    a.x + a.w <= b.x + tolerance ||
+    b.x + b.w <= a.x + tolerance ||
+    a.y + a.h <= b.y + tolerance ||
+    b.y + b.h <= a.y + tolerance
+  );
+}
+
+function splitHorizontalBoxes(box: Box, count: number) {
+  const safeCount = Math.max(1, Math.min(count, 3));
+  const gap = 0.24;
+  const w = (box.w - gap * (safeCount - 1)) / safeCount;
+  return Array.from({ length: safeCount }, (_, index) => ({
+    x: box.x + index * (w + gap),
+    y: box.y,
+    w,
+    h: box.h
+  }));
+}
+
+function splitVerticalBoxes(box: Box, count: number) {
+  const safeCount = Math.max(1, Math.min(count, 3));
+  const gap = 0.22;
+  const h = (box.h - gap * (safeCount - 1)) / safeCount;
+  return Array.from({ length: safeCount }, (_, index) => ({
+    x: box.x,
+    y: box.y + index * (h + gap),
+    w: box.w,
+    h
+  }));
 }
 
 export function resolveTwoColumnBoxes(
@@ -448,7 +780,22 @@ function renderVisualBlock(
 ) {
   const visual = block.visualRequest;
   if (visual?.asset?.base64) {
-    renderImage(slide, visual.asset, box, block.styleId);
+    renderImageWithOptionalCaption(slide, block, theme, box);
+    return;
+  }
+  renderVisualFallback(slide, theme, block, box, density);
+}
+
+function renderVisualBlockExact(
+  slide: PptxGenJS.Slide,
+  block: FrameBlock | undefined,
+  theme: RendererTheme,
+  box: Box,
+  density: PresentationDensity
+) {
+  const visual = block?.visualRequest;
+  if (visual?.asset?.base64) {
+    renderImageExact(slide, visual.asset, box);
     return;
   }
   renderVisualFallback(slide, theme, block, box, density);
@@ -470,6 +817,90 @@ function renderImage(
     y: imageBox.y,
     w: imageBox.w,
     h: imageBox.h
+  });
+}
+
+function renderCoverImageContained(
+  slide: PptxGenJS.Slide,
+  asset: NonNullable<NonNullable<FrameBlock["visualRequest"]>["asset"]>
+) {
+  const box = { x: 0, y: 0, w: slideLayout.width, h: slideLayout.height };
+  const imageBox = containBox(box, resolveAssetAspectRatio(asset));
+  slide.addImage({
+    data: `data:${asset.mimeType || "image/png"};base64,${asset.base64}`,
+    x: imageBox.x,
+    y: imageBox.y,
+    w: imageBox.w,
+    h: imageBox.h,
+    transparency: 80
+  } as PptxGenJS.ImageProps);
+}
+
+function renderImageWithOptionalCaption(
+  slide: PptxGenJS.Slide,
+  block: FrameBlock,
+  theme: RendererTheme,
+  box: Box
+) {
+  const visual = block.visualRequest;
+  const asset = visual?.asset;
+  if (!visual || !asset?.base64) return;
+  const caption = visual.brief?.trim();
+  const showCaption =
+    !!caption &&
+    visual.renderStyle?.showBrief !== false &&
+    block.styleId === "visualContain" &&
+    box.h >= 1.45;
+  if (!showCaption) {
+    renderImage(slide, asset, box, block.styleId);
+    return;
+  }
+
+  const captionH = Math.min(0.34, Math.max(0.24, box.h * 0.12));
+  const gap = 0.08;
+  const imageArea = {
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: Math.max(0.4, box.h - captionH - gap)
+  };
+  const imageBox =
+    block.styleId === "visualContain"
+      ? containTopLeftBox(imageArea, resolveAssetAspectRatio(asset))
+      : coverBox(imageArea, resolveAssetAspectRatio(asset));
+  slide.addImage({
+    data: `data:${asset.mimeType || "image/png"};base64,${asset.base64}`,
+    x: imageBox.x,
+    y: imageBox.y,
+    w: imageBox.w,
+    h: imageBox.h
+  });
+  slide.addText(caption, {
+    x: imageBox.x,
+    y: imageBox.y + imageBox.h + gap,
+    w: imageBox.w,
+    h: captionH,
+    fontFace: theme.fontFace,
+    fontSize: box.w < 3.2 ? 8.6 : 9.4,
+    color: theme.mutedText,
+    fit: "shrink",
+    margin: 0,
+    align: "center",
+    valign: "middle"
+  });
+}
+
+function renderImageExact(
+  slide: PptxGenJS.Slide,
+  asset: NonNullable<NonNullable<FrameBlock["visualRequest"]>["asset"]>,
+  box: Box
+) {
+  slide.addImage({
+    data: `data:${asset.mimeType || "image/png"};base64,${asset.base64}`,
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h
   });
 }
 
@@ -604,6 +1035,37 @@ function resolveFrameBlockBoxes(
 ): Array<{ block: FrameBlock | undefined; box: Box }> {
   if (frame.layoutFrameId === "singleCenter" || frame.layoutFrameId === "titleBody") {
     return [{ block: frame.blocks[0], box }];
+  }
+  if (frame.layoutFrameId === "adaptiveVisualMain") {
+    const visualBlock = frame.blocks.find(isVisualBlock) || frame.blocks[0];
+    const annotationBlock = frame.blocks.find((block) => block && !isVisualBlock(block));
+    const boxes = resolveAdaptiveVisualMainBoxes(
+      box,
+      resolveBlockAspectRatio(visualBlock),
+      !!annotationBlock,
+      frame.layoutIntent?.textPlacement
+    );
+    return [
+      { block: visualBlock, box: boxes.visual },
+      { block: annotationBlock, box: boxes.annotation || boxes.visual }
+    ].filter(({ block }) => !!block);
+  }
+  if (frame.layoutFrameId === "adaptiveTextMain") {
+    const textBlock = frame.blocks.find((block) => block && !isVisualBlock(block)) || frame.blocks[0];
+    const visualBlocks = frame.blocks.filter(isVisualBlock);
+    const boxes = resolveAdaptiveTextMainBoxes(
+      box,
+      textBlock,
+      visualBlocks.length,
+      frame.layoutIntent?.visualPlacement
+    );
+    return [
+      { block: textBlock, box: boxes.text },
+      ...visualBlocks.map((block, index) => ({
+        block,
+        box: boxes.visuals[index] || boxes.text
+      }))
+    ];
   }
   if (
     frame.layoutFrameId === "visualLeftTextRight" ||
@@ -753,11 +1215,7 @@ function renderVisualFallback(
   box: Box,
   density: PresentationDensity = "standard"
 ) {
-  const visual = block?.visualRequest;
-  const label = block?.heading || block?.id || "visual";
-  const text = [label, visual?.brief || visual?.prompt || "Visual placeholder"]
-    .filter(Boolean)
-    .join("\n");
+  const text = buildUnresolvedVisualFallbackText(block);
   slide.addShape("rect", {
     x: box.x,
     y: box.y,
@@ -779,6 +1237,14 @@ function renderVisualFallback(
     valign: "middle",
     margin: 0.04
   });
+}
+
+export function buildUnresolvedVisualFallbackText(block: FrameBlock | undefined) {
+  const visual = block?.visualRequest;
+  const label = block?.id ? `Unresolved visual: ${block.id}` : "Unresolved visual";
+  return [label, visual?.brief || visual?.prompt || "Visual placeholder"]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function addTitle(slide: PptxGenJS.Slide, theme: RendererTheme, title: string) {
@@ -897,6 +1363,15 @@ function containBox(box: Box, aspectRatio?: number): Box {
   }
   const w = box.h * aspectRatio;
   return { x: box.x + (box.w - w) / 2, y: box.y, w, h: box.h };
+}
+
+function containTopLeftBox(box: Box, aspectRatio?: number): Box {
+  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0) return box;
+  const boxRatio = box.w / box.h;
+  if (aspectRatio > boxRatio) {
+    return { x: box.x, y: box.y, w: box.w, h: box.w / aspectRatio };
+  }
+  return { x: box.x, y: box.y, w: box.h * aspectRatio, h: box.h };
 }
 
 function coverBox(box: Box, aspectRatio?: number): Box {

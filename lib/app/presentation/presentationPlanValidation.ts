@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   PresentationTaskDeckFrame,
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
@@ -42,7 +42,7 @@ export function normalizePresentationVisualMainPolicy(
           };
         });
 
-  return finalizeFrameNormalization(visualNormalized);
+  return finalizeFrameNormalization(applyAdaptiveLayoutPolicy(visualNormalized));
 }
 
 export function syncDeckFrameSlideCount(
@@ -76,26 +76,36 @@ function normalizeDeckFrameBookends(
             deckFrame.openingSlide?.visualRequest ||
             cloneVisualRequest(representativeVisual),
         };
-  const summary = summarizeFinalFrame(frames[frames.length - 1]);
+  const finalBodyIsSummary = isSummaryLikeFrame(frames[frames.length - 1]);
+  const summary = finalBodyIsSummary ? null : summarizeDeckFrames(frames);
+  const closingFrameId = finalBodyIsSummary
+    ? "endSlide"
+    : deckFrame.closingSlide?.frameId === "endSlide" && summary
+      ? "summaryClosing"
+      : deckFrame.closingSlide?.frameId || (summary ? "summaryClosing" : "endSlide");
+  const closingNextSteps = finalBodyIsSummary
+    ? undefined
+    : deckFrame.closingSlide?.nextSteps?.length
+      ? deckFrame.closingSlide.nextSteps
+      : summary?.nextSteps;
   const closingSlide =
     deckFrame.closingSlide?.enabled === false
       ? deckFrame.closingSlide
       : {
           enabled: true,
           ...(deckFrame.closingSlide || {}),
-          frameId:
-            deckFrame.closingSlide?.frameId === "endSlide" && summary
-              ? "summaryClosing"
-              : deckFrame.closingSlide?.frameId || (summary ? "summaryClosing" : "endSlide"),
+          frameId: closingFrameId,
           title:
-            deckFrame.closingSlide?.title && deckFrame.closingSlide.title !== "- END -"
+            deckFrame.closingSlide?.title &&
+            deckFrame.closingSlide.title !== "- END -" &&
+            !isBodySlideSummaryReuse(deckFrame.closingSlide.title, frames)
               ? deckFrame.closingSlide.title
               : summary?.title || deckFrame.closingSlide?.title || "- END -",
-          message: deckFrame.closingSlide?.message || summary?.message || "Thank you",
-          nextSteps:
-            deckFrame.closingSlide?.nextSteps?.length
-              ? deckFrame.closingSlide.nextSteps
-              : summary?.nextSteps,
+          message:
+            deckFrame.closingSlide?.message ||
+            (finalBodyIsSummary ? "Thank you" : summary?.message) ||
+            "Thank you",
+          nextSteps: closingNextSteps,
         };
 
   return {
@@ -119,6 +129,97 @@ function finalizeFrameNormalization(
     slideNumber: index + 1,
     title: normalizeFrameTitle(frame.title),
   }));
+}
+
+function applyAdaptiveLayoutPolicy(
+  frames: PresentationTaskSlideFrame[]
+): PresentationTaskSlideFrame[] {
+  return frames.map((frame) => {
+    const visualBlocks = frame.blocks.filter((block) => !!block.visualRequest);
+    const textBlocks = frame.blocks.filter((block) => !block.visualRequest);
+    const primaryVisual = visualBlocks[0];
+    const primaryText = textBlocks[0];
+    const inferredRole = inferAdaptiveSlideRole(frame);
+    const role = frame.slideRole || inferredRole;
+
+    if (role === "visualMain" && primaryVisual) {
+      const annotationBlocks = frame.slideRole
+        ? textBlocks.filter((block) => !isDenseTextBlock(block))
+        : textBlocks;
+      const blocks =
+        annotationBlocks.length > 0 ? [primaryVisual, annotationBlocks[0]] : [primaryVisual];
+      return {
+        ...frame,
+        slideRole: "visualMain",
+        layoutFrameId: "adaptiveVisualMain",
+        layoutIntent: {
+          ...frame.layoutIntent,
+          primaryImageId:
+            frame.layoutIntent?.primaryImageId || resolveVisualImageId(primaryVisual),
+          textPlacement: frame.layoutIntent?.textPlacement || "right",
+          notePolicy:
+            frame.layoutIntent?.notePolicy ||
+            (blocks.length > 1 ? "shortAnnotation" : "none"),
+        },
+        blocks,
+      };
+    }
+
+    if (role === "textMain" && primaryText) {
+      return {
+        ...frame,
+        slideRole: "textMain",
+        layoutFrameId: "adaptiveTextMain",
+        layoutIntent: {
+          ...frame.layoutIntent,
+          primaryImageId:
+            frame.layoutIntent?.primaryImageId || resolveVisualImageId(primaryVisual),
+          visualPlacement:
+            frame.layoutIntent?.visualPlacement ||
+            (visualBlocks.length > 1 ? "rightGrid" : "right"),
+        },
+        blocks: [primaryText, ...visualBlocks].slice(0, 4),
+      };
+    }
+
+    return frame;
+  });
+}
+
+function inferAdaptiveSlideRole(
+  frame: PresentationTaskSlideFrame
+): PresentationTaskSlideFrame["slideRole"] {
+  if (frame.layoutFrameId === "adaptiveVisualMain") return "visualMain";
+  if (frame.layoutFrameId === "adaptiveTextMain") return "textMain";
+  if (frame.layoutFrameId === "visualLeftTextRight") {
+    const visualBlock = frame.blocks[0];
+    if (!visualBlock?.visualRequest) return undefined;
+    return isVisualMainCandidateBlock(visualBlock) ? "visualMain" : "textMain";
+  }
+  if (frame.layoutFrameId === "textLeftVisualRight") {
+    return frame.blocks.some((block) => !!block.visualRequest) ? "textMain" : undefined;
+  }
+  if (frame.layoutFrameId === "leftRight50") {
+    if (frame.blocks[0]?.visualRequest && !frame.blocks[1]?.visualRequest) {
+      return isVisualMainCandidateBlock(frame.blocks[0]) ? "visualMain" : "textMain";
+    }
+    if (!frame.blocks[0]?.visualRequest && frame.blocks[1]?.visualRequest) {
+      return "textMain";
+    }
+  }
+  return undefined;
+}
+
+function isVisualMainCandidateBlock(block: PresentationTaskSlideBlock | undefined) {
+  const visual = block?.visualRequest;
+  if (!visual) return false;
+  return (
+    visual.type === "diagram" ||
+    visual.type === "chart" ||
+    visual.type === "table" ||
+    visual.type === "map" ||
+    visual.type === "iconSet"
+  );
 }
 
 function normalizeDenseHeroDetailsFrames(
@@ -178,6 +279,70 @@ function cloneVisualRequest(
   return JSON.parse(JSON.stringify(visual)) as PresentationTaskVisualRequest;
 }
 
+function summarizeDeckFrames(frames: PresentationTaskSlideFrame[]) {
+  if (frames.length === 0) return null;
+  const keyFrames = frames.slice(0, 6);
+  const items = keyFrames
+    .map((frame) => {
+      const textBlocks = frame.blocks.filter((block) => !block.visualRequest);
+      const primary = textBlocks[0];
+      const firstItem = primary?.items?.[0];
+      const text = primary?.text;
+      const detail = firstItem || text || frame.speakerIntent || "";
+      return [frame.title, detail].filter(Boolean).join(": ");
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+  if (items.length < 2) return summarizeFinalFrame(frames[frames.length - 1]);
+  return {
+    title: "\u5168\u4f53\u307e\u3068\u3081",
+    message:
+      "\u4e3b\u8981\u8ad6\u70b9\u3092\u6a2a\u65ad\u3057\u3066\u3001\u30b5\u30d7\u30e9\u30a4\u30c1\u30a7\u30fc\u30f3\u5168\u4f53\u306e\u69cb\u9020\u30fb\u8ab2\u984c\u30fb\u5bfe\u5fdc\u65b9\u5411\u3092\u6574\u7406\u3057\u307e\u3059\u3002",
+    nextSteps: items,
+  };
+}
+
+function isSummaryLikeFrame(frame: PresentationTaskSlideFrame | undefined) {
+  if (!frame) return false;
+  const text = [
+    frame.title,
+    frame.speakerIntent,
+    ...frame.blocks.flatMap((block) => [
+      block.heading,
+      block.text,
+      ...(block.items || []),
+    ]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const summaryTerms = [
+    "\u307e\u3068\u3081",
+    "\u7dcf\u62ec",
+    "\u7d50\u8ad6",
+    "\u5c55\u671b",
+    "\u4eca\u5f8c",
+    "next",
+    "future",
+    "summary",
+    "recap",
+    "conclusion",
+    "closing",
+  ];
+  return summaryTerms.some((term) => text.includes(term));
+}
+function isBodySlideSummaryReuse(title: string | undefined, frames: PresentationTaskSlideFrame[]) {
+  const normalizedTitle = title?.trim();
+  if (!normalizedTitle) return false;
+  return frames.some((frame) => {
+    const textBlocks = frame.blocks.filter((block) => !block.visualRequest);
+    return (
+      frame.title.trim() === normalizedTitle ||
+      textBlocks.some((block) => block.heading?.trim() === normalizedTitle)
+    );
+  });
+}
+
 function summarizeFinalFrame(frame: PresentationTaskSlideFrame | undefined) {
   if (!frame) return null;
   const textBlocks = frame.blocks.filter((block) => !block.visualRequest);
@@ -191,7 +356,7 @@ function summarizeFinalFrame(frame: PresentationTaskSlideFrame | undefined) {
     /summary|future|next|closing/i.test(frame.title);
   if (!looksLikeClosingSummary || !listBlock?.items?.length) return null;
   return {
-    title: listBlock.heading || messageBlock?.heading || "まとめ",
+    title: listBlock.heading || messageBlock?.heading || "Summary",
     message: messageBlock?.text,
     nextSteps: listBlock.items.slice(0, 4),
   };
@@ -279,34 +444,28 @@ function compactMergedTitle(left: string, right: string) {
   if (hasCommerceFlow(leftTitle) && hasProcessFlow(rightTitle)) {
     return titleForFlowCombination(rightTitle);
   }
-  return `${leftTitle} / ${rightTitle}`;
+  return `${leftTitle} ${rightTitle}`;
 }
 
 function compactSingleTitle(value: string) {
   return value
-    .replace(/^コットンの/, "")
-    .replace(/^サプライチェーンの/, "")
-    .replace(/コットンの/g, "")
-    .replace(/サプライチェーンの/g, "")
-    .replace(/^繧ｳ繝・ヨ繝ｳ縺ｮ/, "")
-    .replace(/^繧ｵ繝励Λ繧､繝√ぉ繝ｼ繝ｳ縺ｮ/, "")
-    .replace(/繧ｳ繝・ヨ繝ｳ縺ｮ/g, "")
-    .replace(/繧ｵ繝励Λ繧､繝√ぉ繝ｼ繝ｳ縺ｮ/g, "")
+    .replace(/^(?:slide|スライド)\s*\d+\s*[:：.-]?\s*/iu, "")
+    .replace(/^(?:body|本体)\s*slide\s*\d+\s*[:：.-]?\s*/iu, "")
     .trim();
 }
 
 function hasProcessFlow(value: string) {
-  return /工程フロー|蟾･遞九ヵ繝ｭ繝ｼ/.test(value);
+  return /工程|製造|加工|process|production|manufacturing/i.test(value);
 }
 
 function hasCommerceFlow(value: string) {
-  return /情報・商流|諠・ｱ繝ｻ蝠・ｵ・/.test(value);
+  return /商流|販売|流通|commerce|sales|retail|distribution/i.test(value);
 }
 
 function titleForFlowCombination(processTitle: string) {
-  return /蟾･遞九ヵ繝ｭ繝ｼ/.test(processTitle)
-    ? "迚ｩ逅・噪蜉蟾･繝ｻ蟾･遞九ヵ繝ｭ繝ｼ縺ｨ諠・ｱ繝ｻ蝠・ｵ・"
-    : "物理的加工・工程フローと情報・商流";
+  return /return|回収|返品|循環/i.test(processTitle)
+    ? "Return exchange and commerce flow"
+    : "Physical process and commerce flow";
 }
 
 function truncateTitle(value: string) {
@@ -345,3 +504,4 @@ function resolveVisualImageId(block: PresentationTaskSlideBlock | undefined) {
     ""
   );
 }
+

@@ -1,16 +1,62 @@
 # Next Session Handover
 
-Updated: 2026-05-03
+Updated: 2026-05-05
 
 ## Latest Handoff
 
-The newest active handoff is for the completed library/task/PPT direct-edit
-slice and the remaining PPT/Kin-task follow-up:
+The newest active handoff is for the PPT image-library adaptive-layout slice.
+Start there if the next session is about reviewing the latest generated PPT
+design/PPTX result:
 
+- [`HANDOFF-2026-05-05.md`](./HANDOFF-2026-05-05.md)
 - [`HANDOFF-2026-05-03.md`](./HANDOFF-2026-05-03.md)
 - [`HANDOFF-2026-05-01.md`](./HANDOFF-2026-05-01.md)
 - [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
+
+## Current Next Start
+
+The next session should begin with **reviewing the result of a new PPT design
+and PPTX output** after the 2026-05-05 fixes. The user is expected to share the
+new PPT design text and `.pptx`.
+
+Review in this order:
+
+1. PPT design document correctness.
+2. Exact image-library ID allowlist use.
+3. One-to-one image labels for `candidateImageIds`.
+4. `textMain` / `visualMain` role decisions.
+5. Adaptive text-main layout and any text/image overlap.
+6. Cover/closing bookend behavior.
+7. Renderer XML/media only after the upstream design route is checked.
+
+Do not begin by patching renderer symptoms. For this slice, the first priority
+is preventing bad PPT design JSON: invented IDs, wrong image labels, repeated
+generic captions, and duplicate summary closings.
+
+Latest 2026-05-05 closeout:
+
+- Image-library candidate context now includes `Caption seed`.
+- `visualRequest.labels` must match `candidateImageIds` exactly, in count and
+  order.
+- Labels are accepted only when they can align to selected image IDs.
+- The planner and normalizer avoid `summaryClosing` when the final body slide
+  is already a summary/conclusion/future-outlook slide.
+- PPT design formatting in the touched planning path no longer contains
+  mojibake literals.
+- Renderer V2 uses a more conservative Japanese text-height estimate for
+  adaptive text-main layouts, as a safety verifier rather than the primary fix.
+
+2026-05-05 verification passed:
+
+- `npm test -- lib/app/presentation/presentationImageLibrary.test.ts lib/app/presentation/presentationTaskPlanning.test.ts lib/app/presentation/presentationPlanValidation.test.ts lib/task/taskProtocol.test.ts`
+- `npm test --prefix kin-presentation-renderer -- src/rendererV2.test.ts`
+- `npx tsc --noEmit`
+- `npm run lint`
+- `npm run check:utf8`
+- `npm test` (`185 files / 900 tests`)
+- `npm run build`
+- `npm test --prefix kin-presentation-renderer` (`4 files / 24 tests`)
 
 The latest completed slice added library/image-library bulk operations, Kin PPT
 design protocols, task-time image-library reference settings, and approval-based
@@ -103,6 +149,11 @@ frame content unless the slide intentionally overrides the deck master.
 
 Do not patch the first visible symptom.
 
+For judgment-heavy features, also follow
+[`engineering-judgment-policy.md`](./engineering-judgment-policy.md): avoid
+brittle semantic heuristics, use LLMs with explicit staged logic, and keep
+classification fields necessary and sufficient rather than over-specified.
+
 For topic / task / memory / protocol regressions, trace the adopted value end to
 end before changing code:
 
@@ -169,7 +220,7 @@ Closeout verification passed:
 - `npx tsc --noEmit`
 - `npm run check:utf8`
 - `npm run lint`
-- `npm test` (`183 files / 882 tests`)
+- `npm test` (`183 files / 891 tests`)
 - `npm run build`
 
 The repository is in `late-stage maintenance-watch`, not active rescue.

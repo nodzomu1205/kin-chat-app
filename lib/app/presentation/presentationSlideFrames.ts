@@ -98,6 +98,18 @@ export const PRESENTATION_LAYOUT_FRAMES: Array<
     description: "Four compact blocks for categories or options.",
     blockIds: ["block1", "block2", "block3", "block4"],
   },
+  {
+    id: "adaptiveVisualMain",
+    label: "Adaptive visual main",
+    description: "Primary visual is placed top-left and scaled by asset aspect ratio; remaining space may hold a short annotation.",
+    blockIds: ["block1", "block2"],
+  },
+  {
+    id: "adaptiveTextMain",
+    label: "Adaptive text main",
+    description: "Primary text is placed top-left with remaining space used for one or more related visuals.",
+    blockIds: ["block1", "block2", "block3", "block4"],
+  },
 ];
 
 export const PRESENTATION_BOOKEND_FRAMES: Array<
@@ -217,6 +229,8 @@ const LAYOUT_BLOCK_LIMITS: Record<
   heroTopDetailsBottom: { min: 3, max: 3 },
   threeColumns: { min: 3, max: 3 },
   twoByTwoGrid: { min: 4, max: 4 },
+  adaptiveVisualMain: { min: 1, max: 4 },
+  adaptiveTextMain: { min: 1, max: 6 },
 };
 
 export function parsePresentationSlideFrameDocumentFromJsonLines(
@@ -289,8 +303,30 @@ export function formatPresentationSlideFramePlanLines(
         ? `Frame: ${frame.layoutFrameId}`
         : `Frame: ${frame.masterFrameId} / ${frame.layoutFrameId}`
     );
+    if (frame.slideRole) lines.push(`Role: ${frame.slideRole}`);
+    if (frame.layoutIntent) {
+      lines.push(
+        [
+          "Layout intent:",
+          frame.layoutIntent.primaryImageId
+            ? `image=${frame.layoutIntent.primaryImageId}`
+            : "",
+          frame.layoutIntent.textPlacement
+            ? `text=${frame.layoutIntent.textPlacement}`
+            : "",
+          frame.layoutIntent.visualPlacement
+            ? `visual=${frame.layoutIntent.visualPlacement}`
+            : "",
+          frame.layoutIntent.notePolicy
+            ? `note=${frame.layoutIntent.notePolicy}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+    }
     frame.blocks.forEach((block) => {
-      formatBlockDisplayLines(block).forEach((line) => lines.push(line));
+      formatReadableBlockDisplayLines(block).forEach((line) => lines.push(line));
     });
   });
   return lines;
@@ -309,7 +345,7 @@ export function buildPresentationSpecFromSlideFrames(args: {
     purpose: findStrategyValue(args.strategyItems || [], "purpose"),
     theme: "business-clean",
     density: "standard",
-    slides: args.frames.map((frame, index) => buildSlideSpecFromFrame(frame, index)),
+    slides: args.frames.map((frame) => buildSlideSpecFromFrame(frame)),
   };
 }
 
@@ -333,10 +369,12 @@ function normalizeSlideFrame(
   return {
     slideNumber: numberValue(candidate.slideNumber) || index + 1,
     title:
-      sanitizeSlideFrameTitle(stringValue(candidate.title || candidate.heading)) ||
+      sanitizeReadableSlideFrameTitle(stringValue(candidate.title || candidate.heading)) ||
       `Slide ${index + 1}`,
     masterFrameId: supportedMasterFrameId(candidate.masterFrameId),
     layoutFrameId,
+    slideRole: supportedSlideRole(candidate.slideRole),
+    layoutIntent: normalizeLayoutIntent(candidate.layoutIntent),
     speakerIntent: stringValue(candidate.speakerIntent) || undefined,
     blocks: normalizeBlockIds(blocks),
   };
@@ -544,17 +582,75 @@ function normalizeVisualRequest(value: unknown): PresentationTaskVisualRequest |
   const prompt = stringValue(candidate.prompt || candidate.generationPrompt);
   const promptNote = stringValue(candidate.promptNote || candidate.promptStatus || candidate.note);
   const preferredImageId = stringValue(candidate.preferredImageId || candidate.imageId || candidate.assetId);
-  const labels = stringArray(candidate.labels);
-  if (!brief && !prompt && !promptNote && !preferredImageId && labels.length === 0) return null;
+  const candidateImageIds = uniqueStrings(
+    stringArray(candidate.candidateImageIds || candidate.imageIds || candidate.assetIds)
+  );
+  const usagePolicy = supportedVisualUsagePolicy(candidate.usagePolicy);
+  const maxVisualItems = positiveInteger(candidate.maxVisualItems);
+  const labels = normalizeVisualLabels(
+    stringArray(candidate.labels),
+    candidateImageIds,
+    preferredImageId
+  );
+  if (
+    !brief &&
+    !prompt &&
+    !promptNote &&
+    !preferredImageId &&
+    candidateImageIds.length === 0 &&
+    labels.length === 0
+  ) return null;
   return {
-    type: VISUAL_TYPES.has(type) ? (type as PresentationTaskVisualRequest["type"]) : "diagram",
+    type: normalizeVisualRequestType(type, [brief, prompt, promptNote].join(" ")),
     brief,
     prompt: prompt || undefined,
     promptNote: promptNote || undefined,
     preferredImageId: preferredImageId || undefined,
+    candidateImageIds: candidateImageIds.length > 0 ? candidateImageIds : undefined,
+    usagePolicy,
+    maxVisualItems,
     labels: labels.length > 0 ? labels : undefined,
     renderStyle: normalizeVisualRenderStyle(candidate.renderStyle),
   };
+}
+
+function normalizeVisualLabels(
+  labels: string[],
+  candidateImageIds: string[],
+  preferredImageId: string
+) {
+  if (labels.length === 0) return [];
+  if (candidateImageIds.length > 0) {
+    return labels.length === candidateImageIds.length ? labels : [];
+  }
+  return preferredImageId && labels.length === 1 ? labels : [];
+}
+
+function normalizeVisualRequestType(
+  type: string,
+  _visualText: string
+): PresentationTaskVisualRequest["type"] {
+  void _visualText;
+  return VISUAL_TYPES.has(type) ? (type as PresentationTaskVisualRequest["type"]) : "diagram";
+}
+
+function supportedVisualUsagePolicy(
+  value: unknown
+): PresentationTaskVisualRequest["usagePolicy"] {
+  const policy = stringValue(value);
+  return policy === "useOneBest" || policy === "useOneOrMore" || policy === "useAsGrid"
+    ? policy
+    : undefined;
+}
+
+function positiveInteger(value: unknown) {
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : undefined;
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
 function normalizeBlockRenderStyle(
@@ -627,10 +723,7 @@ function supportedFontSize(value: unknown) {
     : undefined;
 }
 
-function buildSlideSpecFromFrame(
-  frame: PresentationTaskSlideFrame,
-  index: number
-): SlideSpec {
+function buildSlideSpecFromFrame(frame: PresentationTaskSlideFrame): SlideSpec {
   if (frame.layoutFrameId === "singleCenter") {
     const primary = frame.blocks[0];
     return {
@@ -645,16 +738,20 @@ function buildSlideSpecFromFrame(
   if (
     frame.layoutFrameId === "visualLeftTextRight" ||
     frame.layoutFrameId === "textLeftVisualRight" ||
-    frame.layoutFrameId === "leftRight50"
+    frame.layoutFrameId === "leftRight50" ||
+    frame.layoutFrameId === "adaptiveVisualMain" ||
+    frame.layoutFrameId === "adaptiveTextMain"
   ) {
     const [first, second] = frame.blocks;
     return {
       type: "twoColumn",
       title: frame.title,
       layoutVariant:
-        frame.layoutFrameId === "visualLeftTextRight"
+        frame.layoutFrameId === "visualLeftTextRight" ||
+        frame.layoutFrameId === "adaptiveVisualMain"
           ? "visualLeftTextRight"
-          : frame.layoutFrameId === "textLeftVisualRight"
+          : frame.layoutFrameId === "textLeftVisualRight" ||
+              frame.layoutFrameId === "adaptiveTextMain"
             ? "textLeftVisualRight"
             : undefined,
       left: buildColumn(first, "Left"),
@@ -756,6 +853,50 @@ function blockVisualText(block: PresentationTaskSlideBlock | undefined) {
   return block.visualRequest.brief || block.visualRequest.prompt || "";
 }
 
+function formatReadableBlockDisplayLines(block: PresentationTaskSlideBlock) {
+  const lines = [`- ${block.id} ${block.kind} (${block.styleId})`];
+  if (block.heading) lines.push(`  - 表示見出し: ${block.heading}`);
+  if (block.text) lines.push(`  - 表示本文: ${block.text}`);
+  if (block.items?.length) {
+    lines.push("  - 表示項目:");
+    block.items.forEach((item) => lines.push(`    - ${item}`));
+  }
+  if (block.visualRequest) {
+    lines.push(`  - ビジュアル種別: ${block.visualRequest.type}`);
+    if (block.visualRequest.brief) {
+      lines.push(`  - ビジュアル概要: ${block.visualRequest.brief}`);
+    }
+    if (block.visualRequest.prompt) {
+      lines.push(`  - ビジュアルプロンプト: ${block.visualRequest.prompt}`);
+    } else {
+      lines.push(
+        `  - Visual prompt: prompt needed${block.visualRequest.promptNote ? ` (${block.visualRequest.promptNote})` : ""}`
+      );
+    }
+    if (block.visualRequest.labels?.length) {
+      lines.push("  - ビジュアル内表示ラベル:");
+      block.visualRequest.labels.forEach((label) => lines.push(`    - ${label}`));
+    }
+    if (block.visualRequest.preferredImageId) {
+      lines.push(`  - Image ID: ${block.visualRequest.preferredImageId}`);
+    } else if (block.visualRequest.asset?.imageId) {
+      lines.push(`  - Image ID: ${block.visualRequest.asset.imageId}`);
+    }
+    if (block.visualRequest.candidateImageIds?.length) {
+      lines.push(`  - Candidate image IDs: ${block.visualRequest.candidateImageIds.join(", ")}`);
+    }
+    if (block.visualRequest.usagePolicy) {
+      lines.push(`  - Visual usage policy: ${block.visualRequest.usagePolicy}`);
+    }
+    if (block.visualRequest.maxVisualItems) {
+      lines.push(`  - Max visual items: ${block.visualRequest.maxVisualItems}`);
+    }
+  }
+  return lines;
+}
+
+// Kept only as a compatibility reference for legacy mojibake output checks.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatBlockDisplayLines(block: PresentationTaskSlideBlock) {
   const lines = [`- ${block.id} ${block.kind} (${block.styleId})`];
   if (block.heading) lines.push(`  - 表示見出し: ${block.heading}`);
@@ -773,9 +914,7 @@ function formatBlockDisplayLines(block: PresentationTaskSlideBlock) {
       lines.push(`  - ビジュアルプロンプト: ${block.visualRequest.prompt}`);
     } else {
       lines.push(
-        `  - ビジュアルプロンプト: 別途プロンプト生成必要${
-          block.visualRequest.promptNote ? `（${block.visualRequest.promptNote}）` : ""
-        }`
+        `  - Visual prompt: prompt needed${block.visualRequest.promptNote ? ` (${block.visualRequest.promptNote})` : ""}`
       );
     }
     if (block.visualRequest.labels?.length) {
@@ -786,6 +925,15 @@ function formatBlockDisplayLines(block: PresentationTaskSlideBlock) {
       lines.push(`  - Image ID: ${block.visualRequest.preferredImageId}`);
     } else if (block.visualRequest.asset?.imageId) {
       lines.push(`  - Image ID: ${block.visualRequest.asset.imageId}`);
+    }
+    if (block.visualRequest.candidateImageIds?.length) {
+      lines.push(`  - Candidate image IDs: ${block.visualRequest.candidateImageIds.join(", ")}`);
+    }
+    if (block.visualRequest.usagePolicy) {
+      lines.push(`  - Visual usage policy: ${block.visualRequest.usagePolicy}`);
+    }
+    if (block.visualRequest.maxVisualItems) {
+      lines.push(`  - Max visual items: ${block.visualRequest.maxVisualItems}`);
     }
   }
   return lines;
@@ -803,6 +951,60 @@ function supportedLayoutFrameId(value: unknown): PresentationTaskLayoutFrameId {
   return LAYOUT_FRAME_IDS.has(id as PresentationTaskLayoutFrameId)
     ? (id as PresentationTaskLayoutFrameId)
     : "titleBody";
+}
+
+function supportedSlideRole(value: unknown): PresentationTaskSlideFrame["slideRole"] {
+  const role = stringValue(value);
+  return role === "visualMain" || role === "textMain" ? role : undefined;
+}
+
+function normalizeLayoutIntent(
+  value: unknown
+): PresentationTaskSlideFrame["layoutIntent"] {
+  const candidate = objectValue(value);
+  if (!candidate) return undefined;
+  const textPlacement = supportedTextPlacement(candidate.textPlacement);
+  const visualPlacement = supportedVisualPlacement(candidate.visualPlacement);
+  const notePolicy = supportedNotePolicy(candidate.notePolicy);
+  const primaryImageId = stringValue(candidate.primaryImageId).trim();
+  const layoutIntent: NonNullable<PresentationTaskSlideFrame["layoutIntent"]> = {};
+  if (primaryImageId) layoutIntent.primaryImageId = primaryImageId;
+  if (textPlacement) layoutIntent.textPlacement = textPlacement;
+  if (visualPlacement) layoutIntent.visualPlacement = visualPlacement;
+  if (notePolicy) layoutIntent.notePolicy = notePolicy;
+  return Object.keys(layoutIntent).length > 0 ? layoutIntent : undefined;
+}
+
+function supportedTextPlacement(
+  value: unknown
+): NonNullable<PresentationTaskSlideFrame["layoutIntent"]>["textPlacement"] {
+  const placement = stringValue(value);
+  return placement === "right" ||
+    placement === "bottomRight" ||
+    placement === "topWide" ||
+    placement === "leftColumn"
+    ? placement
+    : undefined;
+}
+
+function supportedVisualPlacement(
+  value: unknown
+): NonNullable<PresentationTaskSlideFrame["layoutIntent"]>["visualPlacement"] {
+  const placement = stringValue(value);
+  return placement === "right" ||
+    placement === "bottom" ||
+    placement === "rightGrid"
+    ? placement
+    : undefined;
+}
+
+function supportedNotePolicy(
+  value: unknown
+): NonNullable<PresentationTaskSlideFrame["layoutIntent"]>["notePolicy"] {
+  const policy = stringValue(value);
+  return policy === "none" || policy === "shortAnnotation" || policy === "takeaway"
+    ? policy
+    : undefined;
 }
 
 function normalizeLayoutFrameId(
@@ -899,10 +1101,17 @@ function stringValue(value: unknown) {
     : "";
 }
 
-export function sanitizeSlideFrameTitle(value: string) {
+export function sanitizeReadableSlideFrameTitle(value: string) {
   return value
     .replace(/\s*[（(]\s*見出し\s*なし\s*[）)]\s*/g, "")
     .replace(/\s*[（(]\s*heading\s*none\s*[）)]\s*/gi, "")
+    .trim();
+}
+
+export function sanitizeSlideFrameTitle(value: string) {
+  return value
+    .replace(/\s*[（(]\s*見出し\s*なし\s*[）)]\s*/g, "")
+    .replace(/\s*[・・]\s*heading\s*none\s*[・・]\s*/gi, "")
     .trim();
 }
 

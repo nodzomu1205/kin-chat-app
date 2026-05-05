@@ -108,7 +108,8 @@ describe("presentationTaskPlanning", () => {
     const spec = buildPresentationSpecFromTaskPlan(plan);
 
     expect(plan.debug?.slideSource).toBe("slideFrameJson");
-    expect(visibleText).toContain("Frame: visualLeftTextRight");
+    expect(visibleText).toContain("Frame: adaptiveVisualMain");
+    expect(visibleText).toContain("Role: visualMain");
     expect(visibleText).toContain("- block2 textStack (textStackTopLeft)");
     expect(visibleText).toContain("- 表示本文: The process has three clear steps.");
     expect(visibleText).toContain("- Intake");
@@ -200,7 +201,7 @@ describe("presentationTaskPlanning", () => {
       slideCount: 1,
       masterFrameId: "titleLineFooter",
     });
-    expect(plan.slideFrames[0].layoutFrameId).toBe("textLeftVisualRight");
+    expect(plan.slideFrames[0].layoutFrameId).toBe("adaptiveTextMain");
     expect(plan.slideFrames[0].blocks[0].text).toBeUndefined();
     expect(buildPresentationSpecFromTaskPlan(plan).slides[0]).toMatchObject({
       type: "twoColumn",
@@ -525,6 +526,20 @@ describe("presentationTaskPlanning", () => {
     expect(input).toContain("LIB DATA");
   });
 
+  it("adds a closed image-library allowlist policy when image candidates are present", () => {
+    const input = buildPresentationTaskStructuredInput({
+      title: "Deck",
+      userInstruction: "Use library images",
+      body: "Body",
+      imageLibraryContext: "<<IMAGE_LIBRARY_CANDIDATES>>\nImage ID: img_field",
+    });
+
+    expect(input).toContain("Image library selection policy:");
+    expect(input).toContain("closed allowlist");
+    expect(input).toContain("Use only exact listed Image IDs");
+    expect(input).toContain("renderer decides how many fit");
+  });
+
   it("uses slideFrames wording in the task constraints", () => {
     const constraints = buildPresentationTaskConstraints("create").join("\n");
 
@@ -533,7 +548,201 @@ describe("presentationTaskPlanning", () => {
     expect(constraints).toContain("one-block layouts need 1 block");
     expect(constraints).toContain("Preserve source breadth first;");
     expect(constraints).toContain("The visible chat text must show the actual messages that will appear in PPTX.");
-    expect(constraints).toContain("When an image-library asset is the main information carrier");
+    expect(constraints).toContain("compare the key message with visibleSubjects");
+    expect(constraints).toContain("Do not prematurely narrow to one image");
+    expect(constraints).toContain("Do not classify a normal photo as visualMain");
+    expect(constraints).toContain("candidateImageIds");
+    expect(constraints).toContain("closed allowlist");
+    expect(constraints).toContain("never invent");
+    expect(constraints).toContain("matching candidateImageIds exactly");
+    expect(constraints).toContain("Caption seed");
+    expect(constraints).toContain("do not use summaryClosing");
+  });
+
+  it("expands text-main visual candidates before frame rendering", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Production issues",
+                    layoutFrameId: "adaptiveTextMain",
+                    slideRole: "textMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        heading: "Issues",
+                        items: ["Water use", "Traceability"],
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Supporting cotton production photos",
+                          preferredImageId: "img_field",
+                          candidateImageIds: ["img_field", "img_factory", "img_store"],
+                          usagePolicy: "useOneOrMore",
+                          maxVisualItems: 3,
+                          labels: ["Field", "Factory", "Store"],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.preferredImageId).filter(Boolean)).toEqual([
+      "img_field",
+      "img_factory",
+      "img_store",
+    ]);
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.brief).filter(Boolean)).toEqual([
+      "Field",
+      "Factory",
+      "Store",
+    ]);
+  });
+
+  it("defaults text-main useOneOrMore candidates to up to three visuals", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Production context",
+                    layoutFrameId: "adaptiveTextMain",
+                    slideRole: "textMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        heading: "Context",
+                        items: ["Field", "Factory", "Store"],
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Supporting cotton supply chain photos",
+                          preferredImageId: "img_field",
+                          candidateImageIds: ["img_field", "img_factory", "img_store"],
+                          usagePolicy: "useOneOrMore",
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.preferredImageId).filter(Boolean)).toEqual([
+      "img_field",
+      "img_factory",
+      "img_store",
+    ]);
+    expect(
+      spec?.slideFrames[0].blocks
+        .map((block) => block.visualRequest?.renderStyle?.showBrief)
+        .filter((value) => value !== undefined)
+    ).toEqual([false, false, false]);
+  });
+
+  it("does not apply candidate labels when the label count does not match image IDs", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Production context",
+                    layoutFrameId: "adaptiveTextMain",
+                    slideRole: "textMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        heading: "Context",
+                        items: ["Field", "Factory", "Store"],
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Supporting cotton supply chain photos",
+                          preferredImageId: "img_field",
+                          candidateImageIds: ["img_field", "img_factory", "img_store"],
+                          usagePolicy: "useOneOrMore",
+                          labels: ["Field", "Factory", "Store", "Sewing"],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.brief).filter(Boolean)).toEqual([
+      "Supporting cotton supply chain photos",
+      "Supporting cotton supply chain photos",
+      "Supporting cotton supply chain photos",
+    ]);
+    expect(
+      spec?.slideFrames[0].blocks
+        .map((block) => block.visualRequest?.renderStyle?.showBrief)
+        .filter((value) => value !== undefined)
+    ).toEqual([false, false, false]);
   });
 
   it("keeps the existing title for presentation task updates unless title is explicit", () => {

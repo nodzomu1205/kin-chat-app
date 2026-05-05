@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   normalizePresentationVisualMainPolicy,
   syncDeckFrameSlideCount,
@@ -115,7 +115,8 @@ describe("presentationPlanValidation", () => {
 
     const normalized = normalizePresentationVisualMainPolicy(frames);
 
-    expect(normalized[1].layoutFrameId).toBe("visualLeftTextRight");
+    expect(normalized[1].layoutFrameId).toBe("adaptiveVisualMain");
+    expect(normalized[1].slideRole).toBe("visualMain");
     expect(normalized[1].blocks).toHaveLength(2);
   });
 
@@ -187,7 +188,7 @@ describe("presentationPlanValidation", () => {
     const frames: PresentationTaskSlideFrame[] = [
       {
         slideNumber: 1,
-        title: "コットンの物理的加工と工程フロー",
+        title: "繧ｳ繝・ヨ繝ｳ縺ｮ迚ｩ逅・噪蜉蟾･縺ｨ蟾･遞九ヵ繝ｭ繝ｼ",
         masterFrameId: "titleLineFooter",
         layoutFrameId: "singleCenter",
         blocks: [
@@ -201,7 +202,7 @@ describe("presentationPlanValidation", () => {
       },
       {
         slideNumber: 2,
-        title: "サプライチェーンの情報・商流と循環フロー",
+        title: "繧ｵ繝励Λ繧､繝√ぉ繝ｼ繝ｳ縺ｮ諠・ｱ繝ｻ蝠・ｵ√→蠕ｪ迺ｰ繝輔Ο繝ｼ",
         masterFrameId: "titleLineFooter",
         layoutFrameId: "singleCenter",
         blocks: [
@@ -226,7 +227,7 @@ describe("presentationPlanValidation", () => {
     const frames: PresentationTaskSlideFrame[] = [
       {
         slideNumber: 1,
-        title: "コットンの物理的加工と工程フロー / サプライチェーンの情報・商流と循環フロー",
+        title: "繧ｳ繝・ヨ繝ｳ縺ｮ迚ｩ逅・噪蜉蟾･縺ｨ蟾･遞九ヵ繝ｭ繝ｼ / 繧ｵ繝励Λ繧､繝√ぉ繝ｼ繝ｳ縺ｮ諠・ｱ繝ｻ蝠・ｵ√→蠕ｪ迺ｰ繝輔Ο繝ｼ",
         masterFrameId: "titleLineFooter",
         layoutFrameId: "leftRight50",
         blocks: [
@@ -312,7 +313,220 @@ describe("presentationPlanValidation", () => {
     expect(synced?.slideCount).toBe(2);
   });
 
-  it("selects visual cover and summary closing bookends from body slide evidence", () => {
+  it("converts visualMain slides to adaptive visual layout with concise annotation", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Visual evidence",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "visualLeftTextRight",
+        slideRole: "visualMain",
+        blocks: [
+          {
+            id: "block1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "photo",
+              brief: "Evidence photo",
+              preferredImageId: "img_evidence",
+            },
+          },
+          {
+            id: "block2",
+            kind: "callout",
+            styleId: "callout",
+            text: "Focus on the visible bottleneck.",
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveVisualMain",
+      slideRole: "visualMain",
+      layoutIntent: {
+        primaryImageId: "img_evidence",
+        textPlacement: "right",
+        notePolicy: "shortAnnotation",
+      },
+      blocks: [{ id: "block1" }, { id: "block2" }],
+    });
+  });
+
+  it("infers adaptive text layout from legacy visual-left frames with ordinary photos", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Supply chain structure",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "visualLeftTextRight",
+        blocks: [
+          {
+            id: "block1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "photo",
+              brief: "Textile factory",
+              preferredImageId: "img_factory",
+            },
+          },
+          {
+            id: "block2",
+            kind: "textStack",
+            styleId: "textStackTopLeft",
+            heading: "Three phases",
+            text: "Introduce the major process phases from upstream to downstream.",
+            items: ["Upstream", "Midstream", "Downstream"],
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveTextMain",
+      slideRole: "textMain",
+      layoutIntent: {
+        primaryImageId: "img_factory",
+        visualPlacement: "right",
+      },
+      blocks: [{ id: "block2" }, { id: "block1" }],
+    });
+  });
+
+  it("infers adaptive visual layout from legacy visual-left frames with diagrams", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Supply chain map",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "visualLeftTextRight",
+        blocks: [
+          {
+            id: "block1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "diagram",
+              brief: "Supply chain process diagram with labels",
+              preferredImageId: "img_flow",
+            },
+          },
+          {
+            id: "block2",
+            kind: "callout",
+            styleId: "callout",
+            text: "Follow the three major phases.",
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveVisualMain",
+      slideRole: "visualMain",
+      layoutIntent: {
+        primaryImageId: "img_flow",
+        textPlacement: "right",
+        notePolicy: "shortAnnotation",
+      },
+      blocks: [{ id: "block1" }, { id: "block2" }],
+    });
+  });
+
+  it("converts textMain slides to adaptive text layout with supporting visuals", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Key message",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "textLeftVisualRight",
+        slideRole: "textMain",
+        blocks: [
+          {
+            id: "block1",
+            kind: "textStack",
+            styleId: "textStackTopLeft",
+            heading: "Message",
+            text: "The program should focus on traceability first.",
+          },
+          {
+            id: "block2",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "photo",
+              brief: "Related field photo",
+              preferredImageId: "img_field",
+            },
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveTextMain",
+      slideRole: "textMain",
+      layoutIntent: {
+        primaryImageId: "img_field",
+        visualPlacement: "right",
+      },
+      blocks: [{ id: "block1" }, { id: "block2" }],
+    });
+  });
+
+  it("infers adaptive text layout from legacy text-left frames with supporting images", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Market message",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "textLeftVisualRight",
+        blocks: [
+          {
+            id: "block1",
+            kind: "textStack",
+            styleId: "textStackTopLeft",
+            heading: "Growth context",
+            text: "Demand is expanding because transparent sustainable products are easier to evaluate.",
+          },
+          {
+            id: "block2",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "photo",
+              brief: "Retail display",
+              preferredImageId: "img_store",
+            },
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveTextMain",
+      slideRole: "textMain",
+      layoutIntent: {
+        primaryImageId: "img_store",
+        visualPlacement: "right",
+      },
+      blocks: [{ id: "block1" }, { id: "block2" }],
+    });
+  });
+
+  it("selects visual cover and avoids duplicate summary closing when final body slide is already a summary", () => {
     const synced = syncDeckFrameSlideCount(
       {
         slideCount: 5,
@@ -374,10 +588,61 @@ describe("presentationPlanValidation", () => {
         visualRequest: { preferredImageId: "img_cotton" },
       },
       closingSlide: {
-        frameId: "summaryClosing",
-        title: "Next priorities",
-        nextSteps: ["Traceability", "Producer support", "Circular reuse"],
+        frameId: "endSlide",
+        title: "- END -",
+        message: "Thank you",
+        nextSteps: undefined,
       },
     });
   });
+
+  it("does not let a summary closing reuse one body slide heading as its title", () => {
+    const synced = syncDeckFrameSlideCount(
+      {
+        slideCount: 2,
+        masterFrameId: "titleLineFooter",
+        closingSlide: {
+          enabled: true,
+          frameId: "summaryClosing",
+          title: "Market scale and growth",
+        },
+      },
+      [
+        {
+          slideNumber: 1,
+          title: "Structure overview",
+          masterFrameId: "titleLineFooter",
+          layoutFrameId: "adaptiveTextMain",
+          blocks: [
+            {
+              id: "block1",
+              kind: "textStack",
+              styleId: "textStackTopLeft",
+              heading: "Three phases",
+              text: "Shows the full structure.",
+            },
+          ],
+        },
+        {
+          slideNumber: 2,
+          title: "Japan market",
+          masterFrameId: "titleLineFooter",
+          layoutFrameId: "adaptiveTextMain",
+          blocks: [
+            {
+              id: "block1",
+              kind: "list",
+              styleId: "listCompact",
+              heading: "Market scale and growth",
+              items: ["Market expansion", "Environmental shift", "E-commerce"],
+            },
+          ],
+        },
+      ]
+    );
+
+    expect(synced?.closingSlide?.title).toBe("\u5168\u4f53\u307e\u3068\u3081");
+  });
 });
+
+
