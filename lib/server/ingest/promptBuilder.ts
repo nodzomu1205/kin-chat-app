@@ -120,7 +120,24 @@ Return exactly this JSON shape:
   "structuredSummary": string[],
   "kinCompact": string[],
   "kinDetailed": string[],
-  "warnings": string[]
+  "warnings": string[],
+  "presentationMeta": {
+    "version": "0.3-presentation-image-meta",
+    "visualBaseType": "photo" | "information_visual" | "mixed" | "unknown",
+    "visibleSubjects": string[],
+    "embeddedTextItems": [{
+      "text": string,
+      "role": "title" | "label" | "claim" | "metric" | "brand" | "context_sign" | "other",
+      "location": "top_left" | "top_center" | "top_right" | "center" | "bottom_left" | "bottom_center" | "bottom_right" | "wall_or_display" | "unknown"
+    }],
+    "relationships": [{
+      "type": "sequence" | "comparison" | "alternative" | "cause_effect" | "hierarchy" | "unknown",
+      "items": string[],
+      "evidence": string
+    }],
+    "composition": "single_scene" | "single_subject" | "split_panel" | "multi_panel" | "document_or_display" | "dense_scene" | "unknown",
+    "semanticTags": string[]
+  }
 }
 
 Constraints:
@@ -129,6 +146,14 @@ Constraints:
 - Avoid duplicate text across JSON fields.
 - No emotional language
 - No first-person voice
+- For presentationMeta, extract planning material only. Do not judge whether this image should be visualMain or textMain.
+- visualBaseType is only a coarse basis: photo for ordinary photos, information_visual for actual diagram/chart/table/map visuals, mixed when a photo contains a meaningful information panel or display, unknown when unclear.
+- visibleSubjects should list concrete visible objects, people/groups, places, products, and processes. Keep it concise.
+- embeddedTextItems should list only readable text that may matter for later slide-message matching; do not decide whether the text carries a message.
+- relationships should describe only visible or explicitly labeled structure such as sequence, comparison, alternative, cause-effect, or hierarchy. Do not add a relationship for objects that merely appear in the same scene; visibleSubjects already covers them. Do not assume a sequence from side-by-side panels. Use alternative or comparison when labels indicate parallel options such as "Knitting / Weaving".
+- composition should capture simple visual structure only.
+- semanticTags should name meaningful objects, processes, domains, and concepts for matching images to slide messages.
+- Final visualMain vs textMain must be decided later by comparing these materials with the slide key message and content.
 `.trim();
   }
 

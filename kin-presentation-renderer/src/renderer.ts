@@ -117,6 +117,7 @@ function renderSlide(
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Legacy frame renderer kept while rendererV2 is the active output path.
 function renderFrameSlide(
   slide: PptxGenJS.Slide,
   frame: FramePresentationSpec["slideFrames"][number],

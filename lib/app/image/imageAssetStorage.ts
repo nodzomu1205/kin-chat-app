@@ -21,6 +21,7 @@ type StoredImageAsset = {
   aspectRatio?: number;
   orientation?: GeneratedImageLibraryPayload["orientation"];
   alt?: string;
+  presentationMeta?: GeneratedImageLibraryPayload["presentationMeta"];
   sourcePromptHash?: string;
   options?: GeneratedImageLibraryPayload["options"];
   usage?: GeneratedImageLibraryPayload["usage"];
@@ -55,6 +56,7 @@ export async function saveGeneratedImageAsset(
       aspectRatio: payload.aspectRatio,
       orientation: payload.orientation,
       alt: payload.alt,
+      presentationMeta: payload.presentationMeta,
       sourcePromptHash: payload.sourcePromptHash,
       options: payload.options,
       usage: payload.usage,
@@ -101,6 +103,7 @@ export async function loadGeneratedImagePayloadById(
     aspectRatio: asset.aspectRatio,
     orientation: asset.orientation,
     alt: asset.alt,
+    presentationMeta: asset.presentationMeta,
     sourcePromptHash: asset.sourcePromptHash,
     options: asset.options || inferStoredImageOptions(asset),
     usage: asset.usage,
@@ -131,6 +134,7 @@ export async function hydrateGeneratedImagePayload(
     aspectRatio: payload.aspectRatio ?? asset.aspectRatio,
     orientation: payload.orientation || asset.orientation,
     alt: payload.alt || asset.alt,
+    presentationMeta: payload.presentationMeta || asset.presentationMeta,
     sourcePromptHash: payload.sourcePromptHash || asset.sourcePromptHash,
     options: payload.options || asset.options || inferStoredImageOptions(asset),
     usage: payload.usage || asset.usage,

@@ -6,6 +6,9 @@ type VisualRequestWithAsset = {
   prompt?: string;
   promptNote?: string;
   preferredImageId?: string;
+  candidateImageIds?: string[];
+  usagePolicy?: "useOneBest" | "useOneOrMore" | "useAsGrid";
+  maxVisualItems?: number;
   asset?: {
     imageId?: string;
     mimeType: string;
@@ -263,6 +266,12 @@ function findBestLibraryImageAsset(args: {
       (asset) => asset.base64 && matchesImageAssetId(asset, preferredImageId)
     );
     return exact || null;
+  }
+  for (const candidateImageId of args.visual.candidateImageIds || []) {
+    const exact = args.assets.find(
+      (asset) => asset.base64 && matchesImageAssetId(asset, candidateImageId)
+    );
+    if (exact) return exact;
   }
 
   const visualText = normalizeMatchText([

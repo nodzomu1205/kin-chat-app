@@ -75,6 +75,7 @@ export function buildGeneratedImageDisplayText(args: {
     | "heightPx"
     | "aspectRatio"
     | "orientation"
+    | "presentationMeta"
     | "options"
     | "usage"
   >;
@@ -100,6 +101,28 @@ export function buildGeneratedImageDisplayText(args: {
     payload.orientation ? `Orientation: ${payload.orientation}` : "",
     typeof payload.aspectRatio === "number"
       ? `Aspect ratio: ${payload.aspectRatio.toFixed(3)}`
+      : "",
+    payload.presentationMeta
+      ? `Visual base type: ${payload.presentationMeta.visualBaseType}`
+      : "",
+    payload.presentationMeta?.visibleSubjects?.length
+      ? `Visible subjects: ${payload.presentationMeta.visibleSubjects.join(", ")}`
+      : "",
+    payload.presentationMeta
+      ? `Composition: ${payload.presentationMeta.composition}`
+      : "",
+    payload.presentationMeta?.semanticTags?.length
+      ? `Semantic tags: ${payload.presentationMeta.semanticTags.join(", ")}`
+      : "",
+    payload.presentationMeta?.embeddedTextItems?.length
+      ? `Embedded text items: ${payload.presentationMeta.embeddedTextItems
+          .map((item) => `${item.text} (${item.role}, ${item.location || "unknown"})`)
+          .join("; ")}`
+      : "",
+    payload.presentationMeta?.relationships?.length
+      ? `Relationships: ${payload.presentationMeta.relationships
+          .map((item) => `${item.type}: ${item.items.join(", ")}${item.evidence ? ` - ${item.evidence}` : ""}`)
+          .join("; ")}`
       : "",
     payload.originalMimeType ? `Original MIME: ${payload.originalMimeType}` : "",
     args.imagePath ? `![${payload.imageId}](${args.imagePath})` : "",

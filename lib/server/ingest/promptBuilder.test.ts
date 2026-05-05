@@ -15,6 +15,15 @@ describe("ingest prompt builder", () => {
     expect(prompt).toContain("Reading policy: text-first.");
     expect(prompt).toContain("Visual detail level: detailed");
     expect(prompt).toContain('"kinDetailed": string[]');
+    expect(prompt).toContain('"version": "0.3-presentation-image-meta"');
+    expect(prompt).toContain('"visibleSubjects": string[]');
+    expect(prompt).toContain('"relationships": [{');
+    expect(prompt).toContain("Do not judge whether this image should be visualMain or textMain");
+    expect(prompt).toContain("Do not add a relationship for objects that merely appear in the same scene");
+    expect(prompt).not.toContain("photo_evidence");
+    expect(prompt).not.toContain("visualMainPotential");
+    expect(prompt).not.toContain("preferredSlots");
+    expect(prompt).not.toContain("co_location");
   });
 
   it("avoids duplicate detail output for max text-first visual ingest", () => {

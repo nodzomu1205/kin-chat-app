@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 type Props = {
   text: string;
@@ -37,13 +38,18 @@ function renderMessageText(text: string) {
     const href = match[3] || match[4];
     if (isImageMarkdown && (href.startsWith("blob:") || href.startsWith("data:image/"))) {
       parts.push(
-        <img
+        <Image
           key={`${href}-${match.index}`}
           src={href}
           alt={label}
+          width={720}
+          height={405}
+          unoptimized
           style={{
             display: "block",
             maxWidth: "100%",
+            width: "auto",
+            height: "auto",
             maxHeight: 360,
             objectFit: "contain",
             borderRadius: 8,

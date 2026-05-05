@@ -32,6 +32,7 @@ export type SharedIngestResult = {
     structuredSummary?: unknown[];
     kinCompact?: unknown[];
     kinDetailed?: unknown[];
+    presentationMeta?: unknown;
   };
   usage?: Parameters<typeof normalizeUsage>[0];
   error?: string;

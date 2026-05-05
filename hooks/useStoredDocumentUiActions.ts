@@ -1,4 +1,5 @@
 import type { StoredDocument } from "@/types/chat";
+import type { GeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
 
@@ -23,8 +24,9 @@ export function useStoredDocumentUiActions({
   const downloadStoredDocument = async (documentId: string) => {
     const document = getStoredDocument(documentId);
     if (!document || typeof window === "undefined") return;
-    const imagePayload = isGeneratedImageLibraryPayload(document.structuredPayload)
-      ? await hydrateGeneratedImagePayload(document.structuredPayload)
+    const storedImagePayload = getStoredDocumentDownloadImagePayload(document);
+    const imagePayload = storedImagePayload
+      ? await hydrateGeneratedImagePayload(storedImagePayload)
       : null;
     if (imagePayload?.base64) {
       const bytes = base64ToBytes(imagePayload.base64);
@@ -36,15 +38,13 @@ export function useStoredDocumentUiActions({
       anchor.click();
       window.URL.revokeObjectURL(url);
       downloadTextDocument({
-        fileName: document.filename || `${imagePayload.imageId}.txt`,
+        fileName: resolveStoredDocumentTextDownloadFileName(document),
         text: document.text,
       });
       return;
     }
     downloadTextDocument({
-      fileName:
-        document.filename.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_") ||
-        "document.txt",
+      fileName: resolveStoredDocumentTextDownloadFileName(document),
       text: document.text,
     });
   };
@@ -53,6 +53,29 @@ export function useStoredDocumentUiActions({
     loadStoredDocumentToGptInput,
     downloadStoredDocument,
   };
+}
+
+export function getStoredDocumentDownloadImagePayload(
+  document: Pick<StoredDocument, "artifactType" | "structuredPayload">
+): GeneratedImageLibraryPayload | null {
+  if (document.artifactType !== "generated_image") return null;
+  return isGeneratedImageLibraryPayload(document.structuredPayload)
+    ? document.structuredPayload
+    : null;
+}
+
+export function resolveStoredDocumentTextDownloadFileName(
+  document: Pick<StoredDocument, "filename" | "title">
+) {
+  const rawName = (document.filename || document.title || "document").trim();
+  const sanitizedName = rawName.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_");
+  const fileName = sanitizedName || "document";
+  if (hasTextLikeExtension(fileName)) return fileName;
+  const imageMatch = fileName.match(/\.(?:png|jpe?g|webp|gif|bmp|tiff?|heic|avif|svg)$/iu);
+  if (imageMatch) {
+    return `${fileName.slice(0, -imageMatch[0].length)}.txt`;
+  }
+  return fileName.includes(".") ? `${fileName}.txt` : `${fileName}.txt`;
 }
 
 function downloadTextDocument(args: { fileName: string; text: string }) {
@@ -74,6 +97,10 @@ function base64ToBytes(value: string) {
     bytes[index] = binary.charCodeAt(index);
   }
   return bytes;
+}
+
+function hasTextLikeExtension(fileName: string) {
+  return /\.(?:txt|md|markdown|json|csv|tsv|log|yaml|yml)$/iu.test(fileName);
 }
 
 function imageExtension(mimeType?: string) {

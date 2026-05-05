@@ -92,7 +92,16 @@ type LibraryDrawerProps = ComponentProps<typeof LibraryDrawer>;
 export function getDeviceImportAccept(
   kind: GptPanelSettingsProps["uploadKind"]
 ) {
-  return ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,image/*,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
+  const mixedAccept =
+    ".txt,.md,.json,.csv,.tsv,.xls,.xlsx,.doc,.docx,.ppt,.pptx,.pdf,image/*,.ts,.tsx,.js,.jsx,.py,.java,.go,.rs,.c,.cpp,.cs,.rb,.php,.html,.css,.xml,.yml,.yaml,.sql";
+  const acceptsByKind: Record<GptPanelSettingsProps["uploadKind"], string> = {
+    auto: mixedAccept,
+    text: mixedAccept,
+    image: mixedAccept,
+    pdf: mixedAccept,
+    mixed: mixedAccept,
+  };
+  return acceptsByKind[kind];
 }
 
 export function buildDeviceImportOptions(

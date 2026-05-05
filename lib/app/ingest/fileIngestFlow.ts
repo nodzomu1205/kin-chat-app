@@ -244,6 +244,7 @@ export async function runFileIngestFlow({
         file,
         description: canonicalDocumentText,
         mode: options.imageLibraryImportMode,
+        presentationMeta: data?.result?.presentationMeta,
         recordIngestedDocument,
       });
       appendInfo(

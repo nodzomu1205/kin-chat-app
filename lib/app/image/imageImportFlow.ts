@@ -1,5 +1,6 @@
 import {
   buildGeneratedImageStoredDocument,
+  normalizeGeneratedImagePresentationMeta,
   type GeneratedImageLibraryPayload,
 } from "@/lib/app/image/imageLibrary";
 import { saveGeneratedImageAsset } from "@/lib/app/image/imageAssetStorage";
@@ -84,7 +85,7 @@ export async function importImageFileToLibrary(args: {
       title: fileTitle,
       filename: buildIngestedDocumentFilename({
         title: fileTitle,
-        fallbackFilename: args.file.name,
+        fallbackFilename: `${args.file.name}.txt`,
       }),
       text: textLibraryContent,
       taskId: args.currentTaskId,
@@ -116,6 +117,14 @@ export async function importImageFileToLibrary(args: {
   const description =
     args.mode === "image_with_description" ? textLibraryContent.trim() : "";
   const imageId = `img_${generateId().replace(/[^A-Za-z0-9_-]+/g, "")}`;
+  const metaFallback = {
+    title: args.file.name,
+    fileName: args.file.name,
+    description,
+    prompt: `Imported image file: ${args.file.name}`,
+    originalPrompt: args.file.name,
+    ...dimensions,
+  };
   const payload: GeneratedImageLibraryPayload = {
     version: "0.1-generated-image",
     imageId,
@@ -130,6 +139,10 @@ export async function importImageFileToLibrary(args: {
     fileSize: args.file.size,
     ...dimensions,
     alt: args.file.name,
+    presentationMeta: normalizeGeneratedImagePresentationMeta(
+      data?.data?.result?.presentationMeta,
+      metaFallback
+    ),
     sourcePromptHash: imageId,
     createdAt: new Date().toISOString(),
   };
@@ -149,6 +162,7 @@ export async function saveImportedImageFileToLibrary(args: {
   file: File;
   description: string;
   mode: ImageLibraryImportMode;
+  presentationMeta?: unknown;
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
@@ -159,6 +173,8 @@ export async function saveImportedImageFileToLibrary(args: {
     mimeType: args.file.type || "image/png",
   });
   const imageId = `img_${generateId().replace(/[^A-Za-z0-9_-]+/g, "")}`;
+  const description =
+    args.mode === "image_with_description" ? args.description.trim() : "";
   const payload: GeneratedImageLibraryPayload = {
     version: "0.1-generated-image",
     imageId,
@@ -167,13 +183,20 @@ export async function saveImportedImageFileToLibrary(args: {
     base64,
     prompt: `Imported image file: ${args.file.name}`,
     originalPrompt: args.file.name,
-    description:
-      args.mode === "image_with_description" ? args.description.trim() : "",
+    description,
     source: "imported",
     fileName: args.file.name,
     fileSize: args.file.size,
     ...dimensions,
     alt: args.file.name,
+    presentationMeta: normalizeGeneratedImagePresentationMeta(args.presentationMeta, {
+      title: args.file.name,
+      fileName: args.file.name,
+      description,
+      prompt: `Imported image file: ${args.file.name}`,
+      originalPrompt: args.file.name,
+      ...dimensions,
+    }),
     sourcePromptHash: imageId,
     createdAt: new Date().toISOString(),
   };

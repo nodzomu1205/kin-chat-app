@@ -280,12 +280,14 @@ function stripHeavyPayload(value: unknown, options: { aggressive?: boolean }): u
     record.version === "0.1-generated-image" &&
     typeof record.imageId === "string"
   ) {
-    const { base64: _base64, ...rest } = record;
+    const rest = { ...record };
+    delete rest.base64;
     return rest;
   }
 
   if (options.aggressive && typeof record.base64 === "string") {
-    const { base64: _base64, ...rest } = record;
+    const rest = { ...record };
+    delete rest.base64;
     return Object.fromEntries(
       Object.entries(rest).map(([key, item]) => [key, stripHeavyPayload(item, options)])
     );

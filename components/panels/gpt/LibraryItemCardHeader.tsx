@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { iconButton } from "@/components/panels/gpt/LibraryDrawerControls";
@@ -43,19 +44,21 @@ export default function LibraryItemCardHeader({
   const imagePayload = isGeneratedImageLibraryPayload(item.structuredPayload)
     ? item.structuredPayload
     : null;
-  const [imageBase64, setImageBase64] = React.useState(imagePayload?.base64 || "");
+  const imagePayloadBase64 = imagePayload?.base64 || "";
+  const imagePayloadId = imagePayload?.imageId || "";
+  const [imageBase64, setImageBase64] = React.useState(imagePayloadBase64);
   React.useEffect(() => {
     let cancelled = false;
-    setImageBase64(imagePayload?.base64 || "");
-    if (imagePayload && !imagePayload.base64) {
-      void loadGeneratedImageAsset(imagePayload.imageId).then((asset) => {
+    setImageBase64(imagePayloadBase64);
+    if (imagePayloadId && !imagePayloadBase64) {
+      void loadGeneratedImageAsset(imagePayloadId).then((asset) => {
         if (!cancelled) setImageBase64(asset?.base64 || "");
       });
     }
     return () => {
       cancelled = true;
     };
-  }, [imagePayload?.base64, imagePayload?.imageId]);
+  }, [imagePayloadBase64, imagePayloadId]);
   return (
     <div
       role="button"
@@ -78,9 +81,12 @@ export default function LibraryItemCardHeader({
       }}
     >
       {imagePayload && imageBase64 ? (
-        <img
+        <Image
           src={`data:${imagePayload.mimeType};base64,${imageBase64}`}
           alt={imagePayload.alt || item.title}
+          width={48}
+          height={48}
+          unoptimized
           style={{
             width: 48,
             height: 48,

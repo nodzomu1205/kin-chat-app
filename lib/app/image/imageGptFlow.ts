@@ -1,8 +1,10 @@
 import { generateId } from "@/lib/shared/uuid";
 import { parseImageCommand } from "@/lib/app/image/imageCommandParser";
 import {
+  buildGeneratedImagePresentationMeta,
   buildGeneratedImageStoredDocument,
   findGeneratedImageByImageId,
+  normalizeGeneratedImagePresentationMeta,
   type GeneratedImageLibraryPayload,
 } from "@/lib/app/image/imageLibrary";
 import {
@@ -157,7 +159,22 @@ async function describeGeneratedImageForLibrary(args: {
   args.flowArgs.applyIngestUsage?.(normalizeUsage(data?.usage));
   if (!response.ok) return args.payload;
   const description = buildDescriptionText(data?.result || {});
-  return description ? { ...args.payload, description } : args.payload;
+  return description
+    ? {
+        ...args.payload,
+        description,
+        presentationMeta: normalizeGeneratedImagePresentationMeta(data?.result?.presentationMeta, {
+          title: args.payload.alt,
+          description,
+          prompt: args.payload.prompt,
+          originalPrompt: args.payload.originalPrompt,
+          widthPx: args.payload.widthPx,
+          heightPx: args.payload.heightPx,
+          aspectRatio: args.payload.aspectRatio,
+          orientation: args.payload.orientation,
+        }),
+      }
+    : args.payload;
 }
 
 function imagePayloadToFile(payload: GeneratedImageLibraryPayload) {
@@ -206,6 +223,13 @@ async function createStandaloneImage(args: {
     options: output.options,
     usage: output.usage,
     ...dimensions,
+    presentationMeta: buildGeneratedImagePresentationMeta({
+      title: output.alt,
+      description: output.alt,
+      prompt: output.prompt,
+      originalPrompt: args.prompt,
+      ...dimensions,
+    }),
     createdAt: output.createdAt,
   };
   await saveGeneratedImageAsset(payload);

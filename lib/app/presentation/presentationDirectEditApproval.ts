@@ -128,7 +128,9 @@ export function findPendingPptDirectEditCandidate(args: {
 function compactPptDirectEditCandidate<T extends PptDirectEditCandidate>(
   candidate: T
 ): T {
-  const { latestPptx: _latestPptx, debug: _debug, ...plan } = candidate.plan;
+  const plan = { ...candidate.plan };
+  delete plan.latestPptx;
+  delete plan.debug;
   return {
     ...candidate,
     planText: "",
@@ -224,10 +226,13 @@ function applyBlockVisual(
   block: PresentationTaskPlan["slideFrames"][number]["blocks"][number],
   edit: PptDirectEditBlockEdit
 ) {
-  const { asset: _asset, ...currentWithoutAsset } = block.visualRequest || {
-    type: "illustration" as const,
-    brief: "",
+  const currentWithoutAsset = {
+    ...(block.visualRequest || {
+      type: "illustration" as const,
+      brief: "",
+    }),
   };
+  delete currentWithoutAsset.asset;
   const current = currentWithoutAsset;
   const nextBrief =
     edit.visualBrief?.trim() ||

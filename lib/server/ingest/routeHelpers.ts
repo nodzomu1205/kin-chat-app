@@ -281,6 +281,7 @@ export function normalizeParsedIngestResult(params: {
     kinCompact?: unknown;
     kinDetailed?: unknown;
     warnings?: unknown;
+    presentationMeta?: unknown;
   };
   fileName: string;
   mimeType: string;
@@ -299,5 +300,6 @@ export function normalizeParsedIngestResult(params: {
       ? params.parsed.kinDetailed
       : [],
     warnings: Array.isArray(params.parsed.warnings) ? params.parsed.warnings : [],
+    presentationMeta: params.parsed.presentationMeta,
   };
 }

@@ -168,7 +168,11 @@ function normalizeInformationInventoryCandidate(value: unknown): unknown {
   const rawFactIds = new Set(rawFacts.map((fact) => fact.id));
   const normalizedGroups = [
     ...rawGroups.map((group, index) => normalizeInventoryFactGroup(group, index)),
-    ...legacyGroups.map(({ facts: _facts, ...group }) => group),
+    ...legacyGroups.map((group) => ({
+      id: group.id,
+      label: group.label,
+      factIds: group.factIds,
+    })),
   ];
 
   return {

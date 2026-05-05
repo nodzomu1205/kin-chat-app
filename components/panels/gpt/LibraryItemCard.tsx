@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { sectionTitle } from "@/components/panels/gpt/LibraryDrawerControls";
 import type { LibraryDrawerProps } from "@/components/panels/gpt/LibraryDrawerTypes";
@@ -315,11 +316,15 @@ function GeneratedImagePreview({
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {imageSrc ? (
-        <img
+        <Image
           src={imageSrc}
           alt={payload.alt || payload.imageId}
+          width={800}
+          height={450}
+          unoptimized
           style={{
             width: "100%",
+            height: "auto",
             maxHeight: 280,
             objectFit: "contain",
             borderRadius: 6,

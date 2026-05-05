@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "kin-presentation-renderer/dist/**",
     "next-env.d.ts",
   ]),
 ]);

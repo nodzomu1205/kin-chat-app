@@ -224,7 +224,9 @@ export type PresentationTaskLayoutFrameId =
   | "textLeftVisualRight"
   | "heroTopDetailsBottom"
   | "threeColumns"
-  | "twoByTwoGrid";
+  | "twoByTwoGrid"
+  | "adaptiveVisualMain"
+  | "adaptiveTextMain";
 
 export type PresentationTaskBlockStyleId =
   | "headlineCenter"
@@ -291,6 +293,9 @@ export type PresentationTaskVisualRequest = {
   prompt?: string;
   promptNote?: string;
   preferredImageId?: string;
+  candidateImageIds?: string[];
+  usagePolicy?: "useOneBest" | "useOneOrMore" | "useAsGrid";
+  maxVisualItems?: number;
   labels?: string[];
   asset?: {
     imageId?: string;
@@ -342,6 +347,13 @@ export type PresentationTaskSlideFrame = {
   title: string;
   masterFrameId: PresentationTaskMasterFrameId;
   layoutFrameId: PresentationTaskLayoutFrameId;
+  slideRole?: "visualMain" | "textMain";
+  layoutIntent?: {
+    primaryImageId?: string;
+    textPlacement?: "right" | "bottomRight" | "topWide" | "leftColumn";
+    visualPlacement?: "right" | "bottom" | "rightGrid";
+    notePolicy?: "none" | "shortAnnotation" | "takeaway";
+  };
   speakerIntent?: string;
   blocks: PresentationTaskSlideBlock[];
 };

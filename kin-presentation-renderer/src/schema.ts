@@ -30,7 +30,9 @@ export const frameLayoutSchema = z.enum([
   "textLeftVisualRight",
   "heroTopDetailsBottom",
   "threeColumns",
-  "twoByTwoGrid"
+  "twoByTwoGrid",
+  "adaptiveVisualMain",
+  "adaptiveTextMain"
 ]);
 
 export const frameBlockStyleSchema = z.enum([
@@ -209,6 +211,9 @@ export const frameVisualRequestSchema = z
     prompt: z.string().trim().optional(),
     promptNote: z.string().trim().optional(),
     preferredImageId: z.string().trim().optional(),
+    candidateImageIds: z.array(nonEmptyString).optional(),
+    usagePolicy: z.enum(["useOneBest", "useOneOrMore", "useAsGrid"]).optional(),
+    maxVisualItems: z.number().int().positive().max(6).optional(),
     labels: z.array(nonEmptyString).optional(),
     asset: z
       .object({
@@ -323,6 +328,15 @@ export const slideFrameSchema = z
     title: nonEmptyString,
     masterFrameId: frameMasterSchema.default("titleLineFooter"),
     layoutFrameId: frameLayoutSchema,
+    slideRole: z.enum(["visualMain", "textMain"]).optional(),
+    layoutIntent: z
+      .object({
+        primaryImageId: z.string().trim().optional(),
+        textPlacement: z.enum(["right", "bottomRight", "topWide", "leftColumn"]).optional(),
+        visualPlacement: z.enum(["right", "bottom", "rightGrid"]).optional(),
+        notePolicy: z.enum(["none", "shortAnnotation", "takeaway"]).optional()
+      })
+      .optional(),
     speakerIntent: z.string().trim().optional(),
     blocks: z.array(frameBlockSchema).min(1).max(10)
   })

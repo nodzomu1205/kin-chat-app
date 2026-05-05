@@ -6,6 +6,7 @@ export type IngestResult = {
   kinCompact: string[];
   kinDetailed?: string[];
   warnings?: string[];
+  presentationMeta?: unknown;
 };
 
 export type BuildKinBlocksInput = {

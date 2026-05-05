@@ -568,6 +568,9 @@ export function collectFrameSpecPreferredImageIds(
     for (const block of slide.blocks || []) {
       const imageId = block.visualRequest?.preferredImageId?.trim();
       if (imageId) imageIds.add(imageId);
+      for (const candidateImageId of block.visualRequest?.candidateImageIds || []) {
+        if (candidateImageId.trim()) imageIds.add(candidateImageId.trim());
+      }
     }
   }
   return imageIds;
@@ -618,6 +621,9 @@ function buildPptDirectEditStructuredInput(args: {
             brief: block.visualRequest.brief,
             prompt: block.visualRequest.prompt || "",
             preferredImageId: block.visualRequest.preferredImageId || "",
+            candidateImageIds: block.visualRequest.candidateImageIds || [],
+            usagePolicy: block.visualRequest.usagePolicy || "",
+            maxVisualItems: block.visualRequest.maxVisualItems || null,
             labels: block.visualRequest.labels || [],
           }
         : null,
