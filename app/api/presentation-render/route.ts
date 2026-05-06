@@ -8,7 +8,6 @@ import {
   type PresentationImageMode,
   type PresentationLibraryImageAsset,
 } from "@/lib/server/presentation/imageGeneration";
-import { collectFrameSpecGeneratedImages } from "@/lib/server/presentation/frameSpecImages";
 import { sanitizeFrameSpecInputForParse } from "@/lib/server/presentation/frameSpecSanitizer";
 
 export const runtime = "nodejs";
@@ -18,6 +17,9 @@ function sanitizeFileSegment(value: string) {
 }
 
 export async function POST(req: Request) {
+  let phase = "parse-request";
+  let documentIdForError = "";
+  let imageModeForError: PresentationImageMode | "unknown" = "unknown";
   try {
     const body = (await req.json()) as {
       documentId?: unknown;
@@ -31,6 +33,7 @@ export async function POST(req: Request) {
       typeof body.documentId === "string" && body.documentId.trim()
         ? sanitizeFileSegment(body.documentId.trim())
         : `presentation_${Date.now()}`;
+    documentIdForError = documentId;
 
     if (
       (!body.spec || typeof body.spec !== "object") &&
@@ -46,13 +49,16 @@ export async function POST(req: Request) {
       renderPresentationToFile,
     } =
       await loadPresentationRenderer();
+    phase = "parse-frame-spec";
     const parsedFrameSpecInput =
       body.frameSpec && typeof body.frameSpec === "object"
         ? parseFramePresentationSpec(sanitizeFrameSpecInputForParse(body.frameSpec))
         : null;
     const shouldGenerateImages = body.generateImages === true;
     const imageMode = normalizeImageMode(body.imageMode, shouldGenerateImages);
+    imageModeForError = imageMode;
     const libraryImageAssets = normalizeLibraryImageAssets(body.libraryImageAssets);
+    phase = shouldGenerateImages ? "resolve-frame-visual-assets" : "strip-frame-visual-assets";
     const parsedFrameSpec = parsedFrameSpecInput
       ? shouldGenerateImages
         ? await resolveFrameSpecVisualAssets(parsedFrameSpecInput, {
@@ -61,8 +67,8 @@ export async function POST(req: Request) {
           })
         : stripFrameSpecVisualAssets(parsedFrameSpecInput)
       : null;
+    phase = "parse-legacy-spec";
     const parsedSpec = parsedFrameSpec ? null : parsePresentationSpec(body.spec);
-
     const tempDir = join(tmpdir(), "kin-presentation-render");
     await mkdir(tempDir, { recursive: true });
 
@@ -76,19 +82,26 @@ export async function POST(req: Request) {
     if (!parsedInput) {
       return NextResponse.json({ error: "spec missing" }, { status: 400 });
     }
+    phase = "write-render-input";
     await writeFile(inputPath, `${JSON.stringify(parsedInput, null, 2)}\n`, "utf8");
+    phase = "render-pptx";
     if (parsedFrameSpec) {
       await renderFramePresentationToFile(parsedFrameSpec, outputPath);
     } else if (parsedSpec) {
       await renderPresentationToFile(parsedSpec, outputPath);
     }
+    phase = "read-render-output";
     const outputBuffer = await readFile(outputPath);
     await Promise.allSettled([
       rm(inputPath, { force: true }),
       rm(outputPath, { force: true }),
     ]);
 
-    return NextResponse.json({
+    const generatedImages =
+      parsedFrameSpec && imageMode !== "off"
+        ? collectFrameSpecGeneratedImageSummaries(parsedFrameSpec as never)
+        : [];
+    const responseBody = {
       output: {
         id: `pptx_${timestamp}`,
         format: "pptx",
@@ -100,24 +113,144 @@ export async function POST(req: Request) {
         slideCount: parsedFrameSpec
           ? countRenderedFrameSlides(parsedFrameSpec)
           : parsedSpec?.slides.length || 0,
-        generatedImages:
-          parsedFrameSpec && imageMode !== "off"
-            ? collectFrameSpecGeneratedImages(parsedFrameSpec as never)
-            : [],
-        frameSpec: parsedFrameSpec && imageMode !== "off" ? parsedFrameSpec : undefined,
+        generatedImages,
       },
       metadata: {
         title: parsedInput.title,
         theme: parsedInput.theme || "business-clean",
       },
-    });
+    };
+
+    return NextResponse.json(responseBody);
   } catch (error) {
-    console.error("presentation render route error:", error);
+    const serializedError = serializePresentationRenderError(error);
+    console.error("presentation render route error:", {
+      phase,
+      documentId: documentIdForError,
+      imageMode: imageModeForError,
+      error: serializedError,
+      raw: error,
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Presentation render failed" },
+      {
+        error: serializedError.message,
+        debug: {
+          phase,
+          documentId: documentIdForError,
+          imageMode: imageModeForError,
+          errorType: serializedError.type,
+          errorName: serializedError.name,
+        },
+      },
       { status: 500 }
     );
   }
+}
+
+function serializePresentationRenderError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      type: "Error",
+      name: error.name,
+      message: error.message || "Presentation render failed.",
+      stack: error.stack,
+    };
+  }
+  if (typeof error === "string") {
+    return {
+      type: "string",
+      name: "",
+      message: error.trim() || "Presentation render failed.",
+      stack: undefined,
+    };
+  }
+  try {
+    const json = JSON.stringify(error);
+    return {
+      type: typeof error,
+      name: "",
+      message: json && json !== "{}" ? json : `Presentation render failed. Non-Error throw: ${String(error)}`,
+      stack: undefined,
+    };
+  } catch {
+    return {
+      type: typeof error,
+      name: "",
+      message: `Presentation render failed. Non-Error throw: ${String(error)}`,
+      stack: undefined,
+    };
+  }
+}
+
+function collectFrameSpecGeneratedImageSummaries(frameSpec: {
+  deckFrame?: {
+    openingSlide?: { visualRequest?: FrameSpecVisualRequestForImageSummary };
+    closingSlide?: { visualRequest?: FrameSpecVisualRequestForImageSummary };
+  };
+  slideFrames: Array<{
+    slideNumber?: number;
+    title?: string;
+    blocks?: Array<{
+      id?: string;
+      visualRequest?: FrameSpecVisualRequestForImageSummary;
+    }>;
+  }>;
+}) {
+  return [
+    ...collectVisualAssetSummary({
+      visual: frameSpec.deckFrame?.openingSlide?.visualRequest,
+      slideNumber: 1,
+      blockId: "openingSlide",
+      fallbackTitle: "Opening slide",
+    }),
+    ...frameSpec.slideFrames.flatMap((slide) =>
+      (slide.blocks || []).flatMap((block) =>
+        collectVisualAssetSummary({
+          visual: block.visualRequest,
+          slideNumber: slide.slideNumber || 0,
+          blockId: block.id || "",
+          fallbackTitle: slide.title || "",
+        })
+      )
+    ),
+    ...collectVisualAssetSummary({
+      visual: frameSpec.deckFrame?.closingSlide?.visualRequest,
+      slideNumber: frameSpec.slideFrames.length + 2,
+      blockId: "closingSlide",
+      fallbackTitle: "Closing slide",
+    }),
+  ];
+}
+
+type FrameSpecVisualRequestForImageSummary = {
+  brief?: string;
+  prompt?: string;
+  asset?: {
+    imageId?: string;
+    mimeType?: string;
+    usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
+  };
+};
+
+function collectVisualAssetSummary(args: {
+  visual?: FrameSpecVisualRequestForImageSummary;
+  slideNumber: number;
+  blockId: string;
+  fallbackTitle: string;
+}) {
+  const asset = args.visual?.asset;
+  if (!asset) return [];
+  return [
+    {
+      imageId: asset.imageId || "",
+      slideNumber: args.slideNumber,
+      blockId: args.blockId,
+      title: args.visual?.brief || args.fallbackTitle,
+      prompt: args.visual?.prompt || "",
+      mimeType: asset.mimeType || "image/png",
+      usage: asset.usage,
+    },
+  ];
 }
 
 function countRenderedFrameSlides(spec: {

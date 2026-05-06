@@ -434,14 +434,16 @@ async function renderPresentationPptx(args: {
   imageMode?: ReturnType<typeof parsePptCommand>["imageMode"];
   libraryImageAssets?: PresentationRenderLibraryImageAsset[];
 }) {
+  const requestBody = JSON.stringify(args);
   const res = await fetch("/api/presentation-render", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(args),
+    body: requestBody,
   });
-  const data = (await res.json().catch(() => ({}))) as {
+  const responseText = await res.text().catch(() => "");
+  const data = safeParsePresentationRenderResponse(responseText) as {
     output?: {
       id?: string;
       format?: "pptx";
@@ -470,7 +472,11 @@ async function renderPresentationPptx(args: {
     throw new Error(
       typeof data.error === "string" && data.error.trim()
         ? data.error.trim()
-        : "Presentation render failed."
+        : buildPresentationRenderFailureDetail({
+            status: res.status,
+            statusText: res.statusText,
+            responseText,
+          })
     );
   }
 
@@ -499,6 +505,31 @@ async function renderPresentationPptx(args: {
     })),
     frameSpec: data.output.frameSpec,
   };
+}
+
+function safeParsePresentationRenderResponse(value: string) {
+  if (!value.trim()) return {};
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
+
+function buildPresentationRenderFailureDetail(args: {
+  status: number;
+  statusText: string;
+  responseText: string;
+}) {
+  const preview = args.responseText.trim().slice(0, 260);
+  return [
+    `Presentation render failed. HTTP ${args.status}${
+      args.statusText ? ` ${args.statusText}` : ""
+    }.`,
+    preview ? `Response preview: ${preview}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 type PresentationRenderLibraryImageAsset = {
