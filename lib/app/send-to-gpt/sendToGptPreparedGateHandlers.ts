@@ -22,7 +22,6 @@ import {
   buildPresentationTaskPlan,
   buildPresentationTaskStructuredInput,
   formatPresentationTaskPlanText,
-  formatPresentationTaskResultText,
   buildPresentationTaskPlanFromText,
   resolvePresentationTaskTitle,
 } from "@/lib/app/presentation/presentationTaskPlanning";
@@ -30,6 +29,7 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
+import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import { runAutoPrepPresentationTask } from "@/lib/app/gpt-task/gptTaskClient";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
@@ -189,13 +189,12 @@ export async function handlePptDesignRequestGate(args: {
       generatedTitle: event.taskId ? `PPT design ${event.taskId}` : "PPT design",
       preserveExistingTitle: false,
     });
-    const imageLibraryContext = buildPresentationImageLibraryContext(
-      getPresentationImageLibraryCandidates({
-        enabled: args.imageLibraryReferenceEnabled,
-        count: args.imageLibraryReferenceCount,
-        referenceLibraryItems: args.referenceLibraryItems,
-      })
-    );
+    const imageCandidates = getPresentationImageLibraryCandidates({
+      enabled: args.imageLibraryReferenceEnabled,
+      count: args.imageLibraryReferenceCount,
+      referenceLibraryItems: args.referenceLibraryItems,
+    });
+    const imageLibraryContext = buildPresentationImageLibraryContext(imageCandidates);
     const input = buildPresentationTaskStructuredInput({
       title,
       userInstruction: body,
@@ -204,14 +203,15 @@ export async function handlePptDesignRequestGate(args: {
       imageLibraryContext,
     });
     const data = await runAutoPrepPresentationTask(input, "sys-ppt-design-request");
-    const plan = buildPresentationTaskPlan({
-      title,
-      result: data?.parsed,
-      rawText: data?.raw,
+    const plan = resolvePresentationVisualSlots({
+      imageCandidates,
+      plan: buildPresentationTaskPlan({
+        title,
+        result: data?.parsed,
+        rawText: data?.raw,
+      }),
     });
-    const designText = plan
-      ? formatPresentationTaskPlanText(plan)
-      : formatPresentationTaskResultText(data?.parsed, data?.raw);
+    const designText = formatPresentationTaskPlanText(plan);
     const responseText = [
       "<<SYS_PPT_DESIGN_RESPONSE>>",
       `TASK_ID: ${event.taskId || ""}`,

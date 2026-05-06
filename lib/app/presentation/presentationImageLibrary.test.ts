@@ -109,10 +109,15 @@ describe("getPresentationImageLibraryCandidates", () => {
 
     expect(context).toContain("adaptiveVisualMain");
     expect(context).toContain("adaptiveTextMain");
-    expect(context).toContain("closed allowlist");
-    expect(context).toContain("Use only these exact Image IDs");
-    expect(context).toContain("candidateImageIds in relevance order");
-    expect(context).toContain("labels must be one-to-one");
+    expect(context).toContain("app-side visual slot matcher");
+    expect(context).toContain("Asset identifiers are intentionally hidden");
+    expect(context).toContain("visualRequest.visualSlots");
+    expect(context).toContain("slotId, label, need");
+    expect(context).toContain("Use the deck/user language for visualSlot.label");
+    expect(context).toContain("Do not make visualSlot.label narrower");
+    expect(context).toContain("Do not assert a specific country, location, company, person, or named system");
+    expect(context).not.toContain("Image ID:");
+    expect(context).not.toContain("img_");
     expect(context).toContain("Caption seed:");
     expect(context).toContain("Size: 1600x900");
     expect(context).toContain("Aspect ratio: 1.777");

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildTaskResponsesRequest,
   buildTaskRouteResponse,
+  completePresentationPlanSlideFrames,
+  validatePresentationPlanCompleteness,
   TASK_ROUTE_MODEL,
 } from "@/lib/server/task/routeBuilders";
 import type { TaskRequest } from "@/types/task";
@@ -29,9 +31,10 @@ describe("task route builders", () => {
     expect(request.input).toContain("TASK_ID: TASK-1");
     expect(request.input).toContain("EXISTING_TITLE: Existing title");
     expect(request.input).toContain("Do not create a new title.");
+    expect(request).not.toHaveProperty("text");
   });
 
-  it("uses the presentation plan prompt for presentation output format", () => {
+  it("uses structured JSON output for presentation plans without fixing slide count", () => {
     const request = buildTaskResponsesRequest({
       ...sampleTask,
       type: "PREP_TASK",
@@ -39,9 +42,18 @@ describe("task route builders", () => {
     });
 
     expect(request.input).toContain("<<SYS_PRESENTATION_PLAN_TASK>>");
-    expect(request.input).toContain("Return only one valid JSON object.");
-    expect(request.input).toContain('"slideFrames"');
-    expect(request.input).toContain("Do not output slideDesign or free-form parts.");
+    expect(request.input).toContain(
+      "If the source naturally implies 5-7 slides, create 5-7 slideFrames."
+    );
+    expect(request.text?.format).toMatchObject({
+      type: "json_schema",
+      name: "presentation_plan",
+    });
+    const slideFrames = (
+      request.text?.format as { schema?: { properties?: Record<string, unknown> } }
+    ).schema?.properties?.slideFrames;
+    expect(slideFrames).toMatchObject({ minItems: 1 });
+    expect(slideFrames).not.toHaveProperty("maxItems");
   });
 
   it("builds the task route response payload", () => {
@@ -64,5 +76,95 @@ describe("task route builders", () => {
         totalTokens: 30,
       },
     });
+  });
+
+  it("flags presentation plans that declare more body slides than slideFrames contain", () => {
+    expect(
+      validatePresentationPlanCompleteness({
+        task: {
+          ...sampleTask,
+          type: "PREP_TASK",
+          outputFormat: "presentation_plan",
+        },
+        parsed: {
+          taskId: "task",
+          type: "PREP_TASK",
+          status: "OK",
+          summary: "",
+          keyPoints: [],
+          detailBlocks: [
+            {
+              title: "Slide Frame JSON",
+              body: [
+                JSON.stringify({
+                  deckFrame: { slideCount: 1 },
+                  slideFrames: [{ slideNumber: 1 }],
+                }),
+              ],
+            },
+            {
+              title: "キーメッセージ",
+              body: ["One", "Two", "Three", "Four", "Five"],
+            },
+          ],
+          warnings: [],
+          missingInfo: [],
+          nextSuggestion: [],
+        },
+      })?.message
+    ).toContain("incomplete");
+  });
+
+  it("fills missing presentation slideFrames from keyMessages", () => {
+    const raw = JSON.stringify({
+      taskId: "TASK-PPT",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "コットンサプライチェーンの説明",
+      extractedItems: [
+        "栽培・収穫からジニングへ進む。",
+        "紡績、製織・編立、染色・仕上げ、縫製が続く。",
+        "水使用など環境課題がある。",
+        "人権課題への配慮が必要。",
+        "認証やトレーサビリティが重要。",
+      ],
+      strategyItems: [],
+      keyMessages: [
+        "全体構造を理解する",
+        "主要工程を押さえる",
+        "環境課題を把握する",
+        "人権課題を把握する",
+        "サステナビリティ対応を知る",
+      ],
+      deckFrame: { slideCount: 5, masterFrameId: "titleLineFooter" },
+      slideFrames: [
+        {
+          slideNumber: 1,
+          title: "全体構造",
+          layoutFrameId: "adaptiveTextMain",
+          blocks: [{ id: "block1", kind: "list", styleId: "listCompact", items: ["概要"] }],
+        },
+        {
+          slideNumber: 2,
+          title: "主要工程",
+          layoutFrameId: "adaptiveTextMain",
+          blocks: [{ id: "block1", kind: "list", styleId: "listCompact", items: ["工程"] }],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    });
+
+    const completed = JSON.parse(completePresentationPlanSlideFrames(raw));
+
+    expect(completed.slideFrames).toHaveLength(5);
+    expect(completed.deckFrame.slideCount).toBe(5);
+    expect(completed.slideFrames[2]).toMatchObject({
+      slideNumber: 3,
+      title: "環境課題を把握する",
+      layoutFrameId: "adaptiveTextMain",
+    });
+    expect(completed.slideFrames[4].blocks[0].items[0]).toContain("認証");
   });
 });

@@ -27,6 +27,33 @@ describe("openaiClient builders", () => {
     });
   });
 
+  it("passes structured text format through to the Responses API body", () => {
+    expect(
+      buildOpenAIResponsesRequestBody(
+        {
+          input: "hello",
+          text: {
+            format: {
+              type: "json_schema",
+              name: "test_schema",
+              schema: { type: "object" },
+            },
+          },
+        },
+        "gpt-4o-mini"
+      )
+    ).toMatchObject({
+      model: "gpt-4o-mini",
+      input: "hello",
+      text: {
+        format: {
+          type: "json_schema",
+          name: "test_schema",
+        },
+      },
+    });
+  });
+
   it("builds the responses result from OpenAI data", () => {
     expect(
       buildOpenAIResponsesResult({

@@ -109,7 +109,7 @@ export function buildRuleLines(intent: TaskIntent): string[] {
       "- Use <<SYS_LIBRARY_IMAGE_DATA_REQUEST>> when you want GPT to provide stored image-library reference data."
     );
     lines.push(
-      "- GPT should answer <<SYS_LIBRARY_IMAGE_DATA_REQUEST>> with <<SYS_LIBRARY_IMAGE_DATA_RESPONSE>> using the same TASK_ID and ACTION_ID. The response should describe image IDs, dimensions, and usable visual content without embedding image binaries."
+      "- GPT should answer <<SYS_LIBRARY_IMAGE_DATA_REQUEST>> with <<SYS_LIBRARY_IMAGE_DATA_RESPONSE>> using the same TASK_ID and ACTION_ID. The response should describe available visual content, dimensions, and metadata without exposing stored asset identifiers."
     );
   }
 
@@ -322,7 +322,7 @@ Key item excerpt here.
     blocks.push(wrapExample("LIBRARY_IMAGE_DATA_REQUEST", `<<SYS_LIBRARY_IMAGE_DATA_REQUEST>>
 TASK_ID: ${taskId}
 ACTION_ID: I001
-BODY: Send the available image-library data with image IDs, dimensions, and short visual descriptions.
+BODY: Send the available image-library data with dimensions and short visual descriptions. Do not expose stored asset identifiers.
 <<END_SYS_LIBRARY_IMAGE_DATA_REQUEST>>`));
 
     blocks.push(wrapExample("LIBRARY_IMAGE_DATA_RESPONSE", `<<SYS_LIBRARY_IMAGE_DATA_RESPONSE>>
@@ -333,9 +333,9 @@ BODY:
 Image Library Data
 Items: 2
 
-1. Image ID: img_example
+1. Visual asset
 Dimensions: 1024x768
-Summary: Short visual description here.
+Summary: Short visual description here. Suitable visual slots: cultivation, processing, retail.
 <<END_SYS_LIBRARY_IMAGE_DATA_RESPONSE>>`));
   }
 

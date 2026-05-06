@@ -292,6 +292,8 @@ export type PresentationTaskVisualRequest = {
   brief: string;
   prompt?: string;
   promptNote?: string;
+  visualSlots?: PresentationTaskVisualSlot[];
+  selectionMatches?: PresentationTaskVisualMatch[];
   preferredImageId?: string;
   candidateImageIds?: string[];
   usagePolicy?: "useOneBest" | "useOneOrMore" | "useAsGrid";
@@ -312,6 +314,26 @@ export type PresentationTaskVisualRequest = {
     orientation?: "horizontal" | "vertical";
     showBrief?: boolean;
   };
+};
+
+export type PresentationTaskVisualSlot = {
+  slotId: string;
+  label: string;
+  need: string;
+  keywords?: string[];
+  order?: number;
+  maxImages?: number;
+};
+
+export type PresentationTaskVisualMatch = {
+  slotId: string;
+  label: string;
+  need: string;
+  status: "selected" | "unresolved";
+  imageId?: string;
+  imageTitle?: string;
+  score: number;
+  threshold: number;
 };
 
 export type PresentationTaskSlideBlock = {

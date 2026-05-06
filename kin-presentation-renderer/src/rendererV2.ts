@@ -8,6 +8,7 @@ import type {
 import { resolveTheme, type RendererTheme } from "./themes.js";
 
 type Box = { x: number; y: number; w: number; h: number };
+type AdaptiveTextPlacement = "right" | "rightGrid" | "bottom" | "bottomGrid";
 type MasterFrameId = SlideFrame["masterFrameId"];
 type TextStyle = NonNullable<NonNullable<FrameBlock["renderStyle"]>["textStyle"]>;
 type TextFitContext = { scaleByGroup: Map<string, number> };
@@ -412,7 +413,8 @@ function renderAdaptiveVisualMainFrame(
   box: Box,
   density: PresentationDensity
 ) {
-  const visualBlock = frame.blocks.find(isVisualBlock) || frame.blocks[0];
+  const visualBlocks = frame.blocks.filter(isVisualBlock);
+  const visualBlock = visualBlocks[0] || frame.blocks[0];
   const annotationBlock = frame.blocks.find((block) => block && !isVisualBlock(block));
   const boxes = resolveAdaptiveVisualMainBoxes(
     box,
@@ -420,6 +422,20 @@ function renderAdaptiveVisualMainFrame(
     !!annotationBlock,
     frame.layoutIntent?.textPlacement
   );
+  if (visualBlocks.length > 1) {
+    const visualBoxes = resolveAdaptiveVisualMainMultiVisualBoxes(
+      boxes.visual,
+      visualBlocks.length,
+      visualBlocks.map(resolveBlockAspectRatio)
+    );
+    visualBoxes.forEach((visualBox, index) => {
+      renderBlock(slide, visualBlocks[index], theme, textFitContext, visualBox, density);
+    });
+    if (annotationBlock && boxes.annotation) {
+      renderTextBlock(slide, annotationBlock, theme, textFitContext, boxes.annotation);
+    }
+    return;
+  }
   renderVisualBlockExact(slide, visualBlock, theme, boxes.visual, density);
   if (annotationBlock && boxes.annotation) {
     renderTextBlock(slide, annotationBlock, theme, textFitContext, boxes.annotation);
@@ -447,6 +463,75 @@ function renderAdaptiveTextMainFrame(
   boxes.visuals.forEach((visualBox, index) => {
     renderBlock(slide, visualBlocks[index], theme, textFitContext, visualBox, density);
   });
+}
+
+export function resolveAdaptiveVisualMainMultiVisualBoxes(
+  box: Box,
+  count: number,
+  aspectRatios: Array<number | undefined> = []
+): Box[] {
+  const safeCount = Math.max(1, Math.min(6, count));
+  if (safeCount === 1) return [box];
+  const gap = 0.18;
+  const areaAspect = box.w / Math.max(0.1, box.h);
+  const validAspects = aspectRatios.filter(
+    (value): value is number => typeof value === "number" && value > 0
+  );
+  const averageAspect =
+    validAspects.length > 0
+      ? validAspects.reduce((sum, value) => sum + value, 0) / validAspects.length
+      : 1.4;
+
+  if (safeCount === 2) {
+    const sideBySide = areaAspect >= 1.15 || averageAspect >= 1.25;
+    if (sideBySide) {
+      const w = (box.w - gap) / 2;
+      return [
+        { x: box.x, y: box.y, w, h: box.h },
+        { x: box.x + w + gap, y: box.y, w, h: box.h }
+      ];
+    }
+    const h = (box.h - gap) / 2;
+    return [
+      { x: box.x, y: box.y, w: box.w, h },
+      { x: box.x, y: box.y + h + gap, w: box.w, h }
+    ];
+  }
+
+  if (safeCount >= 3 && areaAspect >= 1.55) {
+    const columns = safeCount <= 3 ? 3 : safeCount <= 4 ? 4 : 3;
+    const rows = Math.ceil(safeCount / columns);
+    const w = (box.w - gap * (columns - 1)) / columns;
+    const h = (box.h - gap * (rows - 1)) / rows;
+    return Array.from({ length: safeCount }, (_, index) => ({
+      x: box.x + index * (w + gap),
+      y: box.y + Math.floor(index / columns) * (h + gap),
+      w,
+      h
+    }));
+  }
+
+  if (safeCount === 3) {
+    const topH = (box.h - gap) * 0.5;
+    const bottomH = box.h - topH - gap;
+    const topW = (box.w - gap) / 2;
+    return [
+      { x: box.x, y: box.y, w: topW, h: topH },
+      { x: box.x + topW + gap, y: box.y, w: topW, h: topH },
+      { x: box.x, y: box.y + topH + gap, w: box.w, h: bottomH }
+    ];
+  }
+
+  const columns = safeCount <= 4 ? 2 : 3;
+  const rows = Math.ceil(safeCount / columns);
+  const w = (box.w - gap * (columns - 1)) / columns;
+  const h = (box.h - gap * (rows - 1)) / rows;
+  return Array.from({ length: safeCount }, (_, index) => ({
+    x: box.x + (index % columns) * (w + gap),
+    y: box.y + Math.floor(index / columns) * (h + gap),
+    w,
+    h
+  }));
 }
 
 export function resolveAdaptiveVisualMainBoxes(
@@ -497,14 +582,12 @@ export function resolveAdaptiveTextMainBoxes(
 
   const gap = 0.32;
   const metrics = estimateTextBlockMetrics(textBlock);
-  const safeVisualCount = Math.max(1, Math.min(3, visualCount));
+  const safeVisualCount = Math.max(1, Math.min(6, visualCount));
   for (let count = safeVisualCount; count >= 1; count -= 1) {
     const aspects = visualAspectRatios.slice(0, count);
     const candidates = [
-      buildTextLeftVisualRightLayout(box, count, gap, metrics, aspects),
-      buildTextTopVisualBottomLayout(box, count, gap, metrics, aspects),
-      buildTextLeftVisualRightGridLayout(box, count, gap, metrics, aspects),
-      buildTextTopVisualBottomGridLayout(box, count, gap, metrics, aspects)
+      ...buildTextLeftVisualRightLayouts(box, count, gap, metrics, aspects),
+      ...buildTextTopVisualBottomLayouts(box, count, gap, metrics, aspects)
     ]
       .filter((item) => item.visuals.length === count)
       .filter((item) => adaptiveTextLayoutFits(item, metrics));
@@ -526,44 +609,45 @@ export function resolveAdaptiveTextMainBoxes(
   return { text: box, visuals: [] };
 }
 
-function buildTextLeftVisualRightLayout(
+function buildTextLeftVisualRightLayouts(
   box: Box,
   visualCount: number,
   gap: number,
   metrics: TextBlockMetrics,
   aspects: Array<number | undefined>
 ) {
-  const textW = metrics.totalChars > 260 ? box.w * 0.64 : box.w * 0.58;
-  const visualArea = { x: box.x + textW + gap, y: box.y, w: box.w - textW - gap, h: box.h };
-  const visuals = visualCount === 1 ? [visualArea] : splitVerticalBoxes(visualArea, visualCount);
-  return scoreAdaptiveTextLayout({
-    placement: visualCount === 1 ? "right" : "rightGrid",
-    text: { x: box.x, y: box.y, w: textW, h: box.h },
-    visuals,
-    metrics,
-    aspects
+  const minTextW = Math.max(2.45, minimumTextWidthForHeight(metrics, box.h));
+  const maxTextW = Math.min(box.w - gap - 1.6, box.w * 0.68);
+  if (visualCount >= 3 && minTextW > box.w * 0.5) return [];
+  const ratios = [0.3, 0.36, 0.42, 0.5, 0.58, 0.64];
+  return Array.from(
+    new Set(
+      ratios
+        .map((ratio) => box.w * ratio)
+        .concat([minTextW, minTextW + 0.35, maxTextW])
+        .map((width) => Number(width.toFixed(3)))
+    )
+  ).flatMap((textW) => {
+    if (textW < minTextW - 0.01 || textW > maxTextW + 0.01) return [];
+    if (metrics.totalChars > 180 && visualCount <= 2 && textW < box.w * 0.5) return [];
+    if (metrics.totalChars > 260 && textW < box.w * 0.5) return [];
+    if (metrics.totalChars > 260 && visualCount >= 3) return [];
+    const text = { x: box.x, y: box.y, w: textW, h: box.h };
+    const visualArea = { x: box.x + textW + gap, y: box.y, w: box.w - textW - gap, h: box.h };
+    const visuals = visualCount === 1 ? [visualArea] : splitGridBoxes(visualArea, visualCount, aspects);
+    return [
+      scoreAdaptiveTextLayout({
+        placement: visualCount === 1 ? "right" : "rightGrid",
+        text,
+        visuals,
+        metrics,
+        aspects
+      })
+    ];
   });
 }
 
-function buildTextLeftVisualRightGridLayout(
-  box: Box,
-  visualCount: number,
-  gap: number,
-  metrics: TextBlockMetrics,
-  aspects: Array<number | undefined>
-) {
-  const textW = metrics.totalChars > 260 ? box.w * 0.6 : box.w * 0.54;
-  const visualArea = { x: box.x + textW + gap, y: box.y, w: box.w - textW - gap, h: box.h };
-  return scoreAdaptiveTextLayout({
-    placement: "rightGrid",
-    text: { x: box.x, y: box.y, w: textW, h: box.h },
-    visuals: splitVerticalBoxes(visualArea, visualCount),
-    metrics,
-    aspects
-  });
-}
-
-function buildTextTopVisualBottomLayout(
+function buildTextTopVisualBottomLayouts(
   box: Box,
   visualCount: number,
   gap: number,
@@ -572,40 +656,26 @@ function buildTextTopVisualBottomLayout(
 ) {
   const neededTextH = estimateTextHeight(metrics, box.w);
   const maxTextH = Math.max(1.2, box.h - gap - 1.38);
-  const textH = Math.min(maxTextH, Math.max(1.35, neededTextH));
-  const visualArea = { x: box.x, y: box.y + textH + gap, w: box.w, h: box.h - textH - gap };
-  const visuals = visualCount === 1 ? [visualArea] : splitHorizontalBoxes(visualArea, visualCount);
-  return scoreAdaptiveTextLayout({
-    placement: visualCount === 1 ? "bottom" : "bottomGrid",
-    text: { x: box.x, y: box.y, w: box.w, h: textH },
-    visuals,
-    metrics,
-    aspects
-  });
-}
-
-function buildTextTopVisualBottomGridLayout(
-  box: Box,
-  visualCount: number,
-  gap: number,
-  metrics: TextBlockMetrics,
-  aspects: Array<number | undefined>
-) {
-  const neededTextH = estimateTextHeight(metrics, box.w);
-  const maxTextH = Math.max(1.2, box.h - gap - 1.38);
-  const textH = Math.min(maxTextH, Math.max(1.25, neededTextH));
-  const visualArea = { x: box.x, y: box.y + textH + gap, w: box.w, h: box.h - textH - gap };
-  return scoreAdaptiveTextLayout({
-    placement: "bottomGrid",
-    text: { x: box.x, y: box.y, w: box.w, h: textH },
-    visuals: splitHorizontalBoxes(visualArea, visualCount),
-    metrics,
-    aspects
-  });
+  const heights = [Math.max(1.25, neededTextH), Math.max(1.45, neededTextH + 0.15), maxTextH];
+  return Array.from(new Set(heights.map((height) => Number(Math.min(maxTextH, height).toFixed(3)))))
+    .flatMap((textH) => {
+      const text = { x: box.x, y: box.y, w: box.w, h: textH };
+      const visualArea = { x: box.x, y: box.y + textH + gap, w: box.w, h: box.h - textH - gap };
+      const visuals = visualCount === 1 ? [visualArea] : splitGridBoxes(visualArea, visualCount, aspects);
+      return [
+        scoreAdaptiveTextLayout({
+          placement: visualCount === 1 ? "bottom" : "bottomGrid",
+          text,
+          visuals,
+          metrics,
+          aspects
+        })
+      ];
+    });
 }
 
 function scoreAdaptiveTextLayout(args: {
-  placement: "right" | "rightGrid" | "bottom" | "bottomGrid";
+  placement: AdaptiveTextPlacement;
   text: Box;
   visuals: Box[];
   metrics: TextBlockMetrics;
@@ -636,11 +706,24 @@ function scoreAdaptiveTextLayout(args: {
       .reduce((sum, aspect) => sum + aspect, 0) / Math.max(1, args.aspects.filter(Boolean).length);
   const shortLandscapeBottomBonus =
     args.metrics.totalChars < 150 && averageAspect >= 1.25 && args.placement === "bottomGrid" ? 14 : 0;
+  const compactLandscapeBottomBonus =
+    args.visuals.length <= 3 && averageAspect >= 1.25 && args.placement === "bottomGrid" ? 24 : 0;
+  const denseTextBottomBonus =
+    args.metrics.totalChars > 260 && args.placement === "bottomGrid" ? 18 : 0;
+  const visualAreaScore = args.visuals.reduce((sum, visual) => sum + visual.w * visual.h, 0) * 0.08;
   return {
     placement: args.placement,
     text: args.text,
     visuals: args.visuals,
-    score: textFitScore + textShapeScore + visualScore + balanceScore + shortLandscapeBottomBonus
+    score:
+      textFitScore +
+      textShapeScore +
+      visualScore +
+      visualAreaScore +
+      balanceScore +
+      shortLandscapeBottomBonus +
+      compactLandscapeBottomBonus +
+      denseTextBottomBonus
   };
 }
 
@@ -680,6 +763,20 @@ function estimateTextHeight(metrics: TextBlockMetrics, width: number) {
   return Math.max(0.7, (headingLines + bodyLines + itemLines) * lineHeight + spacing + padding);
 }
 
+function minimumTextWidthForHeight(metrics: TextBlockMetrics, height: number) {
+  const maxLines = Math.max(1, Math.floor((height - 0.36) / 0.28));
+  const paragraphCount =
+    (metrics.headingChars ? 1 : 0) + (metrics.textChars ? 1 : 0) + metrics.itemChars.length;
+  const spacingLines = Math.max(0, paragraphCount - 1) * 0.4;
+  const availableLines = Math.max(1, maxLines - spacingLines);
+  const weightedChars =
+    metrics.headingChars +
+    metrics.textChars +
+    metrics.itemChars.reduce((sum, chars) => sum + chars * 1.15, 0);
+  const charsPerLine = Math.max(8, Math.ceil(weightedChars / availableLines));
+  return charsPerLine / 8.2 + 0.2;
+}
+
 function adaptiveTextLayoutFits(
   layout: { text: Box; visuals: Box[] },
   metrics: TextBlockMetrics
@@ -699,27 +796,40 @@ function boxesOverlap(a: Box, b: Box, tolerance = 0) {
   );
 }
 
-function splitHorizontalBoxes(box: Box, count: number) {
-  const safeCount = Math.max(1, Math.min(count, 3));
-  const gap = 0.24;
-  const w = (box.w - gap * (safeCount - 1)) / safeCount;
+function splitGridBoxes(
+  box: Box,
+  count: number,
+  aspects: Array<number | undefined> = []
+) {
+  const safeCount = Math.max(1, Math.min(count, 6));
+  const gap = 0.18;
+  const averageAspect =
+    aspects.filter((aspect): aspect is number => !!aspect && Number.isFinite(aspect))
+      .reduce((sum, aspect) => sum + aspect, 0) / Math.max(1, aspects.filter(Boolean).length) || 1.4;
+  const areaAspect = box.w / Math.max(0.1, box.h);
+  const candidates: Array<{ columns: number; rows: number; score: number }> = [];
+  for (let columns = 1; columns <= safeCount; columns += 1) {
+    const rows = Math.ceil(safeCount / columns);
+    const cellW = (box.w - gap * (columns - 1)) / columns;
+    const cellH = (box.h - gap * (rows - 1)) / rows;
+    if (cellW <= 0 || cellH <= 0) continue;
+    const cellAspect = cellW / cellH;
+    const aspectScore = Math.max(0, 12 - Math.abs(Math.log(averageAspect / cellAspect)) * 6);
+    const areaScore = cellW * cellH;
+    const shapeBias = areaAspect >= 1.4 ? columns * 0.35 : rows * 0.25;
+    candidates.push({ columns, rows, score: aspectScore + areaScore + shapeBias });
+  }
+  const best = candidates.sort((a, b) => b.score - a.score)[0] || {
+    columns: safeCount,
+    rows: 1,
+  };
+  const cellW = (box.w - gap * (best.columns - 1)) / best.columns;
+  const cellH = (box.h - gap * (best.rows - 1)) / best.rows;
   return Array.from({ length: safeCount }, (_, index) => ({
-    x: box.x + index * (w + gap),
-    y: box.y,
-    w,
-    h: box.h
-  }));
-}
-
-function splitVerticalBoxes(box: Box, count: number) {
-  const safeCount = Math.max(1, Math.min(count, 3));
-  const gap = 0.22;
-  const h = (box.h - gap * (safeCount - 1)) / safeCount;
-  return Array.from({ length: safeCount }, (_, index) => ({
-    x: box.x,
-    y: box.y + index * (h + gap),
-    w: box.w,
-    h
+    x: box.x + (index % best.columns) * (cellW + gap),
+    y: box.y + Math.floor(index / best.columns) * (cellH + gap),
+    w: cellW,
+    h: cellH
   }));
 }
 
@@ -808,9 +918,7 @@ function renderImage(
   styleId?: FrameBlock["styleId"]
 ) {
   const imageBox =
-    styleId === "visualCover"
-      ? coverBox(box, resolveAssetAspectRatio(asset))
-      : containBox(box, resolveAssetAspectRatio(asset));
+    resolveVisualImageBox(box, resolveAssetAspectRatio(asset), styleId);
   slide.addImage({
     data: `data:${asset.mimeType || "image/png"};base64,${asset.base64}`,
     x: imageBox.x,
@@ -825,7 +933,7 @@ function renderCoverImageContained(
   asset: NonNullable<NonNullable<FrameBlock["visualRequest"]>["asset"]>
 ) {
   const box = { x: 0, y: 0, w: slideLayout.width, h: slideLayout.height };
-  const imageBox = containBox(box, resolveAssetAspectRatio(asset));
+  const imageBox = coverBox(box, resolveAssetAspectRatio(asset));
   slide.addImage({
     data: `data:${asset.mimeType || "image/png"};base64,${asset.base64}`,
     x: imageBox.x,
@@ -857,16 +965,15 @@ function renderImageWithOptionalCaption(
   }
 
   const captionH = Math.min(0.34, Math.max(0.24, box.h * 0.12));
-  const gap = 0.08;
   const imageArea = {
     x: box.x,
     y: box.y,
     w: box.w,
-    h: Math.max(0.4, box.h - captionH - gap)
+    h: box.h
   };
   const imageBox =
     block.styleId === "visualContain"
-      ? containTopLeftBox(imageArea, resolveAssetAspectRatio(asset))
+      ? resolveVisualImageBox(imageArea, resolveAssetAspectRatio(asset), block.styleId)
       : coverBox(imageArea, resolveAssetAspectRatio(asset));
   slide.addImage({
     data: `data:${asset.mimeType || "image/png"};base64,${asset.base64}`,
@@ -875,19 +982,48 @@ function renderImageWithOptionalCaption(
     w: imageBox.w,
     h: imageBox.h
   });
-  slide.addText(caption, {
-    x: imageBox.x,
-    y: imageBox.y + imageBox.h + gap,
-    w: imageBox.w,
-    h: captionH,
+  renderImageOverlayLabel(slide, caption, theme, imageBox, captionH);
+}
+
+function renderImageOverlayLabel(
+  slide: PptxGenJS.Slide,
+  caption: string,
+  theme: RendererTheme,
+  imageBox: Box,
+  captionH: number
+) {
+  const labelW = imageBox.w;
+  const labelH = Math.min(Math.max(0.2, captionH * 0.85), Math.max(0.19, imageBox.h * 0.17));
+  const x = imageBox.x;
+  const y = imageBox.y + imageBox.h - labelH;
+  const label = truncateImageLabel(caption);
+  slide.addShape("rect", {
+    x,
+    y,
+    w: labelW,
+    h: labelH,
+    fill: { color: "FFFFFF", transparency: 20 },
+    line: { color: "FFFFFF", transparency: 100 }
+  });
+  slide.addText(label, {
+    x: x + 0.06,
+    y: y + 0.015,
+    w: Math.max(0.1, labelW - 0.12),
+    h: Math.max(0.1, labelH - 0.03),
     fontFace: theme.fontFace,
-    fontSize: box.w < 3.2 ? 8.6 : 9.4,
-    color: theme.mutedText,
+    fontSize: imageBox.w < 3.2 ? 8.2 : 9,
+    color: theme.text,
     fit: "shrink",
     margin: 0,
-    align: "center",
+    align: "left",
     valign: "middle"
   });
+}
+
+function truncateImageLabel(caption: string) {
+  const chars = Array.from(caption.trim().replace(/\s+/g, " "));
+  const maxChars = 24;
+  return chars.length > maxChars ? `${chars.slice(0, maxChars).join("")}...` : chars.join("");
 }
 
 function renderImageExact(
@@ -1208,6 +1344,16 @@ function baseTextStyle(
   };
 }
 
+export function resolveVisualImageBox(
+  box: Box,
+  aspectRatio: number | undefined,
+  styleId?: FrameBlock["styleId"]
+) {
+  return styleId === "visualCover"
+    ? coverBox(box, aspectRatio)
+    : containTopLeftBox(box, aspectRatio);
+}
+
 function renderVisualFallback(
   slide: PptxGenJS.Slide,
   theme: RendererTheme,
@@ -1352,17 +1498,6 @@ function resolveAssetAspectRatio(
     return asset.widthPx / asset.heightPx;
   }
   return undefined;
-}
-
-function containBox(box: Box, aspectRatio?: number): Box {
-  if (!aspectRatio || !Number.isFinite(aspectRatio) || aspectRatio <= 0) return box;
-  const boxRatio = box.w / box.h;
-  if (aspectRatio > boxRatio) {
-    const h = box.w / aspectRatio;
-    return { x: box.x, y: box.y + (box.h - h) / 2, w: box.w, h };
-  }
-  const w = box.h * aspectRatio;
-  return { x: box.x + (box.w - w) / 2, y: box.y, w, h: box.h };
 }
 
 function containTopLeftBox(box: Box, aspectRatio?: number): Box {

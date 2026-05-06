@@ -169,6 +169,55 @@ describe("resolveFrameSpecVisualAssets", () => {
     });
   });
 
+  it("copies a resolved body visual asset into visualTitleCover when the cover clone was not hydrated directly", async () => {
+    const spec = {
+      deckFrame: {
+        openingSlide: {
+          enabled: true,
+          frameId: "visualTitleCover",
+          visualRequest: {
+            brief: "cover should reuse the representative body image",
+            preferredImageId: "img_missing_cover_alias",
+            candidateImageIds: ["img_cotton"],
+          },
+        },
+      },
+      slideFrames: [
+        {
+          blocks: [
+            {
+              visualRequest: {
+                brief: "cotton field",
+                preferredImageId: "img_cotton",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const resolved = (await resolveFrameSpecVisualAssets(spec, {
+      mode: "library",
+      libraryImageAssets: [
+        {
+          imageId: "img_cotton",
+          mimeType: "image/png",
+          base64: "cotton-base64",
+          description: "cotton field",
+        },
+      ],
+    })) as ResolvedFrameSpecForTest;
+
+    expect(resolved.slideFrames[0].blocks[0].visualRequest.asset).toMatchObject({
+      imageId: "img_cotton",
+      base64: "cotton-base64",
+    });
+    expect(resolved.deckFrame?.openingSlide?.visualRequest.asset).toMatchObject({
+      imageId: "img_cotton",
+      base64: "cotton-base64",
+    });
+  });
+
   it("allows an explicitly preferred image-library id to be reused", async () => {
     const spec = {
       slideFrames: [
@@ -284,7 +333,7 @@ describe("resolveFrameSpecVisualAssets", () => {
     });
   });
 
-  it("matches Japanese visual text against Japanese image metadata", async () => {
+  it("does not select a library image by loose visual text without an app-selected id", async () => {
     const spec = {
       slideFrames: [
         {
@@ -311,8 +360,6 @@ describe("resolveFrameSpecVisualAssets", () => {
       ],
     })) as ResolvedFrameSpecForTest;
 
-    expect(resolved.slideFrames[0].blocks[0].visualRequest.asset?.imageId).toBe(
-      "img_field"
-    );
+    expect(resolved.slideFrames[0].blocks[0].visualRequest.asset).toBeUndefined();
   });
 });

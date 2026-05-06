@@ -8,6 +8,7 @@ import type { UsageSummary } from "@/lib/server/chatgpt/openaiResponse";
 export type OpenAIResponsesPayload = {
   model?: string;
   input: unknown;
+  text?: Record<string, unknown>;
 };
 
 export type OpenAIResponsesResult = {
@@ -24,6 +25,7 @@ export function buildOpenAIResponsesRequestBody(
   return {
     model: payload.model ?? defaultModel,
     input: payload.input,
+    ...(payload.text ? { text: payload.text } : {}),
   };
 }
 

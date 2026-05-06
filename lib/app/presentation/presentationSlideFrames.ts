@@ -229,8 +229,8 @@ const LAYOUT_BLOCK_LIMITS: Record<
   heroTopDetailsBottom: { min: 3, max: 3 },
   threeColumns: { min: 3, max: 3 },
   twoByTwoGrid: { min: 4, max: 4 },
-  adaptiveVisualMain: { min: 1, max: 4 },
-  adaptiveTextMain: { min: 1, max: 6 },
+  adaptiveVisualMain: { min: 1, max: 7 },
+  adaptiveTextMain: { min: 1, max: 7 },
 };
 
 export function parsePresentationSlideFrameDocumentFromJsonLines(
@@ -581,49 +581,46 @@ function normalizeVisualRequest(value: unknown): PresentationTaskVisualRequest |
   const brief = stringValue(candidate.brief || candidate.text || candidate.label);
   const prompt = stringValue(candidate.prompt || candidate.generationPrompt);
   const promptNote = stringValue(candidate.promptNote || candidate.promptStatus || candidate.note);
-  const preferredImageId = stringValue(candidate.preferredImageId || candidate.imageId || candidate.assetId);
-  const candidateImageIds = uniqueStrings(
-    stringArray(candidate.candidateImageIds || candidate.imageIds || candidate.assetIds)
-  );
+  const visualSlots = normalizeVisualSlots(candidate.visualSlots || candidate.slots);
   const usagePolicy = supportedVisualUsagePolicy(candidate.usagePolicy);
   const maxVisualItems = positiveInteger(candidate.maxVisualItems);
-  const labels = normalizeVisualLabels(
-    stringArray(candidate.labels),
-    candidateImageIds,
-    preferredImageId
-  );
   if (
     !brief &&
     !prompt &&
     !promptNote &&
-    !preferredImageId &&
-    candidateImageIds.length === 0 &&
-    labels.length === 0
+    visualSlots.length === 0
   ) return null;
   return {
     type: normalizeVisualRequestType(type, [brief, prompt, promptNote].join(" ")),
     brief,
     prompt: prompt || undefined,
     promptNote: promptNote || undefined,
-    preferredImageId: preferredImageId || undefined,
-    candidateImageIds: candidateImageIds.length > 0 ? candidateImageIds : undefined,
+    visualSlots: visualSlots.length > 0 ? visualSlots : undefined,
     usagePolicy,
     maxVisualItems,
-    labels: labels.length > 0 ? labels : undefined,
     renderStyle: normalizeVisualRenderStyle(candidate.renderStyle),
   };
 }
 
-function normalizeVisualLabels(
-  labels: string[],
-  candidateImageIds: string[],
-  preferredImageId: string
-) {
-  if (labels.length === 0) return [];
-  if (candidateImageIds.length > 0) {
-    return labels.length === candidateImageIds.length ? labels : [];
-  }
-  return preferredImageId && labels.length === 1 ? labels : [];
+function normalizeVisualSlots(value: unknown): NonNullable<PresentationTaskVisualRequest["visualSlots"]> {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, index) => {
+    const candidate = objectValue(item);
+    if (!candidate) return [];
+    const label = stringValue(candidate.label || candidate.title || candidate.name);
+    const need = stringValue(candidate.need || candidate.query || candidate.description || candidate.text);
+    if (!label && !need) return [];
+    return [
+      {
+        slotId: stringValue(candidate.slotId || candidate.id) || `slot${index + 1}`,
+        label: label || need,
+        need: need || label,
+        keywords: uniqueStrings(stringArray(candidate.keywords || candidate.terms)),
+        order: positiveInteger(candidate.order) || index + 1,
+        maxImages: positiveInteger(candidate.maxImages) || undefined,
+      },
+    ];
+  });
 }
 
 function normalizeVisualRequestType(
@@ -873,9 +870,25 @@ function formatReadableBlockDisplayLines(block: PresentationTaskSlideBlock) {
         `  - Visual prompt: prompt needed${block.visualRequest.promptNote ? ` (${block.visualRequest.promptNote})` : ""}`
       );
     }
+    if (block.visualRequest.visualSlots?.length) {
+      lines.push("  - Visual slots:");
+      block.visualRequest.visualSlots
+        .slice()
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .forEach((slot) => lines.push(`    - ${slot.label}: ${slot.need}`));
+    }
     if (block.visualRequest.labels?.length) {
       lines.push("  - ビジュアル内表示ラベル:");
       block.visualRequest.labels.forEach((label) => lines.push(`    - ${label}`));
+    }
+    if (block.visualRequest.selectionMatches?.length) {
+      lines.push("  - Image match scores:");
+      block.visualRequest.selectionMatches.forEach((match) => {
+        const target = match.imageId ? `${match.imageId}${match.imageTitle ? ` (${match.imageTitle})` : ""}` : "unresolved";
+        lines.push(
+          `    - ${match.label}: ${match.status} / score ${match.score} / threshold ${match.threshold} / ${target}`
+        );
+      });
     }
     if (block.visualRequest.preferredImageId) {
       lines.push(`  - Image ID: ${block.visualRequest.preferredImageId}`);
@@ -917,9 +930,25 @@ function formatBlockDisplayLines(block: PresentationTaskSlideBlock) {
         `  - Visual prompt: prompt needed${block.visualRequest.promptNote ? ` (${block.visualRequest.promptNote})` : ""}`
       );
     }
+    if (block.visualRequest.visualSlots?.length) {
+      lines.push("  - Visual slots:");
+      block.visualRequest.visualSlots
+        .slice()
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .forEach((slot) => lines.push(`    - ${slot.label}: ${slot.need}`));
+    }
     if (block.visualRequest.labels?.length) {
       lines.push("  - ビジュアル内表示ラベル:");
       block.visualRequest.labels.forEach((label) => lines.push(`    - ${label}`));
+    }
+    if (block.visualRequest.selectionMatches?.length) {
+      lines.push("  - Image match scores:");
+      block.visualRequest.selectionMatches.forEach((match) => {
+        const target = match.imageId ? `${match.imageId}${match.imageTitle ? ` (${match.imageTitle})` : ""}` : "unresolved";
+        lines.push(
+          `    - ${match.label}: ${match.status} / score ${match.score} / threshold ${match.threshold} / ${target}`
+        );
+      });
     }
     if (block.visualRequest.preferredImageId) {
       lines.push(`  - Image ID: ${block.visualRequest.preferredImageId}`);
@@ -966,9 +995,7 @@ function normalizeLayoutIntent(
   const textPlacement = supportedTextPlacement(candidate.textPlacement);
   const visualPlacement = supportedVisualPlacement(candidate.visualPlacement);
   const notePolicy = supportedNotePolicy(candidate.notePolicy);
-  const primaryImageId = stringValue(candidate.primaryImageId).trim();
   const layoutIntent: NonNullable<PresentationTaskSlideFrame["layoutIntent"]> = {};
-  if (primaryImageId) layoutIntent.primaryImageId = primaryImageId;
   if (textPlacement) layoutIntent.textPlacement = textPlacement;
   if (visualPlacement) layoutIntent.visualPlacement = visualPlacement;
   if (notePolicy) layoutIntent.notePolicy = notePolicy;

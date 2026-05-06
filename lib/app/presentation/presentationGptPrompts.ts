@@ -9,7 +9,17 @@ export function buildPresentationRenderedMessage(args: {
     title?: string;
     path?: string;
   }>;
+  imageMatches?: Array<{
+    slideNumber: number;
+    label: string;
+    status: "selected" | "unresolved";
+    imageId?: string;
+    imageTitle?: string;
+    score: number;
+    threshold: number;
+  }>;
 }) {
+  const generatedImages = uniqueGeneratedImages(args.generatedImages || []);
   return [
     "Presentation PPTX created.",
     "",
@@ -19,15 +29,39 @@ export function buildPresentationRenderedMessage(args: {
     "",
     args.outputPath ? `PPTX: [${args.filename}](${args.outputPath})` : "",
     `File: ${args.filename}`,
-    args.generatedImages?.length ? "" : "",
-    ...(args.generatedImages || []).flatMap((image) => [
+    generatedImages.length ? "" : "",
+    ...generatedImages.flatMap((image) => [
       `Image ID: ${image.imageId}`,
       image.title ? `Image: ${image.title}` : "",
       image.path ? `![${image.imageId}](${image.path})` : "",
     ]),
+    args.imageMatches?.length ? "" : "",
+    ...(args.imageMatches || []).flatMap((match) => [
+      `Slide ${match.slideNumber} image match: ${match.label}`,
+      `Status: ${match.status}`,
+      `Score: ${match.score} / Threshold: ${match.threshold}`,
+      match.imageId ? `Image ID: ${match.imageId}` : "",
+      match.imageTitle ? `Image: ${match.imageTitle}` : "",
+    ]),
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function uniqueGeneratedImages(
+  images: Array<{
+    imageId: string;
+    title?: string;
+    path?: string;
+  }>
+) {
+  const seen = new Set<string>();
+  return images.filter((image) => {
+    const key = image.imageId || image.path || image.title || "";
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function buildPresentationRevisedMessage(args: {

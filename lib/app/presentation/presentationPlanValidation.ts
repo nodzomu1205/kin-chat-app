@@ -178,7 +178,7 @@ function applyAdaptiveLayoutPolicy(
             frame.layoutIntent?.visualPlacement ||
             (visualBlocks.length > 1 ? "rightGrid" : "right"),
         },
-        blocks: [primaryText, ...visualBlocks].slice(0, 4),
+        blocks: [primaryText, ...visualBlocks].slice(0, 7),
       };
     }
 

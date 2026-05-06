@@ -29,8 +29,8 @@ type FrameBlockWithVisual = {
 
 type FrameSpecWithVisuals = {
   deckFrame?: {
-    openingSlide?: { visualRequest?: VisualRequestWithAsset };
-    closingSlide?: { visualRequest?: VisualRequestWithAsset };
+    openingSlide?: { frameId?: string; visualRequest?: VisualRequestWithAsset };
+    closingSlide?: { frameId?: string; visualRequest?: VisualRequestWithAsset };
   };
   slideFrames?: Array<{
     blocks?: FrameBlockWithVisual[];
@@ -144,17 +144,14 @@ export async function resolveFrameSpecVisualAssets<T>(
   if (mode === "off") return stripFrameSpecVisualAssets(frameSpec);
 
   const next = JSON.parse(JSON.stringify(frameSpec)) as T & FrameSpecWithVisuals;
-  const usedImageIds = new Set<string>();
   for (const visual of collectFrameSpecVisualRequests(next)) {
       if (!shouldGenerateVisual(visual)) continue;
       if (mode === "library" || mode === "hybrid") {
         const matched = findBestLibraryImageAsset({
           visual,
           assets: options.libraryImageAssets || [],
-          usedImageIds,
         });
         if (matched) {
-          usedImageIds.add(matched.imageId);
           visual.preferredImageId = matched.imageId;
           visual.asset = {
             imageId: matched.imageId,
@@ -192,6 +189,7 @@ export async function resolveFrameSpecVisualAssets<T>(
         };
       }
   }
+  hydrateVisualTitleCoverFromResolvedBodyVisual(next);
   return next as T;
 }
 
@@ -213,6 +211,43 @@ function collectFrameSpecVisualRequests(frameSpec: FrameSpecWithVisuals) {
       (slide.blocks || []).map((block) => block.visualRequest)
     ),
   ].filter((visual): visual is VisualRequestWithAsset => !!visual);
+}
+
+function hydrateVisualTitleCoverFromResolvedBodyVisual(frameSpec: FrameSpecWithVisuals) {
+  const openingSlide = frameSpec.deckFrame?.openingSlide;
+  const openingVisual = openingSlide?.visualRequest;
+  if (openingSlide?.frameId !== "visualTitleCover" || !openingVisual || openingVisual.asset?.base64) {
+    return;
+  }
+
+  const bodyVisuals = (frameSpec.slideFrames || [])
+    .flatMap((slide) => (slide.blocks || []).map((block) => block.visualRequest))
+    .filter((visual): visual is VisualRequestWithAsset => !!visual?.asset?.base64);
+  if (bodyVisuals.length === 0) return;
+
+  const coverIds = new Set(
+    [
+      openingVisual.preferredImageId,
+      ...(openingVisual.candidateImageIds || []),
+    ]
+      .map((value) => value?.trim())
+      .filter((value): value is string => !!value)
+  );
+  const matched =
+    bodyVisuals.find((visual) => {
+      const assetId = visual.asset?.imageId?.trim();
+      if (assetId && coverIds.has(assetId)) return true;
+      const preferredId = visual.preferredImageId?.trim();
+      if (preferredId && coverIds.has(preferredId)) return true;
+      return (visual.candidateImageIds || []).some((id) => coverIds.has(id.trim()));
+    }) || bodyVisuals[0];
+
+  openingVisual.asset = matched.asset
+    ? JSON.parse(JSON.stringify(matched.asset))
+    : undefined;
+  if (!openingVisual.preferredImageId && matched.preferredImageId) {
+    openingVisual.preferredImageId = matched.preferredImageId;
+  }
 }
 
 export async function generateImageAsset(args: {
@@ -258,7 +293,6 @@ function shouldGenerateVisual(
 function findBestLibraryImageAsset(args: {
   visual: VisualRequestWithAsset;
   assets: PresentationLibraryImageAsset[];
-  usedImageIds: Set<string>;
 }) {
   const preferredImageId = args.visual.preferredImageId?.trim();
   if (preferredImageId) {
@@ -273,24 +307,7 @@ function findBestLibraryImageAsset(args: {
     );
     if (exact) return exact;
   }
-
-  const visualText = normalizeMatchText([
-    args.visual.brief,
-    args.visual.prompt,
-    args.visual.promptNote,
-    args.visual.type,
-    args.visual.preferredImageId,
-  ]);
-  if (!visualText) return null;
-  const scored = args.assets
-    .filter((asset) => asset.base64 && !args.usedImageIds.has(asset.imageId))
-    .map((asset) => ({
-      asset,
-      score: scoreLibraryImageMatch(visualText, asset),
-    }))
-    .filter((item) => item.score >= 2)
-    .sort((a, b) => b.score - a.score);
-  return scored[0]?.asset || null;
+  return null;
 }
 
 function matchesImageAssetId(
@@ -302,49 +319,6 @@ function matchesImageAssetId(
     asset.title === imageIdOrAlias ||
     asset.fileName === imageIdOrAlias
   );
-}
-
-function scoreLibraryImageMatch(
-  visualText: string,
-  asset: PresentationLibraryImageAsset
-) {
-  const assetText = normalizeMatchText([
-    asset.title,
-    asset.fileName,
-    asset.description,
-    asset.prompt,
-    asset.originalPrompt,
-  ]);
-  if (!assetText) return 0;
-  const visualTerms = new Set(
-    visualText.split(/\s+/).filter((term) => term.length >= 2)
-  );
-  let score = 0;
-  for (const term of visualTerms) {
-    if (assetText.includes(term)) score += term.length >= 4 ? 2 : 1;
-  }
-  const visualCjk = cjkCharacters(visualText);
-  const assetCjk = cjkCharacters(assetText);
-  if (visualCjk.length >= 4 && assetCjk.length >= 4) {
-    const assetSet = new Set(assetCjk);
-    const overlap = new Set(visualCjk.filter((char) => assetSet.has(char))).size;
-    score += Math.floor(overlap / 2);
-  }
-  return score;
-}
-
-function cjkCharacters(value: string) {
-  return Array.from(value).filter((char) => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(char));
-}
-
-function normalizeMatchText(parts: Array<string | undefined>) {
-  return parts
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s_-]+/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function buildImagePrompt(visual: VisualRequestWithAsset) {

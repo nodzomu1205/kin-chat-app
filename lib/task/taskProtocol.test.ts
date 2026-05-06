@@ -17,18 +17,23 @@ const baseTask: TaskRequest = {
 };
 
 describe("taskProtocol presentation plan prompt", () => {
-  it("constrains image library IDs to an allowlist and exposes adaptive fields", () => {
+  it("uses visual slots instead of exposing image-library IDs", () => {
     const prompt = buildTaskPrompt(baseTask);
 
     expect(prompt).toContain("adaptiveVisualMain");
     expect(prompt).toContain("adaptiveTextMain");
     expect(prompt).toContain("slideRole");
-    expect(prompt).toContain("candidateImageIds");
-    expect(prompt).toContain("closed allowlist");
-    expect(prompt).toContain("never invent");
+    expect(prompt).toContain("visualSlots");
+    expect(prompt).toContain("visualRequest.visualSlots");
+    expect(prompt).toContain("Asset identifiers are intentionally hidden");
     expect(prompt).toContain("useOneOrMore");
-    expect(prompt).toContain("matching candidateImageIds exactly");
-    expect(prompt).toContain("Caption seed");
+    expect(prompt).toContain("cultivation, ginning, and spinning");
+    expect(prompt).toContain("Use the user's/source language");
+    expect(prompt).toContain("must not be narrower than visualSlot.need");
+    expect(prompt).toContain("Do not assert a specific country, location, company, person, or named system");
+    expect(prompt).not.toContain("candidateImageIds");
+    expect(prompt).not.toContain("closed allowlist");
+    expect(prompt).not.toContain("Caption seed");
     expect(prompt).toContain("do not use summaryClosing");
   });
 });

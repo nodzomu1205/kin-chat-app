@@ -210,6 +210,36 @@ export const frameVisualRequestSchema = z
     brief: z.string().trim().optional(),
     prompt: z.string().trim().optional(),
     promptNote: z.string().trim().optional(),
+    visualSlots: z
+      .array(
+        z
+          .object({
+            slotId: nonEmptyString,
+            label: nonEmptyString,
+            need: nonEmptyString,
+            keywords: z.array(nonEmptyString).optional(),
+            order: z.number().int().optional(),
+            maxImages: z.number().int().positive().max(3).optional()
+          })
+          .passthrough()
+      )
+      .optional(),
+    selectionMatches: z
+      .array(
+        z
+          .object({
+            slotId: nonEmptyString,
+            label: nonEmptyString,
+            need: nonEmptyString,
+            status: z.enum(["selected", "unresolved"]),
+            imageId: z.string().trim().optional(),
+            imageTitle: z.string().trim().optional(),
+            score: z.number().min(0),
+            threshold: z.number().positive()
+          })
+          .passthrough()
+      )
+      .optional(),
     preferredImageId: z.string().trim().optional(),
     candidateImageIds: z.array(nonEmptyString).optional(),
     usagePolicy: z.enum(["useOneBest", "useOneOrMore", "useAsGrid"]).optional(),

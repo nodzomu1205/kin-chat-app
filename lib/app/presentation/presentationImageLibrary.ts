@@ -109,23 +109,22 @@ export function buildPresentationImageLibraryContext(
   if (candidates.length === 0) return "";
   const lines = [
     "<<IMAGE_LIBRARY_CANDIDATES>>",
-    "Use these existing image-library assets when they semantically fit a slide visual request.",
-    "The Image IDs in this section are a closed allowlist for library-image planning. Use only these exact Image IDs in preferredImageId and candidateImageIds. Never invent, rename, abbreviate, or derive an Image ID from a filename.",
-    "If no listed Image ID fits a needed visual, leave that visual unresolved and add a warning or missingInfo entry instead of making up an ID.",
-    "First decide whether to use an image by semantic fit with the slide key message. After an image has been selected, use Orientation, Size, Aspect ratio, and presentationMeta as planning material.",
-    "presentationMeta is extracted planning material, not a final visualMain/textMain judgment. Do not reclassify images from keyword hits in descriptions.",
-    "Decide visualMain vs textMain by matching the slide key message against visible subjects, embedded text items, relationships, and semantic tags.",
+    "These existing image-library assets are planning material for the app-side visual slot matcher.",
+    "Do not refer to a specific asset by identifier. Asset identifiers are intentionally hidden from this planning context.",
+    "Use this metadata only to define visualRequest.visualSlots: slotId, label, need, optional keywords, and order.",
+    "The app will deterministically match visualSlots to stored assets after your slideFrame JSON is parsed.",
+    "presentationMeta is extracted planning material. Use visible subjects, embedded text items, relationships, and semantic tags to describe concrete visualSlots.",
     "For new slideFrames, prefer adaptiveVisualMain when an image should be the main carrier: place the selected image at the top-left, preserve aspect ratio, maximize it in the content area, and use only the remaining right or bottom-right space for a short annotation if needed.",
     "Prefer adaptiveTextMain when the message text is the main carrier: put the primary text at the top-left, choose a text shape that leaves the most useful remaining area, and place one or more related images in that remaining area.",
-    "For textMain slides, list all semantically relevant image candidates in candidateImageIds in relevance order; the renderer decides how many can fit. Use usagePolicy useOneOrMore or useAsGrid instead of prematurely narrowing to one image.",
-    "When you provide visualRequest.labels for candidateImageIds, labels must be one-to-one with the selected Image IDs in exactly the same order and exactly the same count.",
-    "Each label must be derived from that exact candidate's Caption seed, Title, Visible subjects, or Embedded text items. Never assign a planned process step or generic slide concept to an image unless that specific image visibly contains it.",
-    "If the deck is Japanese, translate labels into concise Japanese while preserving the candidate's actual visible meaning. If unsure, omit labels rather than guessing.",
-    "For each slide that uses these candidates, set slideRole to visualMain or textMain and include layoutIntent.primaryImageId only when one image is central to the layout.",
+    "For textMain slides, create ordered visualSlots when multiple related images may support the message.",
+    "Keep visualSlot order aligned to the corresponding text order. For example, upstream, midstream, downstream slots should follow that text sequence.",
+    "Use the deck/user language for visualSlot.label. Keep visualSlot.need and keywords concrete and searchable.",
+    "Do not make visualSlot.label narrower than the requested visual meaning or likely selected asset; if the slot covers agriculture plus primary processing, the label should reflect that broader range.",
+    "Do not assert a specific country, location, company, person, or named system in visualSlot.label unless this image-library metadata explicitly supports that same entity; otherwise use a generic display label.",
+    "For each slide, set slideRole to visualMain or textMain based on the slide key message.",
   ];
   candidates.forEach((image, index) => {
-    lines.push(`[IMAGE ${index + 1}]`);
-    lines.push(`Image ID: ${image.imageId}`);
+    lines.push(`[VISUAL ASSET ${index + 1}]`);
     lines.push(`Title: ${image.title}`);
     const captionSeed = buildCaptionSeed(image);
     if (captionSeed) lines.push(`Caption seed: ${captionSeed}`);

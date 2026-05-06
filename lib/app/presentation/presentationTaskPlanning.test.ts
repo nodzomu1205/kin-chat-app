@@ -6,8 +6,8 @@ import {
   buildPresentationTaskPlan,
   buildPresentationTaskPlanFromText,
   buildPresentationTaskStructuredInput,
-  formatPresentationTaskResultText,
   formatPresentationTaskPlanText,
+  hasPresentationTaskPlanSlideFrames,
   isPresentationTaskInstruction,
   resolvePresentationTaskTitle,
   stripPresentationTaskMarker,
@@ -526,18 +526,74 @@ describe("presentationTaskPlanning", () => {
     expect(input).toContain("LIB DATA");
   });
 
-  it("adds a closed image-library allowlist policy when image candidates are present", () => {
+  it("asks for visual slots instead of image IDs when image candidates are present", () => {
     const input = buildPresentationTaskStructuredInput({
       title: "Deck",
       userInstruction: "Use library images",
       body: "Body",
-      imageLibraryContext: "<<IMAGE_LIBRARY_CANDIDATES>>\nImage ID: img_field",
+      imageLibraryContext: "<<IMAGE_LIBRARY_CANDIDATES>>\n[VISUAL ASSET 1]\nTitle: Cotton field",
     });
 
     expect(input).toContain("Image library selection policy:");
-    expect(input).toContain("closed allowlist");
-    expect(input).toContain("Use only exact listed Image IDs");
-    expect(input).toContain("renderer decides how many fit");
+    expect(input).toContain("Do not refer to a specific image-library asset by identifier");
+    expect(input).toContain("visualRequest.visualSlots");
+    expect(input).toContain("slotId, label, need");
+    expect(input).not.toContain("Image ID:");
+  });
+
+  it("does not import image IDs from parsed slideFrame JSON", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Deck",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Slide",
+                    layoutFrameId: "adaptiveTextMain",
+                    layoutIntent: {
+                      primaryImageId: "img_from_llm",
+                      visualPlacement: "rightGrid",
+                    },
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        items: ["Point"],
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        visualRequest: {
+                          brief: "Cotton field",
+                          preferredImageId: "img_from_llm",
+                          candidateImageIds: ["img_from_llm"],
+                          labels: ["Copied"],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+
+    const frame = plan.slideFrames[0];
+    const visual = frame.blocks[1].visualRequest;
+    expect(frame.layoutIntent?.primaryImageId || undefined).toBeUndefined();
+    expect(visual?.preferredImageId).toBeUndefined();
+    expect(visual?.candidateImageIds).toBeUndefined();
+    expect(visual?.labels).toBeUndefined();
+    expect(frame.layoutIntent?.visualPlacement).toBe("rightGrid");
   });
 
   it("uses slideFrames wording in the task constraints", () => {
@@ -546,20 +602,21 @@ describe("presentationTaskPlanning", () => {
     expect(constraints).toContain("The canonical slide design source is deckFrame + slideFrames JSON.");
     expect(constraints).toContain("Do not create slideDesign.slides[].parts as the preferred path.");
     expect(constraints).toContain("one-block layouts need 1 block");
+    expect(constraints).toContain("Use the user's/source language");
     expect(constraints).toContain("Preserve source breadth first;");
     expect(constraints).toContain("The visible chat text must show the actual messages that will appear in PPTX.");
     expect(constraints).toContain("compare the key message with visibleSubjects");
-    expect(constraints).toContain("Do not prematurely narrow to one image");
+    expect(constraints).toContain("visualSlots");
     expect(constraints).toContain("Do not classify a normal photo as visualMain");
-    expect(constraints).toContain("candidateImageIds");
-    expect(constraints).toContain("closed allowlist");
-    expect(constraints).toContain("never invent");
-    expect(constraints).toContain("matching candidateImageIds exactly");
-    expect(constraints).toContain("Caption seed");
+    expect(constraints).toContain("Existing assets can only be described through visualRequest.visualSlots");
+    expect(constraints).toContain("stored asset selection happens after parsing");
+    expect(constraints).toContain("upstream / midstream / downstream");
+    expect(constraints).toContain("must not be narrower than visualSlot.need");
+    expect(constraints).toContain("Do not assert a specific country, location, company, person, or named system");
     expect(constraints).toContain("do not use summaryClosing");
   });
 
-  it("expands text-main visual candidates before frame rendering", () => {
+  it("expands resolved text-main visual candidates before frame rendering", () => {
     const plan = buildPresentationTaskPlan({
       title: "Cotton",
       result: {
@@ -590,11 +647,6 @@ describe("presentationTaskPlanning", () => {
                         visualRequest: {
                           type: "photo",
                           brief: "Supporting cotton production photos",
-                          preferredImageId: "img_field",
-                          candidateImageIds: ["img_field", "img_factory", "img_store"],
-                          usagePolicy: "useOneOrMore",
-                          maxVisualItems: 3,
-                          labels: ["Field", "Factory", "Store"],
                         },
                       },
                     ],
@@ -606,6 +658,13 @@ describe("presentationTaskPlanning", () => {
         ],
       },
       rawText: "",
+    });
+    Object.assign(plan.slideFrames[0].blocks[1].visualRequest || {}, {
+      preferredImageId: "img_field",
+      candidateImageIds: ["img_field", "img_factory", "img_store"],
+      usagePolicy: "useOneOrMore",
+      maxVisualItems: 3,
+      labels: ["Field", "Factory", "Store"],
     });
 
     const spec = buildFramePresentationSpecFromTaskPlan(plan);
@@ -653,9 +712,6 @@ describe("presentationTaskPlanning", () => {
                         visualRequest: {
                           type: "photo",
                           brief: "Supporting cotton supply chain photos",
-                          preferredImageId: "img_field",
-                          candidateImageIds: ["img_field", "img_factory", "img_store"],
-                          usagePolicy: "useOneOrMore",
                         },
                       },
                     ],
@@ -667,6 +723,11 @@ describe("presentationTaskPlanning", () => {
         ],
       },
       rawText: "",
+    });
+    Object.assign(plan.slideFrames[0].blocks[1].visualRequest || {}, {
+      preferredImageId: "img_field",
+      candidateImageIds: ["img_field", "img_factory", "img_store"],
+      usagePolicy: "useOneOrMore",
     });
 
     const spec = buildFramePresentationSpecFromTaskPlan(plan);
@@ -681,6 +742,158 @@ describe("presentationTaskPlanning", () => {
         .map((block) => block.visualRequest?.renderStyle?.showBrief)
         .filter((value) => value !== undefined)
     ).toEqual([false, false, false]);
+  });
+
+  it("keeps visual-main useOneOrMore candidates in the adaptive visual-main frame", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Production process",
+                    layoutFrameId: "adaptiveVisualMain",
+                    slideRole: "visualMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Production process visuals",
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+    Object.assign(plan.slideFrames[0].blocks[0].visualRequest || {}, {
+      preferredImageId: "img_field",
+      candidateImageIds: ["img_field", "img_ginning", "img_spinning"],
+      usagePolicy: "useOneOrMore",
+      selectionMatches: [
+        {
+          slotId: "field",
+          label: "Field",
+          need: "cotton field",
+          status: "selected",
+          imageId: "img_field",
+          score: 8,
+          threshold: 5,
+        },
+        {
+          slotId: "ginning",
+          label: "Ginning",
+          need: "ginning machine",
+          status: "selected",
+          imageId: "img_ginning",
+          score: 8,
+          threshold: 5,
+        },
+        {
+          slotId: "spinning",
+          label: "Spinning",
+          need: "spinning machine",
+          status: "selected",
+          imageId: "img_spinning",
+          score: 8,
+          threshold: 5,
+        },
+      ],
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].layoutFrameId).toBe("adaptiveVisualMain");
+    expect(spec?.slideFrames[0].slideRole).toBe("visualMain");
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.preferredImageId)).toEqual([
+      "img_field",
+      "img_ginning",
+      "img_spinning",
+    ]);
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.brief)).toEqual([
+      "Field",
+      "Ginning",
+      "Spinning",
+    ]);
+  });
+
+  it("keeps up to six text-main selected candidates for renderer fitting", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Production process",
+                    layoutFrameId: "adaptiveTextMain",
+                    slideRole: "textMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        items: ["A", "B", "C", "D", "E", "F"],
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Production process visuals",
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+    const ids = ["img_1", "img_2", "img_3", "img_4", "img_5", "img_6"];
+    Object.assign(plan.slideFrames[0].blocks[1].visualRequest || {}, {
+      preferredImageId: ids[0],
+      candidateImageIds: ids,
+      usagePolicy: "useOneOrMore",
+      maxVisualItems: 6,
+      selectionMatches: ids.map((imageId, index) => ({
+        slotId: `slot${index + 1}`,
+        label: `Image ${index + 1}`,
+        need: `need ${index + 1}`,
+        status: "selected",
+        imageId,
+        score: 8,
+        threshold: 5,
+      })),
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].layoutFrameId).toBe("adaptiveTextMain");
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.preferredImageId).filter(Boolean)).toEqual(ids);
   });
 
   it("does not apply candidate labels when the label count does not match image IDs", () => {
@@ -714,10 +927,6 @@ describe("presentationTaskPlanning", () => {
                         visualRequest: {
                           type: "photo",
                           brief: "Supporting cotton supply chain photos",
-                          preferredImageId: "img_field",
-                          candidateImageIds: ["img_field", "img_factory", "img_store"],
-                          usagePolicy: "useOneOrMore",
-                          labels: ["Field", "Factory", "Store", "Sewing"],
                         },
                       },
                     ],
@@ -729,6 +938,12 @@ describe("presentationTaskPlanning", () => {
         ],
       },
       rawText: "",
+    });
+    Object.assign(plan.slideFrames[0].blocks[1].visualRequest || {}, {
+      preferredImageId: "img_field",
+      candidateImageIds: ["img_field", "img_factory", "img_store"],
+      usagePolicy: "useOneOrMore",
+      labels: ["Field", "Factory", "Store", "Sewing"],
     });
 
     const spec = buildFramePresentationSpecFromTaskPlan(plan);
@@ -743,6 +958,98 @@ describe("presentationTaskPlanning", () => {
         .map((block) => block.visualRequest?.renderStyle?.showBrief)
         .filter((value) => value !== undefined)
     ).toEqual([false, false, false]);
+  });
+
+  it("uses selected match labels when stale candidate labels do not align with image IDs", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Cotton",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Production context",
+                    layoutFrameId: "adaptiveTextMain",
+                    slideRole: "textMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        items: ["Field", "Factory", "Store"],
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Supporting cotton supply chain photos",
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+    Object.assign(plan.slideFrames[0].blocks[1].visualRequest || {}, {
+      preferredImageId: "img_field",
+      candidateImageIds: ["img_field", "img_factory", "img_store"],
+      usagePolicy: "useOneOrMore",
+      labels: ["Field", "Factory", "Store", "Sewing"],
+      selectionMatches: [
+        {
+          slotId: "field",
+          label: "Field",
+          need: "cotton field",
+          status: "selected",
+          imageId: "img_field",
+          score: 8,
+          threshold: 5,
+        },
+        {
+          slotId: "factory",
+          label: "Factory",
+          need: "factory",
+          status: "selected",
+          imageId: "img_factory",
+          score: 6,
+          threshold: 5,
+        },
+        {
+          slotId: "store",
+          label: "Store",
+          need: "retail store",
+          status: "selected",
+          imageId: "img_store",
+          score: 7,
+          threshold: 5,
+        },
+      ],
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.brief).filter(Boolean)).toEqual([
+      "Field",
+      "Factory",
+      "Store",
+    ]);
+    expect(
+      spec?.slideFrames[0].blocks.some(
+        (block) => block.visualRequest?.renderStyle?.showBrief === false
+      )
+    ).toBe(false);
   });
 
   it("keeps the existing title for presentation task updates unless title is explicit", () => {
@@ -768,8 +1075,7 @@ describe("presentationTaskPlanning", () => {
     ).toBe("新タイトル");
   });
 
-  it("formats and stores a structured presentation plan from task result blocks", () => {
-    const text = formatPresentationTaskResultText(result, "");
+  it("stores a structured presentation plan from task result blocks", () => {
     const plan = buildPresentationTaskPlan({
       title: "提案資料",
       result,
@@ -777,9 +1083,6 @@ describe("presentationTaskPlanning", () => {
       updatedAt: "2026-04-29T00:00:00.000Z",
     });
 
-    expect(text).toContain("【PPT設計書】");
-    expect(text).toContain("■ スライド設計");
-    expect(text).not.toContain("■ 設計ポイント");
     expect(plan).toMatchObject({
       version: "0.1-presentation-task-plan",
       title: "提案資料",
@@ -836,9 +1139,75 @@ describe("presentationTaskPlanning", () => {
     expect(formatPresentationTaskPlanText(plan)).toContain(
       "未生成: スライド設計JSONがありません"
     );
+    expect(hasPresentationTaskPlanSlideFrames(plan)).toBe(false);
     expect(() => buildPresentationSpecFromTaskPlan(plan)).toThrow(
       "スライド設計JSONがありません"
     );
+  });
+
+  it("does not collapse an empty generated PPT response to a header-only design", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Empty deck",
+      result: {
+        ...result,
+        summary: "",
+        detailBlocks: [],
+        keyPoints: [],
+        missingInfo: [],
+        nextSuggestion: [],
+      },
+      rawText: "【PPT設計書】",
+      updatedAt: "2026-05-05T00:00:00.000Z",
+    });
+    const text = formatPresentationTaskPlanText(plan);
+
+    expect(text).toContain("Document ID: ppt_");
+    expect(text).toContain("■ スライド設計");
+    expect(text).toContain("未生成: スライド設計JSONがありません。");
+    expect(text.trim()).not.toBe("【PPT設計書】");
+  });
+
+  it("distinguishes parsed presentation plans with slideFrames from empty fallback plans", () => {
+    const emptyPlan = buildPresentationTaskPlan({
+      title: "Empty",
+      result: null,
+      rawText: "not json",
+    });
+    const parsedPlan = buildPresentationTaskPlan({
+      title: "Parsed",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Market",
+                    layoutFrameId: "adaptiveTextMain",
+                    slideRole: "textMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        items: ["A"],
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+
+    expect(hasPresentationTaskPlanSlideFrames(emptyPlan)).toBe(false);
+    expect(hasPresentationTaskPlanSlideFrames(parsedPlan)).toBe(true);
   });
 
   it("uses slide design JSON as the source of truth when task result includes it", () => {
@@ -917,36 +1286,6 @@ describe("presentationTaskPlanning", () => {
       slideJsonParsed: true,
       slideCount: 1,
     });
-  });
-
-  it("normalizes the visible slide design block from parsed slide content", () => {
-    const text = formatPresentationTaskResultText(
-      {
-        ...result,
-        detailBlocks: [
-          {
-            title: "スライド設計",
-            body: [
-              "スライド1",
-              "配置‣構成: タイトル中央",
-              "配置するパーツ: タイトル:「表紙」／副題:「概要」",
-              "スライド2",
-              "配置‣構成: 左に図、右に説明",
-              "配置するパーツ: タイトル:「工程」／工程図:「A→B→C」／説明文",
-            ],
-          },
-        ],
-      },
-      ""
-    );
-
-    expect(text).toContain("- スライド1\n- 配置‣構成: タイトル中央");
-    expect(text).toContain("- - タイトル: 表紙");
-    expect(text).toContain("- - 副題: 概要");
-    expect(text).toContain("- スライド2\n- 配置‣構成: 左に図、右に説明");
-    expect(text).toContain("- - タイトル: 工程");
-    expect(text).toContain("- - 工程図: A→B→C");
-    expect(text).toContain("- - パーツ: 説明文");
   });
 
   it("reads natural slide design text into structured slides and a renderer spec", () => {

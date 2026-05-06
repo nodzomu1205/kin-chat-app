@@ -11,7 +11,6 @@ import type {
 import {
   cleanBulletPrefix,
   formatPresentationSlidePlanLines,
-  formatPresentationSlideDesignLines,
   layoutItemBullets,
   parsePresentationTaskSlidesFromJsonLines,
   parsePresentationTaskSlidesFromLines,
@@ -81,12 +80,12 @@ export function buildPresentationTaskStructuredInput(args: {
         ? [
             [
               "Image library selection policy:",
-              "- Treat the Image IDs above as a closed allowlist for library-image use.",
-              "- Use only exact listed Image IDs in preferredImageId and candidateImageIds.",
-              "- Do not invent Image IDs from filenames, titles, descriptions, or prompts.",
-              "- For textMain slides, list relevant candidates in candidateImageIds; renderer decides how many fit.",
-              "- visualRequest.labels must match candidateImageIds one-to-one in the same order, and each label must be derived from that exact candidate's Caption seed, Title, Visible subjects, or Embedded text items.",
-              "- Do not assign a planned process name to a photo unless that exact photo visibly contains that process. Omit labels rather than guessing.",
+              "- Do not refer to a specific image-library asset by identifier.",
+              "- For visual blocks that may use image-library assets, provide visualRequest.visualSlots instead.",
+              "- Each visualSlot must describe one needed visual meaning with slotId, label, need, optional keywords, and order.",
+              "- The app will match visualSlots to image-library metadata deterministically after your JSON is parsed.",
+              "- Keep slot order aligned with the corresponding text order, such as upstream, midstream, downstream.",
+              "- If a slide has no concrete image need, omit visualSlots instead of forcing a vague slot.",
             ].join("\n"),
           ]
         : []
@@ -123,7 +122,8 @@ export function resolvePresentationTaskTitle(args: {
 export function buildPresentationTaskConstraints(mode: "create" | "update") {
   return [
     "This is a PPT design task inside task formation, not a normal task.",
-    "Create or revise a Japanese PPT design document that the user can review in chat before PPTX output.",
+    "Create or revise a PPT design document that the user can review in chat before PPTX output.",
+    "Use the user's/source language for all user-facing fields such as summary, extractedItems, strategyItems, keyMessages, slide titles, headings, text, and list items unless the user explicitly requests another language.",
     "Preserve source breadth first; the user will reduce density later through revision instructions.",
     "Keep extractedItems as atomic facts: one process step, country group, risk, or initiative per bullet. Do not collapse distinct facts into one generic summary.",
     "The canonical slide design source is deckFrame + slideFrames JSON. Natural-language slide design text is only a projection from that JSON.",
@@ -133,30 +133,32 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "If the last body slideFrame is already a summary, recap, conclusion, or future-outlook slide, do not use summaryClosing for deckFrame.closingSlide. Use a simple endSlide closing instead.",
     "If page numbers are enabled and bookend slides exist, prefer pageNumber.scope: \"bodyOnly\" so the cover and ending slide stay unnumbered unless the user asks for all-slide numbering.",
     "In slideFrames, omit masterFrameId unless a slide intentionally overrides deckFrame.masterFrameId.",
+    "slideFrames must include every body slide implied by sourceSummary, keyMessages, and deckFrame.slideCount. Do not output only one representative/example slide.",
+    "If keyMessages has five slide-level messages, create five body slideFrames in the same order unless the user explicitly requested a different count.",
     "Do not create slideDesign.slides[].parts as the preferred path. Do not rely on natural-language slide text and a parser to recover JSON.",
     "Use the fixed frame package plus adaptive layouts: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4, adaptiveVisualMain needs a primary visual plus optional concise annotation, and adaptiveTextMain needs primary text plus optional supporting visuals.",
     "For every slideFrame, decide slideRole from the slide key message first. Image-library presentationMeta is planning material only: compare the key message with visibleSubjects, embeddedTextItems, relationships, and semanticTags before deciding visualMain or textMain.",
     "Use visualMain only when the selected visual and the slide key message strongly match, so the visual can carry the main slide meaning with only concise annotation. Otherwise use textMain and treat visuals as supporting material.",
     "Do not classify a normal photo as visualMain merely because its library description, prompt, or visible subject list is detailed. Detailed scene metadata is still usually supporting material unless it directly matches the slide key message.",
-    "When slideRole is visualMain, prefer layoutFrameId adaptiveVisualMain. Put the main visual in the first visual block, set layoutIntent.primaryImageId when an existing image is selected, and use later text/callout blocks only for concise annotation, conclusion, source note, or guidance.",
+    "When slideRole is visualMain, prefer layoutFrameId adaptiveVisualMain. Put the visual need in the first visual block, and use later text/callout blocks only for concise annotation, conclusion, source note, or guidance.",
     "When slideRole is textMain, prefer layoutFrameId adaptiveTextMain. Put the main text/list block first, then add one or more related visual blocks that can occupy the remaining right, bottom, or right-grid space.",
     "For adaptiveVisualMain, the renderer will place the visual at the top-left, preserve aspect ratio, maximize it in the content area, and use remaining right or bottom-right space for annotation only when useful.",
     "For adaptiveTextMain, the renderer will place text at the top-left, choose a text box shape that leaves the most useful remaining space, and place related images in that remaining area.",
     "Block styles define fields: listCompact = heading + items; textStackTopLeft = heading + text; visualContain/visualCover = visualRequest only; headlineCenter/callout = one emphasized text.",
     "Choose slide count from the material and strategy. If the source naturally implies 5-7 slides, create 5-7 slideFrames.",
+    "Do not collapse a multi-topic source into the schema minimum. Cover each distinct process group, country/context group, risk group, and response/initiative group at a natural deck granularity.",
     "The visible chat text must show the actual messages that will appear in PPTX. Do not replace display text or items with counts such as '+ 6 items'.",
     "For visual blocks, include the full visual prompt in visualRequest.prompt. If the visual is too complex to prompt yet, leave prompt empty and explain why in visualRequest.promptNote.",
-    "If image-library candidates are provided, their Image IDs are a closed allowlist. visualRequest.preferredImageId and candidateImageIds must use only exact Image IDs from that list; never invent, rename, abbreviate, or derive an Image ID from a filename.",
-    "If an image-library candidate semantically fits a visual block, set visualRequest.preferredImageId to its exact Image ID and still keep a brief/prompt explaining the match to the slide key message.",
-    "For textMain slides with supporting image-library assets, include candidateImageIds with all semantically relevant image IDs in relevance order, usagePolicy useOneOrMore or useAsGrid when multiple images may help, and leave final image count to the renderer. Do not prematurely narrow to one image when several can support the message.",
-    "When a visual block may expand into multiple candidate images, provide per-image labels in visualRequest.labels matching candidateImageIds exactly: same count, same order, one label per image ID. Do not repeat one generic caption for all images.",
-    "Each per-image label must be derived from the selected image candidate's Caption seed, Title, Visible subjects, or Embedded text items. Never assign a planned process step or desired narrative label to an image unless that exact image visibly contains it. If uncertain, omit labels.",
-    "Keep visualRequest.prompt consistent with candidateImageIds. If three image IDs are listed, describe those three images, not four or more.",
-    "For textMain supporting visuals, maxVisualItems should usually be omitted or set to 3. Set it to 1 only when exactly one semantically fitting image exists or the slide message explicitly requires a single image.",
-    "When image-library candidates exist but none fit a needed visual, do not invent an Image ID or a prompt-only placeholder as if it were available. Add the gap to missingInfo or warnings.",
-    "Image-library selection is a two-step decision: first match candidates to the slide key message using visibleSubjects, embeddedTextItems, relationships, and semanticTags; only after selecting them, use Orientation, Size, and Aspect ratio to choose layoutFrameId, block order, and visual role. Do not reject a semantically fitting image because of aspect ratio alone.",
-    "For layout after image selection, landscape images should go in wide/hero visual areas, portrait images should go in vertical/narrow visual areas, and square images should go in balanced visual areas. Avoid defaulting to 50/50 left-right layouts when the selected asset shape would make the image feel cramped or distorted.",
-    "When an image-library asset is selected as visualMain after key-message matching, do not duplicate the same information as a large neighboring text list. Use a second block only for short annotation, conclusion, source note, or guidance that is not already visible in the image.",
+    "If image-library candidates are provided, do not refer to specific image-library assets by identifier. Existing assets can only be described through visualRequest.visualSlots; stored asset selection happens after parsing.",
+    "For each visual block that should use existing image-library assets, provide visualRequest.visualSlots. Each slot must include slotId, label, need, optional keywords, and order.",
+    "Use one visualSlot for each distinct visual meaning that should be represented. For example, upstream / midstream / downstream should be three ordered slots when the slide text uses that order.",
+    "visualSlot.label should be short display text and must not be narrower than visualSlot.need or the likely selected visual. For example, if the slot covers agriculture plus primary processing, do not label it as agriculture only.",
+    "Do not assert a specific country, location, company, person, or named system in visualSlot.label unless the image-library metadata explicitly supports that same entity; otherwise use a generic label such as cotton field example or leave the specific need unresolved.",
+    "visualSlot.need and keywords should describe the visible subject that would satisfy the slot, preferably in concrete English nouns as well as the deck language when useful.",
+    "When several images may support a textMain slide, create several ordered visualSlots; the app will select matching stored assets and the renderer will decide how many fit.",
+    "When no provided image-library asset is likely to fit a needed visual, still describe the need as a visualSlot; the app may leave it unresolved rather than substituting a weak image.",
+    "Image-library presentationMeta is planning material for defining visualSlots only. Do not copy asset references from the candidate list into slideFrames.",
+    "For layout after visual slot selection, landscape images should go in wide/hero visual areas, portrait images should go in vertical/narrow visual areas, and square images should go in balanced visual areas. Avoid defaulting to 50/50 left-right layouts when the selected asset shape would make the image feel cramped or distorted.",
     "For ordinary scene photos, product photos, factory photos, farm photos, and store photos, prefer adaptiveTextMain unless the slide key message directly asks the viewer to inspect that specific photo or the image's embedded labels/relationships are central to the message.",
     "If a selected image leaves natural empty space after aspect-preserving placement, use that space for concise annotation only; do not fill it with repeated transcription of the image contents.",
     "Use layoutIntent.textPlacement right or bottomRight for visualMain annotations when the remaining space is predictable. Use layoutIntent.visualPlacement right, bottom, or rightGrid for textMain supporting visuals.",
@@ -384,6 +386,12 @@ export function buildPresentationTaskPlan(args: {
   };
 }
 
+export function hasPresentationTaskPlanSlideFrames(
+  plan: PresentationTaskPlan | null | undefined
+): plan is PresentationTaskPlan {
+  return !!plan && plan.slideFrames.length > 0;
+}
+
 function bulletsFromSlide(slide: PresentationTaskSlidePlan): BulletItem[] {
   const items = slide.supportingInfo.filter(Boolean);
   return items.length > 0
@@ -583,7 +591,7 @@ export function buildFramePresentationSpecFromTaskPlan(plan: PresentationTaskPla
     return null;
   }
   const slideFrames = normalizePresentationVisualMainPolicy(plan.slideFrames).map((frame) => {
-    const expandedFrame = expandAdaptiveTextMainVisualCandidates(frame);
+    const expandedFrame = expandMultiVisualCandidateFrame(frame);
     return {
       ...expandedFrame,
       title: sanitizeReadableSlideFrameTitle(sanitizeSlideFrameTitle(expandedFrame.title)),
@@ -602,17 +610,23 @@ export function buildFramePresentationSpecFromTaskPlan(plan: PresentationTaskPla
   };
 }
 
-function expandAdaptiveTextMainVisualCandidates(
+function expandMultiVisualCandidateFrame(
   frame: PresentationTaskSlideFrame
 ): PresentationTaskSlideFrame {
-  if (frame.layoutFrameId !== "adaptiveTextMain") return frame;
   const textBlocks = frame.blocks.filter((block) => !block.visualRequest);
   const visualBlocks = frame.blocks.filter((block) => !!block.visualRequest);
   if (visualBlocks.length === 0) return frame;
   const expandedVisuals = visualBlocks.flatMap((block) => expandVisualCandidateBlock(block));
+  if (frame.layoutFrameId === "adaptiveVisualMain") {
+    return {
+      ...frame,
+      blocks: [...expandedVisuals, ...textBlocks.slice(0, 1)].slice(0, 7),
+    };
+  }
+  if (frame.layoutFrameId !== "adaptiveTextMain") return frame;
   return {
     ...frame,
-    blocks: [...textBlocks.slice(0, 1), ...expandedVisuals].slice(0, 4),
+    blocks: [...textBlocks.slice(0, 1), ...expandedVisuals].slice(0, 7),
   };
 }
 
@@ -623,18 +637,44 @@ function expandVisualCandidateBlock(
   if (!visual) return [block];
   const wantsMultiple =
     visual.usagePolicy === "useOneOrMore" || visual.usagePolicy === "useAsGrid";
-  const defaultMaxVisualItems = wantsMultiple ? 3 : 1;
+  const defaultMaxVisualItems = wantsMultiple
+    ? Math.max(1, visual.candidateImageIds?.length || visual.selectionMatches?.filter((match) => match.status === "selected").length || 3)
+    : 1;
   const maxVisualItems = Math.max(
     1,
-    Math.min(3, visual.maxVisualItems || defaultMaxVisualItems)
+    Math.min(6, visual.maxVisualItems || defaultMaxVisualItems)
   );
-  if (visual.usagePolicy === "useOneBest" || maxVisualItems <= 1) return [block];
   const imageIds = Array.from(
     new Set([visual.preferredImageId, ...(visual.candidateImageIds || [])].filter(Boolean))
   ).slice(0, maxVisualItems) as string[];
-  if (imageIds.length <= 1) return [block];
+  const matchLabelsByImageId = new Map(
+    (visual.selectionMatches || [])
+      .filter((match) => match.status === "selected" && match.imageId)
+      .map((match) => [match.imageId as string, match.label])
+  );
   const labels =
-    visual.labels && visual.labels.length === imageIds.length ? visual.labels : undefined;
+    visual.labels && visual.labels.length === imageIds.length
+      ? visual.labels
+      : imageIds.map((imageId) => matchLabelsByImageId.get(imageId) || "").filter(Boolean)
+          .length === imageIds.length
+      ? imageIds.map((imageId) => matchLabelsByImageId.get(imageId) || "")
+      : undefined;
+  if (visual.usagePolicy === "useOneBest" || maxVisualItems <= 1 || imageIds.length <= 1) {
+    const label = imageIds[0] ? labels?.[0] || matchLabelsByImageId.get(imageIds[0]) : undefined;
+    return [
+      {
+        ...block,
+        visualRequest: {
+          ...visual,
+          brief: label || visual.brief,
+          renderStyle: {
+            ...visual.renderStyle,
+            showBrief: label ? visual.renderStyle?.showBrief : false,
+          },
+        },
+      },
+    ];
+  }
   return imageIds.map((imageId, index) => ({
     ...block,
     id: index === 0 ? block.id : `${block.id}_${index + 1}`,
@@ -684,43 +724,6 @@ function findStrategyValue(items: string[], key: string) {
     item.toLowerCase().startsWith(`${key.toLowerCase()}:`)
   );
   return matched?.replace(new RegExp(`^${key}\\s*:\\s*`, "i"), "").trim() || undefined;
-}
-
-export function formatPresentationTaskResultText(
-  result: TaskResult | null,
-  raw: string
-) {
-  if (!result) return raw?.trim() || "PPT\u8a2d\u8a08\u66f8\u306e\u89e3\u6790\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002";
-
-  const lines: string[] = [];
-  lines.push("\u3010PPT\u8a2d\u8a08\u66f8\u3011");
-  if (result.summary) lines.push(`\u6982\u8981: ${result.summary}`);
-  result.detailBlocks.forEach((block) => {
-    if (block.title.toLowerCase().includes("json")) return;
-    lines.push("", `\u25a0 ${block.title}`);
-    if (block.title.toLowerCase().includes("slide") || block.title.includes("\u30b9\u30e9\u30a4\u30c9")) {
-      formatPresentationSlideDesignLines(block.body).forEach((line) => {
-        if (!line) {
-          lines.push("");
-        } else if (line.startsWith("- ")) {
-          lines.push(`- ${line}`);
-        } else {
-          lines.push(`- ${line}`);
-        }
-      });
-      return;
-    }
-    block.body.forEach((line) => lines.push(`- ${line}`));
-  });
-  if (result.missingInfo.length > 0) {
-    lines.push("", "\u25a0 \u4e0d\u8db3\u60c5\u5831");
-    result.missingInfo.forEach((item) => lines.push(`- ${item}`));
-  }
-  if (result.nextSuggestion.length > 0) {
-    lines.push("", "\u25a0 \u6b21\u306e\u63d0\u6848");
-    result.nextSuggestion.forEach((item) => lines.push(`- ${item}`));
-  }
-  return lines.join("\n");
 }
 
 export function formatPresentationTaskPlanText(plan: PresentationTaskPlan) {

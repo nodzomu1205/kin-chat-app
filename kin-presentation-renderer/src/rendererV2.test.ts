@@ -1,11 +1,19 @@
+import { mkdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import JSZip from "jszip";
 import {
   buildUnresolvedVisualFallbackText,
   resolveAdaptiveTextMainBoxes,
-  resolveAdaptiveVisualMainBoxes
+  resolveAdaptiveVisualMainBoxes,
+  resolveAdaptiveVisualMainMultiVisualBoxes,
+  resolveVisualImageBox
 } from "./rendererV2.js";
+import { renderFramePresentationToFile } from "./renderer.js";
 
 const contentBox = { x: 0.62, y: 1.34, w: 12.093, h: 5.46 };
+const onePixelPng =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lw9kngAAAABJRU5ErkJggg==";
 
 describe("rendererV2 adaptive layouts", () => {
   it("places a portrait main visual top-left and leaves right annotation space", () => {
@@ -29,6 +37,34 @@ describe("rendererV2 adaptive layouts", () => {
     expect(boxes.annotation?.y).toBeGreaterThan(boxes.visual.y + boxes.visual.h);
   });
 
+  it("keeps multiple visual-main images inside the adaptive visual area", () => {
+    const boxes = resolveAdaptiveVisualMainMultiVisualBoxes(
+      contentBox,
+      3,
+      [1.7, 1.6, 1.8]
+    );
+
+    expect(boxes).toHaveLength(3);
+    boxes.forEach((box) => {
+      expect(box.x).toBeGreaterThanOrEqual(contentBox.x);
+      expect(box.y).toBeGreaterThanOrEqual(contentBox.y);
+      expect(box.x + box.w).toBeLessThanOrEqual(contentBox.x + contentBox.w + 0.001);
+      expect(box.y + box.h).toBeLessThanOrEqual(contentBox.y + contentBox.h + 0.001);
+    });
+    expect(boxes[1].x).toBeGreaterThan(boxes[0].x);
+    expect(boxes[2].x).toBeGreaterThan(boxes[1].x);
+  });
+
+  it("top-aligns contained body images instead of centering them vertically", () => {
+    const box = { x: 7, y: 1.5, w: 4, h: 4 };
+    const imageBox = resolveVisualImageBox(box, 2.0, "visualContain");
+
+    expect(imageBox.x).toBe(box.x);
+    expect(imageBox.y).toBe(box.y);
+    expect(imageBox.w).toBe(box.w);
+    expect(imageBox.h).toBeLessThan(box.h);
+  });
+
   it("uses the right side for dense text-main slides with multiple visuals", () => {
     const boxes = resolveAdaptiveTextMainBoxes(
       contentBox,
@@ -47,6 +83,36 @@ describe("rendererV2 adaptive layouts", () => {
     expect(boxes.visuals).toHaveLength(2);
     expect(boxes.visuals[0].x).toBeGreaterThan(boxes.text.x + boxes.text.w);
     expect(boxes.visuals[1].y).toBeGreaterThan(boxes.visuals[0].y);
+  });
+
+  it("shrinks the text box only as far as needed and fits six right-side visuals", () => {
+    const boxes = resolveAdaptiveTextMainBoxes(
+      contentBox,
+      {
+        id: "block1",
+        kind: "list",
+        styleId: "listCompact",
+        heading: "Cotton production steps",
+        text: "Cotton production moves through multiple steps before becoming textile products.",
+        items: [
+          "Cultivation and harvest",
+          "Ginning",
+          "Spinning",
+          "Weaving and knitting",
+          "Dyeing and finishing",
+          "Sewing"
+        ]
+      },
+      6,
+      "rightGrid",
+      [1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
+    );
+
+    expect(boxes.visuals).toHaveLength(6);
+    expect(boxes.text.x).toBe(contentBox.x);
+    expect(boxes.text.w).toBeLessThan(contentBox.w * 0.5);
+    expect(boxes.visuals.every((visual) => visual.x > boxes.text.x + boxes.text.w)).toBe(true);
+    expect(boxes.visuals.every((visual) => visual.w >= 1.6 && visual.h >= 1.2)).toBe(true);
   });
 
   it("keeps bottom-grid visuals below the estimated rendered text height", () => {
@@ -98,6 +164,123 @@ describe("rendererV2 adaptive layouts", () => {
     expect(boxes.visuals[1].x).toBeGreaterThan(boxes.visuals[0].x);
   });
 
+  it("renders title cover and multiple adaptive visual-main images into PPTX relationships", async () => {
+    const outputDir = join(process.cwd(), ".tmp-render-tests");
+    await mkdir(outputDir, { recursive: true });
+    const outputPath = join(outputDir, "frame-v2-image-rels.pptx");
+
+    await renderFramePresentationToFile(
+      {
+        version: "0.1-frame",
+        title: "Image rels",
+        theme: "business-clean",
+        deckFrame: {
+          slideCount: 3,
+          masterFrameId: "titleLineFooter",
+          openingSlide: {
+            enabled: true,
+            frameId: "visualTitleCover",
+            title: "Cover",
+            visualRequest: {
+              type: "photo",
+              brief: "Cover image",
+              asset: {
+                imageId: "img_cover",
+                mimeType: "image/png",
+                base64: onePixelPng,
+                aspectRatio: 1.5
+              }
+            }
+          },
+          closingSlide: { enabled: true, frameId: "endSlide", title: "- END -" }
+        },
+        slideFrames: [
+          {
+            slideNumber: 1,
+            title: "Multi visual",
+            masterFrameId: "titleLineFooter",
+            layoutFrameId: "adaptiveVisualMain",
+            blocks: ["one", "two", "three", "four", "five", "six"].map((id, index) => ({
+              id,
+              kind: "visual" as const,
+              styleId: "visualContain" as const,
+              visualRequest: {
+                type: "photo" as const,
+                brief: `Image ${index + 1}`,
+                asset: {
+                  imageId: `img_${id}`,
+                  mimeType: "image/png",
+                  base64: onePixelPng,
+                  aspectRatio: 1.6
+                }
+              }
+            }))
+          },
+          {
+            slideNumber: 2,
+            title: "Unresolved",
+            masterFrameId: "titleLineFooter",
+            layoutFrameId: "adaptiveTextMain",
+            blocks: [
+              {
+                id: "text",
+                kind: "list",
+                styleId: "listCompact",
+                items: ["No matching visual"]
+              },
+              {
+                id: "missing",
+                kind: "visual",
+                styleId: "visualContain",
+                visualRequest: {
+                  type: "photo",
+                  brief: "Missing visual"
+                }
+              }
+            ]
+          },
+          {
+            slideNumber: 3,
+            title: "Single visual",
+            masterFrameId: "titleLineFooter",
+            layoutFrameId: "adaptiveTextMain",
+            blocks: [
+              {
+                id: "text",
+                kind: "textStack",
+                styleId: "textStackTopLeft",
+                text: "Short text"
+              },
+              {
+                id: "single",
+                kind: "visual",
+                styleId: "visualContain",
+                visualRequest: {
+                  type: "photo",
+                  brief: "Single image",
+                  renderStyle: { showBrief: false },
+                  asset: {
+                    imageId: "img_single",
+                    mimeType: "image/png",
+                    base64: onePixelPng,
+                    aspectRatio: 1.6
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      outputPath
+    );
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    await expectImageRelationshipCount(zip, 1, 1);
+    await expectImageRelationshipCount(zip, 2, 6);
+    await expectImageRelationshipCount(zip, 3, 0);
+    await expectImageRelationshipCount(zip, 4, 1);
+  });
+
   it("keeps the unresolved visual block address visible for later replacement", () => {
     const text = buildUnresolvedVisualFallbackText({
       id: "block5",
@@ -113,3 +296,16 @@ describe("rendererV2 adaptive layouts", () => {
     expect(text).toContain("Factory detail");
   });
 });
+
+async function expectImageRelationshipCount(
+  zip: JSZip,
+  slideNumber: number,
+  expectedCount: number
+) {
+  const rels = await zip
+    .file(`ppt/slides/_rels/slide${slideNumber}.xml.rels`)
+    ?.async("text");
+  expect(rels).toBeTruthy();
+  const count = (rels?.match(/relationships\/image/g) || []).length;
+  expect(count).toBe(expectedCount);
+}

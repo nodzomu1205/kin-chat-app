@@ -11,7 +11,6 @@ import {
   buildPresentationTaskPlan,
   buildPresentationTaskStructuredInput,
   formatPresentationTaskPlanText,
-  formatPresentationTaskResultText,
   isPresentationTaskInstruction,
   resolvePresentationTaskTitle,
   stripPresentationTaskMarker,
@@ -20,6 +19,7 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
+import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import {
   buildLibraryTaskSource,
   buildPreparedTaskDraftUpdate,
@@ -54,6 +54,14 @@ function buildTaskDraftImageLibraryContext(args: AttachSearchResultToTaskFlowArg
       referenceLibraryItems: args.referenceLibraryItems,
     })
   );
+}
+
+function getTaskDraftImageLibraryCandidates(args: AttachSearchResultToTaskFlowArgs) {
+  return getPresentationImageLibraryCandidates({
+    enabled: args.imageLibraryReferenceEnabled,
+    count: args.imageLibraryReferenceCount,
+    referenceLibraryItems: args.referenceLibraryItems,
+  });
 }
 
 function buildTaskDraftLibraryReferenceContext(
@@ -171,16 +179,17 @@ export async function runAttachSearchResultToTaskFlow(
         ? await runAutoPrepPresentationTask(prepInput, "attach-library-item-ppt")
         : await runAutoPrepTask(prepInput, "attach-library-item");
       const presentationPlan = presentationMode
-        ? buildPresentationTaskPlan({
-            title: resolvedTitle,
-            result: data?.parsed,
-            rawText: data?.raw,
+        ? resolvePresentationVisualSlots({
+            imageCandidates: getTaskDraftImageLibraryCandidates(args),
+            plan: buildPresentationTaskPlan({
+              title: resolvedTitle,
+              result: data?.parsed,
+              rawText: data?.raw,
+            }),
           })
         : null;
       const taskText = presentationMode
-        ? presentationPlan
-          ? formatPresentationTaskPlanText(presentationPlan)
-          : formatPresentationTaskResultText(data?.parsed, data?.raw)
+        ? formatPresentationTaskPlanText(presentationPlan!)
         : formatTaskResultText(data?.parsed, data?.raw);
       const assistantMsg: Message = {
         id: generateId(),
@@ -303,16 +312,17 @@ export async function runAttachSearchResultToTaskFlow(
       ? await runAutoUpdatePresentationTask(taskInput, "attach-search-result-ppt")
       : await runAutoPrepTask(taskInput, "attach-search-result");
     const presentationPlan = presentationMode
-      ? buildPresentationTaskPlan({
-          title: resolvedTitle,
-          result: data?.parsed,
-          rawText: data?.raw,
+      ? resolvePresentationVisualSlots({
+          imageCandidates: getTaskDraftImageLibraryCandidates(args),
+          plan: buildPresentationTaskPlan({
+            title: resolvedTitle,
+            result: data?.parsed,
+            rawText: data?.raw,
+          }),
         })
       : undefined;
     const taskText = presentationMode
-      ? presentationPlan
-        ? formatPresentationTaskPlanText(presentationPlan)
-        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      ? formatPresentationTaskPlanText(presentationPlan!)
       : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),

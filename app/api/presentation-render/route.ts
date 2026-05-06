@@ -8,6 +8,7 @@ import {
   type PresentationImageMode,
   type PresentationLibraryImageAsset,
 } from "@/lib/server/presentation/imageGeneration";
+import { collectFrameSpecGeneratedImages } from "@/lib/server/presentation/frameSpecImages";
 import { sanitizeFrameSpecInputForParse } from "@/lib/server/presentation/frameSpecSanitizer";
 
 export const runtime = "nodejs";
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
           : parsedSpec?.slides.length || 0,
         generatedImages:
           parsedFrameSpec && imageMode !== "off"
-            ? collectGeneratedImages(parsedFrameSpec as never)
+            ? collectFrameSpecGeneratedImages(parsedFrameSpec as never)
             : [],
         frameSpec: parsedFrameSpec && imageMode !== "off" ? parsedFrameSpec : undefined,
       },
@@ -184,46 +185,6 @@ function normalizeLibraryImageAssets(value: unknown): PresentationLibraryImageAs
       },
     ];
   });
-}
-
-function collectGeneratedImages(frameSpec: {
-  slideFrames: Array<{
-    slideNumber?: number;
-    title?: string;
-    blocks?: Array<{
-      id?: string;
-      visualRequest?: {
-        brief?: string;
-        prompt?: string;
-        asset?: {
-          imageId?: string;
-          mimeType?: string;
-          base64?: string;
-          usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
-        };
-      };
-    }>;
-  }>;
-}) {
-  return frameSpec.slideFrames.flatMap((slide) =>
-    (slide.blocks || []).flatMap((block) => {
-      const visual = block.visualRequest;
-      const asset = visual?.asset;
-      if (!asset?.base64) return [];
-      return [
-        {
-          imageId: asset.imageId || "",
-          slideNumber: slide.slideNumber || 0,
-          blockId: block.id || "",
-          title: visual?.brief || slide.title || "",
-          prompt: visual?.prompt || "",
-          mimeType: asset.mimeType || "image/png",
-          contentBase64: asset.base64,
-          usage: asset.usage,
-        },
-      ];
-    })
-  );
 }
 
 async function loadPresentationRenderer() {

@@ -68,6 +68,22 @@ describe("taskCompilerSections", () => {
     expect(lines).not.toContain("library-reference allowance");
   });
 
+  it("does not expose image-library identifiers in protocol guidance", () => {
+    const lines = buildRuleLines(
+      createIntent({ allowImageLibraryReference: true })
+    ).join("\n");
+    const examples = buildEventExampleBlocks(
+      "TASK-1",
+      createIntent({ allowImageLibraryReference: true })
+    ).join("\n");
+
+    expect(lines).toContain("without exposing stored asset identifiers");
+    expect(examples).toContain("Do not expose stored asset identifiers");
+    expect(examples).toContain("Visual asset");
+    expect(`${lines}\n${examples}`).not.toContain("Image ID:");
+    expect(`${lines}\n${examples}`).not.toContain("image IDs");
+  });
+
   it("includes only allowed protocol examples in task prompts", () => {
     const baselineExamples = buildEventExampleBlocks(
       "TASK-1",

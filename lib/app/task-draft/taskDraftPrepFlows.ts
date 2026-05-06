@@ -12,7 +12,6 @@ import {
   buildPresentationTaskPlan,
   buildPresentationTaskStructuredInput,
   formatPresentationTaskPlanText,
-  formatPresentationTaskResultText,
   isPresentationTaskInstruction,
   resolvePresentationTaskTitle,
   stripPresentationTaskMarker,
@@ -21,6 +20,7 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
+import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import { buildPreparedTaskDraftUpdate } from "@/lib/app/task-draft/taskDraftFlowProjection";
 import {
   buildGptTaskPrepSource,
@@ -66,6 +66,19 @@ function buildTaskDraftImageLibraryContext(
       referenceLibraryItems: args.referenceLibraryItems,
     })
   );
+}
+
+function getTaskDraftImageLibraryCandidates(
+  args:
+    | PrepTaskFromInputFlowArgs
+    | UpdateTaskFromInputFlowArgs
+    | UpdateTaskFromLastGptMessageFlowArgs
+) {
+  return getPresentationImageLibraryCandidates({
+    enabled: args.imageLibraryReferenceEnabled,
+    count: args.imageLibraryReferenceCount,
+    referenceLibraryItems: args.referenceLibraryItems,
+  });
 }
 
 function buildTaskDraftLibraryReferenceContext(
@@ -163,16 +176,17 @@ export async function runPrepTaskFromInputFlow(
       ? await runAutoPrepPresentationTask(prepInput, "gpt-input-ppt")
       : await runAutoPrepTask(prepInput, "gpt-input");
     const presentationPlan = presentationMode
-      ? buildPresentationTaskPlan({
-          title: resolvedTitle,
-          result: data?.parsed,
-          rawText: data?.raw,
+      ? resolvePresentationVisualSlots({
+          imageCandidates: getTaskDraftImageLibraryCandidates(args),
+          plan: buildPresentationTaskPlan({
+            title: resolvedTitle,
+            result: data?.parsed,
+            rawText: data?.raw,
+          }),
         })
       : null;
     const taskText = presentationMode
-      ? presentationPlan
-        ? formatPresentationTaskPlanText(presentationPlan)
-        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      ? formatPresentationTaskPlanText(presentationPlan!)
       : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),
@@ -337,16 +351,17 @@ export async function runUpdateTaskFromInputFlow(
       ? await runAutoUpdatePresentationTask(mergedInput, "task-update-ppt")
       : await runAutoPrepTask(mergedInput, "task-update");
     const presentationPlan = presentationMode
-      ? buildPresentationTaskPlan({
-          title: resolvedTitle,
-          result: data?.parsed,
-          rawText: data?.raw,
+      ? resolvePresentationVisualSlots({
+          imageCandidates: getTaskDraftImageLibraryCandidates(args),
+          plan: buildPresentationTaskPlan({
+            title: resolvedTitle,
+            result: data?.parsed,
+            rawText: data?.raw,
+          }),
         })
       : undefined;
     const taskText = presentationMode
-      ? presentationPlan
-        ? formatPresentationTaskPlanText(presentationPlan)
-        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      ? formatPresentationTaskPlanText(presentationPlan!)
       : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),
@@ -508,16 +523,17 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       ? await runAutoUpdatePresentationTask(taskInput, "task-update-last-gpt-ppt")
       : await runAutoPrepTask(taskInput, "task-update-last-gpt");
     const presentationPlan = presentationMode
-      ? buildPresentationTaskPlan({
-          title: resolvedTitle,
-          result: data?.parsed,
-          rawText: data?.raw,
+      ? resolvePresentationVisualSlots({
+          imageCandidates: getTaskDraftImageLibraryCandidates(args),
+          plan: buildPresentationTaskPlan({
+            title: resolvedTitle,
+            result: data?.parsed,
+            rawText: data?.raw,
+          }),
         })
       : undefined;
     const taskText = presentationMode
-      ? presentationPlan
-        ? formatPresentationTaskPlanText(presentationPlan)
-        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      ? formatPresentationTaskPlanText(presentationPlan!)
       : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),

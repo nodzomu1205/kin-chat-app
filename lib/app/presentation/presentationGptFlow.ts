@@ -203,9 +203,6 @@ async function runRenderPresentationPptxFlow(args: {
     );
     const updatedPlan = {
       ...foundPlan.plan,
-      slideFrames: Array.isArray(output.frameSpec?.slideFrames)
-        ? output.frameSpec.slideFrames
-        : foundPlan.plan.slideFrames,
       latestPptx: output,
       updatedAt: new Date().toISOString(),
     };
@@ -224,6 +221,7 @@ async function runRenderPresentationPptxFlow(args: {
         outputPath: output.path || "",
         filename: output.filename,
         generatedImages: output.generatedImages,
+        imageMatches: collectPresentationImageMatches(foundPlan.plan.slideFrames),
       }),
     });
     return;
@@ -406,9 +404,6 @@ export async function applyPptDirectEditCandidate(args: {
   applyGeneratedImageUsage(output.generatedImages, args.applyImageUsage);
   const updatedPlan = {
     ...syncedPlan,
-    slideFrames: Array.isArray(output.frameSpec?.slideFrames)
-      ? output.frameSpec.slideFrames
-      : syncedPlan.slideFrames,
     latestPptx: output,
     updatedAt: new Date().toISOString(),
   };
@@ -564,16 +559,41 @@ export function collectFrameSpecPreferredImageIds(
   frameSpec?: ReturnType<typeof buildFramePresentationSpecFromTaskPlan> | null
 ) {
   const imageIds = new Set<string>();
+  collectVisualRequestImageIds(frameSpec?.deckFrame?.openingSlide?.visualRequest, imageIds);
+  collectVisualRequestImageIds(frameSpec?.deckFrame?.closingSlide?.visualRequest, imageIds);
   for (const slide of frameSpec?.slideFrames || []) {
     for (const block of slide.blocks || []) {
-      const imageId = block.visualRequest?.preferredImageId?.trim();
-      if (imageId) imageIds.add(imageId);
-      for (const candidateImageId of block.visualRequest?.candidateImageIds || []) {
-        if (candidateImageId.trim()) imageIds.add(candidateImageId.trim());
-      }
+      collectVisualRequestImageIds(block.visualRequest, imageIds);
     }
   }
   return imageIds;
+}
+
+function collectVisualRequestImageIds(
+  visual: PresentationTaskSlideFrame["blocks"][number]["visualRequest"] | undefined,
+  imageIds: Set<string>
+) {
+  const imageId = visual?.preferredImageId?.trim();
+  if (imageId) imageIds.add(imageId);
+  for (const candidateImageId of visual?.candidateImageIds || []) {
+    if (candidateImageId.trim()) imageIds.add(candidateImageId.trim());
+  }
+}
+
+function collectPresentationImageMatches(slideFrames: PresentationTaskSlideFrame[]) {
+  return slideFrames.flatMap((slide) =>
+    slide.blocks.flatMap((block) =>
+      (block.visualRequest?.selectionMatches || []).map((match) => ({
+        slideNumber: slide.slideNumber,
+        label: match.label,
+        status: match.status,
+        imageId: match.imageId,
+        imageTitle: match.imageTitle,
+        score: match.score,
+        threshold: match.threshold,
+      }))
+    )
+  );
 }
 
 function blockTextForDirectEdit(

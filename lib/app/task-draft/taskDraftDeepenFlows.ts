@@ -13,11 +13,15 @@ import {
   buildPresentationTaskPlan,
   buildPresentationTaskStructuredInput,
   formatPresentationTaskPlanText,
-  formatPresentationTaskResultText,
   isPresentationTaskInstruction,
   resolvePresentationTaskTitle,
   stripPresentationTaskMarker,
 } from "@/lib/app/presentation/presentationTaskPlanning";
+import {
+  buildPresentationImageLibraryContext,
+  getPresentationImageLibraryCandidates,
+} from "@/lib/app/presentation/presentationImageLibrary";
+import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import {
   appendTaskInfoMessage,
   buildTaskFlowRecentContext,
@@ -33,6 +37,14 @@ import {
   resolveGeneratedTaskTitle,
   resolveTaskDraftUserInstruction,
 } from "@/lib/task/taskTitleGeneration";
+
+function getTaskDraftImageLibraryCandidates(args: DeepenTaskFromLastFlowArgs) {
+  return getPresentationImageLibraryCandidates({
+    enabled: args.imageLibraryReferenceEnabled,
+    count: args.imageLibraryReferenceCount,
+    referenceLibraryItems: args.referenceLibraryItems,
+  });
+}
 
 export async function runDeepenTaskFromLastFlow(
   args: DeepenTaskFromLastFlowArgs
@@ -97,6 +109,9 @@ export async function runDeepenTaskFromLastFlow(
         body: parsedInput.freeText || normalizedInput || "PPT設計書を深掘り",
         material: text,
         libraryReferenceContext: args.buildLibraryReferenceContext(),
+        imageLibraryContext: buildPresentationImageLibraryContext(
+          getTaskDraftImageLibraryCandidates(args)
+        ),
       })
     : buildTaskInput({
         title: resolvedTitle,
@@ -136,16 +151,17 @@ export async function runDeepenTaskFromLastFlow(
       ? await runAutoUpdatePresentationTask(taskInput, "current-ppt-task")
       : await runAutoDeepenTask(taskInput, "current-task");
     const presentationPlan = presentationMode
-      ? buildPresentationTaskPlan({
-          title: resolvedTitle,
-          result: data?.parsed,
-          rawText: data?.raw,
+      ? resolvePresentationVisualSlots({
+          imageCandidates: getTaskDraftImageLibraryCandidates(args),
+          plan: buildPresentationTaskPlan({
+            title: resolvedTitle,
+            result: data?.parsed,
+            rawText: data?.raw,
+          }),
         })
       : undefined;
     const taskText = presentationMode
-      ? presentationPlan
-        ? formatPresentationTaskPlanText(presentationPlan)
-        : formatPresentationTaskResultText(data?.parsed, data?.raw)
+      ? formatPresentationTaskPlanText(presentationPlan!)
       : formatTaskResultText(data?.parsed, data?.raw);
     const assistantMsg: Message = {
       id: generateId(),

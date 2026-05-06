@@ -482,9 +482,3 @@ export function formatPresentationSlidePlanLines(
   });
   return lines;
 }
-
-export function formatPresentationSlideDesignLines(slideItems: string[]) {
-  const slides = parsePresentationTaskSlidesFromLines(slideItems);
-  if (slides.length === 0) return slideItems;
-  return formatPresentationSlidePlanLines(slides);
-}

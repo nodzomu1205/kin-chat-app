@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as { task?: unknown };
-    return handleTaskRoute(body);
+    return await handleTaskRoute(body);
   } catch (error: unknown) {
     console.error(error);
     return NextResponse.json(
