@@ -195,6 +195,7 @@ async function runRenderPresentationPptxFlow(args: {
       libraryImageAssets: await hydratePresentationLibraryImageAssets({
         flowArgs: args.flowArgs,
         frameSpec,
+        onlyRequiredImageAssets: true,
       }),
     });
     applyGeneratedImageUsage(
@@ -399,6 +400,7 @@ export async function applyPptDirectEditCandidate(args: {
       imageLibraryReferenceEnabled: args.imageLibraryReferenceEnabled,
       imageLibraryReferenceCount: args.imageLibraryReferenceCount,
       frameSpec,
+      onlyRequiredImageAssets: true,
     }),
   });
   applyGeneratedImageUsage(output.generatedImages, args.applyImageUsage);
@@ -553,17 +555,21 @@ async function hydratePresentationLibraryImageAssets(args: {
   imageLibraryReferenceEnabled?: boolean;
   imageLibraryReferenceCount?: number;
   frameSpec?: ReturnType<typeof buildFramePresentationSpecFromTaskPlan>;
+  onlyRequiredImageAssets?: boolean;
 }): Promise<PresentationRenderLibraryImageAsset[]> {
+  const requiredImageIds = collectFrameSpecPreferredImageIds(args.frameSpec);
   const candidates = getPresentationImageLibraryCandidates({
     enabled:
       args.imageLibraryReferenceEnabled ??
       args.flowArgs?.imageLibraryReferenceEnabled,
     count:
-      args.imageLibraryReferenceCount ??
-      args.flowArgs?.imageLibraryReferenceCount,
+      args.onlyRequiredImageAssets
+        ? 0
+        : args.imageLibraryReferenceCount ??
+          args.flowArgs?.imageLibraryReferenceCount,
     referenceLibraryItems:
       args.referenceLibraryItems ?? args.flowArgs?.referenceLibraryItems ?? [],
-    requiredImageIds: collectFrameSpecPreferredImageIds(args.frameSpec),
+    requiredImageIds,
   });
   const hydrated = await Promise.all(
     candidates.map(async (candidate) => {
