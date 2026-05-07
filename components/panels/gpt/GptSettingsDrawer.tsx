@@ -6,9 +6,6 @@ import type {
   PendingIntentCandidate,
 } from "@/lib/task/taskIntent";
 import type {
-  PptDirectEditCandidate,
-} from "@/lib/app/presentation/presentationDirectEditApproval";
-import type {
   ApprovedMemoryRule,
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
@@ -26,7 +23,6 @@ import {
   IngestSettingsSection,
   MemorySettingsSection,
 } from "./GptSettingsDrawerSections";
-import { PptDirectEditApprovalSection } from "./GptSettingsLibrarySections";
 import {
   LibrarySettingsSection,
   ImageLibraryReferenceSettingsSection,
@@ -120,9 +116,6 @@ type Props = {
     patch: Partial<PendingMemoryRuleCandidate>
   ) => void;
   onDeleteApprovedMemoryRule: (id: string) => void;
-  onApplyPptDirectEditCandidate?: (
-    candidate: PptDirectEditCandidate
-  ) => Promise<void>;
   protocolPrompt: string;
   protocolRulebook: string;
   onChangeProtocolPrompt: (v: string) => void;
@@ -267,10 +260,6 @@ export default function GptSettingsDrawer(props: Props) {
 
       {activeTab === "library" ? (
         <>
-          <PptDirectEditApprovalSection
-            onApplyCandidate={props.onApplyPptDirectEditCandidate}
-          />
-
           <LibrarySettingsSection
             isMobile={props.isMobile}
             autoLibraryReferenceEnabled={props.autoLibraryReferenceEnabled}

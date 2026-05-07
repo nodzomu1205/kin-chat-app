@@ -1,36 +1,17 @@
-export type PptCommandIntent =
-  | "renderPptx"
-  | "reviseRenderedPptx"
-  | "showPreview";
-
-export type PptImageMode = "off" | "library" | "api" | "hybrid";
-
-export type PptFrameCommandIntent =
-  | "showFrameIndex"
-  | "showFrameJson";
+export type PptCommandIntent = "renderPptx" | "savePlan" | "resolveVisuals";
 
 export type ParsedPptCommand = {
   isPptCommand: boolean;
   body: string;
   documentId?: string;
   density?: "concise" | "standard" | "detailed" | "dense";
-  generateImages?: boolean;
-  imageMode?: PptImageMode;
   intent?: PptCommandIntent;
 };
 
-export type ParsedPptFrameCommand = {
-  isFrameCommand: boolean;
-  body: string;
-  frameId?: string;
-  intent?: PptFrameCommandIntent;
-};
-
 const PPT_PREFIX_PATTERN = /^\s*\/ppt(?:\s|$)/i;
-const PPT_FRAME_PREFIX_PATTERN = /^\s*PPT\s+frames\s*:\s*/i;
 const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:-]+)/im;
 const DENSITY_PATTERN = /^\s*Density\s*:\s*(concise|standard|detailed|dense)\s*$/gim;
-const GENERATE_IMAGES_PATTERN = /^\s*(?:Generate Images|Images)\s*:\s*([^\r\n]+)\s*$/gim;
+const LEGACY_IMAGE_COMMAND_PATTERN = /^\s*(?:Generate Images|Images)\s*:/im;
 
 function stripPptPrefix(text: string) {
   return text.replace(PPT_PREFIX_PATTERN, "").replace(/^\s*\r?\n?/, "").trim();
@@ -42,10 +23,6 @@ function stripDocumentIdLine(text: string) {
 
 function stripDensityLines(text: string) {
   return text.replace(DENSITY_PATTERN, "").trim();
-}
-
-function stripGenerateImagesLines(text: string) {
-  return text.replace(GENERATE_IMAGES_PATTERN, "").trim();
 }
 
 function parseDensity(text: string): ParsedPptCommand["density"] {
@@ -60,35 +37,6 @@ function parseDensity(text: string): ParsedPptCommand["density"] {
     : undefined;
 }
 
-function parseGenerateImages(text: string) {
-  const mode = parseImageMode(text);
-  if (!mode) return undefined;
-  return mode === "api" || mode === "hybrid" || mode === "library";
-}
-
-function parseImageMode(text: string): PptImageMode | undefined {
-  GENERATE_IMAGES_PATTERN.lastIndex = 0;
-  const match = GENERATE_IMAGES_PATTERN.exec(text);
-  const raw = match?.[1]?.toLowerCase().trim();
-  if (!raw) return undefined;
-  const parts = raw
-    .split(/[,\s]+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  const enabled = parts.some((part) =>
-    part === "true" || part === "yes" || part === "on"
-  );
-  if (parts.some((part) => part === "false" || part === "no" || part === "off")) {
-    return "off";
-  }
-  const wantsLibrary = parts.includes("library");
-  const wantsApi = parts.includes("api");
-  if (wantsLibrary && wantsApi) return "hybrid";
-  if (wantsLibrary) return "library";
-  if (wantsApi) return "api";
-  return enabled ? "hybrid" : undefined;
-}
-
 function isRenderRequest(body: string) {
   return (
     /\b(create|render|generate|export)\s+(ppt|pptx|power\s*point|powerpoint)\b/i.test(
@@ -97,15 +45,19 @@ function isRenderRequest(body: string) {
     /\b(ppt|pptx|power\s*point|powerpoint)\s+(create|render|generate|export)\b/i.test(
       body
     ) ||
-    /(?:パワポ|powerpoint|pptx?).*(?:作成|生成|出力|書き出し)/i.test(body)
+    /(?:ppt|pptx|power\s*point|powerpoint|パワーポイント).*(?:作成|生成|出力|書き出し)/iu.test(
+      body
+    )
   );
 }
 
-function isPreviewRequest(body: string) {
-  const normalized = body.trim();
-  return (
-    /^(show|view|preview)(\s+(draft|presentation|slides?))?$/i.test(normalized) ||
-    /^(確認|プレビュー|preview|show preview|view preview)$/i.test(normalized)
+function isSaveRequest(body: string) {
+  return /^(save|菫晏ｭ・繝ｩ繧､繝悶Λ繝ｪ縺ｫ菫晏ｭ・)$/iu.test(body.trim());
+}
+
+function isResolveVisualsRequest(body: string) {
+  return /^(resolve\s+visual\s+blocks|resolve\s+visuals|逕ｻ蜒上ｒ驕ｸ縺ｶ|繝薙ず繝･繧｢繝ｫ隗｣豎ｺ)(?:\s|$)/iu.test(
+    body.trim()
   );
 }
 
@@ -120,59 +72,25 @@ export function parsePptCommand(text: string): ParsedPptCommand {
   const body = stripPptPrefix(text);
   const documentId = body.match(DOCUMENT_ID_PATTERN)?.[1]?.trim();
   const density = parseDensity(body);
-  const imageMode = parseImageMode(body);
-  const generateImages = parseGenerateImages(body);
-  const bodyWithoutDocumentId = stripGenerateImagesLines(
-    stripDensityLines(stripDocumentIdLine(body))
+  const bodyWithoutDocumentId = stripDensityLines(stripDocumentIdLine(body));
+  const includesLegacyImageCommand = LEGACY_IMAGE_COMMAND_PATTERN.test(
+    bodyWithoutDocumentId
   );
-  const intent: PptCommandIntent | undefined = isRenderRequest(bodyWithoutDocumentId)
-    ? "renderPptx"
-    : documentId && isPreviewRequest(bodyWithoutDocumentId)
-        ? "showPreview"
-        : documentId && bodyWithoutDocumentId.trim()
-          ? "reviseRenderedPptx"
-        : undefined;
+  const intent: PptCommandIntent | undefined = includesLegacyImageCommand
+    ? undefined
+    : isRenderRequest(bodyWithoutDocumentId)
+      ? "renderPptx"
+      : documentId && isSaveRequest(bodyWithoutDocumentId)
+        ? "savePlan"
+        : documentId && isResolveVisualsRequest(bodyWithoutDocumentId)
+          ? "resolveVisuals"
+          : undefined;
 
   return {
     isPptCommand: true,
     body: bodyWithoutDocumentId,
     documentId,
     density,
-    generateImages,
-    imageMode,
     intent,
-  };
-}
-
-export function parsePptFrameCommand(text: string): ParsedPptFrameCommand {
-  if (!PPT_FRAME_PREFIX_PATTERN.test(text)) {
-    return {
-      isFrameCommand: false,
-      body: text,
-    };
-  }
-
-  const body = text.replace(PPT_FRAME_PREFIX_PATTERN, "").trim();
-  if (/^show\s+index$/i.test(body)) {
-    return {
-      isFrameCommand: true,
-      body,
-      intent: "showFrameIndex",
-    };
-  }
-
-  const showJsonMatch = body.match(/^show\s+json\s*\/\s*([A-Za-z0-9_.:-]+)\s*$/i);
-  if (showJsonMatch) {
-    return {
-      isFrameCommand: true,
-      body,
-      frameId: showJsonMatch[1],
-      intent: "showFrameJson",
-    };
-  }
-
-  return {
-    isFrameCommand: true,
-    body,
   };
 }

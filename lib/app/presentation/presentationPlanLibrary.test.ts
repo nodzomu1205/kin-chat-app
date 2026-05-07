@@ -93,4 +93,50 @@ describe("presentation plan library", () => {
       candidateImageIds: ["img_selected", "img_alt"],
     });
   });
+
+  it("prefers structured slideFrames over parsed text when parsed text lacks image selections", () => {
+    const storedPlan = planWithResolvedImage();
+    const staleTextPlan: PresentationTaskPlan = {
+      ...storedPlan,
+      slideFrames: storedPlan.slideFrames.map((frame) => ({
+        ...frame,
+        blocks: frame.blocks.map((block) =>
+          block.visualRequest
+            ? {
+                ...block,
+                visualRequest: {
+                  type: block.visualRequest.type,
+                  brief: block.visualRequest.brief,
+                  prompt: block.visualRequest.prompt,
+                  labels: block.visualRequest.labels,
+                },
+              }
+            : block
+        ),
+      })),
+    };
+    const item: ReferenceLibraryItem = {
+      id: "doc:stored-stale-text",
+      sourceId: "stored-stale-text",
+      itemType: "kin_created",
+      artifactType: "presentation_plan",
+      title: "Payload deck",
+      subtitle: "Document ID: ppt_payload_1",
+      summary: "",
+      excerptText: formatPresentationTaskPlanText(staleTextPlan),
+      createdAt: "2026-05-06T00:00:00.000Z",
+      updatedAt: "2026-05-06T00:00:00.000Z",
+      structuredPayload: storedPlan,
+    };
+
+    const found = findPresentationPlanByDocumentId({
+      documentId: "ppt_payload_1",
+      referenceLibraryItems: [item],
+    });
+
+    expect(found?.plan.slideFrames[0]?.blocks[1]?.visualRequest).toMatchObject({
+      preferredImageId: "img_selected",
+      candidateImageIds: ["img_selected", "img_alt"],
+    });
+  });
 });

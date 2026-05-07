@@ -418,7 +418,8 @@ export type ChatPageActionGroups = {
   };
   gpt: {
     sendToGpt: (
-      instructionMode?: GptInstructionMode
+      instructionMode?: GptInstructionMode,
+      inputOverride?: string
     ) => void | Promise<void>;
     startAskAiModeSearch: (query: string) => void | Promise<void>;
     importYouTubeTranscript: (source: SourceItem) => void | Promise<void>;

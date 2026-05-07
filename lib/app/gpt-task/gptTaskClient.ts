@@ -22,33 +22,6 @@ type TaskApiResponse = {
   usage: UsageSummary;
 };
 
-export type PresentationDirectEditInterpretation = {
-  taskId?: string;
-  status?: "OK" | "NEEDS_MORE" | "PARTIAL" | string;
-  documentId?: string;
-  edits?: Array<{
-    slideNumber?: number;
-    blockNumber?: number;
-    blockId?: string;
-    blockType?: "text" | "visual" | string;
-    blockKind?: string;
-    instruction?: string;
-    currentText?: string;
-    proposedText?: string;
-    visualMode?:
-      | "library_image"
-      | "generate_image"
-      | "revise_prompt"
-      | "none"
-      | string;
-    imageId?: string;
-    generationPrompt?: string;
-    visualBrief?: string;
-  }>;
-  warnings?: string[];
-  missingInfo?: string[];
-};
-
 export function formatTaskResultText(parsed: TaskResult | null, raw: string) {
   if (!parsed) {
     return raw?.trim() || "⚠️ タスク結果の解析に失敗しました";
@@ -245,46 +218,6 @@ export async function runAutoUpdatePresentationTask(
     constraints: buildPresentationTaskConstraints("update"),
     outputFormat: "presentation_plan",
   });
-}
-
-function parseJsonObject(raw: string): unknown {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const first = trimmed.indexOf("{");
-    const last = trimmed.lastIndexOf("}");
-    if (first >= 0 && last > first) {
-      return JSON.parse(trimmed.slice(first, last + 1));
-    }
-    throw new Error("Presentation direct edit response was not valid JSON.");
-  }
-}
-
-export async function runInterpretPresentationDirectEdit(
-  inputText: string,
-  label = "pptx-direct-edit"
-) {
-  const data = await callTaskApi({
-    type: "PREP_TASK",
-    goal:
-      "Interpret a user's direct PPTX edit instruction into address-specific text or visual block edits for approval before applying them.",
-    inputRef: label,
-    inputSummary: inputText,
-    constraints: [
-      "Return only the JSON object requested by the system prompt.",
-      "Identify slide number, block number, block id, and whether each target block is text or visual.",
-      "For text targets, provide the full revised text.",
-      "For visual targets, provide the image replacement or generation instruction fields.",
-      "Do not rewrite the whole presentation plan.",
-    ],
-    outputFormat: "presentation_direct_edit",
-  });
-  return {
-    ...data,
-    directEdit: parseJsonObject(data.raw) as PresentationDirectEditInterpretation,
-  };
 }
 
 export async function runAutoDeepenTask(inputText: string, label = "prep-result") {

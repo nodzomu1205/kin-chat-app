@@ -21,7 +21,6 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
-import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import {
   appendTaskInfoMessage,
   buildTaskFlowRecentContext,
@@ -151,13 +150,10 @@ export async function runDeepenTaskFromLastFlow(
       ? await runAutoUpdatePresentationTask(taskInput, "current-ppt-task")
       : await runAutoDeepenTask(taskInput, "current-task");
     const presentationPlan = presentationMode
-      ? resolvePresentationVisualSlots({
-          imageCandidates: getTaskDraftImageLibraryCandidates(args),
-          plan: buildPresentationTaskPlan({
-            title: resolvedTitle,
-            result: data?.parsed,
-            rawText: data?.raw,
-          }),
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
         })
       : undefined;
     const taskText = presentationMode
@@ -169,6 +165,7 @@ export async function runDeepenTaskFromLastFlow(
       text: taskText,
       meta: {
         kind: "task_deepen",
+        ...(presentationPlan ? { presentationPlan } : {}),
       },
     };
 

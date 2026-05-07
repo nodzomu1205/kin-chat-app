@@ -12,30 +12,14 @@ describe("presentationGptPrompts", () => {
       slideCount: 5,
       outputPath: "blob:test",
       filename: "deck.pptx",
-      generatedImages: [
-        { imageId: "img_1", title: "Cotton field" },
-        { imageId: "img_1", title: "Same image reused" },
-      ],
-      imageMatches: [
-        {
-          slideNumber: 2,
-          label: "Cultivation",
-          status: "selected",
-          imageId: "img_1",
-          imageTitle: "Cotton field",
-          score: 7,
-          threshold: 5,
-        },
-      ],
     });
 
     expect(message).toContain("Presentation PPTX created.");
     expect(message).toContain("Document ID: ppt_123");
     expect(message).toContain("PPTX: [deck.pptx](blob:test)");
-    expect(message).toContain("Image ID: img_1");
-    expect(message.match(/Image ID: img_1/g)).toHaveLength(2);
-    expect(message).toContain("Slide 2 image match: Cultivation");
-    expect(message).toContain("Score: 7 / Threshold: 5");
+    expect(message).not.toContain("Image ID:");
+    expect(message).not.toContain("image match:");
+    expect(message).not.toContain("Score:");
   });
 
   it("builds a render-only failure message", () => {

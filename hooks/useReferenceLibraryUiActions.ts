@@ -6,6 +6,13 @@ import {
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import {
+  collectFrameSpecPreferredImageIds,
+  hydratePresentationLibraryImageAssets,
+} from "@/lib/app/presentation/presentationGptFlow";
+import {
+  buildPresentationTaskPlanTextWithImagePreviews,
+} from "@/lib/app/presentation/presentationPlanChatDisplay";
+import {
   buildFramePresentationSpecFromTaskPlan,
   buildPresentationSpecFromTaskPlan,
   buildPresentationTaskPlanFromText,
@@ -67,7 +74,10 @@ type UseReferenceLibraryUiActionsArgs = {
   ) => void;
 };
 
-function createLibraryUiMessage(text: string): Message {
+function createLibraryUiMessage(
+  text: string,
+  meta: Partial<NonNullable<Message["meta"]>> = {}
+): Message {
   return {
     id: `library-ui-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     role: "gpt",
@@ -75,6 +85,7 @@ function createLibraryUiMessage(text: string): Message {
     meta: {
       kind: "task_info",
       sourceType: "manual",
+      ...meta,
     },
   };
 }
@@ -147,6 +158,26 @@ async function buildGeneratedImageChatDisplayText(item: ReferenceLibraryItem) {
   });
 }
 
+function resolvePresentationPlanFromLibraryItem(item: ReferenceLibraryItem) {
+  if (item.artifactType !== "presentation_plan") return null;
+  const parsedPlan = buildPresentationTaskPlanFromText({
+    title: item.title,
+    text: item.excerptText,
+  });
+  const storedPlan = isPresentationTaskPlan(item.structuredPayload)
+    ? item.structuredPayload
+    : null;
+  return storedPlan || parsedPlan;
+}
+
+async function buildLibraryItemChatDisplayTextWithPreviews(item: ReferenceLibraryItem) {
+  const plan = resolvePresentationPlanFromLibraryItem(item);
+  if (!plan) return buildLibraryItemChatDisplayText(item);
+  return plan
+    ? buildPresentationTaskPlanTextWithImagePreviews(plan)
+    : buildLibraryItemChatDisplayText(item);
+}
+
 function filterLibraryItemsByScope(
   items: ReferenceLibraryItem[],
   scope: LibraryBulkActionScope = "library"
@@ -207,10 +238,14 @@ export function useReferenceLibraryUiActions({
     const displayText =
       item.artifactType === "generated_image"
         ? await buildGeneratedImageChatDisplayText(item)
-        : buildLibraryItemChatDisplayText(item);
+        : await buildLibraryItemChatDisplayTextWithPreviews(item);
+    const presentationPlan = resolvePresentationPlanFromLibraryItem(item);
     const nextMessages = [
       ...gptMessages,
-      createLibraryUiMessage(displayText),
+      createLibraryUiMessage(
+        displayText,
+        presentationPlan ? { presentationPlan } : {}
+      ),
     ];
     setGptMessages(nextMessages);
     focusGptPanel();
@@ -324,13 +359,7 @@ export function useReferenceLibraryUiActions({
     const storedPlan = isPresentationTaskPlan(item.structuredPayload)
       ? item.structuredPayload
       : null;
-    const plan =
-      parsedPlan.slides.length > 0
-        ? {
-            ...parsedPlan,
-            latestPptx: storedPlan?.latestPptx || null,
-          }
-        : storedPlan || parsedPlan;
+    const plan = storedPlan || parsedPlan;
     if (!hasRenderablePresentationTaskPlan(plan)) {
       setGptMessages((prev) => [
         ...prev,
@@ -343,12 +372,26 @@ export function useReferenceLibraryUiActions({
     }
     const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
     const spec = frameSpec ? null : buildPresentationSpecFromTaskPlan(plan);
+    const selectedImageIds = frameSpec
+      ? collectFrameSpecPreferredImageIds(frameSpec)
+      : new Set<string>();
     const response = await fetch("/api/presentation-render", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
         ...(frameSpec ? { frameSpec } : { spec }),
+        generateImages: selectedImageIds.size > 0,
+        imageMode: selectedImageIds.size > 0 ? "library" : undefined,
+        libraryImageAssets: frameSpec
+          ? await hydratePresentationLibraryImageAssets({
+              referenceLibraryItems: libraryItems,
+              imageLibraryReferenceEnabled: selectedImageIds.size > 0,
+              imageLibraryReferenceCount: 0,
+              frameSpec,
+              onlyRequiredImageAssets: true,
+            })
+          : undefined,
       }),
     });
     const data = (await response.json().catch(() => ({}))) as {

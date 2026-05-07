@@ -11,6 +11,8 @@ type Props = {
   sourceDisplayCount?: number;
   onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
   onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
+  onDraftCommand?: (command: string) => void;
+  onRunCommand?: (command: string) => void | Promise<void>;
 };
 
 export default function MessageBubble({
@@ -20,6 +22,8 @@ export default function MessageBubble({
   sourceDisplayCount = 3,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
+  onDraftCommand,
+  onRunCommand,
 }: Props) {
   const isUser = role === "user";
   const isKin = role === "kin";
@@ -64,7 +68,11 @@ export default function MessageBubble({
         </div>
       )}
 
-      <MessageContent text={text} />
+      <MessageContent
+        text={text}
+        onDraftCommand={onDraftCommand}
+        onRunCommand={onRunCommand}
+      />
       <MessageSources
         sources={sources}
         sourceDisplayCount={sourceDisplayCount}

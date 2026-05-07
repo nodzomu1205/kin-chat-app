@@ -1,5 +1,6 @@
 import type {
   PresentationTaskPlan,
+  PresentationTaskBookendSlide,
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
   PresentationTaskVisualRequest,
@@ -24,9 +25,60 @@ export function resolvePresentationVisualSlots(args: {
 
   return {
     ...args.plan,
+    deckFrame: args.plan.deckFrame
+      ? {
+          ...args.plan.deckFrame,
+          openingSlide: resolveOpeningSlideVisualSlots(
+            args.plan.deckFrame.openingSlide,
+            candidates
+          ),
+        }
+      : args.plan.deckFrame,
     slideFrames: args.plan.slideFrames.map((frame) =>
       resolveFrameVisualSlots(frame, candidates)
     ),
+  };
+}
+
+function resolveOpeningSlideVisualSlots(
+  openingSlide: PresentationTaskBookendSlide | undefined,
+  candidates: PresentationImageLibraryCandidate[]
+) {
+  if (
+    !openingSlide?.enabled ||
+    openingSlide.frameId !== "visualTitleCover" ||
+    !openingSlide.visualRequest
+  ) {
+    return openingSlide;
+  }
+  const coverBlock: PresentationTaskSlideBlock = {
+    id: "openingVisual",
+    kind: "visual",
+    styleId: "visualCover",
+    visualRequest: openingSlide.visualRequest,
+  };
+  const coverFrame: PresentationTaskSlideFrame = {
+    slideNumber: 0,
+    title: openingSlide.title || "Opening slide",
+    masterFrameId: "fullBleedVisual",
+    layoutFrameId: "adaptiveVisualMain",
+    slideRole: "visualMain",
+    blocks: [
+      coverBlock,
+      {
+        id: "openingTitle",
+        kind: "textStack",
+        styleId: "textStackTopLeft",
+        heading: openingSlide.title,
+        text: [openingSlide.subtitle, openingSlide.message].filter(Boolean).join(" "),
+      },
+    ],
+  };
+  return {
+    ...openingSlide,
+    visualRequest: resolveVisualRequestSlots(coverBlock, coverFrame, candidates, {
+      preserveExistingImageIds: true,
+    }),
   };
 }
 
@@ -58,9 +110,16 @@ function resolveFrameVisualSlots(
 function resolveVisualRequestSlots(
   block: PresentationTaskSlideBlock,
   frame: PresentationTaskSlideFrame,
-  candidates: PresentationImageLibraryCandidate[]
+  candidates: PresentationImageLibraryCandidate[],
+  options: { preserveExistingImageIds?: boolean } = {}
 ): PresentationTaskVisualRequest {
   const visual = block.visualRequest as PresentationTaskVisualRequest;
+  if (
+    hasUserConfirmedVisualSelection(visual) ||
+    (options.preserveExistingImageIds && hasSelectedVisualImageIds(visual))
+  ) {
+    return visual;
+  }
   const slots = normalizeSlots(visual.visualSlots);
   const effectiveSlots =
     slots.length > 0 ? slots : deriveVisualSlotsFromFrame(block, frame);
@@ -111,6 +170,29 @@ function resolveVisualRequestSlots(
       showBrief: true,
     },
   };
+}
+
+function hasUserConfirmedVisualSelection(visual: PresentationTaskVisualRequest) {
+  const selectedIds = selectedVisualImageIdSet(visual);
+  if (selectedIds.size === 0) return false;
+  return (visual.selectionMatches || []).some(
+    (match) =>
+      match.status === "selected" &&
+      !!match.imageId?.trim() &&
+      selectedIds.has(match.imageId.trim())
+  );
+}
+
+function hasSelectedVisualImageIds(visual: PresentationTaskVisualRequest) {
+  return selectedVisualImageIdSet(visual).size > 0;
+}
+
+function selectedVisualImageIdSet(visual: PresentationTaskVisualRequest) {
+  return new Set(
+    [visual.preferredImageId, ...(visual.candidateImageIds || [])]
+      .filter((imageId): imageId is string => !!imageId?.trim())
+      .map((imageId) => imageId.trim())
+  );
 }
 
 function normalizeSlots(slots: PresentationTaskVisualSlot[] | undefined) {
@@ -272,8 +354,9 @@ function hasRequiredEntityEvidence(
 }
 
 function termsForSlot(slot: PresentationTaskVisualSlot) {
+  const rawText = [slot.label, slot.need, ...(slot.keywords || [])].join(" ");
   return Array.from(
-    new Set(tokenize([slot.need, ...(slot.keywords || [])].join(" ")))
+    new Set([...tokenize(rawText), ...aliasTermsForSlotText(rawText)])
   );
 }
 
@@ -335,6 +418,15 @@ function normalizeText(value: string) {
   return value.toLowerCase().normalize("NFKC");
 }
 
+function aliasTermsForSlotText(value: string) {
+  const normalized = normalizeText(value);
+  return JAPANESE_SLOT_MATCH_ALIASES.flatMap((entry) =>
+    entry.aliases.some((alias) => normalized.includes(normalizeText(alias)))
+      ? entry.terms
+      : []
+  );
+}
+
 function termScore(term: string, tier: "primary" | "secondary") {
   const base = term.length >= 5 ? 3 : term.length >= 3 ? 2 : 1;
   return tier === "primary" ? base : Math.max(1, base - 1);
@@ -369,6 +461,45 @@ const BROAD_MATCH_TERMS = new Set([
   "supply",
   "chain",
 ]);
+
+const JAPANESE_SLOT_MATCH_ALIASES = [
+  {
+    aliases: ["高校", "学校", "校舎", "キャンパス", "施設"],
+    terms: ["high", "school", "campus", "building", "classroom"],
+  },
+  {
+    aliases: ["学生", "生徒", "高校生"],
+    terms: ["student", "students", "uniform"],
+  },
+  {
+    aliases: ["英語", "英会話", "語学"],
+    terms: ["english", "language", "learning", "classroom"],
+  },
+  {
+    aliases: ["国際", "帰国子女", "海外"],
+    terms: ["international", "english", "students"],
+  },
+  {
+    aliases: ["授業", "教室", "学習", "勉強", "教材"],
+    terms: ["classroom", "learning", "studying", "books", "textbook"],
+  },
+  {
+    aliases: ["受験", "入試", "面接", "対策", "参考書", "資格"],
+    terms: ["exam", "entrance", "interview", "studying", "books", "test"],
+  },
+  {
+    aliases: ["保護者", "親子"],
+    terms: ["parent", "family", "student"],
+  },
+  {
+    aliases: ["講師", "指導", "塾"],
+    terms: ["teacher", "tutor", "coaching", "studying"],
+  },
+  {
+    aliases: ["国際バカロレア", "バカロレア", "IB"],
+    terms: ["international", "baccalaureate", "classroom", "discussion"],
+  },
+];
 
 function requiredEntityGroupsForSlot(slot: PresentationTaskVisualSlot) {
   const text = normalizeText(

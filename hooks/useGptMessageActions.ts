@@ -118,10 +118,13 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
     return mergeSendToGptFlowArgs(buildCommonSendToGptFlowArgs(args));
   };
 
-  const sendToGpt = async (instructionMode: GptInstructionMode = "normal") => {
+  const sendToGpt = async (
+    instructionMode: GptInstructionMode = "normal",
+    inputOverride?: string
+  ) => {
     await runSendToGptFlow({
       ...buildCommonFlowArgs(),
-      gptInput: args.gptInput,
+      gptInput: inputOverride ?? args.gptInput,
       searchMode: args.searchMode,
       searchEngines: args.searchEngines,
       searchLocation: args.searchLocation,

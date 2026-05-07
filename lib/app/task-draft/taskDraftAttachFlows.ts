@@ -19,7 +19,6 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
-import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import {
   buildLibraryTaskSource,
   buildPreparedTaskDraftUpdate,
@@ -179,13 +178,10 @@ export async function runAttachSearchResultToTaskFlow(
         ? await runAutoPrepPresentationTask(prepInput, "attach-library-item-ppt")
         : await runAutoPrepTask(prepInput, "attach-library-item");
       const presentationPlan = presentationMode
-        ? resolvePresentationVisualSlots({
-            imageCandidates: getTaskDraftImageLibraryCandidates(args),
-            plan: buildPresentationTaskPlan({
-              title: resolvedTitle,
-              result: data?.parsed,
-              rawText: data?.raw,
-            }),
+        ? buildPresentationTaskPlan({
+            title: resolvedTitle,
+            result: data?.parsed,
+            rawText: data?.raw,
           })
         : null;
       const taskText = presentationMode
@@ -203,6 +199,7 @@ export async function runAttachSearchResultToTaskFlow(
         meta: {
           kind: "task_prep",
           sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
+          ...(presentationPlan ? { presentationPlan } : {}),
         },
       };
 
@@ -312,13 +309,10 @@ export async function runAttachSearchResultToTaskFlow(
       ? await runAutoUpdatePresentationTask(taskInput, "attach-search-result-ppt")
       : await runAutoPrepTask(taskInput, "attach-search-result");
     const presentationPlan = presentationMode
-      ? resolvePresentationVisualSlots({
-          imageCandidates: getTaskDraftImageLibraryCandidates(args),
-          plan: buildPresentationTaskPlan({
-            title: resolvedTitle,
-            result: data?.parsed,
-            rawText: data?.raw,
-          }),
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
         })
       : undefined;
     const taskText = presentationMode
@@ -336,6 +330,7 @@ export async function runAttachSearchResultToTaskFlow(
       meta: {
         kind: "task_prep",
         sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
+        ...(presentationPlan ? { presentationPlan } : {}),
       },
     };
 

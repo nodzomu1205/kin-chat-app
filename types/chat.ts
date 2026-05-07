@@ -1,4 +1,5 @@
 import type { Memory } from "@/lib/memory-domain/memory";
+import type { PresentationTaskPlan } from "@/types/task";
 
 export type SourceItem = {
   title: string;
@@ -23,6 +24,7 @@ export type MessageMeta = {
     | "search"
     | "manual"
     | "kin_message";
+  presentationPlan?: PresentationTaskPlan;
 };
 
 export type Message = {

@@ -47,6 +47,6 @@ describe("presentationFrameRegistry", () => {
     const text = buildPresentationFrameJsonText("missingFrame");
 
     expect(text).toContain("PPT frame not found: missingFrame");
-    expect(text).toContain("PPT frames: Show index");
+    expect(text).toContain("presentation frame registry");
   });
 });

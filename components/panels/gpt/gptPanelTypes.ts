@@ -18,7 +18,6 @@ import type {
   MemoryInterpreterSettings,
   PendingMemoryRuleCandidate,
 } from "@/lib/memory-domain/memoryInterpreterRules";
-import type { PptDirectEditCandidate } from "@/lib/app/presentation/presentationDirectEditApproval";
 import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
 import type {
   TaskRequirementProgress,
@@ -124,7 +123,10 @@ export type GptPanelChatProps = {
   gptMessages: Message[];
   gptInput: string;
   setGptInput: Dispatch<SetStateAction<string>>;
-  sendToGpt: (instructionMode?: GptInstructionMode) => void | Promise<void>;
+  sendToGpt: (
+    instructionMode?: GptInstructionMode,
+    inputOverride?: string
+  ) => void | Promise<void>;
   onInjectFile: (
     file: File,
     options: {
@@ -362,9 +364,6 @@ export type GptPanelSettingsProps = {
   ) => void;
   onDeleteApprovedMemoryRule: (ruleId: string) => void;
   applyImageUsage?: SendToGptFlowStepArgs["applyImageUsage"];
-  onApplyPptDirectEditCandidate?: (
-    candidate: PptDirectEditCandidate
-  ) => Promise<void>;
 };
 
 export type GptPanelProps = {

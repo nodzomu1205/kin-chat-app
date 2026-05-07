@@ -384,7 +384,6 @@ export function buildGptSettingsDrawerProps({
     onApproveMemoryRuleCandidate: settings.onApproveMemoryRuleCandidate,
     onRejectMemoryRuleCandidate: settings.onRejectMemoryRuleCandidate,
     onDeleteApprovedMemoryRule: settings.onDeleteApprovedMemoryRule,
-    onApplyPptDirectEditCandidate: settings.onApplyPptDirectEditCandidate,
     protocolPrompt: protocol.protocolPrompt,
     protocolRulebook: protocol.protocolRulebook,
     onChangeProtocolPrompt: protocol.onChangeProtocolPrompt,

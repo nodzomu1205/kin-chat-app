@@ -27,12 +27,14 @@ export function findPresentationPlanByDocumentId(args: {
       ? item.structuredPayload
       : null;
     const plan =
-      parsedPlan.slideFrames.length > 0 || parsedPlan.slides.length > 0
-        ? {
-            ...parsedPlan,
-            latestPptx: storedPlan?.latestPptx || null,
-          }
-        : storedPlan || parsedPlan;
+      storedPlan?.slideFrames.length
+        ? storedPlan
+        : parsedPlan.slideFrames.length > 0 || parsedPlan.slides.length > 0
+          ? {
+              ...parsedPlan,
+              latestPptx: storedPlan?.latestPptx || null,
+            }
+          : storedPlan || parsedPlan;
     if (item.sourceId !== requested && item.id !== requested && plan.documentId !== requested) {
       continue;
     }

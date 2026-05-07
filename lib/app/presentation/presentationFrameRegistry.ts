@@ -92,7 +92,7 @@ export function buildPresentationFrameJsonText(frameId: string) {
     return [
       `PPT frame not found: ${frameId.trim() || "(empty)"}`,
       "",
-      "Use `PPT frames: Show index` to see registered frame IDs.",
+      "Review the presentation frame registry to see registered frame IDs.",
     ].join("\n");
   }
 

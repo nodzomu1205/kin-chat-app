@@ -205,69 +205,8 @@ function buildPresentationPlanTaskPrompt(task: TaskRequest) {
   ].join("\n");
 }
 
-function buildPresentationDirectEditTaskPrompt(task: TaskRequest) {
-  return [
-    "<<SYS_PRESENTATION_DIRECT_EDIT_TASK>>",
-    `TYPE: ${task.type}`,
-    `TASK_ID: ${task.taskId}`,
-    `GOAL: ${task.goal}`,
-    `INPUT_REF: ${task.inputRef}`,
-    "INPUT:",
-    task.inputSummary,
-    "CONSTRAINTS:",
-    buildConstraintSection(task),
-    "<<END_SYS_PRESENTATION_DIRECT_EDIT_TASK>>",
-    "",
-    "Return only one valid JSON object. Do not return markdown. Do not wrap it in ```.",
-    "The JSON object must follow this top-level shape:",
-    JSON.stringify({
-      taskId: task.taskId,
-      status: "OK",
-      documentId: "ppt_...",
-      edits: [
-        {
-          slideNumber: 1,
-          blockNumber: 1,
-          blockId: "block1",
-          blockType: "text",
-          blockKind: "textStack",
-          instruction: "User-facing edit instruction for this block.",
-          currentText: "Current block content.",
-          proposedText: "Updated text for text blocks.",
-          visualMode: "none",
-          imageId: "",
-          generationPrompt: "",
-          visualBrief: "",
-        },
-      ],
-      warnings: [],
-      missingInfo: [],
-    }),
-    "",
-    "Rules:",
-    "- First identify the target address from the user's instruction and the provided slide/block list.",
-    "- Use the actual block at that address to decide blockType: visual when the block kind is visual or it has visualRequest, otherwise text.",
-    "- For text blocks, interpret the user's instruction and return proposedText as the full replacement text for the target block.",
-    "- For list text blocks, proposedText may use one item per line.",
-    "- Keep proposedText within the target block's layout capacity. If the user asks to subdivide, rewrite into concise phrases or bullets instead of adding a long explanation.",
-    "- Do not preserve old body text or old bullet items unless they are intentionally part of the final replacement.",
-    "- If the requested detail cannot fit in the current block, return the best concise replacement and add a warning.",
-    "- For visual blocks, do not convert the request to a text edit.",
-    "- For visual blocks, do not choose image-library candidates yourself. Use library_image only when the user's edit explicitly targets an existing image reference already present in the design.",
-    "- For visual blocks without an explicit existing image reference, use revise_prompt or generate_image instead of selecting a stored asset.",
-    "- For visual blocks where the user asks to create or generate a new image, set visualMode to generate_image and provide generationPrompt.",
-    "- For visual blocks where only the visual direction should change, set visualMode to revise_prompt and provide visualBrief and generationPrompt when useful.",
-    "- Do not edit unrelated blocks. Multiple edits are allowed only when the user targets multiple blocks.",
-    "- If the target cannot be narrowed, return the best candidate edits with a warning instead of inventing unrelated changes.",
-    "- Set status to NEEDS_MORE only when no actionable candidate can be formed.",
-  ].join("\n");
-}
-
 export function buildTaskPrompt(task: TaskRequest): string {
   if (task.type === "FORMAT_TASK") return buildFormatTaskPrompt(task);
-  if (task.outputFormat === "presentation_direct_edit") {
-    return buildPresentationDirectEditTaskPrompt(task);
-  }
   if (task.outputFormat === "presentation_plan") {
     return buildPresentationPlanTaskPrompt(task);
   }

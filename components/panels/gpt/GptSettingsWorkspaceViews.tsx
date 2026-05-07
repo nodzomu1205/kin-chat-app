@@ -25,7 +25,6 @@ import {
   GoogleDriveLibrarySection,
   IngestSettingsSection,
   LibraryCardSummarySettingsSection,
-  PptDirectEditApprovalSection,
 } from "@/components/panels/gpt/GptSettingsLibrarySections";
 import type { LocalMemorySettingsInput } from "@/components/panels/gpt/gptPanelHelpers";
 import type { SearchEngine } from "@/types/task";
@@ -183,10 +182,6 @@ export function LibrarySettingsWorkspaceView(props: {
 }) {
   return (
     <>
-      <PptDirectEditApprovalSection
-        onApplyCandidate={props.settings.onApplyPptDirectEditCandidate}
-      />
-
       <LibrarySettingsSection
         isMobile={props.isMobile}
         autoLibraryReferenceEnabled={props.settings.autoLibraryReferenceEnabled}

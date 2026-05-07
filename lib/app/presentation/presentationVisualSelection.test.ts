@@ -77,6 +77,49 @@ function basePlan(): PresentationTaskPlan {
 }
 
 describe("resolvePresentationVisualSlots", () => {
+  it("matches Japanese school and exam visual needs against English image metadata", () => {
+    const plan = basePlan();
+    const visual = plan.slideFrames[0].blocks[1].visualRequest;
+    if (visual) {
+      visual.brief = "受験対策教材や学習指導のイメージ";
+      visual.prompt = "受験対策の参考書や勉強する学生、講師から指導を受ける情景の写真";
+      visual.visualSlots = [
+        {
+          slotId: "examPrep",
+          label: "受験対策教材や学習指導のイメージ",
+          need: "受験対策の参考書や勉強する学生、講師から指導を受ける情景の写真",
+          order: 1,
+        },
+      ];
+    }
+
+    const resolved = resolvePresentationVisualSlots({
+      plan,
+      imageCandidates: [
+        {
+          imageId: "img_exam",
+          title: "Student studying with test books and tutor",
+          presentationMeta: {
+            version: "0.3-presentation-image-meta",
+            visualBaseType: "photo",
+            visibleSubjects: ["student", "textbook", "teacher", "studying"],
+            embeddedTextItems: [],
+            relationships: [],
+            composition: "single_scene",
+            semanticTags: ["exam", "test", "books", "learning"],
+          },
+        },
+      ],
+    });
+
+    const resolvedVisual = resolved.slideFrames[0].blocks[1].visualRequest;
+    expect(resolvedVisual?.preferredImageId).toBe("img_exam");
+    expect(resolvedVisual?.selectionMatches?.[0]).toMatchObject({
+      status: "selected",
+      imageId: "img_exam",
+    });
+  });
+
   it("selects image IDs from ordered visual slots and ignores LLM-provided image IDs", () => {
     const resolved = resolvePresentationVisualSlots({
       plan: basePlan(),
@@ -501,5 +544,62 @@ describe("resolvePresentationVisualSlots", () => {
       "img_spinning",
     ]);
     expect(resolvedVisual?.labels).toEqual(["Cultivation", "Ginning", "Spinning"]);
+  });
+
+  it("resolves visualTitleCover opening slide visuals from the image library", () => {
+    const plan = basePlan();
+    plan.deckFrame = {
+      slideCount: 1,
+      masterFrameId: "titleLineFooter",
+      openingSlide: {
+        enabled: true,
+        frameId: "visualTitleCover",
+        title: "Cotton supply chain",
+        visualRequest: {
+          type: "photo",
+          brief: "Cotton field cover image",
+          prompt: "Wide cover photo of cotton plants in a field",
+          visualSlots: [
+            {
+              slotId: "cover",
+              label: "Cover",
+              need: "cotton plants field cover",
+              order: 1,
+            },
+          ],
+        },
+      },
+    };
+
+    const resolved = resolvePresentationVisualSlots({
+      plan,
+      imageCandidates: [
+        {
+          imageId: "img_cover",
+          title: "Cotton plants in the field",
+          presentationMeta: {
+            version: "0.3-presentation-image-meta",
+            visualBaseType: "photo",
+            visibleSubjects: ["cotton plants", "field"],
+            embeddedTextItems: [],
+            relationships: [],
+            composition: "wide landscape cover",
+            semanticTags: ["cotton", "field", "cover"],
+          },
+        },
+      ],
+    });
+
+    expect(resolved.deckFrame?.openingSlide?.visualRequest).toMatchObject({
+      preferredImageId: "img_cover",
+      candidateImageIds: ["img_cover"],
+      labels: ["Cover"],
+      selectionMatches: [
+        expect.objectContaining({
+          status: "selected",
+          imageId: "img_cover",
+        }),
+      ],
+    });
   });
 });

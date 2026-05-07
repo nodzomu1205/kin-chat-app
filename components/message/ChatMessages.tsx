@@ -11,6 +11,8 @@ type Props = {
   sourceDisplayCount?: number;
   onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
   onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
+  onDraftCommand?: (command: string) => void;
+  onRunCommand?: (command: string) => void | Promise<void>;
 };
 
 function TypingIndicator({ text }: { text: string }) {
@@ -72,6 +74,8 @@ export default function ChatMessages({
   sourceDisplayCount = 3,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
+  onDraftCommand,
+  onRunCommand,
 }: Props) {
   return (
     <div
@@ -107,6 +111,8 @@ export default function ChatMessages({
               sourceDisplayCount={sourceDisplayCount}
               onImportYouTubeTranscript={onImportYouTubeTranscript}
               onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
+              onDraftCommand={onDraftCommand}
+              onRunCommand={onRunCommand}
             />
           </div>
         ))}

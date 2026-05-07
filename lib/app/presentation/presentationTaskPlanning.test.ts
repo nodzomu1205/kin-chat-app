@@ -132,6 +132,124 @@ describe("presentationTaskPlanning", () => {
     });
   });
 
+  it("keeps visual resolution metadata in the renderer boundary while hiding it from the first design view", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-stage-one-visuals",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Stage-one visual plan",
+      keyPoints: [],
+      detailBlocks: [
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Study scene",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "adaptiveVisualMain",
+                  layoutIntent: {
+                    primaryImageId: "img_selected",
+                    textPlacement: "overlay",
+                    visualPlacement: "fullBleed",
+                    notePolicy: "minimal",
+                  },
+                  blocks: [
+                    {
+                      id: "block2",
+                      kind: "visual",
+                      styleId: "visualContain",
+                      visualRequest: {
+                        type: "photo",
+                        brief: "Exam study scene",
+                        prompt: "TOEFLや英検教材を使って受験勉強する学生の写真。",
+                        labels: ["TOEFLや英検教材を使った受験勉強風景"],
+                        visualSlots: [{ order: 1, label: "main", need: "student and books" }],
+                        selectionMatches: [
+                          {
+                            label: "main",
+                            status: "selected",
+                            score: 0.91,
+                            threshold: 0.7,
+                            imageId: "img_selected",
+                            imageTitle: "Study desk",
+                          },
+                        ],
+                        preferredImageId: "img_selected",
+                        candidateImageIds: ["img_selected", "img_alt"],
+                        usagePolicy: "useOneBest",
+                        maxVisualItems: 1,
+                      },
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Visual staging",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-05-06T00:00:00.000Z",
+    });
+    const visual = plan.slideFrames[0].blocks[0].visualRequest;
+    if (visual) {
+      visual.selectionMatches = [
+        {
+          slotId: "main",
+          label: "main",
+          need: "student and books",
+          status: "selected",
+          score: 0.91,
+          threshold: 0.7,
+          imageId: "img_selected",
+          imageTitle: "Study desk",
+        },
+      ];
+      visual.preferredImageId = "img_selected";
+      visual.candidateImageIds = ["img_selected", "img_alt"];
+    }
+    const visibleText = formatPresentationTaskPlanText(plan);
+    const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(visibleText).toContain("ビジュアルプロンプト: TOEFLや英検教材を使って受験勉強する学生の写真。");
+    expect(visibleText).toContain("ビジュアル内表示ラベル: TOEFLや英検教材を使った受験勉強風景");
+    expect(visibleText).toContain("選択済み画像: img_selected, img_alt");
+    expect(visibleText).toContain("■ PPTメニュー");
+    expect(visibleText).toContain("[Save](/__gpt-command?mode=run&text=");
+    expect(visibleText).toContain("[Save and create PPT](/__gpt-command?mode=run&text=");
+    expect(visibleText).toContain("[Resolve visual blocks](/__gpt-command?mode=run&text=");
+    expect(visibleText).not.toContain("ビジュアル種別");
+    expect(visibleText).not.toContain("Visual slots:");
+    expect(visibleText).not.toContain("Image match scores:");
+    expect(visibleText).not.toContain("Image ID:");
+    expect(visibleText).not.toContain("Candidate image IDs:");
+    expect(visibleText).not.toContain("Visual usage policy:");
+    expect(visibleText).not.toContain("image=img_selected");
+
+    expect(frameSpec?.slideFrames[0].blocks[0].visualRequest).toMatchObject({
+      type: "photo",
+      preferredImageId: "img_selected",
+      candidateImageIds: ["img_selected", "img_alt"],
+      usagePolicy: "useOneBest",
+      selectionMatches: [
+        {
+          imageId: "img_selected",
+          score: 0.91,
+        },
+      ],
+    });
+  });
+
   it("normalizes deck settings, layout block counts, and list display fields", () => {
     const frameResult: TaskResult = {
       taskId: "task-frame",
@@ -592,7 +710,7 @@ describe("presentationTaskPlanning", () => {
     expect(frame.layoutIntent?.primaryImageId || undefined).toBeUndefined();
     expect(visual?.preferredImageId).toBeUndefined();
     expect(visual?.candidateImageIds).toBeUndefined();
-    expect(visual?.labels).toBeUndefined();
+    expect(visual?.labels).toEqual(["Copied"]);
     expect(frame.layoutIntent?.visualPlacement).toBe("rightGrid");
   });
 
@@ -607,6 +725,8 @@ describe("presentationTaskPlanning", () => {
     expect(constraints).toContain("The visible chat text must show the actual messages that will appear in PPTX.");
     expect(constraints).toContain("compare the key message with visibleSubjects");
     expect(constraints).toContain("visualSlots");
+    expect(constraints).toContain("include the full concrete visual prompt");
+    expect(constraints).toContain("include visualRequest.labels with at least one short in-image display label");
     expect(constraints).toContain("Do not classify a normal photo as visualMain");
     expect(constraints).toContain("Existing assets can only be described through visualRequest.visualSlots");
     expect(constraints).toContain("stored asset selection happens after parsing");
@@ -1664,5 +1784,48 @@ describe("presentationTaskPlanning", () => {
       "消費者参加感",
       "生産者フィードバック",
     ]);
+  });
+  it("hides redundant block headings when the common master already shows slide titles", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "帰国子女高校",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                deckFrame: {
+                  masterFrameId: "titleLineFooter",
+                  slideCount: 1,
+                },
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "東京の帰国子女向け高校の概要",
+                    layoutFrameId: "adaptiveTextMain",
+                    slideRole: "textMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        heading: "東京の帰国子女向け高校の特徴",
+                        items: ["IB認定校が多い", "帰国子女入試がある"],
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].blocks[0].renderStyle?.showHeading).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 # PPT Output Review Checklist
 
-Updated: 2026-05-06
+Updated: 2026-05-07
 
 ## Purpose
 
@@ -85,6 +85,10 @@ Trace issues in this order and record which layer was actually observed:
 | 51 | Unresolved visuals | All-unresolved visual-main slides remain actionable | If every visual slot on a visual-main slide is unresolved, the design/PPTX should clearly indicate what visual should be inserted later, preserving a clean replacement target for user-provided assets or image generation rather than silently substituting weak library images | PPTX text inspection + future replacement-flow regression |
 | 52 | Visual type consistency | Diagram requests are not misrepresented | If a slide asks for a diagram but only photos are available, the design should make that limitation explicit: either keep an unresolved diagram/replacement target or label the selected photos as supporting references, not as a completed diagram | design text + chat output + frameSpec review |
 | 53 | Entity-specific slots | Unsupported country/location-specific visual slots remain useful | If visual slots assert countries or locations not supported by image metadata, they may remain unresolved when that gives the user a clear next action: provide matching assets, enable image generation, or replace the placeholder later | visual selection report + PPTX review |
+| 54 | Two-stage workflow | Stage 1 does not select images prematurely | Initial design text shows visual prompts and labels, but no image IDs, match scores, visual slots, or usage policies until Resolve visuals is run | `presentationTaskPlanning.test.ts`, design text review |
+| 55 | Two-stage workflow | Save preserves selected images | After `Resolve visuals`, pressing `Save` keeps selected opening/body image IDs in the existing library card | `presentationGptFlow.test.ts`, library review |
+| 56 | Two-stage workflow | Cover image selection is independent | `visualTitleCover` selection remains when later resolving body visual blocks, and body selections do not clear the cover image | `presentationGptFlow.test.ts`, PPTX review |
+| 57 | Obsolete paths | PPTX direct-edit approval remains retired | No live UI or task path imports the retired direct-edit approval module/hook | code search + build |
 
 ## Required Verification Before User Retest
 

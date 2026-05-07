@@ -280,6 +280,17 @@ export function formatPresentationSlideFramePlanLines(
       lines.push(
         `- Opening slide: ${deckFrame.openingSlide.frameId} / ${deckFrame.openingSlide.title || "deck title"}`
       );
+      if (
+        deckFrame.openingSlide.frameId === "visualTitleCover" &&
+        deckFrame.openingSlide.visualRequest
+      ) {
+        formatStageOneVisualDisplayLines({
+          id: "openingVisual",
+          kind: "visual",
+          styleId: "visualCover",
+          visualRequest: deckFrame.openingSlide.visualRequest,
+        }).forEach((line) => lines.push(line));
+      }
     }
     if (deckFrame.closingSlide?.enabled) {
       lines.push(
@@ -308,9 +319,6 @@ export function formatPresentationSlideFramePlanLines(
       lines.push(
         [
           "Layout intent:",
-          frame.layoutIntent.primaryImageId
-            ? `image=${frame.layoutIntent.primaryImageId}`
-            : "",
           frame.layoutIntent.textPlacement
             ? `text=${frame.layoutIntent.textPlacement}`
             : "",
@@ -582,6 +590,7 @@ function normalizeVisualRequest(value: unknown): PresentationTaskVisualRequest |
   const prompt = stringValue(candidate.prompt || candidate.generationPrompt);
   const promptNote = stringValue(candidate.promptNote || candidate.promptStatus || candidate.note);
   const visualSlots = normalizeVisualSlots(candidate.visualSlots || candidate.slots);
+  const labels = stringArray(candidate.labels || candidate.displayLabels || candidate.label);
   const usagePolicy = supportedVisualUsagePolicy(candidate.usagePolicy);
   const maxVisualItems = positiveInteger(candidate.maxVisualItems);
   if (
@@ -598,6 +607,7 @@ function normalizeVisualRequest(value: unknown): PresentationTaskVisualRequest |
     visualSlots: visualSlots.length > 0 ? visualSlots : undefined,
     usagePolicy,
     maxVisualItems,
+    labels: labels.length > 0 ? labels : undefined,
     renderStyle: normalizeVisualRenderStyle(candidate.renderStyle),
   };
 }
@@ -859,52 +869,34 @@ function formatReadableBlockDisplayLines(block: PresentationTaskSlideBlock) {
     block.items.forEach((item) => lines.push(`    - ${item}`));
   }
   if (block.visualRequest) {
-    lines.push(`  - ビジュアル種別: ${block.visualRequest.type}`);
-    if (block.visualRequest.brief) {
-      lines.push(`  - ビジュアル概要: ${block.visualRequest.brief}`);
-    }
-    if (block.visualRequest.prompt) {
-      lines.push(`  - ビジュアルプロンプト: ${block.visualRequest.prompt}`);
-    } else {
-      lines.push(
-        `  - Visual prompt: prompt needed${block.visualRequest.promptNote ? ` (${block.visualRequest.promptNote})` : ""}`
-      );
-    }
-    if (block.visualRequest.visualSlots?.length) {
-      lines.push("  - Visual slots:");
-      block.visualRequest.visualSlots
-        .slice()
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
-        .forEach((slot) => lines.push(`    - ${slot.label}: ${slot.need}`));
-    }
-    if (block.visualRequest.labels?.length) {
-      lines.push("  - ビジュアル内表示ラベル:");
-      block.visualRequest.labels.forEach((label) => lines.push(`    - ${label}`));
-    }
-    if (block.visualRequest.selectionMatches?.length) {
-      lines.push("  - Image match scores:");
-      block.visualRequest.selectionMatches.forEach((match) => {
-        const target = match.imageId ? `${match.imageId}${match.imageTitle ? ` (${match.imageTitle})` : ""}` : "unresolved";
-        lines.push(
-          `    - ${match.label}: ${match.status} / score ${match.score} / threshold ${match.threshold} / ${target}`
-        );
-      });
-    }
-    if (block.visualRequest.preferredImageId) {
-      lines.push(`  - Image ID: ${block.visualRequest.preferredImageId}`);
-    } else if (block.visualRequest.asset?.imageId) {
-      lines.push(`  - Image ID: ${block.visualRequest.asset.imageId}`);
-    }
-    if (block.visualRequest.candidateImageIds?.length) {
-      lines.push(`  - Candidate image IDs: ${block.visualRequest.candidateImageIds.join(", ")}`);
-    }
-    if (block.visualRequest.usagePolicy) {
-      lines.push(`  - Visual usage policy: ${block.visualRequest.usagePolicy}`);
-    }
-    if (block.visualRequest.maxVisualItems) {
-      lines.push(`  - Max visual items: ${block.visualRequest.maxVisualItems}`);
-    }
+    formatStageOneVisualDisplayLines(block).forEach((line) => lines.push(line));
+    return lines;
   }
+  return lines;
+}
+
+function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
+  const visual = block.visualRequest;
+  if (!visual) return [];
+
+  const lines: string[] = [];
+  if (visual.prompt) {
+    lines.push(`  - ビジュアルプロンプト: ${visual.prompt}`);
+  } else {
+    lines.push(`  - Visual prompt: prompt needed${visual.promptNote ? ` (${visual.promptNote})` : ""}`);
+  }
+
+  const displayLabel = visual.labels?.find((label) => label.trim()) || visual.brief;
+  if (displayLabel) {
+    lines.push(`  - ビジュアル内表示ラベル: ${displayLabel}`);
+  }
+  const selectedImageIds = Array.from(
+    new Set([visual.preferredImageId, ...(visual.candidateImageIds || [])].filter(Boolean))
+  );
+  if (selectedImageIds.length > 0) {
+    lines.push(`  - 選択済み画像: ${selectedImageIds.join(", ")}`);
+  }
+
   return lines;
 }
 

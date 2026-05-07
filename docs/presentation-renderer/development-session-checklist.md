@@ -1,6 +1,6 @@
 # PPT Development Session Checklist
 
-Updated: 2026-05-06
+Updated: 2026-05-07
 
 ## Purpose
 
@@ -14,6 +14,8 @@ This checklist complements
 
 - `ppt-output-review-checklist.md` is for reviewing a generated design/PPTX.
 - this document is for managing the development session around that review.
+- `two-stage-visual-workflow-checklist.md` is for the staged design-first,
+  visual-resolution-second workflow.
 
 ## Session Setup
 
@@ -81,6 +83,105 @@ Before asking the user for another live generation or closing the session:
    - verification results
    - remaining issues and next session plan
 6. Commit only after the above is recorded.
+
+## 2026-05-07 Session Record
+
+### Development Goal
+
+Finalize the PPT two-stage visual workflow as the main path:
+
+- Stage 1: editable PPT design with visual prompts and in-image labels
+- Stage 2: explicit visual resolution for body blocks and `visualTitleCover`
+- rendering: selected images hydrate at PPTX creation time, unresolved visuals
+  remain useful placeholders
+
+### Main Implementation Work
+
+- Removed the retired PPTX direct-edit approval route and related library UI.
+- Removed old direct-edit task prompt/client wiring from the PPT command path.
+- Kept only the supported PPT menu commands active:
+  - `Save`
+  - `Save and create PPT`
+  - `Resolve visual blocks`
+  - `Resolve visuals`
+- Added `visualTitleCover` opening-slide image selection to Resolve visuals.
+- Fixed opening-slide image persistence when resolving body visuals later.
+- Fixed Save after Resolve by syncing PPT command assistant messages into
+  `recentMessages`, so immediately pressing `Save` uses the updated structured
+  plan even before the library card props refresh.
+- Preserved selected image IDs during Save when an older recent design does not
+  carry image selections.
+- Hid redundant text/list headings for `titleLineFooter` slides when the heading
+  duplicates the slide title.
+
+### Code Areas Touched
+
+- presentation command flow/parser/draft:
+  - `lib/app/presentation/presentationGptFlow.ts`
+  - `lib/app/presentation/presentationCommandParser.ts`
+  - `lib/app/presentation/presentationCommandDraft.ts`
+- presentation planning/display/library:
+  - `lib/app/presentation/presentationTaskPlanning.ts`
+  - `lib/app/presentation/presentationPlanLibrary.ts`
+  - `lib/app/presentation/presentationPlanChatDisplay.ts`
+  - `lib/app/presentation/presentationVisualSelection.ts`
+  - `lib/app/presentation/presentationSlideFrames.ts`
+- GPT/library UI:
+  - `hooks/useReferenceLibraryUiActions.ts`
+  - `components/message/*`
+  - `components/panels/gpt/*`
+- retired direct-edit files:
+  - `hooks/usePptDirectEditApprovals.ts`
+  - `lib/app/presentation/presentationDirectEditApproval.ts`
+  - `lib/app/presentation/presentationDirectEditApproval.test.ts`
+- docs:
+  - `docs/presentation-renderer/two-stage-visual-workflow-checklist.md`
+  - `docs/presentation-renderer/development-session-checklist.md`
+  - `docs/presentation-renderer/next-implementation-notes.md`
+
+### Verification Completed
+
+Focused verification run during the final cleanup:
+
+- `npm test -- lib/app/presentation/presentationGptFlow.test.ts lib/app/presentation/presentationCommandDraft.test.ts lib/app/presentation/presentationVisualSelection.test.ts`: passed
+- `npm run build`: passed
+- cleanup search across `components hooks lib types`:
+  - no remaining live `DirectEdit`, `PptDirectEdit`,
+    `presentationDirectEdit`, or `usePptDirectEdit` symbols
+  - remaining `generateImages` / `imageMode` references are render payload
+    fields used after the two-stage workflow has selected images
+  - remaining `Images: on` reference in app code is a deprecated-command parser
+    test, not a live primary route
+
+### User-Confirmed Result
+
+The user confirmed the current PPT behavior is良好:
+
+- Stage 1 design output is usable.
+- Save updates the existing library card.
+- Resolve visual blocks works for body visuals and opening title visuals.
+- Selected images remain visible in design/resolve views.
+- Save preserves selected opening/body image data.
+- Library `[見]` and `[PPT]` paths now use selected images correctly.
+- Image-free placeholder PPTX and resolved-image PPTX both remain useful.
+
+### Remaining Watch Items
+
+- API image generation from Resolve visual blocks remains a future branch; the
+  current stable path is library selection plus placeholders.
+- Old historical handoff docs still mention retired experiments. Treat those as
+  archive records, not active implementation guidance.
+
+### Next Session Plan
+
+Start from the two-stage visual workflow as the canonical PPT path. Before
+adding features, first verify that the change preserves:
+
+1. Stage 1 editable design without premature image selection.
+2. Stage 2 explicit visual selection for body and opening visuals.
+3. Save overwriting the existing library card without losing image IDs.
+4. Render-time image hydration only.
+5. Placeholder output for unresolved visuals.
 
 ## 2026-05-06 Session Record
 

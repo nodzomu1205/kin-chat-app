@@ -29,7 +29,6 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
-import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import { runAutoPrepPresentationTask } from "@/lib/app/gpt-task/gptTaskClient";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
@@ -203,13 +202,10 @@ export async function handlePptDesignRequestGate(args: {
       imageLibraryContext,
     });
     const data = await runAutoPrepPresentationTask(input, "sys-ppt-design-request");
-    const plan = resolvePresentationVisualSlots({
-      imageCandidates,
-      plan: buildPresentationTaskPlan({
-        title,
-        result: data?.parsed,
-        rawText: data?.raw,
-      }),
+    const plan = buildPresentationTaskPlan({
+      title,
+      result: data?.parsed,
+      rawText: data?.raw,
     });
     const designText = formatPresentationTaskPlanText(plan);
     const responseText = [
@@ -229,7 +225,7 @@ export async function handlePptDesignRequestGate(args: {
         id: generateId(),
         role: "gpt",
         text: responseText,
-        meta: { kind: "task_info", sourceType: "manual" },
+        meta: { kind: "task_info", sourceType: "manual", presentationPlan: plan },
       },
     ]);
   } catch (error) {

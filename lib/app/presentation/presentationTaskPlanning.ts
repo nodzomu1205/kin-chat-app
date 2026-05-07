@@ -148,7 +148,8 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "Choose slide count from the material and strategy. If the source naturally implies 5-7 slides, create 5-7 slideFrames.",
     "Do not collapse a multi-topic source into the schema minimum. Cover each distinct process group, country/context group, risk group, and response/initiative group at a natural deck granularity.",
     "The visible chat text must show the actual messages that will appear in PPTX. Do not replace display text or items with counts such as '+ 6 items'.",
-    "For visual blocks, include the full visual prompt in visualRequest.prompt. If the visual is too complex to prompt yet, leave prompt empty and explain why in visualRequest.promptNote.",
+    "For every visual block, include the full concrete visual prompt in visualRequest.prompt. Do not leave it empty in initial creation; write a prompt for the intended placeholder/API image even before any image is selected.",
+    "For every visual block, include visualRequest.labels with at least one short in-image display label in the same language as the deck. This label is shown in the editable Stage 1 design and may appear in placeholders.",
     "If image-library candidates are provided, do not refer to specific image-library assets by identifier. Existing assets can only be described through visualRequest.visualSlots; stored asset selection happens after parsing.",
     "For each visual block that should use existing image-library assets, provide visualRequest.visualSlots. Each slot must include slotId, label, need, optional keywords, and order.",
     "Use one visualSlot for each distinct visual meaning that should be represented. For example, upstream / midstream / downstream should be three ordered slots when the slide text uses that order.",
@@ -592,10 +593,23 @@ export function buildFramePresentationSpecFromTaskPlan(plan: PresentationTaskPla
   }
   const slideFrames = normalizePresentationVisualMainPolicy(plan.slideFrames).map((frame) => {
     const expandedFrame = expandMultiVisualCandidateFrame(frame);
+    const title = sanitizeReadableSlideFrameTitle(
+      sanitizeSlideFrameTitle(expandedFrame.title)
+    );
+    const effectiveMasterFrameId =
+      expandedFrame.masterFrameId ||
+      plan.deckFrame?.masterFrameId ||
+      "titleLineFooter";
     return {
       ...expandedFrame,
-      title: sanitizeReadableSlideFrameTitle(sanitizeSlideFrameTitle(expandedFrame.title)),
-      blocks: expandedFrame.blocks.map(applyBlockStylePreset),
+      title,
+      blocks: expandedFrame.blocks.map((block) =>
+        applyTitleLineFooterHeadingPolicy({
+          block: applyBlockStylePreset(block),
+          slideTitle: title,
+          masterFrameId: effectiveMasterFrameId,
+        })
+      ),
     };
   });
   const deckFrame = syncDeckFrameSlideCount(plan.deckFrame, slideFrames);
@@ -728,8 +742,9 @@ function findStrategyValue(items: string[], key: string) {
 
 export function formatPresentationTaskPlanText(plan: PresentationTaskPlan) {
   const lines: string[] = [];
+  const documentId = resolvePresentationPlanDocumentId(plan);
   lines.push("\u3010PPT\u8a2d\u8a08\u66f8\u3011");
-  lines.push(`Document ID: ${resolvePresentationPlanDocumentId(plan)}`);
+  lines.push(`Document ID: ${documentId}`);
   if (plan.sourceSummary) lines.push(`\u6982\u8981: ${plan.sourceSummary}`);
 
   if (plan.extractedItems.length > 0) {
@@ -779,7 +794,81 @@ export function formatPresentationTaskPlanText(plan: PresentationTaskPlan) {
     plan.nextSuggestions.forEach((item) => lines.push(`- ${item}`));
   }
 
+  lines.push("", "\u25a0 PPT\u30e1\u30cb\u30e5\u30fc");
+  lines.push(
+    `- ${buildPresentationCommandLink("Save", ["/ppt", `Document ID: ${documentId}`, "Save"], "run")}`
+  );
+  lines.push(
+    `- ${buildPresentationCommandLink("Save and create PPT", ["/ppt", `Document ID: ${documentId}`, "Save and create PPT"], "run")}`
+  );
+  lines.push(
+    `- ${buildPresentationCommandLink("Resolve visual blocks", ["/ppt", `Document ID: ${documentId}`, "Resolve visual blocks"], "run")}`
+  );
+
   return lines.join("\n");
+}
+
+function applyTitleLineFooterHeadingPolicy(args: {
+  block: PresentationTaskSlideFrame["blocks"][number];
+  slideTitle: string;
+  masterFrameId?: string;
+}) {
+  if (args.masterFrameId !== "titleLineFooter") return args.block;
+  if (!args.block.heading || args.block.visualRequest) return args.block;
+  if (!isRedundantSlideHeading(args.slideTitle, args.block.heading)) {
+    return args.block;
+  }
+  return {
+    ...args.block,
+    renderStyle: {
+      ...args.block.renderStyle,
+      showHeading: false,
+    },
+  };
+}
+
+function normalizeComparableText(value: string) {
+  return value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+function textBigrams(value: string) {
+  const chars = Array.from(value);
+  if (chars.length <= 1) return chars;
+  const bigrams: string[] = [];
+  for (let index = 0; index < chars.length - 1; index += 1) {
+    bigrams.push(`${chars[index]}${chars[index + 1]}`);
+  }
+  return bigrams;
+}
+
+function isRedundantSlideHeading(slideTitle: string, heading: string) {
+  const title = normalizeComparableText(slideTitle);
+  const normalizedHeading = normalizeComparableText(heading);
+  if (!title || !normalizedHeading) return false;
+  if (title === normalizedHeading) return true;
+  if (
+    Math.min(title.length, normalizedHeading.length) >= 6 &&
+    (title.includes(normalizedHeading) || normalizedHeading.includes(title))
+  ) {
+    return true;
+  }
+
+  const titleBigrams = new Set(textBigrams(title));
+  const headingBigrams = textBigrams(normalizedHeading);
+  if (titleBigrams.size === 0 || headingBigrams.length === 0) return false;
+  const overlap = headingBigrams.filter((bigram) => titleBigrams.has(bigram))
+    .length;
+  return overlap / Math.min(titleBigrams.size, headingBigrams.length) >= 0.68;
+}
+
+export function buildPresentationCommandLink(
+  label: string,
+  commandLines: string[],
+  mode: "draft" | "run" = "draft"
+) {
+  return `[${label}](/__gpt-command?mode=${mode}&text=${encodeURIComponent(
+    commandLines.join("\n")
+  )})`;
 }
 export function ensurePresentationPlanDocumentId(
   plan: PresentationTaskPlan

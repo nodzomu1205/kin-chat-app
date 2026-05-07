@@ -10,6 +10,7 @@ import GptSettingsWorkspace, {
   type SettingsWorkspaceView,
 } from "@/components/panels/gpt/GptSettingsWorkspace";
 import GptToolbar from "@/components/panels/gpt/GptToolbar";
+import { mergePresentationResolveVisualCommandDraft } from "@/lib/app/presentation/presentationCommandDraft";
 import type {
   GptInstructionMode,
   GptPanelProps,
@@ -46,7 +47,6 @@ import {
 import { formatUpdatedAt } from "@/components/panels/gpt/gptDrawerShared";
 import { sumUsages } from "@/components/panels/gpt/gptPanelUtils";
 import { GPT_COMPOSER_TEXT, GPT_PANEL_TEXT } from "@/components/panels/gpt/gptUiText";
-import { usePptDirectEditApprovals } from "@/hooks/usePptDirectEditApprovals";
 
 function headerIconButtonStyle(params: {
   active: boolean;
@@ -259,8 +259,6 @@ export default function GptPanel(props: GptPanelProps) {
   const hasPendingMemoryApprovals =
     settings.pendingMemoryRuleCandidates.length > 0;
   const hasPendingSysApprovals = protocol.pendingIntentCandidates.length > 0;
-  const pptDirectEditApprovals = usePptDirectEditApprovals();
-  const hasPendingLibraryApprovals = pptDirectEditApprovals.pending.length > 0;
   const busy = isGptPanelBusy({
     gptLoading: chat.loading,
     ingestLoading: settings.ingestLoading,
@@ -388,7 +386,7 @@ export default function GptPanel(props: GptPanelProps) {
             <HeaderIconButton
               label={GPT_PANEL_TEXT.librarySettings}
               active={viewState.activeSettingsWorkspace === "library"}
-              hasPending={hasPendingLibraryApprovals}
+              hasPending={false}
               onClick={() => toggleSettingsWorkspace("library")}
             >
               <LibrarySettingsIcon />
@@ -573,6 +571,15 @@ export default function GptPanel(props: GptPanelProps) {
             sourceDisplayCount={settings.sourceDisplayCount}
             onImportYouTubeTranscript={references.onImportYouTubeTranscript}
             onSendYouTubeTranscriptToKin={references.onSendYouTubeTranscriptToKin}
+            onDraftCommand={(command) =>
+              chat.setGptInput((current) =>
+                mergePresentationResolveVisualCommandDraft(current, command)
+              )
+            }
+            onRunCommand={(command) => {
+              chat.setGptInput(command);
+              return chat.sendToGpt("normal", command);
+            }}
           />
         </div>
         </div>

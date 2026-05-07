@@ -20,7 +20,6 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
-import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import { buildPreparedTaskDraftUpdate } from "@/lib/app/task-draft/taskDraftFlowProjection";
 import {
   buildGptTaskPrepSource,
@@ -176,13 +175,10 @@ export async function runPrepTaskFromInputFlow(
       ? await runAutoPrepPresentationTask(prepInput, "gpt-input-ppt")
       : await runAutoPrepTask(prepInput, "gpt-input");
     const presentationPlan = presentationMode
-      ? resolvePresentationVisualSlots({
-          imageCandidates: getTaskDraftImageLibraryCandidates(args),
-          plan: buildPresentationTaskPlan({
-            title: resolvedTitle,
-            result: data?.parsed,
-            rawText: data?.raw,
-          }),
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
         })
       : null;
     const taskText = presentationMode
@@ -195,6 +191,7 @@ export async function runPrepTaskFromInputFlow(
       meta: {
         kind: "task_prep",
         sourceType: "gpt_input",
+        ...(presentationPlan ? { presentationPlan } : {}),
       },
     };
 
@@ -351,13 +348,10 @@ export async function runUpdateTaskFromInputFlow(
       ? await runAutoUpdatePresentationTask(mergedInput, "task-update-ppt")
       : await runAutoPrepTask(mergedInput, "task-update");
     const presentationPlan = presentationMode
-      ? resolvePresentationVisualSlots({
-          imageCandidates: getTaskDraftImageLibraryCandidates(args),
-          plan: buildPresentationTaskPlan({
-            title: resolvedTitle,
-            result: data?.parsed,
-            rawText: data?.raw,
-          }),
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
         })
       : undefined;
     const taskText = presentationMode
@@ -370,6 +364,7 @@ export async function runUpdateTaskFromInputFlow(
       meta: {
         kind: "task_prep",
         sourceType: "manual",
+        ...(presentationPlan ? { presentationPlan } : {}),
       },
     };
 
@@ -523,13 +518,10 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       ? await runAutoUpdatePresentationTask(taskInput, "task-update-last-gpt-ppt")
       : await runAutoPrepTask(taskInput, "task-update-last-gpt");
     const presentationPlan = presentationMode
-      ? resolvePresentationVisualSlots({
-          imageCandidates: getTaskDraftImageLibraryCandidates(args),
-          plan: buildPresentationTaskPlan({
-            title: resolvedTitle,
-            result: data?.parsed,
-            rawText: data?.raw,
-          }),
+      ? buildPresentationTaskPlan({
+          title: resolvedTitle,
+          result: data?.parsed,
+          rawText: data?.raw,
         })
       : undefined;
     const taskText = presentationMode
@@ -547,6 +539,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
       meta: {
         kind: "task_prep",
         sourceType: "gpt_input",
+        ...(presentationPlan ? { presentationPlan } : {}),
       },
     };
 

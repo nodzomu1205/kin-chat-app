@@ -3,9 +3,11 @@ import Image from "next/image";
 
 type Props = {
   text: string;
+  onDraftCommand?: (command: string) => void;
+  onRunCommand?: (command: string) => void | Promise<void>;
 };
 
-export default function MessageContent({ text }: Props) {
+export default function MessageContent({ text, onDraftCommand, onRunCommand }: Props) {
   return (
     <div
       style={{
@@ -17,12 +19,15 @@ export default function MessageContent({ text }: Props) {
         overflowWrap: "anywhere",
       }}
     >
-      {renderMessageText(text)}
+      {renderMessageText(text, { onDraftCommand, onRunCommand })}
     </div>
   );
 }
 
-function renderMessageText(text: string) {
+function renderMessageText(
+  text: string,
+  actions: Pick<Props, "onDraftCommand" | "onRunCommand"> = {}
+) {
   const parts: React.ReactNode[] = [];
   const pattern = /(!?)\[([^\]]+)\]\((\/[^)\s]+|https?:\/\/[^)\s]+|blob:[^)\s]+|data:image\/[^)\s]+)\)|(https?:\/\/[^\s]+|\/generated-presentations\/[^\s]+|blob:[^\s]+)/g;
   let lastIndex = 0;
@@ -65,6 +70,7 @@ function renderMessageText(text: string) {
     const isLegacyGeneratedPresentation = href.startsWith(
       "/generated-presentations/"
     );
+    const commandAction = parseCommandActionHref(href);
     const isBlobPresentation = href.startsWith("blob:");
     const isGeneratedPresentation =
       isLegacyGeneratedPresentation || isBlobPresentation;
@@ -77,6 +83,18 @@ function renderMessageText(text: string) {
       <a
         key={`${href}-${match.index}`}
         href={href}
+        onClick={
+          commandAction
+            ? (event) => {
+                event.preventDefault();
+                if (commandAction.mode === "run") {
+                  void actions.onRunCommand?.(commandAction.command);
+                } else {
+                  actions.onDraftCommand?.(commandAction.command);
+                }
+              }
+            : undefined
+        }
         target={isGeneratedPresentation ? undefined : "_blank"}
         rel={isGeneratedPresentation ? undefined : "noreferrer"}
         download={downloadName}
@@ -97,4 +115,19 @@ function renderMessageText(text: string) {
   }
 
   return parts;
+}
+
+function parseCommandActionHref(href: string) {
+  if (!href.startsWith("/__gpt-command?")) return null;
+  try {
+    const params = new URLSearchParams(href.slice(href.indexOf("?") + 1));
+    const command = params.get("text") || "";
+    if (!command.trim()) return null;
+    return {
+      mode: params.get("mode") === "run" ? "run" : "draft",
+      command,
+    };
+  } catch {
+    return null;
+  }
 }

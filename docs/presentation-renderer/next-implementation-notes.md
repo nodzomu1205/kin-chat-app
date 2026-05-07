@@ -121,15 +121,20 @@ Candidate additions:
 - Optional `visualBrief` field for GPT to describe desired imagery without
   directly generating assets
 
-For image assets, use the current image library before generating new images
-when the user asks for `Images: on` or `Images: on, library, API`.
+For image assets, keep the current two-stage workflow as the primary path:
 
-Planned `/ppt` image modes:
+1. Stage 1 creates an editable PPT design with visual prompts and in-image
+   labels only.
+2. Stage 2, entered through `Resolve visual blocks`, lets the user select
+   library images for each visual block and the `visualTitleCover` opening
+   slide.
+3. PPTX creation hydrates only the selected image IDs at render time. If a
+   visual is unresolved, the renderer should keep a useful placeholder instead
+   of treating the deck as failed.
 
-- `Images: off`: no images
-- `Images: on, library`: image library only
-- `Images: on, API`: generate new images only
-- `Images: on` or `Images: on, library, API`: library first, API fallback
+Do not reintroduce the old `Images: on, library/API/hybrid` command path as a
+primary image-selection route. Those commands are retained only as deprecated
+compatibility inputs that route users back to the two-stage workflow.
 
 Image-library matching needs image metadata:
 
@@ -184,22 +189,19 @@ Review goals:
 - Decide whether debug output belongs in internal metadata, logs, or dev-only UI
   rather than in the user-facing PPT design text.
 
-### 5. Direct Edit Capacity And Retry
+### 5. Retired Direct Edit Path
 
-PPT direct edit is now approval-based, but the next improvement should be
-designed rather than patched locally.
+PPTX direct edit and its approval queue have been retired. Do not rebuild that
+path unless a future design explicitly reintroduces it.
 
-Open items:
+Current editing model:
 
-- add a retry/reinterpret button that sends edited target/instruction/proposal
-  context back through the direct-edit interpreter
-- give the interpreter layout-capacity hints so proposed text is concise enough
-  for the target block
-- surface overflow/fit risk in approval before rendering where practical
-- handle large structural rewrites by sending the user back to PPT design
-  revision instead of trying to force them into one direct block edit
+- revise the PPT design text in Stage 1
+- save the design back to the existing presentation-plan library card
+- resolve visual blocks in Stage 2
+- render from the saved structured plan
 
-The expected outcome is a smaller set of prompts with clearer ownership:
+The expected outcome remains a smaller set of prompts with clearer ownership:
 
 - one prompt for rich source extraction and strategy drafting
 - one prompt for slide frame selection and slot filling
