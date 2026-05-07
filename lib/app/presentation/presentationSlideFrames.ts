@@ -880,6 +880,22 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
   if (!visual) return [];
 
   const lines: string[] = [];
+  const slots = (visual.visualSlots || [])
+    .filter((slot) => slot.need.trim() || slot.label.trim())
+    .slice()
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  if (slots.length > 0) {
+    slots.forEach((slot, index) => {
+      lines.push(`  - Visual slot ${index + 1}:`);
+      lines.push(`    - ビジュアルプロンプト: ${slot.need}`);
+      lines.push(`    - ビジュアル内表示ラベル: ${slot.label || visual.labels?.[index] || visual.brief || "未設定"}`);
+      const selectedImageId = selectedImageIdForVisualSlot(visual, slot.slotId, index);
+      if (selectedImageId) {
+        lines.push(`    - 選択済み画像: ${selectedImageId}`);
+      }
+    });
+    return lines;
+  }
   if (visual.prompt) {
     lines.push(`  - ビジュアルプロンプト: ${visual.prompt}`);
   } else {
@@ -898,6 +914,21 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
   }
 
   return lines;
+}
+
+function selectedImageIdForVisualSlot(
+  visual: NonNullable<PresentationTaskSlideBlock["visualRequest"]>,
+  slotId: string,
+  slotIndex: number
+) {
+  const match = (visual.selectionMatches || []).find(
+    (item) => item.slotId === slotId && item.status === "selected" && item.imageId
+  );
+  if (match?.imageId) return match.imageId;
+  const selectedIds = Array.from(
+    new Set([visual.preferredImageId, ...(visual.candidateImageIds || [])].filter(Boolean))
+  );
+  return selectedIds[slotIndex] || (slotIndex === 0 ? selectedIds[0] || "" : "");
 }
 
 function supportedMasterFrameId(value: unknown): PresentationTaskMasterFrameId {

@@ -1,6 +1,6 @@
 # Engineering Judgment Policy
 
-Updated: 2026-05-05
+Updated: 2026-05-07
 
 ## Purpose
 
@@ -50,6 +50,9 @@ interpretation, routing, or other judgment-heavy logic.
    workflows, this means checking prompts, schemas, examples, parsers,
    normalizers, persistence, renderer inputs, and rendered artifacts wherever
    those paths can be inspected without another user-run generation.
+   A fix is not ready for user live testing just because the immediately
+   edited function or visible symptom looks correct. Trace and verify the full
+   workflow segment that the user will exercise.
 
 7. State verification scope honestly.
 
@@ -64,3 +67,16 @@ interpretation, routing, or other judgment-heavy logic.
    review cycles require extra diligence. Static inspection, focused unit tests,
    schema tests, parser round-trips, and artifact inspection should happen
    before requesting another live run from the user.
+
+9. Gate high-cost product flows before user handoff.
+
+   For multi-step flows such as PPT design, visual resolution, library image
+   selection, and PPTX creation, do not hand work to the user after checking
+   only the last changed line or one narrow helper. Before user live testing,
+   run every practical local check that covers the whole path: design
+   generation/formatting, command links, draft insertion, save/reload,
+   selection and deselection, chat display, renderer input, artifact creation,
+   UTF-8 validation, full app tests where feasible, and package-specific tests
+   such as the presentation renderer suite. If an actual browser/API/manual
+   step remains impossible to automate locally, explicitly say that this is the
+   remaining verification boundary.

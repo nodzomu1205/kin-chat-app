@@ -6,16 +6,11 @@ export async function buildPresentationTaskPlanTextWithImagePreviews(
   plan: PresentationTaskPlan
 ) {
   const text = formatPresentationTaskPlanText(plan);
-  const imageIdGroups = collectPresentationPlanSelectedImageIdGroups(plan);
-  if (imageIdGroups.length === 0) return text;
-
-  let groupIndex = 0;
   const lines: string[] = [];
   for (const line of text.split(/\r?\n/)) {
     lines.push(line);
     if (!isSelectedImageLine(line)) continue;
-    const imageIds = imageIdGroups[groupIndex] || [];
-    groupIndex += 1;
+    const imageIds = extractImageIdsFromSelectedImageLine(line);
     for (const imageId of imageIds) {
       const imagePath = await createPresentationImagePreviewUrl(imageId);
       if (imagePath) lines.push(`![${imageId}](${imagePath})`);
@@ -47,21 +42,10 @@ async function createPresentationImagePreviewUrl(imageId: string) {
   );
 }
 
-function collectPresentationPlanSelectedImageIdGroups(plan: PresentationTaskPlan) {
-  const openingImageIds = collectSelectedVisualImageIds(
-    plan.deckFrame?.openingSlide?.visualRequest
-  );
-  return [
-    ...(openingImageIds.length > 0 ? [openingImageIds] : []),
-    ...plan.slideFrames.flatMap((frame) =>
-      frame.blocks.flatMap((block) => {
-        const imageIds = collectSelectedVisualImageIds(block.visualRequest);
-        return imageIds.length > 0 ? [imageIds] : [];
-      })
-    ),
-  ];
-}
-
 function isSelectedImageLine(line: string) {
   return line.includes("選択済み画像:") || line.includes("Image ID:");
+}
+
+function extractImageIdsFromSelectedImageLine(line: string) {
+  return Array.from(new Set(line.match(/\bimg_[A-Za-z0-9_.:-]+/g) || []));
 }

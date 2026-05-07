@@ -69,6 +69,43 @@ describe("LibraryDrawer", () => {
     expect(html).not.toContain(">検索データ<");
   });
 
+  it("uses the controlled library view instead of replaying a stale image-view request", () => {
+    const items: ReferenceLibraryItem[] = [
+      {
+        id: "doc:1",
+        sourceId: "doc-1",
+        itemType: "ingested_file",
+        title: "Normal library item",
+        subtitle: "Document",
+        summary: "Document summary",
+        excerptText: "Document detail",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "img:1",
+        sourceId: "img-1",
+        itemType: "ingested_file",
+        artifactType: "generated_image",
+        title: "Image library item",
+        subtitle: "Image",
+        summary: "Image summary",
+        excerptText: "Image detail",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    const html = renderLibraryDrawer({
+      referenceLibraryItems: items,
+      activeLibraryView: "library",
+      libraryViewRequest: { view: "images", key: 1 },
+    });
+
+    expect(html).toContain("Normal library item");
+    expect(html).not.toContain("Image library item");
+  });
+
   it("renders the expanded action controls with import actions and aggregation modes", () => {
     const html = renderToStaticMarkup(
       <LibraryImportControls

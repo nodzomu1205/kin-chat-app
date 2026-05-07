@@ -108,6 +108,9 @@ export function buildGeneratedImageDisplayText(args: {
     payload.presentationMeta?.visibleSubjects?.length
       ? `Visible subjects: ${payload.presentationMeta.visibleSubjects.join(", ")}`
       : "",
+    payload.presentationMeta?.namedEntities
+      ? formatNamedEntities(payload.presentationMeta.namedEntities)
+      : "",
     payload.presentationMeta
       ? `Composition: ${payload.presentationMeta.composition}`
       : "",
@@ -143,4 +146,18 @@ export function buildGeneratedImageDisplayText(args: {
   ]
     .filter((line) => line !== "")
     .join("\n");
+}
+
+function formatNamedEntities(
+  namedEntities: NonNullable<GeneratedImageLibraryPayload["presentationMeta"]>["namedEntities"]
+) {
+  if (!namedEntities) return "";
+  const parts = [
+    namedEntities.places.length ? `places=${namedEntities.places.join(", ")}` : "",
+    namedEntities.stations.length ? `stations=${namedEntities.stations.join(", ")}` : "",
+    namedEntities.people.length ? `people=${namedEntities.people.join(", ")}` : "",
+    namedEntities.organizations.length ? `organizations=${namedEntities.organizations.join(", ")}` : "",
+    namedEntities.landmarks.length ? `landmarks=${namedEntities.landmarks.join(", ")}` : "",
+  ].filter(Boolean);
+  return parts.length ? `Named entities: ${parts.join("; ")}` : "";
 }

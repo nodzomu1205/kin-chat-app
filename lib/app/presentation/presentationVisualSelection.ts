@@ -424,6 +424,15 @@ function candidateText(
   const meta = candidate.presentationMeta;
   if (tier === "primary") {
     return [
+      ...(meta?.namedEntities
+        ? [
+            ...meta.namedEntities.places,
+            ...meta.namedEntities.stations,
+            ...meta.namedEntities.people,
+            ...meta.namedEntities.organizations,
+            ...meta.namedEntities.landmarks,
+          ]
+        : []),
       ...(meta?.visibleSubjects || []),
       ...(meta?.semanticTags || []),
       ...(meta?.embeddedTextItems.map((item) => item.text) || []),

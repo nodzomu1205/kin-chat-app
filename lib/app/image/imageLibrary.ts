@@ -32,6 +32,13 @@ export type GeneratedImagePresentationMeta = {
   version: "0.3-presentation-image-meta";
   visualBaseType: "photo" | "information_visual" | "mixed" | "unknown";
   visibleSubjects: string[];
+  namedEntities?: {
+    places: string[];
+    stations: string[];
+    people: string[];
+    organizations: string[];
+    landmarks: string[];
+  };
   embeddedTextItems: Array<{
     text: string;
     role:
@@ -138,6 +145,7 @@ export function buildGeneratedImagePresentationMeta(args: {
     version: "0.3-presentation-image-meta",
     visualBaseType: "unknown",
     visibleSubjects: [],
+    namedEntities: emptyNamedEntities(),
     embeddedTextItems: [],
     relationships: [],
     composition: "unknown",
@@ -162,6 +170,7 @@ export function normalizeGeneratedImagePresentationMeta(
     version: "0.3-presentation-image-meta",
     visualBaseType: normalizeVisualBaseType(candidate.visualBaseType) || defaults.visualBaseType,
     visibleSubjects: normalizeStringArray(candidate.visibleSubjects),
+    namedEntities: normalizeNamedEntities(candidate.namedEntities),
     embeddedTextItems: normalizeEmbeddedTextItems(candidate.embeddedTextItems),
     relationships: normalizeRelationships(candidate.relationships),
     composition: normalizeComposition(candidate.composition),
@@ -193,6 +202,7 @@ function normalizeV1PresentationMeta(
           ? "mixed"
           : "unknown",
     visibleSubjects: normalizeStringArray(candidate.semanticTags),
+    namedEntities: normalizeNamedEntities(candidate.namedEntities),
     embeddedTextItems: [],
     relationships: [],
     composition: normalizeComposition(candidate.composition || fallback.orientation),
@@ -210,6 +220,7 @@ function normalizeV2PresentationMeta(
       normalizeVisualBaseType(candidate.visualBaseType) ||
       buildGeneratedImagePresentationMeta(fallback).visualBaseType,
     visibleSubjects: normalizeStringArray(candidate.semanticTags),
+    namedEntities: normalizeNamedEntities(candidate.namedEntities),
     embeddedTextItems: normalizeEmbeddedTextItems(candidate.embeddedTextItems),
     relationships: normalizeStringArray(candidate.processStages).length
       ? [
@@ -295,6 +306,27 @@ function normalizeRelationships(value: unknown): GeneratedImagePresentationMeta[
       evidence,
     }];
   });
+}
+
+function emptyNamedEntities(): GeneratedImagePresentationMeta["namedEntities"] {
+  return {
+    places: [],
+    stations: [],
+    people: [],
+    organizations: [],
+    landmarks: [],
+  };
+}
+
+function normalizeNamedEntities(value: unknown): GeneratedImagePresentationMeta["namedEntities"] {
+  const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    places: normalizeStringArray(record.places),
+    stations: normalizeStringArray(record.stations),
+    people: normalizeStringArray(record.people),
+    organizations: normalizeStringArray(record.organizations),
+    landmarks: normalizeStringArray(record.landmarks),
+  };
 }
 
 function normalizeRelationshipType(

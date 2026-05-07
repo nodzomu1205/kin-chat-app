@@ -15,7 +15,10 @@ import type {
   GptInstructionMode,
   GptPanelProps,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { LibraryViewRequest } from "@/components/panels/gpt/LibraryDrawerTypes";
+import type {
+  LibraryDrawerView,
+  LibraryViewRequest,
+} from "@/components/panels/gpt/LibraryDrawerTypes";
 import {
   applyLocalSettingsUpdate,
   buildLocalSettingsSourceKey,
@@ -185,6 +188,8 @@ export default function GptPanel(props: GptPanelProps) {
   const [composerFocusKey, setComposerFocusKey] = useState(0);
   const [libraryViewRequest, setLibraryViewRequest] =
     useState<LibraryViewRequest | null>(null);
+  const [activeLibraryView, setActiveLibraryView] =
+    useState<LibraryDrawerView>("library");
   const [localSettingsState, setLocalSettingsState] =
     useState<LocalMemorySettingsInput>(sourceLocalSettings);
   const [localSettingsSourceKey, setLocalSettingsSourceKey] = useState(
@@ -319,6 +324,7 @@ export default function GptPanel(props: GptPanelProps) {
   );
 
   const requestImageLibraryView = useCallback(() => {
+    setActiveLibraryView("images");
     setLibraryViewRequest({ view: "images", key: Date.now() });
     setViewState((prev) => changeGptDrawer(prev, "received_docs"));
   }, []);
@@ -443,6 +449,8 @@ export default function GptPanel(props: GptPanelProps) {
             setShowMemoryContent={setShowMemoryContent}
             toPositiveInt={toPositiveInt}
             libraryViewRequest={libraryViewRequest}
+            activeLibraryView={activeLibraryView}
+            onChangeLibraryView={setActiveLibraryView}
             setGptInputDraft={setGptInputDraftAndFocus}
           />
         </div>
@@ -724,7 +732,7 @@ function isPresentationVisualSelectionDraft(command: string) {
   return (
     /^\s*\/ppt(?:\s|$)/i.test(command) &&
     /^\s*Resolve visuals\s*$/im.test(command) &&
-    /^\s*(?:(?:Slide\s+\d+\s*\/\s*block\s+\d+)|(?:Opening\s+slide\s*\/\s*visual))\s*:\s*$/im.test(
+    /^\s*(?:(?:Slide\s+\d+\s*\/\s*block\s+\d+(?:\s*\/\s*slot\s+\d+)?)|(?:Opening\s+slide\s*\/\s*visual(?:\s*\/\s*slot\s+\d+)?))\s*:\s*$/im.test(
       command
     )
   );

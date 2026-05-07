@@ -77,4 +77,27 @@ describe("libraryDraftCommands", () => {
       ].join("\n")
     );
   });
+
+  it("inserts an image id into the latest blank slot-level visual selection line", () => {
+    expect(
+      insertImageIdIntoGptDraft(
+        [
+          "/ppt",
+          "Document ID: ppt_123",
+          "Resolve visuals",
+          "Opening slide / visual / slot 1: img_cover",
+          "Slide 3 / block 2 / slot 1:",
+        ].join("\n"),
+        "img_new"
+      )
+    ).toBe(
+      [
+        "/ppt",
+        "Document ID: ppt_123",
+        "Resolve visuals",
+        "Opening slide / visual / slot 1: img_cover",
+        "Slide 3 / block 2 / slot 1: img_new",
+      ].join("\n")
+    );
+  });
 });

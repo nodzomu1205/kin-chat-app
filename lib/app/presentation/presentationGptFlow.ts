@@ -713,11 +713,7 @@ async function runResolvePresentationVisualsFlow(args: {
         ? await requestPresentationVisualSlotNormalization(foundPlan.plan)
         : {},
   });
-  const selectionBasePlan = mergePresentationVisualSelectionProposals(
-    foundPlan.plan,
-    visualResolvedBasePlan
-  );
-  const updatedPlan = applyPresentationVisualSelections(selectionBasePlan, selections);
+  const updatedPlan = applyPresentationVisualSelections(foundPlan.plan, selections);
   args.flowArgs.updateStoredDocument(foundPlan.sourceId, {
     title: foundPlan.item.title,
     text: formatPresentationTaskPlanText(updatedPlan),
@@ -741,6 +737,7 @@ type PresentationVisualSelectionCommand = {
   target: "opening" | "block";
   slideNumber: number;
   blockNumber: number;
+  slotNumber?: number;
   off: boolean;
   imageIds: string[];
 };
@@ -752,14 +749,15 @@ function parsePresentationVisualSelectionCommand(
     .split(/\r?\n/)
     .map((line) => line.trim())
     .flatMap((line): PresentationVisualSelectionCommand[] => {
-      const openingMatch = line.match(/^Opening\s+slide\s*\/\s*visual\s*:\s*(.*)$/i);
+      const openingMatch = line.match(/^Opening\s+slide\s*\/\s*visual(?:\s*\/\s*slot\s+(\d+))?\s*:\s*(.*)$/i);
       if (openingMatch) {
-        const rawValue = openingMatch[1]?.trim() || "";
+        const rawValue = openingMatch[2]?.trim() || "";
         return [
           {
             target: "opening" as const,
             slideNumber: 0,
             blockNumber: 0,
+            slotNumber: openingMatch[1] ? Number(openingMatch[1]) : undefined,
             off: /^off$/i.test(rawValue),
             imageIds: /^off$/i.test(rawValue)
               ? []
@@ -770,14 +768,15 @@ function parsePresentationVisualSelectionCommand(
           },
         ];
       }
-      const match = line.match(/^Slide\s+(\d+)\s*\/\s*block\s+(\d+)\s*:\s*(.*)$/i);
+      const match = line.match(/^Slide\s+(\d+)\s*\/\s*block\s+(\d+)(?:\s*\/\s*slot\s+(\d+))?\s*:\s*(.*)$/i);
       if (!match) return [];
-      const rawValue = match[3]?.trim() || "";
+      const rawValue = match[4]?.trim() || "";
       return [
         {
           target: "block" as const,
           slideNumber: Number(match[1]),
           blockNumber: Number(match[2]),
+          slotNumber: match[3] ? Number(match[3]) : undefined,
           off: /^off$/i.test(rawValue),
           imageIds: /^off$/i.test(rawValue)
             ? []
@@ -794,34 +793,43 @@ function applyPresentationVisualSelections(
   plan: PresentationTaskPlan,
   selections: ReturnType<typeof parsePresentationVisualSelectionCommand>
 ): PresentationTaskPlan {
-  const openingSelection = selections.find((item) => item.target === "opening");
+  const openingSelections = selections.filter((item) => item.target === "opening");
+  const openingBlockSelection = openingSelections.find((item) => !item.slotNumber);
   const updatedPlan: PresentationTaskPlan = {
     ...plan,
     updatedAt: new Date().toISOString(),
     deckFrame:
-      openingSelection && plan.deckFrame?.openingSlide?.visualRequest
+      openingSelections.length > 0 && plan.deckFrame?.openingSlide?.visualRequest
         ? {
             ...plan.deckFrame,
             openingSlide: {
               ...plan.deckFrame.openingSlide,
-              visualRequest: applyVisualImageSelection(
-                plan.deckFrame.openingSlide.visualRequest,
-                openingSelection
-              ),
+              visualRequest: openingBlockSelection
+                ? applyVisualImageSelection(
+                    plan.deckFrame.openingSlide.visualRequest,
+                    openingBlockSelection
+                  )
+                : applyVisualSlotSelections(
+                    plan.deckFrame.openingSlide.visualRequest,
+                    openingSelections
+                  ),
             },
           }
         : plan.deckFrame,
     slideFrames: plan.slideFrames.map((frame) => {
       const blocks = frame.blocks.map((block, index) => {
-        const selection = selections.find(
+        const blockSelections = selections.filter(
           (item) =>
             item.target === "block" &&
             item.slideNumber === frame.slideNumber && item.blockNumber === index + 1
         );
-        if (!selection || !block.visualRequest) return block;
+        if (blockSelections.length === 0 || !block.visualRequest) return block;
+        const blockSelection = blockSelections.find((item) => !item.slotNumber);
         return {
           ...block,
-          visualRequest: applyVisualImageSelection(block.visualRequest, selection),
+          visualRequest: blockSelection
+            ? applyVisualImageSelection(block.visualRequest, blockSelection)
+            : applyVisualSlotSelections(block.visualRequest, blockSelections),
         };
       });
       const primaryImageId =
@@ -840,55 +848,19 @@ function applyPresentationVisualSelections(
   return updatedPlan;
 }
 
-function mergePresentationVisualSelectionProposals(
-  originalPlan: PresentationTaskPlan,
-  proposedPlan: PresentationTaskPlan
-): PresentationTaskPlan {
-  return {
-    ...originalPlan,
-    deckFrame:
-      originalPlan.deckFrame?.openingSlide?.visualRequest &&
-      proposedPlan.deckFrame?.openingSlide?.visualRequest
-        ? {
-            ...originalPlan.deckFrame,
-            openingSlide: {
-              ...originalPlan.deckFrame.openingSlide,
-              visualRequest: mergeVisualSelectionProposal(
-                originalPlan.deckFrame.openingSlide.visualRequest,
-                proposedPlan.deckFrame.openingSlide.visualRequest
-              ),
-            },
-          }
-        : originalPlan.deckFrame,
-    slideFrames: originalPlan.slideFrames.map((frame) => {
-      const proposedFrame = proposedPlan.slideFrames.find(
-        (item) => item.slideNumber === frame.slideNumber
-      );
-      if (!proposedFrame) return frame;
-      return {
-        ...frame,
-        blocks: frame.blocks.map((block, index) => {
-          const proposedVisual = proposedFrame.blocks[index]?.visualRequest;
-          if (!block.visualRequest || !proposedVisual) return block;
-          return {
-            ...block,
-            visualRequest: mergeVisualSelectionProposal(
-              block.visualRequest,
-              proposedVisual
-            ),
-          };
-        }),
-      };
-    }),
-  };
-}
-
 function mergeVisualSelectionProposal<
   T extends NonNullable<
     PresentationTaskSlideFrame["blocks"][number]["visualRequest"]
   >
 >(originalVisual: T | undefined, proposedVisual: T): T {
   if (!originalVisual) return proposedVisual;
+  const originalSelectedImageIds = collectSelectedVisualImageIds(originalVisual);
+  if (originalSelectedImageIds.length > 0) {
+    return {
+      ...originalVisual,
+      visualSlots: originalVisual.visualSlots || proposedVisual.visualSlots,
+    };
+  }
   return {
     ...originalVisual,
     preferredImageId: proposedVisual.preferredImageId,
@@ -914,7 +886,12 @@ function applyVisualImageSelection(
     };
   }
   if (selection.imageIds.length === 0) return visual;
-  const label = visual.labels?.[0] || visual.brief || "visual";
+  const firstSlot = (visual.visualSlots || [])
+    .slice()
+    .sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+  const label = firstSlot?.label || visual.labels?.[0] || visual.brief || "visual";
+  const slotId = firstSlot?.slotId || label;
+  const need = firstSlot?.need || visual.prompt || visual.brief || label;
   const usagePolicy =
     selection.imageIds.length > 1
       ? ("useOneOrMore" as const)
@@ -926,14 +903,73 @@ function applyVisualImageSelection(
     usagePolicy,
     maxVisualItems: selection.imageIds.length,
     selectionMatches: selection.imageIds.map((imageId) => ({
-      slotId: label,
+      slotId,
       label,
-      need: visual.prompt || visual.brief || label,
+      need,
       status: "selected" as const,
       imageId,
       score: 1,
       threshold: 1,
     })),
+  };
+}
+
+function applyVisualSlotSelections(
+  visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>,
+  selections: ReturnType<typeof parsePresentationVisualSelectionCommand>
+) {
+  const slots = visualResolutionSlots(visual);
+  if (slots.length === 0) return visual;
+  const selectedSlotNumbers = new Set(
+    selections
+      .map((selection) => selection.slotNumber)
+      .filter((slotNumber): slotNumber is number => typeof slotNumber === "number")
+  );
+  const preservedMatches = (visual.selectionMatches || []).filter((match) => {
+    const slotIndex = slots.findIndex((slot) => slot.slotId === match.slotId);
+    return slotIndex < 0 || !selectedSlotNumbers.has(slotIndex + 1);
+  });
+  const nextMatches = [...preservedMatches];
+  for (const selection of selections) {
+    if (!selection.slotNumber) continue;
+    const slot = slots[selection.slotNumber - 1];
+    if (!slot || selection.off) continue;
+    const imageId = selection.imageIds[0]?.trim();
+    if (!imageId) continue;
+    nextMatches.push({
+      slotId: slot.slotId,
+      label: slot.label,
+      need: slot.need,
+      status: "selected" as const,
+      imageId,
+      score: 1,
+      threshold: 1,
+    });
+  }
+  const selectedMatches = slots.flatMap((slot) => {
+    const match = nextMatches.find(
+      (item) => item.slotId === slot.slotId && item.status === "selected" && item.imageId
+    );
+    return match ? [match] : [];
+  });
+  const imageIds = selectedMatches.map((match) => match.imageId as string);
+  return {
+    ...visual,
+    preferredImageId: imageIds[0],
+    candidateImageIds: imageIds.length > 0 ? imageIds : undefined,
+    usagePolicy:
+      imageIds.length > 1
+        ? ("useOneOrMore" as const)
+        : imageIds.length === 1
+          ? ("useOneBest" as const)
+          : undefined,
+    maxVisualItems: imageIds.length > 0 ? imageIds.length : undefined,
+    labels:
+      selectedMatches.length > 0
+        ? selectedMatches.map((match) => match.label).filter(Boolean)
+        : visual.labels,
+    selectionMatches: nextMatches.length > 0 ? nextMatches : undefined,
+    asset: undefined,
   };
 }
 
@@ -1133,56 +1169,82 @@ async function buildPresentationVisualResolutionMessage(args: {
     proposedOpening.frameId === "visualTitleCover" &&
     proposedOpening.visualRequest
   ) {
-    const currentSelectedIds = collectSelectedVisualImageIds(
-      currentOpening?.visualRequest
+    const visual = mergeVisualSelectionProposal(
+      currentOpening?.visualRequest,
+      proposedOpening.visualRequest
     );
-    const visual =
-      currentSelectedIds.length > 0 && currentOpening?.visualRequest
-        ? currentOpening.visualRequest
-        : mergeVisualSelectionProposal(
-            currentOpening?.visualRequest,
-            proposedOpening.visualRequest
-          );
-    const selectedIds =
-      currentSelectedIds.length > 0
-        ? currentSelectedIds
-        : collectSelectedVisualImageIds(visual);
-    const address = "Opening slide / visual";
+    await appendVisualSlotResolutionLines(lines, {
+      address: "Opening slide / visual",
+      documentId: args.documentId,
+      visual,
+    });
+  }
+  for (const frame of proposedPlan.slideFrames) {
+    for (const [index, block] of frame.blocks.entries()) {
+      const currentFrame = foundPlan.plan.slideFrames.find(
+        (item) => item.slideNumber === frame.slideNumber
+      );
+      const currentBlock = currentFrame?.blocks[index];
+      if (!block.visualRequest) continue;
+      const displayBlock = {
+        ...block,
+        visualRequest: mergeVisualSelectionProposal(
+          currentBlock?.visualRequest,
+          block.visualRequest
+        ),
+      };
+      const visual = displayBlock.visualRequest;
+      if (!visual) continue;
+      const blockNumber = index + 1;
+      await appendVisualSlotResolutionLines(lines, {
+        address: `Slide ${frame.slideNumber} / block ${blockNumber}`,
+        documentId: args.documentId,
+        visual,
+      });
+    }
+  }
+  return lines.join("\n");
+}
+
+async function appendVisualSlotResolutionLines(
+  lines: string[],
+  args: {
+    address: string;
+    documentId: string;
+    visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>;
+  }
+) {
+  const slots = visualResolutionSlots(args.visual);
+  for (const [index, slot] of slots.entries()) {
+    const slotNumber = index + 1;
+    const address = `${args.address} / slot ${slotNumber}`;
+    const match = visualMatchForSlot(args.visual, slot, index);
     lines.push(
       "",
       `${address}:`,
-      `ビジュアルプロンプト: ${visual.prompt || visual.brief}`,
-      `ビジュアル内表示ラベル: ${(visual.labels || [visual.brief]).filter(Boolean).join(", ") || visual.brief || "未設定"}`
+      `ビジュアルプロンプト: ${slot.need || args.visual.prompt || args.visual.brief}`,
+      `ビジュアル内表示ラベル: ${slot.label || args.visual.labels?.[0] || args.visual.brief || "未設定"}`
     );
-    if (currentSelectedIds.length > 0) {
-      lines.push("現在選択中の画像:");
-      for (const imageId of currentSelectedIds) {
-        lines.push(`- ${imageId}`);
-        const imagePath = await createPresentationImagePreviewUrl(imageId);
-        if (imagePath) lines.push(`![${imageId}](${imagePath})`);
-      }
-    } else if (visual.selectionMatches?.length) {
-      lines.push("自動マッチ画像を選択:");
-      for (const match of visual.selectionMatches) {
-        const target = match.imageId
-          ? `${match.imageId}${match.imageTitle ? ` (${match.imageTitle})` : ""}`
-          : "候補なし";
-        lines.push(`- ${target} / score ${match.score} / threshold ${match.threshold}`);
-        const imagePath = match.imageId
-          ? await createPresentationImagePreviewUrl(match.imageId)
-          : "";
-        if (imagePath) lines.push(`![${match.imageId}](${imagePath})`);
-      }
-    } else {
-      lines.push("自動マッチ画像を選択: 候補なし");
+    const isCurrentSelection =
+      match?.status === "selected" && match.score === 1 && match.threshold === 1;
+    lines.push(isCurrentSelection ? "現在選択中の画像:" : "自動マッチ画像を選択:");
+    const target = match?.imageId
+      ? `${match.imageId}${match.imageTitle ? ` (${match.imageTitle})` : ""}`
+      : "候補なし";
+    lines.push(`- ${target} / score ${match?.score || 0} / threshold ${match?.threshold || 5}`);
+    const imagePath = match?.imageId
+      ? await createPresentationImagePreviewUrl(match.imageId)
+      : "";
+    if (imagePath) {
+      lines.push(`![${match?.imageId}](${imagePath})`);
     }
-    if (selectedIds.length > 0) {
+    if (match?.imageId) {
       lines.push(
         buildPresentationCommandLink("この候補を入力欄にセット", [
           "/ppt",
           `Document ID: ${args.documentId}`,
           "Resolve visuals",
-          `${address}: ${selectedIds.join(", ")}`,
+          `${address}: ${match.imageId}`,
         ])
       );
     }
@@ -1195,89 +1257,49 @@ async function buildPresentationVisualResolutionMessage(args: {
       ])
     );
   }
+}
 
-  for (const frame of proposedPlan.slideFrames) {
-    for (const [index, block] of frame.blocks.entries()) {
-      const currentFrame = foundPlan.plan.slideFrames.find(
-        (item) => item.slideNumber === frame.slideNumber
-      );
-      const currentBlock = currentFrame?.blocks[index];
-      const currentSelectedIds = collectSelectedVisualImageIds(
-        currentBlock?.visualRequest
-      );
-      if (!block.visualRequest) continue;
-      const displayBlock =
-        currentSelectedIds.length > 0 && currentBlock?.visualRequest
-          ? currentBlock
-          : {
-              ...block,
-              visualRequest: mergeVisualSelectionProposal(
-                currentBlock?.visualRequest,
-                block.visualRequest
-              ),
-            };
-      const visual = displayBlock.visualRequest;
-      if (!visual) continue;
-      const blockNumber = index + 1;
-      const address = `Slide ${frame.slideNumber} / block ${blockNumber}`;
-      const selectedIds =
-        currentSelectedIds.length > 0
-          ? currentSelectedIds
-          : collectSelectedVisualImageIds(visual);
-      lines.push(
-        "",
-        `${address}:`,
-        `ビジュアルプロンプト: ${visual.prompt || visual.brief}`,
-        `ビジュアル内表示ラベル: ${(visual.labels || [visual.brief]).filter(Boolean).join(", ") || visual.brief || "未設定"}`
-      );
-      if (currentSelectedIds.length > 0) {
-        lines.push("現在選択中の画像:");
-        for (const imageId of currentSelectedIds) {
-          lines.push(`- ${imageId}`);
-          const imagePath = await createPresentationImagePreviewUrl(imageId);
-          if (imagePath) {
-            lines.push(`![${imageId}](${imagePath})`);
-          }
-        }
-      } else if (visual.selectionMatches?.length) {
-        lines.push("自動マッチ画像を選択:");
-        for (const match of visual.selectionMatches) {
-          const target = match.imageId
-            ? `${match.imageId}${match.imageTitle ? ` (${match.imageTitle})` : ""}`
-            : "候補なし";
-          lines.push(`- ${target} / score ${match.score} / threshold ${match.threshold}`);
-          const imagePath = match.imageId
-            ? await createPresentationImagePreviewUrl(match.imageId)
-            : "";
-          if (imagePath) {
-            lines.push(`![${match.imageId}](${imagePath})`);
-          }
-        }
-      } else {
-        lines.push("自動マッチ画像を選択: 候補なし");
-      }
-      if (selectedIds.length > 0) {
-        lines.push(
-          buildPresentationCommandLink("この候補を入力欄にセット", [
-            "/ppt",
-            `Document ID: ${args.documentId}`,
-            "Resolve visuals",
-            `${address}: ${selectedIds.join(", ")}`,
-          ])
-        );
-      }
-      lines.push(
-        buildPresentationCommandLink("ライブラリから選択", [
-          "/ppt",
-          `Document ID: ${args.documentId}`,
-          "Resolve visuals",
-          `${address}: `,
-        ])
-      );
-    }
+function visualResolutionSlots(
+  visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>
+) {
+  const slots = (visual.visualSlots || [])
+    .filter((slot) => slot.need.trim() || slot.label.trim())
+    .slice()
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  if (slots.length > 0) return slots;
+  return [
+    {
+      slotId: "slot1",
+      label: visual.labels?.[0] || visual.brief || "Visual",
+      need: visual.prompt || visual.brief || "Visual",
+      order: 1,
+    },
+  ];
+}
+
+function visualMatchForSlot(
+  visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>,
+  slot: ReturnType<typeof visualResolutionSlots>[number],
+  slotIndex: number
+) {
+  const match = (visual.selectionMatches || []).find((item) => item.slotId === slot.slotId);
+  if (match) return match;
+  const selectedIds = Array.from(
+    new Set([visual.preferredImageId, ...(visual.candidateImageIds || [])].filter(Boolean))
+  );
+  const fallbackImageId = selectedIds[slotIndex] || (slotIndex === 0 ? selectedIds[0] : "");
+  if (fallbackImageId) {
+    return {
+      slotId: slot.slotId,
+      label: slot.label || visual.labels?.[slotIndex] || visual.brief || "Visual",
+      need: slot.need || visual.prompt || visual.brief || "Visual",
+      status: "selected" as const,
+      imageId: fallbackImageId,
+      score: 1,
+      threshold: 1,
+    };
   }
-
-  return lines.join("\n");
+  return null;
 }
 
 async function createPresentationImagePreviewUrl(imageId: string) {

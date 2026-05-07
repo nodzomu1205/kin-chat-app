@@ -221,9 +221,10 @@ describe("presentationTaskPlanning", () => {
     const visibleText = formatPresentationTaskPlanText(plan);
     const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
 
-    expect(visibleText).toContain("ビジュアルプロンプト: TOEFLや英検教材を使って受験勉強する学生の写真。");
-    expect(visibleText).toContain("ビジュアル内表示ラベル: TOEFLや英検教材を使った受験勉強風景");
-    expect(visibleText).toContain("選択済み画像: img_selected, img_alt");
+    expect(visibleText).toContain("Visual slot 1:");
+    expect(visibleText).toContain("ビジュアルプロンプト: student and books");
+    expect(visibleText).toContain("ビジュアル内表示ラベル: main");
+    expect(visibleText).toContain("選択済み画像: img_selected");
     expect(visibleText).toContain("■ PPTメニュー");
     expect(visibleText).toContain("[Save](/__gpt-command?mode=run&text=");
     expect(visibleText).toContain("[Save and create PPT](/__gpt-command?mode=run&text=");

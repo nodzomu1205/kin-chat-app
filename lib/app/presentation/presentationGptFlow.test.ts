@@ -457,7 +457,7 @@ describe("runPresentationGptCommandFlow", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps the original design prompt and label when applying visual selections", async () => {
+  it("keeps the original visual slot prompt and label when applying visual selections", async () => {
     const design = buildRecentDesign("ppt_resolve_label", {
       visualLabel: "Original broad label",
       visualSlots: [
@@ -478,7 +478,7 @@ describe("runPresentationGptCommandFlow", () => {
         "/ppt",
         "Document ID: ppt_resolve_label",
         "Resolve visuals",
-        "Slide 1 / block 2: img_students",
+        "Slide 1 / block 2 / slot 1: img_students",
       ].join("\n"),
       flowArgs: buildFlowArgs({
         messages,
@@ -500,7 +500,7 @@ describe("runPresentationGptCommandFlow", () => {
       "stored-ppt_resolve_label",
       expect.objectContaining({
         text: expect.stringContaining(
-          "ビジュアル内表示ラベル: Original broad label"
+          "ビジュアル内表示ラベル: Automatic classroom label"
         ),
         structuredPayload: expect.objectContaining({
           documentId: "ppt_resolve_label",
@@ -511,10 +511,10 @@ describe("runPresentationGptCommandFlow", () => {
       structuredPayload: ReturnType<typeof buildRecentDesign>["plan"];
       text: string;
     };
-    expect(patch.text).not.toContain("Automatic classroom label");
+    expect(patch.text).toContain("ビジュアルプロンプト: student english classroom lesson");
     expect(
       patch.structuredPayload.slideFrames[0].blocks[1].visualRequest?.labels
-    ).toEqual(["Original broad label"]);
+    ).toEqual(["Automatic classroom label"]);
     expect(
       patch.structuredPayload.slideFrames[0].blocks[1].visualRequest?.prompt
     ).toBe("A student studying with English exam books.");
@@ -523,7 +523,7 @@ describe("runPresentationGptCommandFlow", () => {
         ?.preferredImageId
     ).toBe("img_students");
     expect(messages.at(-1)?.text).toContain(
-      "ビジュアル内表示ラベル: Original broad label"
+      "ビジュアル内表示ラベル: Automatic classroom label"
     );
   });
 
@@ -562,8 +562,8 @@ describe("runPresentationGptCommandFlow", () => {
     expect(handled).toBe(true);
     expect(messages.at(-1)?.text).toContain("現在選択中の画像:");
     expect(messages.at(-1)?.text).toContain("- img_current");
-    expect(messages.at(-1)?.text).toContain("Opening slide / visual:");
-    expect(messages.at(-1)?.text).toContain("表紙用ワイドビジュアル");
+    expect(messages.at(-1)?.text).toContain("Opening slide / visual / slot 1:");
+    expect(messages.at(-1)?.text).toContain("表紙イメージ");
     expect(messages.at(-1)?.text).not.toContain("Opening slide / visual: img_auto");
   });
 
@@ -612,7 +612,7 @@ describe("runPresentationGptCommandFlow", () => {
     });
 
     expect(previewHandled).toBe(true);
-    expect(messages.at(-1)?.text).toContain("Opening slide / visual:");
+    expect(messages.at(-1)?.text).toContain("Opening slide / visual / slot 1:");
     expect(messages.at(-1)?.text).toContain("img_cover");
 
     const updateStoredDocument = vi.fn();
@@ -621,7 +621,7 @@ describe("runPresentationGptCommandFlow", () => {
         "/ppt",
         "Document ID: ppt_cover_visual",
         "Resolve visuals",
-        "Opening slide / visual: img_cover",
+        "Opening slide / visual / slot 1: img_cover",
       ].join("\n"),
       flowArgs: buildFlowArgs({
         messages,
@@ -689,7 +689,7 @@ describe("runPresentationGptCommandFlow", () => {
         "/ppt",
         "Document ID: ppt_cover_then_block",
         "Resolve visuals",
-        "Slide 1 / block 2: img_students",
+        "Slide 1 / block 2 / slot 1: img_students",
       ].join("\n"),
       flowArgs: buildFlowArgs({
         messages,
@@ -725,6 +725,131 @@ describe("runPresentationGptCommandFlow", () => {
     ).toBe("img_students");
     expect(patch.text).toContain("img_cover");
     expect(patch.text).toContain("img_students");
+  });
+
+  it("removes only the targeted slot image when Resolve visuals uses off", async () => {
+    const design = buildRecentDesign("ppt_slot_off", {
+      visualSlots: [
+        {
+          slotId: "first",
+          label: "First slot",
+          need: "first image",
+          order: 1,
+        },
+        {
+          slotId: "second",
+          label: "Second slot",
+          need: "second image",
+          order: 2,
+        },
+      ],
+    });
+    const visual = design.plan.slideFrames[0].blocks[1].visualRequest;
+    if (visual) {
+      visual.preferredImageId = "img_first";
+      visual.candidateImageIds = ["img_first", "img_second"];
+      visual.selectionMatches = [
+        {
+          slotId: "first",
+          label: "First slot",
+          need: "first image",
+          status: "selected",
+          imageId: "img_first",
+          score: 1,
+          threshold: 1,
+        },
+        {
+          slotId: "second",
+          label: "Second slot",
+          need: "second image",
+          status: "selected",
+          imageId: "img_second",
+          score: 1,
+          threshold: 1,
+        },
+      ];
+    }
+    const messages: Message[] = [];
+    const updateStoredDocument = vi.fn();
+
+    const handled = await runPresentationGptCommandFlow({
+      rawText: [
+        "/ppt",
+        "Document ID: ppt_slot_off",
+        "Resolve visuals",
+        "Slide 1 / block 2 / slot 1: off",
+      ].join("\n"),
+      flowArgs: buildFlowArgs({
+        messages,
+        recentMessages: [],
+        recordIngestedDocument: vi.fn(),
+        updateStoredDocument,
+        referenceLibraryItems: [buildPresentationPlanLibraryItem(design.plan)],
+      }),
+      assistantRequestArgs: {} as never,
+    });
+
+    expect(handled).toBe(true);
+    const patch = updateStoredDocument.mock.calls[0]?.[1] as {
+      structuredPayload: ReturnType<typeof buildRecentDesign>["plan"];
+      text: string;
+    };
+    const updatedVisual = patch.structuredPayload.slideFrames[0].blocks[1].visualRequest;
+    expect(updatedVisual?.preferredImageId).toBe("img_second");
+    expect(updatedVisual?.candidateImageIds).toEqual(["img_second"]);
+    expect(updatedVisual?.selectionMatches).toEqual([
+      expect.objectContaining({
+        slotId: "second",
+        imageId: "img_second",
+        status: "selected",
+      }),
+    ]);
+    expect(patch.text).not.toContain("img_first");
+    expect(patch.text).toContain("img_second");
+  });
+
+  it("removes all block images when the legacy block-level Resolve visuals line uses off", async () => {
+    const design = buildRecentDesign("ppt_block_off", {
+      selectedImageId: "img_selected",
+      visualSlots: [
+        {
+          slotId: "first",
+          label: "First slot",
+          need: "first image",
+          order: 1,
+        },
+      ],
+    });
+    const messages: Message[] = [];
+    const updateStoredDocument = vi.fn();
+
+    const handled = await runPresentationGptCommandFlow({
+      rawText: [
+        "/ppt",
+        "Document ID: ppt_block_off",
+        "Resolve visuals",
+        "Slide 1 / block 2: off",
+      ].join("\n"),
+      flowArgs: buildFlowArgs({
+        messages,
+        recentMessages: [],
+        recordIngestedDocument: vi.fn(),
+        updateStoredDocument,
+        referenceLibraryItems: [buildPresentationPlanLibraryItem(design.plan)],
+      }),
+      assistantRequestArgs: {} as never,
+    });
+
+    expect(handled).toBe(true);
+    const patch = updateStoredDocument.mock.calls[0]?.[1] as {
+      structuredPayload: ReturnType<typeof buildRecentDesign>["plan"];
+      text: string;
+    };
+    const updatedVisual = patch.structuredPayload.slideFrames[0].blocks[1].visualRequest;
+    expect(updatedVisual?.preferredImageId).toBeUndefined();
+    expect(updatedVisual?.candidateImageIds).toBeUndefined();
+    expect(updatedVisual?.selectionMatches).toBeUndefined();
+    expect(patch.text).not.toContain("img_selected");
   });
 
   it("updates a saved library PPT design from /ppt Document ID comments after chat reset", async () => {

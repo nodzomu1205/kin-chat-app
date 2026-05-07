@@ -13,7 +13,10 @@ import {
   buildGptTaskDrawerProps,
   buildLibraryDrawerProps,
 } from "@/components/panels/gpt/GptDrawerRouterHelpers";
-import type { LibraryViewRequest } from "@/components/panels/gpt/LibraryDrawerTypes";
+import type {
+  LibraryDrawerView,
+  LibraryViewRequest,
+} from "@/components/panels/gpt/LibraryDrawerTypes";
 import type {
   GptPanelChatProps,
   GptPanelHeaderProps,
@@ -47,6 +50,8 @@ type Props = {
   setShowMemoryContent: React.Dispatch<React.SetStateAction<boolean>>;
   toPositiveInt: (value: string, fallback: number) => number;
   libraryViewRequest?: LibraryViewRequest | null;
+  activeLibraryView?: LibraryDrawerView;
+  onChangeLibraryView?: (view: LibraryDrawerView) => void;
   setGptInputDraft?: (value: React.SetStateAction<string>) => void;
 };
 
@@ -73,6 +78,8 @@ export default function GptDrawerRouter({
   setShowMemoryContent,
   toPositiveInt,
   libraryViewRequest = null,
+  activeLibraryView,
+  onChangeLibraryView,
   setGptInputDraft,
 }: Props) {
   const handleToggleMemoryContent = () => {
@@ -143,6 +150,8 @@ export default function GptDrawerRouter({
           onImportDeviceFile: handleImportDeviceFile,
         })}
         libraryViewRequest={libraryViewRequest}
+        activeLibraryView={activeLibraryView}
+        onChangeLibraryView={onChangeLibraryView}
         setGptInputDraft={setGptInputDraft}
       />
     );

@@ -112,8 +112,9 @@ export function buildPresentationImageLibraryContext(
     "These existing image-library assets are planning material for the app-side visual slot matcher.",
     "Do not refer to a specific asset by identifier. Asset identifiers are intentionally hidden from this planning context.",
     "Use this metadata only to define visualRequest.visualSlots: slotId, label, need, optional keywords, and order.",
+    "Each visualSlot must represent exactly one intended image and one display label.",
     "The app will deterministically match visualSlots to stored assets after your slideFrame JSON is parsed.",
-    "presentationMeta is extracted planning material. Use visible subjects, embedded text items, relationships, and semantic tags to describe concrete visualSlots.",
+    "presentationMeta is extracted planning material. Use named entities, visible subjects, embedded text items, relationships, and semantic tags to describe concrete visualSlots.",
     "For new slideFrames, prefer adaptiveVisualMain when an image should be the main carrier: place the selected image at the top-left, preserve aspect ratio, maximize it in the content area, and use only the remaining right or bottom-right space for a short annotation if needed.",
     "Prefer adaptiveTextMain when the message text is the main carrier: put the primary text at the top-left, choose a text shape that leaves the most useful remaining area, and place one or more related images in that remaining area.",
     "For textMain slides, create ordered visualSlots when multiple related images may support the message.",
@@ -142,6 +143,10 @@ export function buildPresentationImageLibraryContext(
       lines.push(`Visual base type: ${image.presentationMeta.visualBaseType}`);
       if (image.presentationMeta.visibleSubjects.length) {
         lines.push(`Visible subjects: ${image.presentationMeta.visibleSubjects.join(", ")}`);
+      }
+      const namedEntityLines = formatNamedEntities(image.presentationMeta.namedEntities);
+      if (namedEntityLines.length) {
+        lines.push(`Named entities: ${namedEntityLines.join("; ")}`);
       }
       if (image.presentationMeta.embeddedTextItems.length) {
         lines.push(
@@ -172,4 +177,17 @@ export function buildPresentationImageLibraryContext(
   });
   lines.push("<<END_IMAGE_LIBRARY_CANDIDATES>>");
   return lines.join("\n").trim();
+}
+
+function formatNamedEntities(
+  namedEntities: GeneratedImagePresentationMeta["namedEntities"] | undefined
+) {
+  if (!namedEntities) return [];
+  return [
+    namedEntities.places.length ? `places=${namedEntities.places.join(", ")}` : "",
+    namedEntities.stations.length ? `stations=${namedEntities.stations.join(", ")}` : "",
+    namedEntities.people.length ? `people=${namedEntities.people.join(", ")}` : "",
+    namedEntities.organizations.length ? `organizations=${namedEntities.organizations.join(", ")}` : "",
+    namedEntities.landmarks.length ? `landmarks=${namedEntities.landmarks.join(", ")}` : "",
+  ].filter(Boolean);
 }

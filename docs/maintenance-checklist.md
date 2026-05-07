@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-05-03
+Updated: 2026-05-07
 
 ## Purpose
 
@@ -148,6 +148,11 @@ Treat the maintainability program as complete only when every item below is
 - every touched maintenance-watch boundary has a narrow regression test
 - helper/builder test files stay diagnosable and are split when failures become hard to localize
 - no high-risk boundary depends only on broad end-to-end manual testing
+- user live testing must never be the first regression detector for costly
+  flows. Before asking the user to test, run all practical local verification
+  for the whole workflow path, not only the touched helper. If a browser,
+  Vercel, LLM/API, or manual artifact-inspection boundary remains, say so
+  explicitly.
 - LLM/protocol flows that depend on Kin behavior have both focused unit
   coverage and a named manual retest path before being called fully settled
 - next task-registration work should add focused tests for

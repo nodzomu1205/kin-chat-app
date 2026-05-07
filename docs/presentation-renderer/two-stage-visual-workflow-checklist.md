@@ -16,6 +16,32 @@ renderer already handles three valuable states well:
 - some resolved images and some unresolved placeholders
 - fully resolved image-library/API visuals
 
+## Required Pre-User Verification Gate
+
+User live testing is expensive in time, attention, and tokens. Do not ask for a
+manual browser/Vercel/PPTX retest until every practical local check has been
+run for the touched PPT workflow. For PPT design / Resolve visuals / library
+image selection / PPTX output changes, the minimum gate is:
+
+1. inspect the full path, not only the edited helper:
+   design generation -> visible design text -> action link/draft command ->
+   Resolve visuals -> image selection/deselection -> saved structured plan ->
+   chat display with previews -> frameSpec -> PPTX render request -> renderer
+   package output.
+2. add or update narrow regression tests for the boundary that failed.
+3. run focused PPT tests covering the touched path.
+4. run `npm test` for the app before claiming broad local confidence.
+5. run `npm test --prefix kin-presentation-renderer` when PPTX rendering,
+   frameSpec, image hydration, or layout-facing data may be affected.
+6. run `npx tsc --noEmit`, `npm run check:utf8`, and `npm run build`.
+7. only then ask for user live testing, and state any remaining unautomated
+   boundary plainly.
+
+Never treat user live testing as the first regression detector for a PPT flow.
+If a fix changes a format or address such as `Slide N / block X / slot Y`,
+audit every parser, command-draft helper, library insertion helper, formatter,
+and display preview path that consumes that format.
+
 ## Renderer Boundary Guardrails
 
 | No | Check | Code verification | Test / artifact verification | Status |

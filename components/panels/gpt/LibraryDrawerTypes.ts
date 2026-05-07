@@ -10,6 +10,8 @@ export type LibraryViewRequest = {
   key: number;
 };
 
+export type LibraryDrawerView = LibraryViewRequest["view"];
+
 export type LibraryDrawerProps = Pick<
   GptPanelReferenceProps,
   | "multipartAssemblies"
@@ -55,5 +57,7 @@ export type LibraryDrawerProps = Pick<
     imageImportAccept: string;
     deviceImportDisabled?: boolean;
     libraryViewRequest?: LibraryViewRequest | null;
+    activeLibraryView?: LibraryDrawerView;
+    onChangeLibraryView?: (view: LibraryDrawerView) => void;
     setGptInputDraft?: (value: SetStateAction<string>) => void;
   };

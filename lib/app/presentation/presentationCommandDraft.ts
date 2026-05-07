@@ -2,7 +2,7 @@ const PPT_PREFIX_PATTERN = /^\s*\/ppt(?:\s|$)/i;
 const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:_-]+)/im;
 const RESOLVE_VISUALS_PATTERN = /^\s*Resolve visuals\s*$/im;
 const VISUAL_SELECTION_LINE_PATTERN =
-  /^\s*((?:Slide\s+\d+\s*\/\s*block\s+\d+)|(?:Opening\s+slide\s*\/\s*visual))\s*:\s*(.*)$/i;
+  /^\s*((?:Slide\s+\d+\s*\/\s*block\s+\d+(?:\s*\/\s*slot\s+\d+)?)|(?:Opening\s+slide\s*\/\s*visual(?:\s*\/\s*slot\s+\d+)?))\s*:\s*(.*)$/i;
 
 export function mergePresentationResolveVisualCommandDraft(
   currentText: string,

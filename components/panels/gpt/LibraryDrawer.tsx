@@ -5,7 +5,10 @@ import { sectionCardStyle } from "@/components/panels/gpt/gptDrawerShared";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { LibraryImportControls } from "@/components/panels/gpt/LibraryDrawerControls";
 import LibraryItemCard from "@/components/panels/gpt/LibraryItemCard";
-import type { LibraryDrawerProps } from "@/components/panels/gpt/LibraryDrawerTypes";
+import type {
+  LibraryDrawerProps,
+  LibraryDrawerView,
+} from "@/components/panels/gpt/LibraryDrawerTypes";
 import {
   buildLibraryItemEditDraftCommand,
   insertImageIdIntoGptDraft,
@@ -47,20 +50,36 @@ export default function LibraryDrawer({
   imageImportAccept,
   deviceImportDisabled = false,
   libraryViewRequest = null,
+  activeLibraryView: controlledActiveLibraryView,
+  onChangeLibraryView,
   setGptInputDraft,
 }: LibraryDrawerProps) {
   const [driveImportMenuOpen, setDriveImportMenuOpen] = useState(false);
-  const [activeLibraryView, setActiveLibraryView] = useState<"library" | "images">("library");
+  const [uncontrolledActiveLibraryView, setUncontrolledActiveLibraryView] =
+    useState<LibraryDrawerView>("library");
   const [expandedId, setExpandedId] = useState("");
   const [editingId, setEditingId] = useState("");
   const [draftTitle, setDraftTitle] = useState("");
   const [draftSummary, setDraftSummary] = useState("");
   const [draftText, setDraftText] = useState("");
   const deviceInputId = React.useId();
+  const activeLibraryView = controlledActiveLibraryView ?? uncontrolledActiveLibraryView;
+  const setActiveLibraryView = React.useCallback(
+    (view: LibraryDrawerView) => {
+      if (onChangeLibraryView) {
+        onChangeLibraryView(view);
+        return;
+      }
+      setUncontrolledActiveLibraryView(view);
+    },
+    [onChangeLibraryView]
+  );
+
   React.useEffect(() => {
+    if (controlledActiveLibraryView !== undefined) return;
     if (!libraryViewRequest) return;
     setActiveLibraryView(libraryViewRequest.view);
-  }, [libraryViewRequest]);
+  }, [controlledActiveLibraryView, libraryViewRequest, setActiveLibraryView]);
 
   const handleDraftLibraryItemEditCommand = React.useCallback(
     (itemId: string) => {

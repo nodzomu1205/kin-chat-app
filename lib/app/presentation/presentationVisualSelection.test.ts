@@ -235,6 +235,81 @@ describe("resolvePresentationVisualSlots", () => {
     ]);
   });
 
+  it("uses named entity metadata to prefer an exact place or station match", () => {
+    const plan = basePlan();
+    const visual = plan.slideFrames[0].blocks[1].visualRequest;
+    if (visual) {
+      visual.visualSlots = [
+        {
+          slotId: "kichijoji",
+          label: "吉祥寺駅周辺",
+          need: "吉祥寺駅周辺の井の頭公園と商業エリアの写真",
+          order: 1,
+        },
+      ];
+    }
+
+    const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan, {
+        kichijoji: "Kichijoji Station Inokashira Park shopping area Tokyo",
+      }),
+      plan,
+      imageCandidates: [
+        {
+          imageId: "img_ogikubo",
+          title: "Ogikubo Station building",
+          presentationMeta: {
+            version: "0.3-presentation-image-meta",
+            visualBaseType: "photo",
+            visibleSubjects: ["station building", "shopping street"],
+            embeddedTextItems: [],
+            relationships: [],
+            composition: "single_scene",
+            semanticTags: ["tokyo", "station", "shopping"],
+            namedEntities: {
+              places: ["Ogikubo"],
+              stations: ["Ogikubo Station"],
+              people: [],
+              organizations: [],
+              landmarks: [],
+            },
+          },
+        },
+        {
+          imageId: "img_kichijoji",
+          title: "Neighborhood street scene",
+          presentationMeta: {
+            version: "0.3-presentation-image-meta",
+            visualBaseType: "photo",
+            visibleSubjects: ["park entrance", "shopping area", "pedestrians"],
+            embeddedTextItems: [],
+            relationships: [],
+            composition: "single_scene",
+            semanticTags: ["tokyo", "park", "shopping"],
+            namedEntities: {
+              places: ["Kichijoji"],
+              stations: ["Kichijoji Station"],
+              people: [],
+              organizations: [],
+              landmarks: ["Inokashira Park"],
+            },
+          },
+        },
+      ],
+    });
+
+    const resolvedVisual = resolved.slideFrames[0].blocks[1].visualRequest;
+    expect(resolvedVisual?.preferredImageId).toBe("img_kichijoji");
+    expect(resolvedVisual?.candidateImageIds).toEqual(["img_kichijoji"]);
+    expect(resolvedVisual?.selectionMatches).toEqual([
+      expect.objectContaining({
+        label: "吉祥寺駅周辺",
+        status: "selected",
+        imageId: "img_kichijoji",
+      }),
+    ]);
+  });
+
   it("selects image IDs from ordered visual slots and ignores LLM-provided image IDs", () => {
     const plan = basePlan();
     const resolved = resolvePresentationVisualSlots({

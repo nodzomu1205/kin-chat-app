@@ -4,7 +4,7 @@ import type { ReferenceLibraryItem } from "@/types/chat";
 
 const SUBTITLE_ID_PATTERN = /^(?:Document ID|Image ID)\s*:\s*(\S+)/i;
 const VISUAL_SELECTION_LINE_PATTERN =
-  /^((?:Slide\s+\d+\s*\/\s*block\s+\d+)|(?:Opening\s+slide\s*\/\s*visual))\s*:\s*$/i;
+  /^((?:Slide\s+\d+\s*\/\s*block\s+\d+(?:\s*\/\s*slot\s+\d+)?)|(?:Opening\s+slide\s*\/\s*visual(?:\s*\/\s*slot\s+\d+)?))\s*:\s*$/i;
 
 export function buildLibraryItemEditDraftCommand(item: ReferenceLibraryItem) {
   const documentId = resolveLibraryItemDocumentId(item);

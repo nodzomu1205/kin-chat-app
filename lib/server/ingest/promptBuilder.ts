@@ -125,6 +125,13 @@ Return exactly this JSON shape:
     "version": "0.3-presentation-image-meta",
     "visualBaseType": "photo" | "information_visual" | "mixed" | "unknown",
     "visibleSubjects": string[],
+    "namedEntities": {
+      "places": string[],
+      "stations": string[],
+      "people": string[],
+      "organizations": string[],
+      "landmarks": string[]
+    },
     "embeddedTextItems": [{
       "text": string,
       "role": "title" | "label" | "claim" | "metric" | "brand" | "context_sign" | "other",
@@ -149,6 +156,7 @@ Constraints:
 - For presentationMeta, extract planning material only. Do not judge whether this image should be visualMain or textMain.
 - visualBaseType is only a coarse basis: photo for ordinary photos, information_visual for actual diagram/chart/table/map visuals, mixed when a photo contains a meaningful information panel or display, unknown when unclear.
 - visibleSubjects should list concrete visible objects, people/groups, places, products, and processes. Keep it concise.
+- namedEntities should extract proper nouns useful for later image matching. Use concise English or romanized names for places, stations, people, organizations, and landmarks when visible, readable, or strongly implied by embedded text/filename/context. Do not guess unknown names.
 - embeddedTextItems should list only readable text that may matter for later slide-message matching; do not decide whether the text carries a message.
 - relationships should describe only visible or explicitly labeled structure such as sequence, comparison, alternative, cause-effect, or hierarchy. Do not add a relationship for objects that merely appear in the same scene; visibleSubjects already covers them. Do not assume a sequence from side-by-side panels. Use alternative or comparison when labels indicate parallel options such as "Knitting / Weaving".
 - composition should capture simple visual structure only.
