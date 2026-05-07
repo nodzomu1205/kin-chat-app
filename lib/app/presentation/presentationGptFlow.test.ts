@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   collectFrameSpecPreferredImageIds,
   runPresentationGptCommandFlow,
@@ -71,6 +71,34 @@ describe("collectFrameSpecPreferredImageIds", () => {
 });
 
 describe("runPresentationGptCommandFlow", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body || "{}")) as {
+          slots?: Array<{ key: string; label?: string; need?: string; keywords?: string[]; context?: string }>;
+        };
+        return {
+          ok: true,
+          json: async () => ({
+            normalized: Object.fromEntries(
+              (body.slots || []).map((slot) => [
+                slot.key,
+                [slot.label, slot.need, ...(slot.keywords || []), slot.context]
+                  .filter(Boolean)
+                  .join(" "),
+              ])
+            ),
+          }),
+        };
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("saves a recent unsaved PPT design by Document ID", async () => {
     const design = buildRecentDesign("ppt_recent_save");
     const recordIngestedDocument = vi.fn(() => ({ id: "stored-save" }));
@@ -429,13 +457,13 @@ describe("runPresentationGptCommandFlow", () => {
     vi.unstubAllGlobals();
   });
 
-  it("preserves the resolved visual label when applying manual visual selections", async () => {
+  it("keeps the original design prompt and label when applying visual selections", async () => {
     const design = buildRecentDesign("ppt_resolve_label", {
       visualLabel: "Original broad label",
       visualSlots: [
         {
           slotId: "classroom",
-          label: "Resolved classroom label",
+          label: "Automatic classroom label",
           need: "student english classroom lesson",
           keywords: ["student", "english", "classroom"],
           order: 1,
@@ -472,7 +500,7 @@ describe("runPresentationGptCommandFlow", () => {
       "stored-ppt_resolve_label",
       expect.objectContaining({
         text: expect.stringContaining(
-          "ビジュアル内表示ラベル: Resolved classroom label"
+          "ビジュアル内表示ラベル: Original broad label"
         ),
         structuredPayload: expect.objectContaining({
           documentId: "ppt_resolve_label",
@@ -483,16 +511,19 @@ describe("runPresentationGptCommandFlow", () => {
       structuredPayload: ReturnType<typeof buildRecentDesign>["plan"];
       text: string;
     };
-    expect(patch.text).not.toContain("ビジュアル内表示ラベル: Original broad label");
+    expect(patch.text).not.toContain("Automatic classroom label");
     expect(
       patch.structuredPayload.slideFrames[0].blocks[1].visualRequest?.labels
-    ).toEqual(["Resolved classroom label"]);
+    ).toEqual(["Original broad label"]);
+    expect(
+      patch.structuredPayload.slideFrames[0].blocks[1].visualRequest?.prompt
+    ).toBe("A student studying with English exam books.");
     expect(
       patch.structuredPayload.slideFrames[0].blocks[1].visualRequest
         ?.preferredImageId
     ).toBe("img_students");
     expect(messages.at(-1)?.text).toContain(
-      "ビジュアル内表示ラベル: Resolved classroom label"
+      "ビジュアル内表示ラベル: Original broad label"
     );
   });
 
@@ -685,6 +716,9 @@ describe("runPresentationGptCommandFlow", () => {
       patch.structuredPayload.deckFrame?.openingSlide?.visualRequest
         ?.preferredImageId
     ).toBe("img_cover");
+    expect(
+      patch.structuredPayload.slideFrames[0].blocks[1].visualRequest?.prompt
+    ).toBe("A student studying with English exam books.");
     expect(
       patch.structuredPayload.slideFrames[0].blocks[1].visualRequest
         ?.preferredImageId

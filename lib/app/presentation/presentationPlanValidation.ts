@@ -148,6 +148,26 @@ function applyAdaptiveLayoutPolicy(
     const role = frame.slideRole || inferredRole;
 
     if (role === "visualMain" && primaryVisual) {
+      if (
+        primaryVisual.visualRequest?.type === "photo" &&
+        primaryText &&
+        isDenseTextBlock(primaryText)
+      ) {
+        return {
+          ...frame,
+          slideRole: "textMain",
+          layoutFrameId: "adaptiveTextMain",
+          layoutIntent: {
+            ...frame.layoutIntent,
+            primaryImageId:
+              frame.layoutIntent?.primaryImageId || resolveVisualImageId(primaryVisual),
+            visualPlacement:
+              frame.layoutIntent?.visualPlacement ||
+              (visualBlocks.length > 1 ? "rightGrid" : "right"),
+          },
+          blocks: [primaryText, ...visualBlocks].slice(0, 7),
+        };
+      }
       const annotationBlocks = frame.slideRole
         ? textBlocks.filter((block) => !isDenseTextBlock(block))
         : textBlocks;

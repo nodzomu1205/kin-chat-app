@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
+﻿import { describe, expect, it } from "vitest";
+import {
+  presentationVisualSlotMatchKey,
+  resolvePresentationVisualSlots,
+  type PresentationVisualSlotNormalizedTextMap,
+} from "@/lib/app/presentation/presentationVisualSelection";
 import type { PresentationTaskPlan } from "@/types/task";
 
 function basePlan(): PresentationTaskPlan {
@@ -76,7 +80,40 @@ function basePlan(): PresentationTaskPlan {
   };
 }
 
+function normalizedTextsForPlan(
+  plan: PresentationTaskPlan,
+  overrides: Record<string, string> = {}
+): PresentationVisualSlotNormalizedTextMap {
+  const entries: PresentationVisualSlotNormalizedTextMap = {};
+  for (const frame of plan.slideFrames) {
+    for (const block of frame.blocks) {
+      for (const slot of block.visualRequest?.visualSlots || []) {
+        entries[presentationVisualSlotMatchKey(slot)] =
+          overrides[slot.slotId] ||
+          [slot.label, slot.need, ...(slot.keywords || [])].join(" ");
+      }
+    }
+  }
+  for (const slot of plan.deckFrame?.openingSlide?.visualRequest?.visualSlots || []) {
+    entries[presentationVisualSlotMatchKey(slot)] =
+      overrides[slot.slotId] ||
+      [slot.label, slot.need, ...(slot.keywords || [])].join(" ");
+  }
+  return entries;
+}
+
 describe("resolvePresentationVisualSlots", () => {
+  it("uses stable ASCII keys for LLM-normalized slot text lookup", () => {
+    expect(
+      presentationVisualSlotMatchKey({
+        slotId: "education",
+        label: "文京区の教育施設",
+        need: "文京区の教育環境や学校施設の様子",
+        order: 1,
+      })
+    ).toMatch(/^slot_[a-z0-9]+$/);
+  });
+
   it("matches Japanese school and exam visual needs against English image metadata", () => {
     const plan = basePlan();
     const visual = plan.slideFrames[0].blocks[1].visualRequest;
@@ -94,6 +131,9 @@ describe("resolvePresentationVisualSlots", () => {
     }
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan, {
+        examPrep: "exam preparation study books student tutor learning",
+      }),
       plan,
       imageCandidates: [
         {
@@ -141,6 +181,10 @@ describe("resolvePresentationVisualSlots", () => {
     }
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan, {
+        education: "Bunkyo ward education school campus facilities",
+        residential: "Ogikubo station residential neighborhood shopping street",
+      }),
       plan,
       imageCandidates: [
         {
@@ -192,8 +236,10 @@ describe("resolvePresentationVisualSlots", () => {
   });
 
   it("selects image IDs from ordered visual slots and ignores LLM-provided image IDs", () => {
+    const plan = basePlan();
     const resolved = resolvePresentationVisualSlots({
-      plan: basePlan(),
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
+      plan,
       imageCandidates: [
         {
           imageId: "img_store",
@@ -254,9 +300,63 @@ describe("resolvePresentationVisualSlots", () => {
     expect(resolved.slideFrames[0].layoutIntent?.primaryImageId).toBe("img_field");
   });
 
+  it("does not auto-match when LLM-normalized slot text is missing", () => {
+    const plan = basePlan();
+    const resolved = resolvePresentationVisualSlots({
+      plan,
+      imageCandidates: [
+        {
+          imageId: "img_field",
+          title: "Cotton field and ginning",
+          presentationMeta: {
+            version: "0.3-presentation-image-meta",
+            visualBaseType: "photo",
+            visibleSubjects: ["cotton field", "ginning machine"],
+            embeddedTextItems: [],
+            relationships: [],
+            composition: "single_scene",
+            semanticTags: ["farming", "ginning"],
+          },
+        },
+      ],
+    });
+
+    const visual = resolved.slideFrames[0].blocks[1].visualRequest;
+    expect(visual?.candidateImageIds).toBeUndefined();
+    expect(visual?.selectionMatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: "unresolved", imageId: undefined }),
+      ])
+    );
+  });
+
+  it("does not auto-match against image title or prompt when presentation metadata is missing", () => {
+    const plan = basePlan();
+    const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
+      plan,
+      imageCandidates: [
+        {
+          imageId: "img_prompt_only",
+          title: "Cotton field and ginning",
+          prompt: "cotton farming ginning",
+        },
+      ],
+    });
+
+    const visual = resolved.slideFrames[0].blocks[1].visualRequest;
+    expect(visual?.candidateImageIds).toBeUndefined();
+    expect(visual?.selectionMatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: "unresolved", imageId: undefined }),
+      ])
+    );
+  });
+
   it("leaves weak slots unresolved instead of substituting an unrelated image", () => {
     const plan = basePlan();
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -303,6 +403,7 @@ describe("resolvePresentationVisualSlots", () => {
     }
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -355,6 +456,7 @@ describe("resolvePresentationVisualSlots", () => {
     }
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -397,6 +499,7 @@ describe("resolvePresentationVisualSlots", () => {
     }
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -455,6 +558,7 @@ describe("resolvePresentationVisualSlots", () => {
     }
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -468,7 +572,7 @@ describe("resolvePresentationVisualSlots", () => {
             embeddedTextItems: [],
             relationships: [],
             composition: "single_scene",
-            semanticTags: ["United States", "cotton farming"],
+            semanticTags: ["USA", "United States", "cotton farming"],
           },
         },
       ],
@@ -501,6 +605,7 @@ describe("resolvePresentationVisualSlots", () => {
     }
 
     const withoutGots = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -521,6 +626,7 @@ describe("resolvePresentationVisualSlots", () => {
     expect(withoutGots.slideFrames[0].blocks[1].visualRequest?.candidateImageIds).toBeUndefined();
 
     const withGots = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -547,7 +653,26 @@ describe("resolvePresentationVisualSlots", () => {
     const plan = basePlan();
     const visual = plan.slideFrames[0].blocks[1].visualRequest;
     if (visual) {
-      visual.visualSlots = undefined;
+      visual.visualSlots = [
+        {
+          slotId: "cultivation",
+          label: "Cultivation",
+          need: "cotton plants in the field",
+          order: 1,
+        },
+        {
+          slotId: "ginning",
+          label: "Ginning",
+          need: "roller gin machines",
+          order: 2,
+        },
+        {
+          slotId: "spinning",
+          label: "Spinning",
+          need: "industrial spinning machines",
+          order: 3,
+        },
+      ];
       visual.brief = "Cultivation, ginning, and spinning photos";
       visual.prompt =
         "Photo collage showing cotton plants in the field, roller gin machines, and industrial spinning machines";
@@ -559,6 +684,7 @@ describe("resolvePresentationVisualSlots", () => {
     ];
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {
@@ -604,11 +730,6 @@ describe("resolvePresentationVisualSlots", () => {
     });
 
     const resolvedVisual = resolved.slideFrames[0].blocks[1].visualRequest;
-    expect(resolvedVisual?.visualSlots?.map((slot) => slot.label)).toEqual([
-      "Cultivation",
-      "Ginning",
-      "Spinning",
-    ]);
     expect(resolvedVisual?.candidateImageIds).toEqual([
       "img_field",
       "img_ginning",
@@ -643,6 +764,7 @@ describe("resolvePresentationVisualSlots", () => {
     };
 
     const resolved = resolvePresentationVisualSlots({
+      normalizedSlotTexts: normalizedTextsForPlan(plan),
       plan,
       imageCandidates: [
         {

@@ -356,6 +356,47 @@ describe("presentationPlanValidation", () => {
     });
   });
 
+  it("keeps dense text on normal photo slides even if they were marked visualMain", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Livable Tokyo areas",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "adaptiveVisualMain",
+        slideRole: "visualMain",
+        blocks: [
+          {
+            id: "block1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "photo",
+              brief: "Tokyo neighborhood photo",
+              preferredImageId: "img_tokyo",
+              candidateImageIds: ["img_tokyo"],
+            },
+          },
+          {
+            id: "block2",
+            kind: "list",
+            styleId: "listCompact",
+            heading: "Education and livability",
+            text: "Preserve the original slide body when selected photos are hydrated.",
+            items: ["School access", "Safety", "Commute", "Rent"],
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveTextMain",
+      slideRole: "textMain",
+      blocks: [{ id: "block2" }, { id: "block1" }],
+    });
+  });
+
   it("infers adaptive text layout from legacy visual-left frames with ordinary photos", () => {
     const frames: PresentationTaskSlideFrame[] = [
       {

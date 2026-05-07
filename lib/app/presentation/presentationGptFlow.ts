@@ -18,6 +18,7 @@ import {
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
 import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
+import { requestPresentationVisualSlotNormalization } from "@/lib/app/presentation/presentationVisualNormalization";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
   collectSelectedVisualImageIds,
@@ -699,18 +700,24 @@ async function runResolvePresentationVisualsFlow(args: {
   if (!foundPlan) {
     throw new Error(`Presentation plan document not found: ${args.documentId}`);
   }
+  const imageCandidates = getPresentationImageLibraryCandidates({
+    enabled: args.flowArgs.imageLibraryReferenceEnabled,
+    count: args.flowArgs.imageLibraryReferenceCount,
+    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+  });
   const visualResolvedBasePlan = resolvePresentationVisualSlots({
     plan: foundPlan.plan,
-    imageCandidates: getPresentationImageLibraryCandidates({
-      enabled: args.flowArgs.imageLibraryReferenceEnabled,
-      count: args.flowArgs.imageLibraryReferenceCount,
-      referenceLibraryItems: args.flowArgs.referenceLibraryItems,
-    }),
+    imageCandidates,
+    normalizedSlotTexts:
+      imageCandidates.length > 0
+        ? await requestPresentationVisualSlotNormalization(foundPlan.plan)
+        : {},
   });
-  const updatedPlan = applyPresentationVisualSelections(
-    visualResolvedBasePlan,
-    selections
+  const selectionBasePlan = mergePresentationVisualSelectionProposals(
+    foundPlan.plan,
+    visualResolvedBasePlan
   );
+  const updatedPlan = applyPresentationVisualSelections(selectionBasePlan, selections);
   args.flowArgs.updateStoredDocument(foundPlan.sourceId, {
     title: foundPlan.item.title,
     text: formatPresentationTaskPlanText(updatedPlan),
@@ -831,6 +838,66 @@ function applyPresentationVisualSelections(
     }),
   };
   return updatedPlan;
+}
+
+function mergePresentationVisualSelectionProposals(
+  originalPlan: PresentationTaskPlan,
+  proposedPlan: PresentationTaskPlan
+): PresentationTaskPlan {
+  return {
+    ...originalPlan,
+    deckFrame:
+      originalPlan.deckFrame?.openingSlide?.visualRequest &&
+      proposedPlan.deckFrame?.openingSlide?.visualRequest
+        ? {
+            ...originalPlan.deckFrame,
+            openingSlide: {
+              ...originalPlan.deckFrame.openingSlide,
+              visualRequest: mergeVisualSelectionProposal(
+                originalPlan.deckFrame.openingSlide.visualRequest,
+                proposedPlan.deckFrame.openingSlide.visualRequest
+              ),
+            },
+          }
+        : originalPlan.deckFrame,
+    slideFrames: originalPlan.slideFrames.map((frame) => {
+      const proposedFrame = proposedPlan.slideFrames.find(
+        (item) => item.slideNumber === frame.slideNumber
+      );
+      if (!proposedFrame) return frame;
+      return {
+        ...frame,
+        blocks: frame.blocks.map((block, index) => {
+          const proposedVisual = proposedFrame.blocks[index]?.visualRequest;
+          if (!block.visualRequest || !proposedVisual) return block;
+          return {
+            ...block,
+            visualRequest: mergeVisualSelectionProposal(
+              block.visualRequest,
+              proposedVisual
+            ),
+          };
+        }),
+      };
+    }),
+  };
+}
+
+function mergeVisualSelectionProposal<
+  T extends NonNullable<
+    PresentationTaskSlideFrame["blocks"][number]["visualRequest"]
+  >
+>(originalVisual: T | undefined, proposedVisual: T): T {
+  if (!originalVisual) return proposedVisual;
+  return {
+    ...originalVisual,
+    preferredImageId: proposedVisual.preferredImageId,
+    candidateImageIds: proposedVisual.candidateImageIds,
+    selectionMatches: proposedVisual.selectionMatches,
+    usagePolicy: proposedVisual.usagePolicy,
+    maxVisualItems: proposedVisual.maxVisualItems,
+    asset: proposedVisual.asset,
+  };
 }
 
 function applyVisualImageSelection(
@@ -1048,6 +1115,10 @@ async function buildPresentationVisualResolutionMessage(args: {
   const proposedPlan = resolvePresentationVisualSlots({
     plan: foundPlan.plan,
     imageCandidates,
+    normalizedSlotTexts:
+      imageCandidates.length > 0
+        ? await requestPresentationVisualSlotNormalization(foundPlan.plan)
+        : {},
   });
   const lines = [
     "Resolve visual blocks.",
@@ -1068,7 +1139,10 @@ async function buildPresentationVisualResolutionMessage(args: {
     const visual =
       currentSelectedIds.length > 0 && currentOpening?.visualRequest
         ? currentOpening.visualRequest
-        : proposedOpening.visualRequest;
+        : mergeVisualSelectionProposal(
+            currentOpening?.visualRequest,
+            proposedOpening.visualRequest
+          );
     const selectedIds =
       currentSelectedIds.length > 0
         ? currentSelectedIds
@@ -1131,10 +1205,17 @@ async function buildPresentationVisualResolutionMessage(args: {
       const currentSelectedIds = collectSelectedVisualImageIds(
         currentBlock?.visualRequest
       );
+      if (!block.visualRequest) continue;
       const displayBlock =
         currentSelectedIds.length > 0 && currentBlock?.visualRequest
           ? currentBlock
-          : block;
+          : {
+              ...block,
+              visualRequest: mergeVisualSelectionProposal(
+                currentBlock?.visualRequest,
+                block.visualRequest
+              ),
+            };
       const visual = displayBlock.visualRequest;
       if (!visual) continue;
       const blockNumber = index + 1;

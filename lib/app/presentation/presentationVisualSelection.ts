@@ -14,11 +14,14 @@ type CandidateScore = {
   score: number;
 };
 
+export type PresentationVisualSlotNormalizedTextMap = Record<string, string>;
+
 const MIN_SLOT_MATCH_SCORE = 5;
 
 export function resolvePresentationVisualSlots(args: {
   plan: PresentationTaskPlan;
   imageCandidates: PresentationImageLibraryCandidate[];
+  normalizedSlotTexts?: PresentationVisualSlotNormalizedTextMap;
 }): PresentationTaskPlan {
   const candidates = args.imageCandidates.filter((candidate) => candidate.imageId.trim());
   if (candidates.length === 0 || args.plan.slideFrames.length === 0) return args.plan;
@@ -30,19 +33,41 @@ export function resolvePresentationVisualSlots(args: {
           ...args.plan.deckFrame,
           openingSlide: resolveOpeningSlideVisualSlots(
             args.plan.deckFrame.openingSlide,
-            candidates
+            candidates,
+            args.normalizedSlotTexts
           ),
         }
       : args.plan.deckFrame,
     slideFrames: args.plan.slideFrames.map((frame) =>
-      resolveFrameVisualSlots(frame, candidates)
+      resolveFrameVisualSlots(frame, candidates, args.normalizedSlotTexts)
     ),
   };
 }
 
+export function presentationVisualSlotMatchKey(slot: PresentationTaskVisualSlot) {
+  const source = [
+    slot.slotId,
+    slot.label,
+    slot.need,
+    ...(slot.keywords || []),
+    slot.order || "",
+  ].join("\n");
+  return `slot_${hashVisualSlotKeySource(source)}`;
+}
+
+function hashVisualSlotKeySource(source: string) {
+  let hash = 2166136261;
+  for (const char of source) {
+    hash ^= char.codePointAt(0) || 0;
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 function resolveOpeningSlideVisualSlots(
   openingSlide: PresentationTaskBookendSlide | undefined,
-  candidates: PresentationImageLibraryCandidate[]
+  candidates: PresentationImageLibraryCandidate[],
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
 ) {
   if (
     !openingSlide?.enabled ||
@@ -76,21 +101,31 @@ function resolveOpeningSlideVisualSlots(
   };
   return {
     ...openingSlide,
-    visualRequest: resolveVisualRequestSlots(coverBlock, coverFrame, candidates, {
-      preserveExistingImageIds: true,
-    }),
+    visualRequest: resolveVisualRequestSlots(
+      coverBlock,
+      coverFrame,
+      candidates,
+      normalizedSlotTexts,
+      { preserveExistingImageIds: true }
+    ),
   };
 }
 
 function resolveFrameVisualSlots(
   frame: PresentationTaskSlideFrame,
-  candidates: PresentationImageLibraryCandidate[]
+  candidates: PresentationImageLibraryCandidate[],
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
 ): PresentationTaskSlideFrame {
   const blocks = frame.blocks.map((block) =>
     block.visualRequest
       ? {
           ...block,
-          visualRequest: resolveVisualRequestSlots(block, frame, candidates),
+          visualRequest: resolveVisualRequestSlots(
+            block,
+            frame,
+            candidates,
+            normalizedSlotTexts
+          ),
         }
       : block
   );
@@ -111,6 +146,7 @@ function resolveVisualRequestSlots(
   block: PresentationTaskSlideBlock,
   frame: PresentationTaskSlideFrame,
   candidates: PresentationImageLibraryCandidate[],
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined,
   options: { preserveExistingImageIds?: boolean } = {}
 ): PresentationTaskVisualRequest {
   const visual = block.visualRequest as PresentationTaskVisualRequest;
@@ -136,10 +172,28 @@ function resolveVisualRequestSlots(
   const selectionMatches: PresentationTaskVisualMatch[] = [];
   const usedImageIds = new Set<string>();
   for (const slot of effectiveSlots) {
-    const bestOverall = findBestCandidateForSlot(slot, candidates, undefined, 0);
+    const bestOverall = findBestCandidateForSlot(
+      slot,
+      candidates,
+      normalizedSlotTexts,
+      undefined,
+      0
+    );
     const match =
-      findBestCandidateForSlot(slot, candidates, usedImageIds, MIN_SLOT_MATCH_SCORE) ||
-      findBestCandidateForSlot(slot, candidates, undefined, MIN_SLOT_MATCH_SCORE);
+      findBestCandidateForSlot(
+        slot,
+        candidates,
+        normalizedSlotTexts,
+        usedImageIds,
+        MIN_SLOT_MATCH_SCORE
+      ) ||
+      findBestCandidateForSlot(
+        slot,
+        candidates,
+        normalizedSlotTexts,
+        undefined,
+        MIN_SLOT_MATCH_SCORE
+      );
     if (match) {
       selected.push({ slot, match });
       usedImageIds.add(match.candidate.imageId);
@@ -245,7 +299,7 @@ function splitVisualNeedSegments(value: string) {
   return value
     .replace(/^photos?\s+(depicting|showing)\s+/i, "")
     .replace(/^photo collage\s+(depicting|showing)\s+/i, "")
-    .split(/\s*(?:,|、|;|；|\band\b)\s*/iu)
+    .split(/\s*(?:,|、|;|；|・|\band\b)\s*/iu)
     .map((item) => item.replace(/^(and|or)\s+/i, "").trim())
     .filter((item) => item.length >= 3 && !/^(photo|photos|diagram|image|visual)$/i.test(item));
 }
@@ -266,6 +320,7 @@ function shortSlotLabel(value: string | undefined) {
 function findBestCandidateForSlot(
   slot: PresentationTaskVisualSlot,
   candidates: PresentationImageLibraryCandidate[],
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined,
   excludedImageIds: Set<string> | undefined = new Set(),
   minScore = MIN_SLOT_MATCH_SCORE
 ): CandidateScore | null {
@@ -273,13 +328,13 @@ function findBestCandidateForSlot(
     .filter((candidate) => !excludedImageIds?.has(candidate.imageId))
     .map((candidate) => ({
       candidate,
-      score: scoreSlotCandidate(slot, candidate),
+      score: scoreSlotCandidate(slot, candidate, normalizedSlotTexts),
     }))
     .filter(
       (item) =>
         item.score >= minScore &&
-        hasSpecificSlotEvidence(slot, item.candidate) &&
-        hasRequiredEntityEvidence(slot, item.candidate)
+        hasSpecificSlotEvidence(slot, item.candidate, normalizedSlotTexts) &&
+        hasRequiredEntityEvidence(slot, item.candidate, normalizedSlotTexts)
     )
     .sort((a, b) => b.score - a.score);
   return scored[0] || null;
@@ -305,9 +360,10 @@ function buildSelectionMatch(
 
 function scoreSlotCandidate(
   slot: PresentationTaskVisualSlot,
-  candidate: PresentationImageLibraryCandidate
+  candidate: PresentationImageLibraryCandidate,
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
 ) {
-  const slotTerms = termsForSlot(slot);
+  const slotTerms = termsForSlot(slot, normalizedSlotTexts);
   if (slotTerms.length === 0) return 0;
   const candidateTerms = new Set(tokenize(candidateText(candidate, "primary")));
   const secondaryText = normalizeText(candidateText(candidate, "secondary"));
@@ -324,9 +380,10 @@ function scoreSlotCandidate(
 
 function hasSpecificSlotEvidence(
   slot: PresentationTaskVisualSlot,
-  candidate: PresentationImageLibraryCandidate
+  candidate: PresentationImageLibraryCandidate,
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
 ) {
-  const specificTerms = termsForSlot(slot).filter(
+  const specificTerms = termsForSlot(slot, normalizedSlotTexts).filter(
     (term) => !BROAD_MATCH_TERMS.has(term)
   );
   if (specificTerms.length === 0) return false;
@@ -340,12 +397,10 @@ function hasSpecificSlotEvidence(
 
 function hasRequiredEntityEvidence(
   slot: PresentationTaskVisualSlot,
-  candidate: PresentationImageLibraryCandidate
+  candidate: PresentationImageLibraryCandidate,
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
 ) {
-  const requiredEntities = [
-    ...requiredEntityGroupsForSlot(slot),
-    ...requiredNamedPhraseGroupsForSlot(slot),
-  ];
+  const requiredEntities = requiredNamedPhraseGroupsForSlot(slot, normalizedSlotTexts);
   if (requiredEntities.length === 0) return true;
   const text = normalizeText(candidateText(candidate, "primary") + " " + candidateText(candidate, "secondary"));
   return requiredEntities.every((aliases) =>
@@ -353,11 +408,13 @@ function hasRequiredEntityEvidence(
   );
 }
 
-function termsForSlot(slot: PresentationTaskVisualSlot) {
-  const rawText = [slot.label, slot.need, ...(slot.keywords || [])].join(" ");
-  return Array.from(
-    new Set([...tokenize(rawText), ...aliasTermsForSlotText(rawText)])
-  );
+function termsForSlot(
+  slot: PresentationTaskVisualSlot,
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
+) {
+  const normalizedText =
+    normalizedSlotTexts?.[presentationVisualSlotMatchKey(slot)]?.trim() || "";
+  return normalizedText ? tokenize(normalizedText) : [];
 }
 
 function candidateText(
@@ -367,7 +424,6 @@ function candidateText(
   const meta = candidate.presentationMeta;
   if (tier === "primary") {
     return [
-      candidate.title,
       ...(meta?.visibleSubjects || []),
       ...(meta?.semanticTags || []),
       ...(meta?.embeddedTextItems.map((item) => item.text) || []),
@@ -377,10 +433,6 @@ function candidateText(
       .join(" ");
   }
   return [
-    candidate.fileName,
-    candidate.description,
-    candidate.prompt,
-    candidate.originalPrompt,
     ...(meta?.relationships.map((item) => item.evidence) || []),
     meta?.composition,
   ]
@@ -418,15 +470,6 @@ function normalizeText(value: string) {
   return value.toLowerCase().normalize("NFKC");
 }
 
-function aliasTermsForSlotText(value: string) {
-  const normalized = normalizeText(value);
-  return CROSS_LANGUAGE_SLOT_MATCH_ALIASES.flatMap((entry) =>
-    entry.aliases.some((alias) => normalized.includes(normalizeText(alias)))
-      ? entry.terms
-      : []
-  );
-}
-
 function termScore(term: string, tier: "primary" | "secondary") {
   const base = term.length >= 5 ? 3 : term.length >= 3 ? 2 : 1;
   return tier === "primary" ? base : Math.max(1, base - 1);
@@ -462,168 +505,19 @@ const BROAD_MATCH_TERMS = new Set([
   "chain",
 ]);
 
-const CROSS_LANGUAGE_SLOT_MATCH_ALIASES = [
-  {
-    aliases: ["東京", "東京都", "東京都内", "都内", "首都圏"],
-    terms: ["tokyo", "metropolitan", "urban", "city", "cityscape"],
-  },
-  {
-    aliases: ["中央区"],
-    terms: ["chuo", "central", "tokyo", "ward"],
-  },
-  {
-    aliases: ["目黒区"],
-    terms: ["meguro", "tokyo", "ward", "residential"],
-  },
-  {
-    aliases: ["文京区"],
-    terms: ["bunkyo", "tokyo", "ward", "education", "school"],
-  },
-  {
-    aliases: ["杉並区"],
-    terms: ["suginami", "tokyo", "ward", "residential"],
-  },
-  {
-    aliases: ["江戸川区"],
-    terms: ["edogawa", "tokyo", "ward", "residential"],
-  },
-  {
-    aliases: ["板橋区"],
-    terms: ["itabashi", "tokyo", "ward", "residential"],
-  },
-  {
-    aliases: ["港区"],
-    terms: ["minato", "tokyo", "ward", "luxury", "urban"],
-  },
-  {
-    aliases: ["世田谷区"],
-    terms: ["setagaya", "tokyo", "ward", "residential"],
-  },
-  {
-    aliases: ["大田区"],
-    terms: ["ota", "tokyo", "ward", "residential"],
-  },
-  {
-    aliases: ["吉祥寺"],
-    terms: ["kichijoji", "shopping", "park", "residential"],
-  },
-  {
-    aliases: ["恵比寿"],
-    terms: ["ebisu", "urban", "restaurant", "station"],
-  },
-  {
-    aliases: ["荻窪"],
-    terms: ["ogikubo", "station", "residential", "shopping"],
-  },
-  {
-    aliases: ["白金台"],
-    terms: ["shirokanedai", "luxury", "residential"],
-  },
-  {
-    aliases: ["麻布"],
-    terms: ["azabu", "luxury", "residential"],
-  },
-  {
-    aliases: ["成城"],
-    terms: ["seijo", "luxury", "residential"],
-  },
-  {
-    aliases: ["田園調布"],
-    terms: ["denenchofu", "luxury", "residential"],
-  },
-  {
-    aliases: ["街並み", "街の様子", "市街地", "都市", "都市部"],
-    terms: ["cityscape", "street", "urban", "city", "neighborhood"],
-  },
-  {
-    aliases: ["住宅街", "住宅地", "閑静な住宅街", "住環境"],
-    terms: ["residential", "neighborhood", "housing", "homes", "quiet"],
-  },
-  {
-    aliases: ["商店街", "繁華街", "駅前", "買い物環境", "商業施設"],
-    terms: ["shopping", "street", "commercial", "store", "retail", "station"],
-  },
-  {
-    aliases: ["駅", "人気駅", "路線", "交通", "交通利便性", "都心アクセス", "アクセス"],
-    terms: ["station", "train", "railway", "transit", "commute", "access"],
-  },
-  {
-    aliases: ["教育", "教育環境", "教育施設", "学校", "校舎", "キャンパス", "施設"],
-    terms: ["education", "school", "campus", "facility", "building", "classroom"],
-  },
-  {
-    aliases: ["子育て", "子育て支援", "ファミリー", "家族"],
-    terms: ["childcare", "parenting", "family", "children", "support"],
-  },
-  {
-    aliases: ["治安", "安全", "安心"],
-    terms: ["safety", "safe", "security", "low", "crime"],
-  },
-  {
-    aliases: ["家賃", "家賃抑制", "賃料"],
-    terms: ["rent", "affordable", "affordability", "housing"],
-  },
-  {
-    aliases: ["高級住宅街", "高級住宅地", "高級", "邸宅"],
-    terms: ["luxury", "upscale", "residential", "mansion", "neighborhood"],
-  },
-  {
-    aliases: ["高校", "学校", "校舎", "キャンパス", "施設"],
-    terms: ["high", "school", "campus", "building", "classroom"],
-  },
-  {
-    aliases: ["学生", "生徒", "高校生"],
-    terms: ["student", "students", "uniform"],
-  },
-  {
-    aliases: ["英語", "英会話", "語学"],
-    terms: ["english", "language", "learning", "classroom"],
-  },
-  {
-    aliases: ["国際", "帰国子女", "海外"],
-    terms: ["international", "english", "students"],
-  },
-  {
-    aliases: ["授業", "教室", "学習", "勉強", "教材"],
-    terms: ["classroom", "learning", "studying", "books", "textbook"],
-  },
-  {
-    aliases: ["受験", "入試", "面接", "対策", "参考書", "資格"],
-    terms: ["exam", "entrance", "interview", "studying", "books", "test"],
-  },
-  {
-    aliases: ["保護者", "親子"],
-    terms: ["parent", "family", "student"],
-  },
-  {
-    aliases: ["講師", "指導", "塾"],
-    terms: ["teacher", "tutor", "coaching", "studying"],
-  },
-  {
-    aliases: ["国際バカロレア", "バカロレア", "IB"],
-    terms: ["international", "baccalaureate", "classroom", "discussion"],
-  },
-];
-
-function requiredEntityGroupsForSlot(slot: PresentationTaskVisualSlot) {
-  const text = normalizeText(
-    [slot.label, slot.need, ...(slot.keywords || [])].join(" ")
-  );
-  return ENTITY_ALIAS_GROUPS.filter((aliases) =>
-    aliases.some((alias) => normalizedTextContainsAlias(text, alias))
-  );
-}
-
-function requiredNamedPhraseGroupsForSlot(slot: PresentationTaskVisualSlot) {
-  const rawText = [slot.label, slot.need, ...(slot.keywords || [])].join(" ");
-  const quoted = Array.from(rawText.matchAll(/[「『"“']([^」』"”']{2,40})[」』"”']/gu))
+function requiredNamedPhraseGroupsForSlot(
+  slot: PresentationTaskVisualSlot,
+  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
+) {
+  const rawText = normalizedSlotTexts?.[presentationVisualSlotMatchKey(slot)] || "";
+  const quoted = Array.from(rawText.matchAll(/["'`]([^"'`]{2,40})["'`]/g))
     .map((match) => match[1]?.trim())
     .filter((value): value is string => !!value && !isGenericNamedPhrase(value));
   const acronyms = Array.from(rawText.matchAll(/\b[A-Z][A-Z0-9&.-]{1,12}\b/g))
     .map((match) => match[0]?.trim())
     .filter(
       (value): value is string =>
-        !!value && !isGenericNamedPhrase(value) && !isKnownEntityAlias(value)
+        !!value && !isGenericNamedPhrase(value)
     );
   return Array.from(new Set([...quoted, ...acronyms])).map((value) => [value]);
 }
@@ -645,12 +539,6 @@ function isGenericNamedPhrase(value: string) {
   return GENERIC_NAMED_PHRASES.has(normalizeText(value));
 }
 
-function isKnownEntityAlias(value: string) {
-  return ENTITY_ALIAS_GROUPS.some((aliases) =>
-    aliases.some((alias) => normalizeText(alias) === normalizeText(value))
-  );
-}
-
 const GENERIC_NAMED_PHRASES = new Set([
   "ppt",
   "pptx",
@@ -662,29 +550,3 @@ const GENERIC_NAMED_PHRASES = new Set([
   "visual",
 ]);
 
-const ENTITY_ALIAS_GROUPS = [
-  ["india", "indian", "インド"],
-  ["china", "chinese", "中国"],
-  ["usa", "us", "u.s.", "united states", "america", "american", "アメリカ", "米国"],
-  ["brazil", "brazilian", "ブラジル"],
-  ["japan", "japanese", "日本", "国内"],
-  ["europe", "eu", "european", "ヨーロッパ", "欧州"],
-  ["uk", "u.k.", "united kingdom", "britain", "british", "イギリス", "英国"],
-  ["france", "french", "フランス"],
-  ["germany", "german", "ドイツ"],
-  ["italy", "italian", "イタリア"],
-  ["spain", "spanish", "スペイン"],
-  ["canada", "canadian", "カナダ"],
-  ["mexico", "mexican", "メキシコ"],
-  ["australia", "australian", "オーストラリア"],
-  ["vietnam", "vietnamese", "ベトナム"],
-  ["bangladesh", "bangladeshi", "バングラデシュ"],
-  ["pakistan", "pakistani", "パキスタン"],
-  ["turkey", "turkish", "トルコ"],
-  ["indonesia", "indonesian", "インドネシア"],
-  ["thailand", "thai", "タイ"],
-  ["korea", "korean", "韓国"],
-  ["taiwan", "taiwanese", "台湾"],
-  ["africa", "african", "アフリカ"],
-  ["south africa", "南アフリカ"],
-];
