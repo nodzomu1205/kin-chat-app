@@ -583,7 +583,7 @@ describe("resolvePresentationVisualSlots", () => {
             visibleSubjects: ["cotton plants", "field"],
             embeddedTextItems: [],
             relationships: [],
-            composition: "wide landscape cover",
+            composition: "single_scene",
             semanticTags: ["cotton", "field", "cover"],
           },
         },

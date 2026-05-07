@@ -47,12 +47,12 @@ Working estimate:
 
 Latest status update:
 
-- PPT direct edit has been reworked to an approval-based structured `edits[]`
-  model. The old diff-based direct-edit compatibility branch was removed from
-  active code during closeout.
-- Direct edit replacement now clears stale old text/list fields in the touched
-  block, but text-fit/overflow policy remains under watch and should not be
-  solved by renderer-wide emergency shrink rules.
+- PPT direct edit and its approval queue were retired from the active command
+  path in the two-stage visual workflow closeout. The stable PPT path is Stage 1
+  editable design, Stage 2 image-library visual resolution, and render-time
+  image hydration.
+- PPT text-fit/overflow policy remains under watch and should not be solved by
+  renderer-wide emergency shrink rules.
 - Kin PPT design protocols and image-library data request protocols are wired;
   keep task-time auto-reference settings separate from explicit Kin
   `SYS_LIBRARY_*_DATA_REQUEST` protocols.
@@ -153,9 +153,10 @@ Treat the maintainability program as complete only when every item below is
 - next task-registration work should add focused tests for
   `SYS_TASK_PROPOSAL`, task draft registration/edit/start, task-time library
   setting restore, and recurrence validation
-- PPT direct-edit follow-up should add focused coverage around retry/reinterpret
-  behavior and at least one visual replacement flow before the path is called
-  fully settled
+- PPT follow-up coverage should protect the two-stage workflow: Save after
+  Resolve, selected-image retention, library `[PPT]` hydration, and placeholder
+  output for unresolved visuals. API generation inside Resolve is a deferred
+  future branch, not current required coverage.
 
 ### F. Docs / Handoff Hygiene
 

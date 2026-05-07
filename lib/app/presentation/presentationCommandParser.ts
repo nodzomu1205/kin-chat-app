@@ -52,11 +52,11 @@ function isRenderRequest(body: string) {
 }
 
 function isSaveRequest(body: string) {
-  return /^(save|菫晏ｭ・繝ｩ繧､繝悶Λ繝ｪ縺ｫ菫晏ｭ・)$/iu.test(body.trim());
+  return /^(save|保存|ライブラリに保存)$/iu.test(body.trim());
 }
 
 function isResolveVisualsRequest(body: string) {
-  return /^(resolve\s+visual\s+blocks|resolve\s+visuals|逕ｻ蜒上ｒ驕ｸ縺ｶ|繝薙ず繝･繧｢繝ｫ隗｣豎ｺ)(?:\s|$)/iu.test(
+  return /^(resolve\s+visual\s+blocks|resolve\s+visuals|画像を選ぶ|ビジュアル解決)(?:\s|$)/iu.test(
     body.trim()
   );
 }

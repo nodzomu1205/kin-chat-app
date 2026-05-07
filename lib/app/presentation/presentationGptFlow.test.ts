@@ -389,7 +389,11 @@ describe("runPresentationGptCommandFlow", () => {
         body: expect.stringContaining("ppt_recent_render"),
       })
     );
-    const requestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    const [, requestInit] = fetchMock.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    const requestBody = JSON.parse(requestInit.body as string);
     expect(requestBody).toMatchObject({
       generateImages: true,
       imageMode: "library",

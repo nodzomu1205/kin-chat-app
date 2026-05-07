@@ -234,7 +234,8 @@ generated with:
 - render route / image assets:
   - `app/api/presentation-render/route.ts`
   - `lib/server/presentation/imageGeneration.ts`
-  - `lib/server/presentation/frameSpecImages.ts`
+  - selected-image collection now lives in the active PPT flow/render request
+    path rather than the retired `frameSpecImages.ts` helper
 - renderer:
   - `kin-presentation-renderer/src/rendererV2.ts`
   - `kin-presentation-renderer/src/schema.ts`

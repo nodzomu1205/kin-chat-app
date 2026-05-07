@@ -900,66 +900,6 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
   return lines;
 }
 
-// Kept only as a compatibility reference for legacy mojibake output checks.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function formatBlockDisplayLines(block: PresentationTaskSlideBlock) {
-  const lines = [`- ${block.id} ${block.kind} (${block.styleId})`];
-  if (block.heading) lines.push(`  - 表示見出し: ${block.heading}`);
-  if (block.text) lines.push(`  - 表示本文: ${block.text}`);
-  if (block.items?.length) {
-    lines.push("  - 表示項目:");
-    block.items.forEach((item) => lines.push(`    - ${item}`));
-  }
-  if (block.visualRequest) {
-    lines.push(`  - ビジュアル種別: ${block.visualRequest.type}`);
-    if (block.visualRequest.brief) {
-      lines.push(`  - ビジュアル概要: ${block.visualRequest.brief}`);
-    }
-    if (block.visualRequest.prompt) {
-      lines.push(`  - ビジュアルプロンプト: ${block.visualRequest.prompt}`);
-    } else {
-      lines.push(
-        `  - Visual prompt: prompt needed${block.visualRequest.promptNote ? ` (${block.visualRequest.promptNote})` : ""}`
-      );
-    }
-    if (block.visualRequest.visualSlots?.length) {
-      lines.push("  - Visual slots:");
-      block.visualRequest.visualSlots
-        .slice()
-        .sort((a, b) => (a.order || 0) - (b.order || 0))
-        .forEach((slot) => lines.push(`    - ${slot.label}: ${slot.need}`));
-    }
-    if (block.visualRequest.labels?.length) {
-      lines.push("  - ビジュアル内表示ラベル:");
-      block.visualRequest.labels.forEach((label) => lines.push(`    - ${label}`));
-    }
-    if (block.visualRequest.selectionMatches?.length) {
-      lines.push("  - Image match scores:");
-      block.visualRequest.selectionMatches.forEach((match) => {
-        const target = match.imageId ? `${match.imageId}${match.imageTitle ? ` (${match.imageTitle})` : ""}` : "unresolved";
-        lines.push(
-          `    - ${match.label}: ${match.status} / score ${match.score} / threshold ${match.threshold} / ${target}`
-        );
-      });
-    }
-    if (block.visualRequest.preferredImageId) {
-      lines.push(`  - Image ID: ${block.visualRequest.preferredImageId}`);
-    } else if (block.visualRequest.asset?.imageId) {
-      lines.push(`  - Image ID: ${block.visualRequest.asset.imageId}`);
-    }
-    if (block.visualRequest.candidateImageIds?.length) {
-      lines.push(`  - Candidate image IDs: ${block.visualRequest.candidateImageIds.join(", ")}`);
-    }
-    if (block.visualRequest.usagePolicy) {
-      lines.push(`  - Visual usage policy: ${block.visualRequest.usagePolicy}`);
-    }
-    if (block.visualRequest.maxVisualItems) {
-      lines.push(`  - Max visual items: ${block.visualRequest.maxVisualItems}`);
-    }
-  }
-  return lines;
-}
-
 function supportedMasterFrameId(value: unknown): PresentationTaskMasterFrameId {
   const id = stringValue(value);
   return MASTER_FRAME_IDS.has(id as PresentationTaskMasterFrameId)

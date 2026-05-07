@@ -67,19 +67,6 @@ function buildTaskDraftImageLibraryContext(
   );
 }
 
-function getTaskDraftImageLibraryCandidates(
-  args:
-    | PrepTaskFromInputFlowArgs
-    | UpdateTaskFromInputFlowArgs
-    | UpdateTaskFromLastGptMessageFlowArgs
-) {
-  return getPresentationImageLibraryCandidates({
-    enabled: args.imageLibraryReferenceEnabled,
-    count: args.imageLibraryReferenceCount,
-    referenceLibraryItems: args.referenceLibraryItems,
-  });
-}
-
 function buildTaskDraftLibraryReferenceContext(
   args:
     | PrepTaskFromInputFlowArgs

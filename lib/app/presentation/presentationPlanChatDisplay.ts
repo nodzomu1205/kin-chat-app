@@ -63,9 +63,5 @@ function collectPresentationPlanSelectedImageIdGroups(plan: PresentationTaskPlan
 }
 
 function isSelectedImageLine(line: string) {
-  return (
-    line.includes("選択済み画像:") ||
-    line.includes("Image ID:") ||
-    line.includes("驕ｸ謚樊ｸ医∩逕ｻ蜒")
-  );
+  return line.includes("選択済み画像:") || line.includes("Image ID:");
 }

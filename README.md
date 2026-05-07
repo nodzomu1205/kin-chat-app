@@ -255,17 +255,17 @@ Recent regression fixes and maintainability wins include:
 - Kin PPT design work now uses `SYS_PPT_DESIGN_REQUEST / RESPONSE`, counts as
   separate `PPT作業`, and saves finalized design documents through the existing
   `SYS_FILE_SAVING_REQUEST` route
-- PPT direct edit now uses approval-based structured `edits[]` candidates
-  instead of whole-plan regeneration and diffing; approved edits update both the
-  rendered PPTX and the saved PPT design document
-- PPT direct edit text replacement clears stale old `items` on text blocks so
-  replacement content is not rendered together with previous bullet items
+- PPT direct edit and its approval queue were retired from the active command
+  path; the supported PPT flow is now Stage 1 editable design, Stage 2 visual
+  resolution, and render-time image hydration
+- PPT visual resolution now covers body visuals and `visualTitleCover`; selected
+  image IDs are preserved through Save, library display, and PPTX creation
 
 Current caution after the latest task/constraint stabilization:
 
-- direct-edit text overflow remains a design issue. Do not solve it with
-  renderer-wide emergency font shrinking; design block/frame capacity handling
-  or block-level style hints first
+- PPT text overflow remains a design issue. Do not solve it with renderer-wide
+  emergency font shrinking; design block/frame capacity handling or block-level
+  style hints first
 - the task-intent / task-progress / compiler residue cleanup is substantially complete,
   and the dead GPT settings/persistence response-mode path is now removed; remaining
   `responseMode` references are protocol/task payload fields and should not be

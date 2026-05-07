@@ -233,8 +233,8 @@ function extractSummaryFromText(text: string) {
     text
       .split(/\r?\n/)
       .map((line) => line.trim())
-      .find((line) => line.startsWith("讎りｦ・"))
-      ?.replace(/^讎りｦ・\s*/, "")
+      .find((line) => line.startsWith("概要:"))
+      ?.replace(/^概要:\s*/, "")
       .trim() || ""
   );
 }

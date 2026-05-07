@@ -55,8 +55,13 @@ inspect and refine the actual registry used by PPT design and rendering.
 Target commands:
 
 ```text
+Retired inspection commands:
+
 PPT frames: Show index
 PPT frames: Show JSON / titleLineFooter
+
+These commands were useful while the frame registry was being debugged, but the
+active two-stage PPT command path no longer wires them.
 PPT frames: Edit JSON / titleLineFooter
 PPT frames: Delete JSON / titleLineFooter
 ```

@@ -1,67 +1,43 @@
 # Next Session Handover
 
-Updated: 2026-05-05
+Updated: 2026-05-07
 
 ## Latest Handoff
 
-The newest active handoff is for the PPT image-library adaptive-layout slice.
-Start there if the next session is about reviewing the latest generated PPT
-design/PPTX result:
+The newest active record is the 2026-05-07 two-stage PPT visual workflow
+closeout. Start there for PPT work:
 
-- [`HANDOFF-2026-05-05.md`](./HANDOFF-2026-05-05.md)
+- [`presentation-renderer/development-session-checklist.md`](./presentation-renderer/development-session-checklist.md)
+- [`presentation-renderer/two-stage-visual-workflow-checklist.md`](./presentation-renderer/two-stage-visual-workflow-checklist.md)
+- [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
 - [`HANDOFF-2026-05-03.md`](./HANDOFF-2026-05-03.md)
 - [`HANDOFF-2026-05-01.md`](./HANDOFF-2026-05-01.md)
-- [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
 ## Current Next Start
 
-The next session should begin with **reviewing the result of a new PPT design
-and PPTX output** after the 2026-05-05 fixes. The user is expected to share the
-new PPT design text and `.pptx`.
+The current PPT creation path is the two-stage visual workflow:
 
-Review in this order:
+1. Stage 1 creates an editable PPT design with visual prompts and in-image
+   labels, without premature image selection.
+2. Stage 2 resolves visual blocks for body slides and `visualTitleCover` through
+   explicit image-library selection.
+3. PPTX rendering hydrates selected image bytes at render time only.
+4. Unresolved visuals remain valid placeholders.
 
-1. PPT design document correctness.
-2. Exact image-library ID allowlist use.
-3. One-to-one image labels for `candidateImageIds`.
-4. `textMain` / `visualMain` role decisions.
-5. Adaptive text-main layout and any text/image overlap.
-6. Cover/closing bookend behavior.
-7. Renderer XML/media only after the upstream design route is checked.
+The 2026-05-07 closeout confirmed this behavior in live testing:
 
-Do not begin by patching renderer symptoms. For this slice, the first priority
-is preventing bad PPT design JSON: invented IDs, wrong image labels, repeated
-generic captions, and duplicate summary closings.
+- Stage 1 design output is usable.
+- `Save` updates the existing library card.
+- `Resolve visual blocks` works for body visuals and opening title visuals.
+- Selected images remain visible in design/resolve views.
+- `Save` preserves selected opening/body image data.
+- Library display and `[PPT]` paths use selected images correctly.
+- Image-free placeholder PPTX and resolved-image PPTX are both useful.
 
-Latest 2026-05-05 closeout:
-
-- Image-library candidate context now includes `Caption seed`.
-- `visualRequest.labels` must match `candidateImageIds` exactly, in count and
-  order.
-- Labels are accepted only when they can align to selected image IDs.
-- The planner and normalizer avoid `summaryClosing` when the final body slide
-  is already a summary/conclusion/future-outlook slide.
-- PPT design formatting in the touched planning path no longer contains
-  mojibake literals.
-- Renderer V2 uses a more conservative Japanese text-height estimate for
-  adaptive text-main layouts, as a safety verifier rather than the primary fix.
-
-2026-05-05 verification passed:
-
-- `npm test -- lib/app/presentation/presentationImageLibrary.test.ts lib/app/presentation/presentationTaskPlanning.test.ts lib/app/presentation/presentationPlanValidation.test.ts lib/task/taskProtocol.test.ts`
-- `npm test --prefix kin-presentation-renderer -- src/rendererV2.test.ts`
-- `npx tsc --noEmit`
-- `npm run lint`
-- `npm run check:utf8`
-- `npm test` (`185 files / 900 tests`)
-- `npm run build`
-- `npm test --prefix kin-presentation-renderer` (`4 files / 24 tests`)
-
-The latest completed slice added library/image-library bulk operations, Kin PPT
-design protocols, task-time image-library reference settings, and approval-based
-PPT direct edit. Start from `HANDOFF-2026-05-03.md` before changing any of
-those paths.
+API image generation directly inside the PPT resolve flow is intentionally not
+part of the current stable path. Treat it as a future branch only if explicitly
+requested; the current stable path is image-library selection plus placeholders.
 
 The PPT creation feature is still close to a practical stopping point. Do not
 continue polishing renderer typography by default. The likely next product slice
@@ -73,9 +49,9 @@ Treat the current PPT feature as the callable capability. The next work should
 design how Kin requests, monitors, revises, and completes that capability
 through the task/protocol system.
 
-If the next session is about PPT direct edit, start with the 2026-05-03 handoff.
-If it is about PPT frame/image rendering, also review the 2026-05-01 handoff
-before touching code. Otherwise, start from the Kin task process plan below.
+If it is about PPT frame/image rendering, also review the 2026-05-01 and
+2026-05-05 handoffs as historical context before touching code. Otherwise,
+start from the Kin task process plan below.
 
 Before making any PPT renderer/image-routing claim, follow the handoff's
 non-negotiable debugging rule: distinguish observed facts from hypotheses,
@@ -87,18 +63,14 @@ For text/body layout, keep style decisions in frame/block-style data. Renderer
 V2 should execute `renderStyle.textStyle` and conservative defaults, not bake in
 one-off typography rules that will be hard to change later.
 
-Latest direct-edit closeout note:
+Retired direct-edit note:
 
-- PPT direct edit now uses structured `edits[]`, not the old whole-plan
-  regeneration and diff path.
-- Old `changes[]` direct-edit candidates are obsolete and should be rejected
-  if they appear from localStorage.
-- Text replacement clears stale old `items` on text blocks, preventing
-  replacement text from being rendered together with old bullet items.
-- The temporary renderer-wide font shrink experiment was reverted. Future text
-  fit work should be designed as a block/frame policy, not as a direct-edit
-  emergency patch.
-- A retry/reinterpret button for direct-edit approval remains pending.
+- PPTX direct edit and its approval queue were removed from the active PPT
+  command path in the 2026-05-07 closeout.
+- Do not use `HANDOFF-2026-05-03.md` direct-edit instructions as active guidance;
+  they are archive context for a retired experiment.
+- Future text fit work should be designed as block/frame policy or
+  `renderStyle.textStyle`, not as a direct-edit emergency patch.
 
 Latest PPT layout normalization note:
 
@@ -122,13 +94,13 @@ Latest PPT layout normalization note:
 
 Completed in this PPT slice:
 
-1. `PPT frames: Show index` - implemented.
-2. `PPT frames: Show JSON / <frameId>` - implemented.
-3. Renderer V2 is active for frame-native PPTX output.
-4. Image-library and API image modes are routed through deterministic resolver
-   behavior.
-5. Frame/block typography is style-data-driven via `renderStyle.textStyle`.
-6. Deck-level title/closing bookends are implemented and normalized.
+1. Renderer V2 is active for frame-native PPTX output.
+2. Image-library rendering is routed through deterministic selected-ID
+   hydration. API generation remains outside the stable PPT resolve flow.
+3. Frame/block typography is style-data-driven via `renderStyle.textStyle`.
+4. Deck-level title/closing bookends are implemented and normalized.
+5. Retired PPT-frame inspection commands and their registry helper were removed
+   from the active code path.
 
 Deferred unless explicitly requested:
 

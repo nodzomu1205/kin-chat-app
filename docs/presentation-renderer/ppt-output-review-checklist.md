@@ -65,10 +65,10 @@ Trace issues in this order and record which layer was actually observed:
 | 31 | Layout | Image labels do not alter layout spacing | Labels render inside/over the image area and do not create external spacing shifts | `rendererV2.test.ts`, PPTX review |
 | 32 | Layout | Image label height is compact | Label boxes remain short enough not to dominate the image; long labels are truncated | `rendererV2.test.ts`, PPTX review |
 | 33 | Layout | Adaptive visual-main handles multiple visuals | Visual-main slides with multiple visual blocks render multiple images, not only the first image | `rendererV2.test.ts` |
-| 34 | Bookends | visualTitleCover receives a representative image | Cover slides using `visualTitleCover` include a representative image when body visuals exist | `presentationTaskPlanning.test.ts`, `frameSpecImages.test.ts`, `rendererV2.test.ts` |
+| 34 | Bookends | visualTitleCover receives a representative image | Cover slides using `visualTitleCover` include a representative image when body visuals exist | `presentationTaskPlanning.test.ts`, `presentationVisualSelection.test.ts`, `rendererV2.test.ts` |
 | 35 | Bookends | Cover image treatment is applied | Cover image fits the slide frame and uses the expected transparent treatment | `rendererV2.test.ts`, PPTX review |
 | 36 | Bookends | Summary closing is not duplicated | If the final body slide is already summary-like, closing slide should be a simple `endSlide` | `presentationTaskPlanning.test.ts` |
-| 37 | Generated images | Chat image list is complete | Generated image collection includes cover, body, and closing assets where present | `frameSpecImages.test.ts` |
+| 37 | Selected images | Render request image list is complete | Selected cover/body assets are hydrated through the frameSpec render request where present | `presentationGptFlow.test.ts`, `useReferenceLibraryUiActions.ts` review |
 | 38 | Generated images | Unresolved slots do not create fake assets | Unresolved visual slots are reported as unresolved and do not produce image relationships | `rendererV2.test.ts`, chat output review |
 | 39 | PPTX artifact | Expected image relationships exist | PPTX slide relationship files contain the expected image relationship count for cover/body slides | `rendererV2.test.ts`, PPTX XML inspection |
 | 40 | Schema | FrameSpec validates after normalization | Block counts and layout IDs survive schema parsing without silently dropping content | `presentationSlideFrames.test.ts` where available, `presentationTaskPlanning.test.ts` |

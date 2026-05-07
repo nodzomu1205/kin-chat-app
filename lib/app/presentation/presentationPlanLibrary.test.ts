@@ -22,6 +22,7 @@ function planWithResolvedImage(): PresentationTaskPlan {
       {
         slideNumber: 1,
         title: "Resolved visual",
+        masterFrameId: "titleLineFooter",
         layoutFrameId: "adaptiveTextMain",
         slideRole: "textMain",
         blocks: [

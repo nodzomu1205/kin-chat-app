@@ -1,10 +1,14 @@
 # Presentation Renderer Next Implementation Notes
 
-Last updated: 2026-05-03
+Last updated: 2026-05-07
 
 ## Current State
 
-- `/ppt` can create, revise, preview, and render presentation library documents.
+- `/ppt` command handling now supports the active menu commands:
+  `Save`, `Save and create PPT`, `Resolve visual blocks`, and
+  `Resolve visuals`.
+- New PPT design creation runs through the task design flow and produces an
+  editable Stage 1 design document with visual prompts and in-image labels.
 - `Document ID` is the routing key for revisions and PPTX generation.
 - `Density:` is supported as command metadata and is stored on `PresentationSpec`.
 - The renderer remains standalone under `kin-presentation-renderer`.
@@ -30,9 +34,11 @@ Last updated: 2026-05-03
   `content.title`, `content.bullets`, `leftContent`, `rightContent`,
   `content.leftBullets`, `content.rightBullets`, `content.leftColumn`, and
   `content.rightColumn`.
-- The app now has an image library for generated/imported image assets. The
-  next renderer-facing step is to route those assets into PPTX rendering. See
-  `../HANDOFF-2026-05-01.md`.
+- The app has an image library for generated/imported image assets. The stable
+  PPT path selects image-library assets in Stage 2 and hydrates only selected
+  image bytes at PPTX render time.
+- API image generation is not directly wired into the active PPT Resolve flow;
+  treat that as a future branch only if explicitly requested.
 
 ## Cleanup Notes
 
@@ -43,14 +49,12 @@ Last updated: 2026-05-03
 - `kin-presentation-renderer/.tmp-render-tests/` is test output and should stay
   ignored.
 - The older patch-first GPT revision path has been removed from active code.
-  Direct PPTX edits now use a structured approval candidate (`edits[]`) that
-  targets slide/block addresses and applies only after user approval.
-- Direct PPTX edit text replacement must not preserve stale old bullet items.
-  Text-stack/callout replacement clears `items`; list replacement clears `text`
-  and writes the approved lines as `items`.
-- Do not add renderer-wide typography shrink rules to compensate for one direct
-  edit overflow. Future fit handling should be designed through block/frame
-  capacity policy or block-level `renderStyle.textStyle`.
+- PPTX direct edit and its approval queue have also been retired. The current
+  editing model is: revise Stage 1 design text, save the existing plan card,
+  resolve visuals in Stage 2, then render from the saved structured plan.
+- Do not add renderer-wide typography shrink rules to compensate for one text
+  overflow. Future fit handling should be designed through block/frame capacity
+  policy or block-level `renderStyle.textStyle`.
 
 ## Deployment Notes
 

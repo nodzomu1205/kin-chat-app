@@ -55,14 +55,6 @@ function buildTaskDraftImageLibraryContext(args: AttachSearchResultToTaskFlowArg
   );
 }
 
-function getTaskDraftImageLibraryCandidates(args: AttachSearchResultToTaskFlowArgs) {
-  return getPresentationImageLibraryCandidates({
-    enabled: args.imageLibraryReferenceEnabled,
-    count: args.imageLibraryReferenceCount,
-    referenceLibraryItems: args.referenceLibraryItems,
-  });
-}
-
 function buildTaskDraftLibraryReferenceContext(
   args: AttachSearchResultToTaskFlowArgs
 ) {

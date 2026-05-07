@@ -11,10 +11,7 @@ import {
   buildPresentationCommandFailureMessage,
   buildPresentationRenderedMessage,
 } from "@/lib/app/presentation/presentationGptPrompts";
-import {
-  buildPresentationImageLibraryContext,
-  getPresentationImageLibraryCandidates,
-} from "@/lib/app/presentation/presentationImageLibrary";
+import { getPresentationImageLibraryCandidates } from "@/lib/app/presentation/presentationImageLibrary";
 import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
