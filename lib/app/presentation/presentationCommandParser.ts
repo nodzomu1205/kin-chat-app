@@ -45,7 +45,7 @@ function isRenderRequest(body: string) {
     /\b(ppt|pptx|power\s*point|powerpoint)\s+(create|render|generate|export)\b/i.test(
       body
     ) ||
-    /(?:ppt|pptx|power\s*point|powerpoint|パワーポイント).*(?:作成|生成|出力|書き出し)/iu.test(
+    /(?:ppt|pptx|power\s*point|powerpoint|パワーポイント).*?(?:作成|生成|出力|書き出し)/iu.test(
       body
     )
   );

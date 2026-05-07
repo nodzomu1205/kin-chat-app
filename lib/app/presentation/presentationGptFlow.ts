@@ -1,8 +1,10 @@
 import { generateId } from "@/lib/shared/uuid";
 import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
 import {
+  buildPresentationTaskPlan,
   buildFramePresentationSpecFromTaskPlan,
   buildPresentationCommandLink,
+  buildPresentationTaskStructuredInput,
   buildPresentationTaskPlanFromText,
   formatPresentationTaskPlanText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
@@ -11,7 +13,10 @@ import {
   buildPresentationCommandFailureMessage,
   buildPresentationRenderedMessage,
 } from "@/lib/app/presentation/presentationGptPrompts";
-import { getPresentationImageLibraryCandidates } from "@/lib/app/presentation/presentationImageLibrary";
+import {
+  buildPresentationImageLibraryContext,
+  getPresentationImageLibraryCandidates,
+} from "@/lib/app/presentation/presentationImageLibrary";
 import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
@@ -23,6 +28,7 @@ import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlo
 import {
   applySendToGptRequestStart,
 } from "@/lib/app/send-to-gpt/sendToGptFlowState";
+import { runAutoUpdatePresentationTask } from "@/lib/app/gpt-task/gptTaskClient";
 import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
 import type { Message } from "@/types/chat";
 import type { PresentationTaskPlan, PresentationTaskSlideFrame } from "@/types/task";
@@ -69,6 +75,15 @@ export async function runPresentationGptCommandFlow(args: {
 
     if (command.intent === "resolveVisuals") {
       await runResolvePresentationVisualsFlow({
+        documentId: command.documentId,
+        body: command.body,
+        flowArgs: args.flowArgs,
+      });
+      return true;
+    }
+
+    if (command.documentId && command.body.trim()) {
+      await runUpdateSavedPresentationPlanFlow({
         documentId: command.documentId,
         body: command.body,
         flowArgs: args.flowArgs,
@@ -591,6 +606,71 @@ function findRecentPresentationPlanByDocumentId(args: {
 
 function hasUsablePresentationPlanShape(plan: PresentationTaskPlan) {
   return plan.slideFrames.length > 0;
+}
+
+async function runUpdateSavedPresentationPlanFlow(args: {
+  documentId: string;
+  body: string;
+  flowArgs: SendToGptFlowStepArgs;
+}) {
+  const foundPlan = findPresentationPlanByDocumentId({
+    documentId: args.documentId,
+    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+  });
+  if (!foundPlan) {
+    throw new Error(`Presentation plan document not found: ${args.documentId}`);
+  }
+
+  const imageCandidates = getPresentationImageLibraryCandidates({
+    enabled: args.flowArgs.imageLibraryReferenceEnabled,
+    count: args.flowArgs.imageLibraryReferenceCount,
+    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
+  });
+  const input = buildPresentationTaskStructuredInput({
+    title: foundPlan.plan.title || foundPlan.item.title || "PPT design",
+    userInstruction: args.body.trim(),
+    currentPlanText: formatPresentationTaskPlanText(foundPlan.plan),
+    body: args.body,
+    libraryReferenceContext: args.flowArgs.buildLibraryReferenceContext?.(),
+    imageLibraryContext: buildPresentationImageLibraryContext(imageCandidates),
+  });
+  const data = await runAutoUpdatePresentationTask(input, "ppt-library-update");
+  const incomingPlan: PresentationTaskPlan = {
+    ...buildPresentationTaskPlan({
+      title: foundPlan.plan.title || foundPlan.item.title || "PPT design",
+      result: data?.parsed,
+      rawText: data?.raw,
+    }),
+    documentId: foundPlan.plan.documentId,
+  };
+  const updatedPlan: PresentationTaskPlan = {
+    ...mergePresentationPlanVisualSelections({
+      incomingPlan,
+      existingPlan: foundPlan.plan,
+    }),
+    latestPptx: foundPlan.plan.latestPptx || incomingPlan.latestPptx || null,
+    updatedAt: new Date().toISOString(),
+  };
+  const text = formatPresentationTaskPlanText(updatedPlan);
+
+  args.flowArgs.updateStoredDocument(foundPlan.sourceId, {
+    title: foundPlan.item.title,
+    text,
+    structuredPayload: updatedPlan,
+    summary: foundPlan.item.summary,
+  });
+  args.flowArgs.applyTaskUsage?.(data?.usage);
+  appendPresentationAssistantMessage({
+    flowArgs: args.flowArgs,
+    text: [
+      "Presentation design updated and saved in the library.",
+      "",
+      `Document ID: ${args.documentId}`,
+      "",
+      await buildPresentationTaskPlanTextWithImagePreviews(updatedPlan),
+    ].join("\n"),
+    presentationPlan: updatedPlan,
+  });
 }
 
 async function runResolvePresentationVisualsFlow(args: {

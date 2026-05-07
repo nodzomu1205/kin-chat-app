@@ -68,7 +68,7 @@ export function shouldShowKinManagementDrawer(
 }
 
 export function getKinLoadingText(loading: boolean) {
-  return loading ? "Kindroidが応答中..." : null;
+  return loading ? "Kindroid応答中..." : null;
 }
 
 export function getKinPendingInjectionLabel(params: {

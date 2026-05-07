@@ -101,7 +101,7 @@ describe("kinPanelVisibility", () => {
   });
 
   it("returns stable loading and pending-injection labels", () => {
-    expect(getKinLoadingText(true)).toBe("Kindroidが応答中...");
+    expect(getKinLoadingText(true)).toBe("Kindroid応答中...");
     expect(getKinLoadingText(false)).toBeNull();
     expect(
       getKinPendingInjectionLabel({

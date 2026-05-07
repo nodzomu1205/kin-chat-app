@@ -9,6 +9,19 @@ import {
 } from "@/lib/app/presentation/presentationTaskPlanning";
 import type { Message, ReferenceLibraryItem } from "@/types/chat";
 
+const { runAutoUpdatePresentationTaskMock } = vi.hoisted(() => ({
+  runAutoUpdatePresentationTaskMock: vi.fn(),
+}));
+
+vi.mock("@/lib/app/gpt-task/gptTaskClient", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/app/gpt-task/gptTaskClient")>();
+  return {
+    ...actual,
+    runAutoUpdatePresentationTask: runAutoUpdatePresentationTaskMock,
+  };
+});
+
 describe("collectFrameSpecPreferredImageIds", () => {
   it("includes opening cover visual image IDs so visualTitleCover can hydrate library assets", () => {
     const ids = collectFrameSpecPreferredImageIds({
@@ -677,6 +690,106 @@ describe("runPresentationGptCommandFlow", () => {
     ).toBe("img_students");
     expect(patch.text).toContain("img_cover");
     expect(patch.text).toContain("img_students");
+  });
+
+  it("updates a saved library PPT design from /ppt Document ID comments after chat reset", async () => {
+    const savedDesign = buildRecentDesign("ppt_library_update", {
+      selectedImageId: "img_saved",
+      visualLabel: "Saved visual label",
+    });
+    const updateStoredDocument = vi.fn();
+    const messages: Message[] = [];
+    runAutoUpdatePresentationTaskMock.mockResolvedValueOnce({
+      raw: "",
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+      parsed: {
+        taskId: "task",
+        type: "PREP_TASK",
+        status: "OK",
+        summary: "Updated design",
+        keyPoints: [],
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Updated overview",
+                    layoutFrameId: "adaptiveTextMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "textStack",
+                        styleId: "textStackTopLeft",
+                        heading: "Updated overview",
+                        text: "Updated body text.",
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Updated scene",
+                          prompt: "Updated visual prompt.",
+                          labels: ["Updated visual label"],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+        warnings: [],
+        missingInfo: [],
+        nextSuggestion: [],
+      },
+    });
+
+    const handled = await runPresentationGptCommandFlow({
+      rawText: [
+        "/ppt",
+        "Document ID: ppt_library_update",
+        "3枚目の表現をより実務向けにしてください",
+      ].join("\n"),
+      flowArgs: buildFlowArgs({
+        messages,
+        recentMessages: [],
+        recordIngestedDocument: vi.fn(),
+        updateStoredDocument,
+        referenceLibraryItems: [buildPresentationPlanLibraryItem(savedDesign.plan)],
+      }),
+      assistantRequestArgs: {} as never,
+    });
+
+    expect(handled).toBe(true);
+    expect(runAutoUpdatePresentationTaskMock).toHaveBeenCalledWith(
+      expect.stringContaining("現在のPPT設計書:"),
+      "ppt-library-update"
+    );
+    expect(updateStoredDocument).toHaveBeenCalledWith(
+      "stored-ppt_library_update",
+      expect.objectContaining({
+        text: expect.stringContaining("Updated body text."),
+        structuredPayload: expect.objectContaining({
+          documentId: "ppt_library_update",
+        }),
+      })
+    );
+    const patch = updateStoredDocument.mock.calls[0]?.[1] as {
+      structuredPayload: ReturnType<typeof buildRecentDesign>["plan"];
+    };
+    expect(
+      patch.structuredPayload.slideFrames[0].blocks[1].visualRequest
+        ?.preferredImageId
+    ).toBe("img_saved");
+    expect(messages.at(-1)?.text).toContain(
+      "Presentation design updated and saved in the library."
+    );
   });
 });
 

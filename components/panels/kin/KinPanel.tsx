@@ -61,6 +61,18 @@ export default function KinPanel(props: KinPanelProps) {
     isMobile,
     kinCount: kinList.length,
   });
+  const lastMessage = kinMessages[kinMessages.length - 1];
+  const isSendingSingleSysInjection =
+    loading &&
+    pendingInjectionTotalParts === 0 &&
+    lastMessage?.role === "user" &&
+    /<<SYS_(?:INFO|TASK)>>/.test(lastMessage.text || "");
+  const injectionCurrentPart = isSendingSingleSysInjection
+    ? 1
+    : pendingInjectionCurrentPart;
+  const injectionTotalParts = isSendingSingleSysInjection
+    ? 1
+    : pendingInjectionTotalParts;
 
   return (
     <div
@@ -125,7 +137,7 @@ export default function KinPanel(props: KinPanelProps) {
       </div>
 
       <div style={footerStyle(isMobile)}>
-        {pendingInjectionTotalParts > 0 && (
+        {injectionTotalParts > 0 && (
           <div
             style={{
               fontSize: 12,
@@ -139,8 +151,8 @@ export default function KinPanel(props: KinPanelProps) {
             }}
           >
             {getKinPendingInjectionLabel({
-              currentPart: pendingInjectionCurrentPart,
-              totalParts: pendingInjectionTotalParts,
+              currentPart: injectionCurrentPart,
+              totalParts: injectionTotalParts,
             })}
           </div>
         )}
