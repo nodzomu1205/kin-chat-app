@@ -7,6 +7,10 @@ import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { iconButton } from "@/components/panels/gpt/LibraryDrawerControls";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { loadGeneratedImageAsset } from "@/lib/app/image/imageAssetStorage";
+import {
+  buildLibraryItemEditDraftCommand,
+  resolveLibraryItemImageId,
+} from "@/lib/app/reference-library/libraryDraftCommands";
 import type { LibraryDrawerProps } from "@/components/panels/gpt/LibraryDrawerTypes";
 import type { MultipartAssembly, ReferenceLibraryItem } from "@/types/chat";
 
@@ -27,6 +31,8 @@ export default function LibraryItemCardHeader({
   onDeleteSearchHistoryItem,
   onDeleteMultipartAssembly,
   onDeleteStoredDocument,
+  onDraftLibraryItemEditCommand,
+  onInsertImageIdToDraft,
 }: {
   item: ReferenceLibraryItem;
   priorityIndex: number;
@@ -40,6 +46,8 @@ export default function LibraryItemCardHeader({
   onDeleteSearchHistoryItem: LibraryDrawerProps["onDeleteSearchHistoryItem"];
   onDeleteMultipartAssembly: LibraryDrawerProps["onDeleteMultipartAssembly"];
   onDeleteStoredDocument: LibraryDrawerProps["onDeleteStoredDocument"];
+  onDraftLibraryItemEditCommand: (itemId: string) => void;
+  onInsertImageIdToDraft: (imageId: string) => void;
 }) {
   const imagePayload = isGeneratedImageLibraryPayload(item.structuredPayload)
     ? item.structuredPayload
@@ -59,6 +67,9 @@ export default function LibraryItemCardHeader({
       cancelled = true;
     };
   }, [imagePayloadBase64, imagePayloadId]);
+  const editDraftCommand = buildLibraryItemEditDraftCommand(item);
+  const insertableImageId =
+    item.artifactType === "generated_image" ? resolveLibraryItemImageId(item) : "";
   return (
     <div
       role="button"
@@ -168,6 +179,28 @@ export default function LibraryItemCardHeader({
             {GPT_LIBRARY_DRAWER_TEXT.taskSelected}
           </span>
         ) : null}
+        {editDraftCommand ? (
+          <button
+            type="button"
+            onClick={() => onDraftLibraryItemEditCommand(item.id)}
+            style={iconButton()}
+            title="入力欄に編集コマンドをセット"
+            aria-label="入力欄に編集コマンドをセット"
+          >
+            <CopyGlyph />
+          </button>
+        ) : null}
+        {insertableImageId ? (
+          <button
+            type="button"
+            onClick={() => onInsertImageIdToDraft(insertableImageId)}
+            style={iconButton()}
+            title="Image IDを入力欄に挿入"
+            aria-label="Image IDを入力欄に挿入"
+          >
+            <CopyGlyph />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => onMoveLibraryItem(item.id, "up")}
@@ -204,5 +237,27 @@ export default function LibraryItemCardHeader({
         </button>
       </div>
     </div>
+  );
+}
+
+function CopyGlyph() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect
+        x="5"
+        y="3"
+        width="8"
+        height="10"
+        rx="1.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M3 11.5V5.2C3 4.54 3.54 4 4.2 4H9"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

@@ -11,6 +11,7 @@ type Props = {
   submitOnEnter?: boolean;
   placeholder?: string;
   loading: boolean;
+  focusKey?: number;
 };
 
 const verticalButtonStyle: React.CSSProperties = {
@@ -46,6 +47,7 @@ export default function GptComposer({
   submitOnEnter = true,
   placeholder,
   loading,
+  focusKey = 0,
 }: Props) {
   const [blink, setBlink] = useState(false);
 
@@ -105,6 +107,7 @@ export default function GptComposer({
             onSubmit={onSubmit}
             submitOnEnter={submitOnEnter}
             placeholder={placeholder}
+            focusKey={focusKey}
           />
         </div>
 

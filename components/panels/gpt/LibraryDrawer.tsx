@@ -6,6 +6,10 @@ import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { LibraryImportControls } from "@/components/panels/gpt/LibraryDrawerControls";
 import LibraryItemCard from "@/components/panels/gpt/LibraryItemCard";
 import type { LibraryDrawerProps } from "@/components/panels/gpt/LibraryDrawerTypes";
+import {
+  buildLibraryItemEditDraftCommand,
+  insertImageIdIntoGptDraft,
+} from "@/lib/app/reference-library/libraryDraftCommands";
 
 export default function LibraryDrawer({
   multipartAssemblies,
@@ -42,6 +46,8 @@ export default function LibraryDrawer({
   deviceImportAccept,
   imageImportAccept,
   deviceImportDisabled = false,
+  libraryViewRequest = null,
+  setGptInputDraft,
 }: LibraryDrawerProps) {
   const [driveImportMenuOpen, setDriveImportMenuOpen] = useState(false);
   const [activeLibraryView, setActiveLibraryView] = useState<"library" | "images">("library");
@@ -51,6 +57,31 @@ export default function LibraryDrawer({
   const [draftSummary, setDraftSummary] = useState("");
   const [draftText, setDraftText] = useState("");
   const deviceInputId = React.useId();
+  React.useEffect(() => {
+    if (!libraryViewRequest) return;
+    setActiveLibraryView(libraryViewRequest.view);
+  }, [libraryViewRequest]);
+
+  const handleDraftLibraryItemEditCommand = React.useCallback(
+    (itemId: string) => {
+      if (!setGptInputDraft) return;
+      const item = referenceLibraryItems.find((entry) => entry.id === itemId);
+      if (!item) return;
+      const command = buildLibraryItemEditDraftCommand(item);
+      if (!command) return;
+      setGptInputDraft(command);
+    },
+    [referenceLibraryItems, setGptInputDraft]
+  );
+
+  const handleInsertImageIdToDraft = React.useCallback(
+    (imageId: string) => {
+      if (!setGptInputDraft) return;
+      setGptInputDraft((current) => insertImageIdIntoGptDraft(current, imageId));
+    },
+    [setGptInputDraft]
+  );
+
   const visibleItems =
     activeLibraryView === "images"
       ? referenceLibraryItems.filter((item) => item.artifactType === "generated_image")
@@ -155,6 +186,8 @@ export default function LibraryDrawer({
               setDraftTitle={setDraftTitle}
               setDraftSummary={setDraftSummary}
               setDraftText={setDraftText}
+              onDraftLibraryItemEditCommand={handleDraftLibraryItemEditCommand}
+              onInsertImageIdToDraft={handleInsertImageIdToDraft}
             />
           ))}
         </div>

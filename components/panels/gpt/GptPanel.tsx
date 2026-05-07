@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import ChatMessages from "@/components/message/ChatMessages";
 import DrawerTabs, { type DrawerMode } from "@/components/panels/gpt/DrawerTabs";
 import GptDrawerRouter from "@/components/panels/gpt/GptDrawerRouter";
@@ -15,6 +15,7 @@ import type {
   GptInstructionMode,
   GptPanelProps,
 } from "@/components/panels/gpt/gptPanelTypes";
+import type { LibraryViewRequest } from "@/components/panels/gpt/LibraryDrawerTypes";
 import {
   applyLocalSettingsUpdate,
   buildLocalSettingsSourceKey,
@@ -181,6 +182,9 @@ export default function GptPanel(props: GptPanelProps) {
   const [viewState, setViewState] = useState(createInitialGptPanelViewState);
   const [showMemoryContent, setShowMemoryContent] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [composerFocusKey, setComposerFocusKey] = useState(0);
+  const [libraryViewRequest, setLibraryViewRequest] =
+    useState<LibraryViewRequest | null>(null);
   const [localSettingsState, setLocalSettingsState] =
     useState<LocalMemorySettingsInput>(sourceLocalSettings);
   const [localSettingsSourceKey, setLocalSettingsSourceKey] = useState(
@@ -306,6 +310,19 @@ export default function GptPanel(props: GptPanelProps) {
     setViewState((prev) => toggleGptSettingsWorkspace(prev, next));
   };
 
+  const setGptInputDraftAndFocus = useCallback(
+    (value: React.SetStateAction<string>) => {
+      chat.setGptInput(value);
+      setComposerFocusKey((prev) => prev + 1);
+    },
+    [chat]
+  );
+
+  const requestImageLibraryView = useCallback(() => {
+    setLibraryViewRequest({ view: "images", key: Date.now() });
+    setViewState((prev) => changeGptDrawer(prev, "received_docs"));
+  }, []);
+
   return (
     <div
       style={{
@@ -425,6 +442,8 @@ export default function GptPanel(props: GptPanelProps) {
             showMemoryContent={showMemoryContent}
             setShowMemoryContent={setShowMemoryContent}
             toPositiveInt={toPositiveInt}
+            libraryViewRequest={libraryViewRequest}
+            setGptInputDraft={setGptInputDraftAndFocus}
           />
         </div>
       ) : null}
@@ -571,13 +590,16 @@ export default function GptPanel(props: GptPanelProps) {
             sourceDisplayCount={settings.sourceDisplayCount}
             onImportYouTubeTranscript={references.onImportYouTubeTranscript}
             onSendYouTubeTranscriptToKin={references.onSendYouTubeTranscriptToKin}
-            onDraftCommand={(command) =>
-              chat.setGptInput((current) =>
+            onDraftCommand={(command) => {
+              if (isPresentationVisualSelectionDraft(command)) {
+                requestImageLibraryView();
+              }
+              setGptInputDraftAndFocus((current) =>
                 mergePresentationResolveVisualCommandDraft(current, command)
-              )
-            }
+              );
+            }}
             onRunCommand={(command) => {
-              chat.setGptInput(command);
+              setGptInputDraftAndFocus(command);
               return chat.sendToGpt("normal", command);
             }}
           />
@@ -633,6 +655,7 @@ export default function GptPanel(props: GptPanelProps) {
               getComposerPlaceholder(viewState.bottomTab)
             }
             loading={busy}
+            focusKey={composerFocusKey}
           />
         </div>
       </div>
@@ -695,4 +718,14 @@ function sidecarKey(name: string) {
     .replace(/\.(?:txt|md|json)$/u, "")
     .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
     .trim();
+}
+
+function isPresentationVisualSelectionDraft(command: string) {
+  return (
+    /^\s*\/ppt(?:\s|$)/i.test(command) &&
+    /^\s*Resolve visuals\s*$/im.test(command) &&
+    /^\s*(?:(?:Slide\s+\d+\s*\/\s*block\s+\d+)|(?:Opening\s+slide\s*\/\s*visual))\s*:\s*$/im.test(
+      command
+    )
+  );
 }

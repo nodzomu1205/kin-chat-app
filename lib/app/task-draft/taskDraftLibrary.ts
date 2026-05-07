@@ -6,6 +6,11 @@ import {
   buildPresentationTaskPlanFromText,
   formatPresentationTaskPlanText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
+import {
+  buildTaskSnapshotDocumentId,
+  ensureTaskSnapshotDocumentText,
+  stripTaskSnapshotTitlePrefix,
+} from "@/lib/app/task-draft/taskSnapshotDocument";
 
 function trimLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
@@ -20,7 +25,7 @@ export function getTaskDraftLibraryTitle(taskDraft: TaskDraft) {
   if (taskDraft.mode === "presentation") {
     return title ? `PPT Design - ${title}` : "PPT Design";
   }
-  return title ? `Task Snapshot - ${title}` : "Task Snapshot";
+  return title ? stripTaskSnapshotTitlePrefix(title) : "Task Snapshot";
 }
 
 export function buildTaskDraftLibraryText(taskDraft: TaskDraft) {
@@ -89,6 +94,15 @@ export function buildStoredDocumentFromTaskDraft(
 
   const now = new Date().toISOString();
   const title = getTaskDraftLibraryTitle(taskDraft);
+  const taskDocumentId =
+    taskDraft.mode === "presentation" ? "" : buildTaskSnapshotDocumentId(new Date(now));
+  const documentText =
+    taskDraft.mode === "presentation" || !taskDocumentId
+      ? text
+      : ensureTaskSnapshotDocumentText({
+          text,
+          documentId: taskDocumentId,
+        });
   const structuredPayload =
     taskDraft.mode === "presentation"
       ? presentationPlan ||
@@ -96,18 +110,23 @@ export function buildStoredDocumentFromTaskDraft(
           title: taskDraft.title || taskDraft.taskName || title,
           text,
         })
-      : undefined;
+      : {
+          version: "0.1-task-snapshot" as const,
+          documentId: taskDocumentId,
+          title: taskDraft.title || taskDraft.taskName || title,
+          mode: "normal" as const,
+        };
 
   return {
     artifactType:
       taskDraft.mode === "presentation" ? "presentation_plan" : "task_snapshot",
     title,
-    filename: buildLibraryFilenameWithCharCount(`${title}.txt`, text),
-    text,
+    filename: buildLibraryFilenameWithCharCount(`${title}.txt`, documentText),
+    text: documentText,
     summary: buildTaskDraftLibrarySummary(taskDraft),
     taskId: taskDraft.taskId || undefined,
     taskTitle: taskDraft.title || taskDraft.taskName || undefined,
-    charCount: text.length,
+    charCount: documentText.length,
     structuredPayload,
     createdAt: now,
     updatedAt: now,

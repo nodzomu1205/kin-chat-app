@@ -15,6 +15,7 @@ import { finalizeSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlowFinali
 import { resolveSendToGptFlowStart } from "@/lib/app/send-to-gpt/sendToGptFlowDecisionState";
 import { runImageGptCommandFlow } from "@/lib/app/image/imageGptFlow";
 import { runPresentationGptCommandFlow } from "@/lib/app/presentation/presentationGptFlow";
+import { runSavedDocumentEditFlow } from "@/lib/app/reference-library/savedDocumentEditFlow";
 import {
   appendSendToGptFailureMessage,
   applySendToGptRequestStart,
@@ -70,6 +71,15 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
       rawText,
       flowArgs,
       assistantRequestArgs: executionBundle.assistantRequestArgs,
+    })
+  ) {
+    return;
+  }
+
+  if (
+    await runSavedDocumentEditFlow({
+      rawText,
+      flowArgs,
     })
   ) {
     return;

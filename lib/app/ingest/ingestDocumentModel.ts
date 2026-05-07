@@ -2,6 +2,10 @@ import {
   cleanImportedDocumentText,
   cleanImportSummarySource,
 } from "@/lib/app/ingest/importSummaryText";
+import {
+  extractTaskSnapshotDocumentIdFromText,
+  resolveTaskSnapshotDocumentId,
+} from "@/lib/app/task-draft/taskSnapshotDocument";
 import type { ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 
 type ResolveCanonicalDocumentTextArgs = {
@@ -325,6 +329,11 @@ export function buildReferenceLibraryDocumentItem(
 ): ReferenceLibraryItem {
   const normalizedItem = normalizeStoredDocument(item);
   const documentId = presentationPlanDocumentId(normalizedItem.structuredPayload);
+  const taskDocumentId =
+    resolveTaskSnapshotDocumentId(normalizedItem.structuredPayload) ||
+    (normalizedItem.artifactType === "task_snapshot"
+      ? extractTaskSnapshotDocumentIdFromText(normalizedItem.text)
+      : "");
   const imageId = generatedImageId(normalizedItem.structuredPayload);
   const baseSubtitle = buildCompactLibraryFilenameLabel({
     filename: normalizedItem.filename,
@@ -337,8 +346,8 @@ export function buildReferenceLibraryDocumentItem(
     itemType: normalizedItem.sourceType,
     artifactType: normalizedItem.artifactType,
     title: normalizedItem.title,
-    subtitle: documentId
-      ? `Document ID: ${documentId}`
+    subtitle: documentId || taskDocumentId
+      ? `Document ID: ${documentId || taskDocumentId}`
       : imageId
         ? `Image ID: ${imageId}`
         : baseSubtitle,

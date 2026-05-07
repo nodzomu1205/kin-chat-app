@@ -84,6 +84,19 @@ describe("parsePptCommand", () => {
     });
   });
 
+  it("keeps full underscore document ids for saved presentation edits", () => {
+    expect(
+      parsePptCommand(
+        "/ppt\nDocument ID: ppt_moviazhi_f760x1\nSlide 2に人気の駅ランキングを詳しく表示して！"
+      )
+    ).toMatchObject({
+      isPptCommand: true,
+      documentId: "ppt_moviazhi_f760x1",
+      body: "Slide 2に人気の駅ランキングを詳しく表示して！",
+      intent: undefined,
+    });
+  });
+
   it("detects render requests even without a document id", () => {
     expect(parsePptCommand("/ppt Create PPT")).toMatchObject({
       isPptCommand: true,

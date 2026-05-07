@@ -229,6 +229,29 @@ describe("ingestDocumentModel", () => {
     });
   });
 
+  it("shows task snapshot document ids on library cards", () => {
+    expect(
+      buildReferenceLibraryDocumentItem({
+        id: "doc-task",
+        sourceType: "ingested_file",
+        artifactType: "task_snapshot",
+        title: "Task Snapshot - Review",
+        filename: "Task Snapshot - Review [120chars].txt",
+        text: "Document ID: task_abc123\n\nInstruction\nReview this.",
+        summary: "Task",
+        charCount: 120,
+        structuredPayload: {
+          version: "0.1-task-snapshot",
+          documentId: "task_abc123",
+        },
+        createdAt: "2026-04-18T00:00:00.000Z",
+        updatedAt: "2026-04-18T00:00:00.000Z",
+      })
+    ).toMatchObject({
+      subtitle: "Document ID: task_abc123",
+    });
+  });
+
   it("builds reference-library search items with char-count filenames", () => {
     expect(
       buildReferenceLibrarySearchItem({

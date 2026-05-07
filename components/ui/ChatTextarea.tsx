@@ -12,6 +12,7 @@ type Props = {
   maxRows?: number;
   disabled?: boolean;
   placeholder?: string;
+  focusKey?: number;
 };
 
 export default function ChatTextarea({
@@ -23,6 +24,7 @@ export default function ChatTextarea({
   maxRows = 12,
   disabled = false,
   placeholder = CHAT_TEXTAREA_TEXT.placeholder,
+  focusKey = 0,
 }: Props) {
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -50,6 +52,15 @@ export default function ChatTextarea({
   React.useEffect(() => {
     resize();
   }, [resize, value]);
+
+  React.useEffect(() => {
+    if (!focusKey) return;
+    const element = textareaRef.current;
+    if (!element) return;
+    element.focus();
+    const cursorPosition = element.value.length;
+    element.setSelectionRange(cursorPosition, cursorPosition);
+  }, [focusKey]);
 
   return (
     <textarea

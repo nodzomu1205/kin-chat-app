@@ -3,6 +3,12 @@ import type {
   GptPanelSettingsProps,
 } from "@/components/panels/gpt/gptPanelTypes";
 import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
+import type { SetStateAction } from "react";
+
+export type LibraryViewRequest = {
+  view: "library" | "images";
+  key: number;
+};
 
 export type LibraryDrawerProps = Pick<
   GptPanelReferenceProps,
@@ -48,4 +54,6 @@ export type LibraryDrawerProps = Pick<
     deviceImportAccept: string;
     imageImportAccept: string;
     deviceImportDisabled?: boolean;
+    libraryViewRequest?: LibraryViewRequest | null;
+    setGptInputDraft?: (value: SetStateAction<string>) => void;
   };

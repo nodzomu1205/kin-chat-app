@@ -60,6 +60,8 @@ type Props = Pick<
   setDraftTitle: React.Dispatch<React.SetStateAction<string>>;
   setDraftSummary: React.Dispatch<React.SetStateAction<string>>;
   setDraftText: React.Dispatch<React.SetStateAction<string>>;
+  onDraftLibraryItemEditCommand: (itemId: string) => void;
+  onInsertImageIdToDraft: (imageId: string) => void;
 };
 
 export default function LibraryItemCard({
@@ -97,6 +99,8 @@ export default function LibraryItemCard({
   setDraftTitle,
   setDraftSummary,
   setDraftText,
+  onDraftLibraryItemEditCommand,
+  onInsertImageIdToDraft,
 }: Props) {
   const priorityIndex =
     referenceLibraryItems
@@ -144,6 +148,8 @@ export default function LibraryItemCard({
         onDeleteSearchHistoryItem={onDeleteSearchHistoryItem}
         onDeleteMultipartAssembly={onDeleteMultipartAssembly}
         onDeleteStoredDocument={onDeleteStoredDocument}
+        onDraftLibraryItemEditCommand={onDraftLibraryItemEditCommand}
+        onInsertImageIdToDraft={onInsertImageIdToDraft}
       />
 
       <LibraryItemCardActions

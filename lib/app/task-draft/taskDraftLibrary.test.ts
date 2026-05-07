@@ -19,10 +19,15 @@ describe("taskDraftLibrary", () => {
     const document = buildStoredDocumentFromTaskDraft(taskDraft);
 
     expect(document).toMatchObject({
-      title: "Task Snapshot - Market scan",
-      filename: "Task Snapshot - Market scan [127chars].txt",
+      title: "Market scan",
+      filename: expect.stringMatching(/^Market scan \[\d+chars\]\.txt$/),
       taskId: "T-001",
+      structuredPayload: expect.objectContaining({
+        version: "0.1-task-snapshot",
+        documentId: expect.stringMatching(/^task_/),
+      }),
     });
+    expect(document?.text).toContain("Document ID: task_");
     expect(document?.text).toContain("Instruction");
     expect(document?.text).not.toContain("\nSummary\n");
     expect(document?.text).toContain("Full");
@@ -35,6 +40,15 @@ describe("taskDraftLibrary", () => {
 
   it("falls back to a generic title when the draft is untitled", () => {
     expect(getTaskDraftLibraryTitle(createEmptyTaskDraft())).toBe("Task Snapshot");
+  });
+
+  it("does not duplicate an existing task snapshot title prefix", () => {
+    expect(
+      getTaskDraftLibraryTitle({
+        ...createEmptyTaskDraft(),
+        title: "Task Snapshot - Market scan",
+      })
+    ).toBe("Market scan");
   });
 
   it("stores presentation mode drafts as presentation plan documents", () => {

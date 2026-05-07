@@ -31,7 +31,7 @@ describe("chatPagePanelCompositionBuilders", () => {
         } as never,
       })
     ).toMatchObject({
-      title: "Task Snapshot - Task title",
+      title: "Task title",
     });
   });
 
@@ -80,6 +80,11 @@ describe("chatPagePanelCompositionBuilders", () => {
     expect(recordIngestedDocument).toHaveBeenCalledWith(
       expect.objectContaining({
         summary: "Generated snapshot summary",
+        text: expect.stringContaining("Document ID: task_"),
+        structuredPayload: expect.objectContaining({
+          version: "0.1-task-snapshot",
+          documentId: expect.stringMatching(/^task_/),
+        }),
       })
     );
 

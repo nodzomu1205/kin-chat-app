@@ -9,7 +9,7 @@ export type ParsedPptCommand = {
 };
 
 const PPT_PREFIX_PATTERN = /^\s*\/ppt(?:\s|$)/i;
-const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:-]+)/im;
+const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:_-]+)/im;
 const DENSITY_PATTERN = /^\s*Density\s*:\s*(concise|standard|detailed|dense)\s*$/gim;
 const LEGACY_IMAGE_COMMAND_PATTERN = /^\s*(?:Generate Images|Images)\s*:/im;
 
