@@ -61,6 +61,11 @@ function normalizeDeckFrameBookends(
   frames: PresentationTaskSlideFrame[]
 ): PresentationTaskDeckFrame {
   const representativeVisual = findRepresentativeVisual(frames);
+  const generatedOpeningVisualRequest = buildOpeningCoverVisualRequest(
+    deckFrame,
+    frames,
+    representativeVisual
+  );
   const openingSlide =
     deckFrame.openingSlide?.enabled === false
       ? deckFrame.openingSlide
@@ -74,7 +79,7 @@ function normalizeDeckFrameBookends(
                 (representativeVisual ? "visualTitleCover" : "titleCover"),
           visualRequest:
             deckFrame.openingSlide?.visualRequest ||
-            cloneVisualRequest(representativeVisual),
+            generatedOpeningVisualRequest,
         };
   const finalBodyIsSummary = isSummaryLikeFrame(frames[frames.length - 1]);
   const summary = finalBodyIsSummary ? null : summarizeDeckFrames(frames);
@@ -272,11 +277,52 @@ function findRepresentativeVisual(
   return undefined;
 }
 
-function cloneVisualRequest(
-  visual: PresentationTaskVisualRequest | undefined
+function buildOpeningCoverVisualRequest(
+  deckFrame: PresentationTaskDeckFrame,
+  frames: PresentationTaskSlideFrame[],
+  representativeVisual: PresentationTaskVisualRequest | undefined
 ): PresentationTaskVisualRequest | undefined {
-  if (!visual) return undefined;
-  return JSON.parse(JSON.stringify(visual)) as PresentationTaskVisualRequest;
+  if (!representativeVisual) return undefined;
+  const opening = deckFrame.openingSlide;
+  const title = opening?.title?.trim() || deckOverviewTitle(frames);
+  const topic = deckOverviewTopic(frames);
+  const coverNeed = [title, topic, "wide cover visual deck overview"]
+    .filter(Boolean)
+    .join(" ");
+  const prompt = [
+    `プレゼン全体のテーマ「${title || "全体像"}」を象徴する表紙用ワイドビジュアル。`,
+    topic ? `本文スライド全体の論点（${topic}）を俯瞰できる、特定の本文スライドをそのまま写さない導入イメージ。` : "",
+  ]
+    .filter(Boolean)
+    .join("");
+  return {
+    type: representativeVisual.type || "photo",
+    brief: title ? `${title}の表紙イメージ` : "表紙イメージ",
+    prompt,
+    labels: ["表紙イメージ"],
+    visualSlots: [
+      {
+        slotId: "openingCover",
+        label: "表紙イメージ",
+        need: coverNeed,
+        keywords: ["cover", "overview", "wide", "presentation"],
+        order: 1,
+      },
+    ],
+  };
+}
+
+function deckOverviewTitle(frames: PresentationTaskSlideFrame[]) {
+  const firstTitle = frames.find((frame) => frame.title?.trim())?.title?.trim();
+  return firstTitle || "プレゼン全体像";
+}
+
+function deckOverviewTopic(frames: PresentationTaskSlideFrame[]) {
+  return frames
+    .slice(0, 5)
+    .map((frame) => frame.title?.trim())
+    .filter((title): title is string => !!title)
+    .join(" / ");
 }
 
 function summarizeDeckFrames(frames: PresentationTaskSlideFrame[]) {

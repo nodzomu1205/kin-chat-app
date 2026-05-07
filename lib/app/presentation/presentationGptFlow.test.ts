@@ -532,7 +532,8 @@ describe("runPresentationGptCommandFlow", () => {
     expect(messages.at(-1)?.text).toContain("現在選択中の画像:");
     expect(messages.at(-1)?.text).toContain("- img_current");
     expect(messages.at(-1)?.text).toContain("Opening slide / visual:");
-    expect(messages.at(-1)?.text).toContain("img_auto");
+    expect(messages.at(-1)?.text).toContain("表紙用ワイドビジュアル");
+    expect(messages.at(-1)?.text).not.toContain("Opening slide / visual: img_auto");
   });
 
   it("lets Resolve visuals select a visualTitleCover opening image", async () => {

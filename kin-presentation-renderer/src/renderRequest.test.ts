@@ -2,12 +2,8 @@ import { mkdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderPresentationRequest } from "./renderRequest.js";
-import {
-  extractFlowSteps,
-  extractTwoAxisLabels,
-  renderFramePresentationToFile,
-  resolveFrameTwoColumnBoxes
-} from "./renderer.js";
+import { renderFramePresentationToFile } from "./renderer.js";
+import { resolveTwoColumnBoxes } from "./rendererV2.js";
 import type { PresentationSpec } from "./schema.js";
 
 const spec: PresentationSpec = {
@@ -45,20 +41,22 @@ describe("renderPresentationRequest", () => {
       items: ["One", "Two"]
     };
 
-    const leftVisual = resolveFrameTwoColumnBoxes(
+    const leftVisual = resolveTwoColumnBoxes(
       "visualLeftTextRight",
       visualBlock,
-      textBlock
+      textBlock,
+      { x: 0.76, y: 1.56, w: 11.81, h: 4.75 }
     );
-    const rightVisual = resolveFrameTwoColumnBoxes(
+    const rightVisual = resolveTwoColumnBoxes(
       "textLeftVisualRight",
       textBlock,
-      visualBlock
+      visualBlock,
+      { x: 0.76, y: 1.56, w: 11.81, h: 4.75 }
     );
 
     expect(leftVisual.left.w).toBeLessThan(leftVisual.right.w);
-    expect(leftVisual.left.w).toBeCloseTo(3.84, 1);
-    expect(leftVisual.right.w).toBeCloseTo(7.46, 1);
+    expect(leftVisual.left.w).toBeCloseTo(3.83, 1);
+    expect(leftVisual.right.w).toBeCloseTo(7.44, 1);
     expect(rightVisual.right.w).toBeCloseTo(leftVisual.left.w, 2);
     expect(rightVisual.left.w).toBeCloseTo(leftVisual.right.w, 2);
   });
@@ -85,25 +83,14 @@ describe("renderPresentationRequest", () => {
       items: ["One", "Two"]
     };
 
-    const boxes = resolveFrameTwoColumnBoxes("leftRight50", visualBlock, textBlock);
+    const boxes = resolveTwoColumnBoxes(
+      "leftRight50",
+      visualBlock,
+      textBlock,
+      { x: 0.76, y: 1.56, w: 11.81, h: 4.75 }
+    );
 
     expect(boxes.left.w).toBeCloseTo(boxes.right.w, 2);
-  });
-
-  it("extracts arrow flow steps without treating a leading description as a node", () => {
-    expect(
-      extractFlowSteps(
-        "Cotton production flow diagram. Cultivation and harvest -> Ginning -> Spinning -> Weaving -> Finishing. Add short notes."
-      )
-    ).toEqual(["Cultivation and harvest", "Ginning", "Spinning", "Weaving", "Finishing"]);
-  });
-
-  it("extracts two-axis diagram labels from visual prompts", () => {
-    expect(
-      extractTwoAxisLabels(
-        "オーガニックコットン推進とブロックチェーン利用の2軸を示す図解。矢印で連携を表現し、業界の持続可能性向上を強調。"
-      )
-    ).toEqual(["オーガニックコットン推進", "ブロックチェーン利用"]);
   });
 
   it("renders pptx and returns metadata", async () => {

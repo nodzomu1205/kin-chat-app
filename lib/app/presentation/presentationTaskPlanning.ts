@@ -129,6 +129,7 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "The canonical slide design source is deckFrame + slideFrames JSON. Natural-language slide design text is only a projection from that JSON.",
     "deckFrame holds deck-wide settings such as body slide count, common master, background/wallpaper, page number, logo, openingSlide, and closingSlide. Do not repeat common settings on every slide.",
     "Use deckFrame.openingSlide and deckFrame.closingSlide for title-cover and END/summary slides. Do not include those bookend slides in slideFrames; slideFrames are the body slides only.",
+    "When deckFrame.openingSlide.frameId is visualTitleCover, give openingSlide.visualRequest its own cover-specific prompt, labels, and visualSlots. Do not copy the visualRequest from Slide 1 or any body slide.",
     "For summaryClosing, summarize across all body slideFrames. Do not reuse only the final body slide as the summary source.",
     "If the last body slideFrame is already a summary, recap, conclusion, or future-outlook slide, do not use summaryClosing for deckFrame.closingSlide. Use a simple endSlide closing instead.",
     "If page numbers are enabled and bookend slides exist, prefer pageNumber.scope: \"bodyOnly\" so the cover and ending slide stay unnumbered unless the user asks for all-slide numbering.",

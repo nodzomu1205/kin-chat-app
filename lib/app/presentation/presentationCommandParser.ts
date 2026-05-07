@@ -11,7 +11,6 @@ export type ParsedPptCommand = {
 const PPT_PREFIX_PATTERN = /^\s*\/ppt(?:\s|$)/i;
 const DOCUMENT_ID_PATTERN = /^\s*Document ID\s*:\s*([A-Za-z0-9_.:_-]+)/im;
 const DENSITY_PATTERN = /^\s*Density\s*:\s*(concise|standard|detailed|dense)\s*$/gim;
-const LEGACY_IMAGE_COMMAND_PATTERN = /^\s*(?:Generate Images|Images)\s*:/im;
 
 function stripPptPrefix(text: string) {
   return text.replace(PPT_PREFIX_PATTERN, "").replace(/^\s*\r?\n?/, "").trim();
@@ -73,12 +72,7 @@ export function parsePptCommand(text: string): ParsedPptCommand {
   const documentId = body.match(DOCUMENT_ID_PATTERN)?.[1]?.trim();
   const density = parseDensity(body);
   const bodyWithoutDocumentId = stripDensityLines(stripDocumentIdLine(body));
-  const includesLegacyImageCommand = LEGACY_IMAGE_COMMAND_PATTERN.test(
-    bodyWithoutDocumentId
-  );
-  const intent: PptCommandIntent | undefined = includesLegacyImageCommand
-    ? undefined
-    : isRenderRequest(bodyWithoutDocumentId)
+  const intent: PptCommandIntent | undefined = isRenderRequest(bodyWithoutDocumentId)
       ? "renderPptx"
       : documentId && isSaveRequest(bodyWithoutDocumentId)
         ? "savePlan"

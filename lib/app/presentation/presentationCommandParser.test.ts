@@ -47,7 +47,7 @@ describe("parsePptCommand", () => {
     });
   });
 
-  it("does not revive removed image-mode commands", () => {
+  it("does not treat removed image-mode metadata as a separate command", () => {
     expect(
       parsePptCommand(
         "/ppt\nDocument ID: ppt_123\nImages: on, library\nCreate PPT"
@@ -55,7 +55,7 @@ describe("parsePptCommand", () => {
     ).toMatchObject({
       isPptCommand: true,
       documentId: "ppt_123",
-      intent: undefined,
+      intent: "renderPptx",
     });
   });
 

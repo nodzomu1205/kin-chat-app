@@ -420,7 +420,7 @@ function normalizeText(value: string) {
 
 function aliasTermsForSlotText(value: string) {
   const normalized = normalizeText(value);
-  return JAPANESE_SLOT_MATCH_ALIASES.flatMap((entry) =>
+  return CROSS_LANGUAGE_SLOT_MATCH_ALIASES.flatMap((entry) =>
     entry.aliases.some((alias) => normalized.includes(normalizeText(alias)))
       ? entry.terms
       : []
@@ -462,7 +462,111 @@ const BROAD_MATCH_TERMS = new Set([
   "chain",
 ]);
 
-const JAPANESE_SLOT_MATCH_ALIASES = [
+const CROSS_LANGUAGE_SLOT_MATCH_ALIASES = [
+  {
+    aliases: ["東京", "東京都", "東京都内", "都内", "首都圏"],
+    terms: ["tokyo", "metropolitan", "urban", "city", "cityscape"],
+  },
+  {
+    aliases: ["中央区"],
+    terms: ["chuo", "central", "tokyo", "ward"],
+  },
+  {
+    aliases: ["目黒区"],
+    terms: ["meguro", "tokyo", "ward", "residential"],
+  },
+  {
+    aliases: ["文京区"],
+    terms: ["bunkyo", "tokyo", "ward", "education", "school"],
+  },
+  {
+    aliases: ["杉並区"],
+    terms: ["suginami", "tokyo", "ward", "residential"],
+  },
+  {
+    aliases: ["江戸川区"],
+    terms: ["edogawa", "tokyo", "ward", "residential"],
+  },
+  {
+    aliases: ["板橋区"],
+    terms: ["itabashi", "tokyo", "ward", "residential"],
+  },
+  {
+    aliases: ["港区"],
+    terms: ["minato", "tokyo", "ward", "luxury", "urban"],
+  },
+  {
+    aliases: ["世田谷区"],
+    terms: ["setagaya", "tokyo", "ward", "residential"],
+  },
+  {
+    aliases: ["大田区"],
+    terms: ["ota", "tokyo", "ward", "residential"],
+  },
+  {
+    aliases: ["吉祥寺"],
+    terms: ["kichijoji", "shopping", "park", "residential"],
+  },
+  {
+    aliases: ["恵比寿"],
+    terms: ["ebisu", "urban", "restaurant", "station"],
+  },
+  {
+    aliases: ["荻窪"],
+    terms: ["ogikubo", "station", "residential", "shopping"],
+  },
+  {
+    aliases: ["白金台"],
+    terms: ["shirokanedai", "luxury", "residential"],
+  },
+  {
+    aliases: ["麻布"],
+    terms: ["azabu", "luxury", "residential"],
+  },
+  {
+    aliases: ["成城"],
+    terms: ["seijo", "luxury", "residential"],
+  },
+  {
+    aliases: ["田園調布"],
+    terms: ["denenchofu", "luxury", "residential"],
+  },
+  {
+    aliases: ["街並み", "街の様子", "市街地", "都市", "都市部"],
+    terms: ["cityscape", "street", "urban", "city", "neighborhood"],
+  },
+  {
+    aliases: ["住宅街", "住宅地", "閑静な住宅街", "住環境"],
+    terms: ["residential", "neighborhood", "housing", "homes", "quiet"],
+  },
+  {
+    aliases: ["商店街", "繁華街", "駅前", "買い物環境", "商業施設"],
+    terms: ["shopping", "street", "commercial", "store", "retail", "station"],
+  },
+  {
+    aliases: ["駅", "人気駅", "路線", "交通", "交通利便性", "都心アクセス", "アクセス"],
+    terms: ["station", "train", "railway", "transit", "commute", "access"],
+  },
+  {
+    aliases: ["教育", "教育環境", "教育施設", "学校", "校舎", "キャンパス", "施設"],
+    terms: ["education", "school", "campus", "facility", "building", "classroom"],
+  },
+  {
+    aliases: ["子育て", "子育て支援", "ファミリー", "家族"],
+    terms: ["childcare", "parenting", "family", "children", "support"],
+  },
+  {
+    aliases: ["治安", "安全", "安心"],
+    terms: ["safety", "safe", "security", "low", "crime"],
+  },
+  {
+    aliases: ["家賃", "家賃抑制", "賃料"],
+    terms: ["rent", "affordable", "affordability", "housing"],
+  },
+  {
+    aliases: ["高級住宅街", "高級住宅地", "高級", "邸宅"],
+    terms: ["luxury", "upscale", "residential", "mansion", "neighborhood"],
+  },
   {
     aliases: ["高校", "学校", "校舎", "キャンパス", "施設"],
     terms: ["high", "school", "campus", "building", "classroom"],

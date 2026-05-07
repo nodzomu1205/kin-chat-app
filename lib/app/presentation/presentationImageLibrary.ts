@@ -118,7 +118,7 @@ export function buildPresentationImageLibraryContext(
     "Prefer adaptiveTextMain when the message text is the main carrier: put the primary text at the top-left, choose a text shape that leaves the most useful remaining area, and place one or more related images in that remaining area.",
     "For textMain slides, create ordered visualSlots when multiple related images may support the message.",
     "Keep visualSlot order aligned to the corresponding text order. For example, upstream, midstream, downstream slots should follow that text sequence.",
-    "Use the deck/user language for visualSlot.label. Keep visualSlot.need and keywords concrete and searchable.",
+    "Use the deck/user language for visualSlot.label. Keep visualSlot.need and keywords concrete and searchable, adding concise English nouns alongside deck-language wording when the deck language is not English.",
     "Do not make visualSlot.label narrower than the requested visual meaning or likely selected asset; if the slot covers agriculture plus primary processing, the label should reflect that broader range.",
     "Do not assert a specific country, location, company, person, or named system in visualSlot.label unless this image-library metadata explicitly supports that same entity; otherwise use a generic display label.",
     "For each slide, set slideRole to visualMain or textMain based on the slide key message.",

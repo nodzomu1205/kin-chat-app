@@ -153,6 +153,7 @@ Constraints:
 - relationships should describe only visible or explicitly labeled structure such as sequence, comparison, alternative, cause-effect, or hierarchy. Do not add a relationship for objects that merely appear in the same scene; visibleSubjects already covers them. Do not assume a sequence from side-by-side panels. Use alternative or comparison when labels indicate parallel options such as "Knitting / Weaving".
 - composition should capture simple visual structure only.
 - semanticTags should name meaningful objects, processes, domains, and concepts for matching images to slide messages.
+- For presentationMeta descriptive fields, use concise English nouns when naming visible categories, places, domains, and concepts; preserve readable embedded text exactly as seen.
 - Final visualMain vs textMain must be decided later by comparing these materials with the slide key message and content.
 `.trim();
   }

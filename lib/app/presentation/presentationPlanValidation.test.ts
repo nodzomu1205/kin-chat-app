@@ -188,7 +188,7 @@ describe("presentationPlanValidation", () => {
     const frames: PresentationTaskSlideFrame[] = [
       {
         slideNumber: 1,
-        title: "繧ｳ繝・ヨ繝ｳ縺ｮ迚ｩ逅・噪蜉蟾･縺ｨ蟾･遞九ヵ繝ｭ繝ｼ",
+        title: "コットンの物理的加工と工程フロー",
         masterFrameId: "titleLineFooter",
         layoutFrameId: "singleCenter",
         blocks: [
@@ -202,7 +202,7 @@ describe("presentationPlanValidation", () => {
       },
       {
         slideNumber: 2,
-        title: "繧ｵ繝励Λ繧､繝√ぉ繝ｼ繝ｳ縺ｮ諠・ｱ繝ｻ蝠・ｵ√→蠕ｪ迺ｰ繝輔Ο繝ｼ",
+        title: "サプライチェーンの情報・商流と循環フロー",
         masterFrameId: "titleLineFooter",
         layoutFrameId: "singleCenter",
         blocks: [
@@ -227,7 +227,7 @@ describe("presentationPlanValidation", () => {
     const frames: PresentationTaskSlideFrame[] = [
       {
         slideNumber: 1,
-        title: "繧ｳ繝・ヨ繝ｳ縺ｮ迚ｩ逅・噪蜉蟾･縺ｨ蟾･遞九ヵ繝ｭ繝ｼ / 繧ｵ繝励Λ繧､繝√ぉ繝ｼ繝ｳ縺ｮ諠・ｱ繝ｻ蝠・ｵ√→蠕ｪ迺ｰ繝輔Ο繝ｼ",
+        title: "コットンの物理的加工と工程フロー / サプライチェーンの情報・商流と循環フロー",
         masterFrameId: "titleLineFooter",
         layoutFrameId: "leftRight50",
         blocks: [
@@ -585,7 +585,10 @@ describe("presentationPlanValidation", () => {
       pageNumber: { scope: "bodyOnly" },
       openingSlide: {
         frameId: "visualTitleCover",
-        visualRequest: { preferredImageId: "img_cotton" },
+        visualRequest: {
+          brief: "Deckの表紙イメージ",
+          labels: ["表紙イメージ"],
+        },
       },
       closingSlide: {
         frameId: "endSlide",
@@ -594,6 +597,8 @@ describe("presentationPlanValidation", () => {
         nextSteps: undefined,
       },
     });
+    expect(synced?.openingSlide?.visualRequest?.preferredImageId).toBeUndefined();
+    expect(synced?.openingSlide?.visualRequest?.prompt).not.toBe("Representative cotton photo");
   });
 
   it("does not let a summary closing reuse one body slide heading as its title", () => {
@@ -642,6 +647,64 @@ describe("presentationPlanValidation", () => {
     );
 
     expect(synced?.closingSlide?.title).toBe("\u5168\u4f53\u307e\u3068\u3081");
+  });
+
+  it("creates a cover-specific opening visual instead of copying the first body slide visual", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "東京都中央区の住みやすさ",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "adaptiveTextMain",
+        blocks: [
+          { id: "block1", kind: "list", styleId: "listCompact", items: ["交通利便性"] },
+          {
+            id: "block2",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "photo",
+              brief: "中央区の街並み",
+              prompt: "東京都中央区のビル群と交通機関の俯瞰写真。",
+              labels: ["中央区の街並み"],
+            },
+          },
+        ],
+      },
+      {
+        slideNumber: 2,
+        title: "荻窪駅周辺の生活環境",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "adaptiveTextMain",
+        blocks: [
+          { id: "block1", kind: "list", styleId: "listCompact", items: ["商店街"] },
+        ],
+      },
+    ];
+
+    const deckFrame = syncDeckFrameSlideCount(
+      {
+        slideCount: 2,
+        masterFrameId: "titleLineFooter",
+        openingSlide: {
+          enabled: true,
+          frameId: "titleCover",
+          title: "東京都内の住みやすい地域ランキング",
+        },
+      },
+      frames
+    );
+
+    expect(deckFrame?.openingSlide?.frameId).toBe("visualTitleCover");
+    expect(deckFrame?.openingSlide?.visualRequest?.prompt).toContain("表紙用ワイドビジュアル");
+    expect(deckFrame?.openingSlide?.visualRequest?.prompt).not.toBe(
+      "東京都中央区のビル群と交通機関の俯瞰写真。"
+    );
+    expect(deckFrame?.openingSlide?.visualRequest?.labels).toEqual(["表紙イメージ"]);
+    expect(deckFrame?.openingSlide?.visualRequest?.visualSlots?.[0]).toMatchObject({
+      slotId: "openingCover",
+      label: "表紙イメージ",
+    });
   });
 });
 

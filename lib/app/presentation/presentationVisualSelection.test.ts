@@ -120,6 +120,77 @@ describe("resolvePresentationVisualSlots", () => {
     });
   });
 
+  it("matches Japanese Tokyo area visual needs against English image metadata", () => {
+    const plan = basePlan();
+    const visual = plan.slideFrames[0].blocks[1].visualRequest;
+    if (visual) {
+      visual.visualSlots = [
+        {
+          slotId: "education",
+          label: "文京区の教育施設",
+          need: "文京区の教育環境や学校施設の様子",
+          order: 1,
+        },
+        {
+          slotId: "residential",
+          label: "荻窪の住宅街",
+          need: "荻窪駅周辺の住宅街や商店街の様子",
+          order: 2,
+        },
+      ];
+    }
+
+    const resolved = resolvePresentationVisualSlots({
+      plan,
+      imageCandidates: [
+        {
+          imageId: "img_ogikubo",
+          title: "Ogikubo residential neighborhood near the station",
+          presentationMeta: {
+            version: "0.3-presentation-image-meta",
+            visualBaseType: "photo",
+            visibleSubjects: ["residential neighborhood", "shopping street", "station area"],
+            embeddedTextItems: [],
+            relationships: [],
+            composition: "single_scene",
+            semanticTags: ["ogikubo", "tokyo", "residential", "shopping"],
+          },
+        },
+        {
+          imageId: "img_bunkyo_school",
+          title: "Bunkyo ward school campus and education facilities",
+          presentationMeta: {
+            version: "0.3-presentation-image-meta",
+            visualBaseType: "photo",
+            visibleSubjects: ["school campus", "education facilities", "classroom building"],
+            embeddedTextItems: [],
+            relationships: [],
+            composition: "single_scene",
+            semanticTags: ["bunkyo", "tokyo", "education", "school"],
+          },
+        },
+      ],
+    });
+
+    const resolvedVisual = resolved.slideFrames[0].blocks[1].visualRequest;
+    expect(resolvedVisual?.candidateImageIds).toEqual([
+      "img_bunkyo_school",
+      "img_ogikubo",
+    ]);
+    expect(resolvedVisual?.selectionMatches).toEqual([
+      expect.objectContaining({
+        label: "文京区の教育施設",
+        status: "selected",
+        imageId: "img_bunkyo_school",
+      }),
+      expect.objectContaining({
+        label: "荻窪の住宅街",
+        status: "selected",
+        imageId: "img_ogikubo",
+      }),
+    ]);
+  });
+
   it("selects image IDs from ordered visual slots and ignores LLM-provided image IDs", () => {
     const resolved = resolvePresentationVisualSlots({
       plan: basePlan(),
