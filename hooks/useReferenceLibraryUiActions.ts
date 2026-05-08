@@ -10,6 +10,9 @@ import {
   hydratePresentationLibraryImageAssets,
 } from "@/lib/app/presentation/presentationRenderImages";
 import {
+  renderPresentationPptx,
+} from "@/lib/app/presentation/presentationRenderClient";
+import {
   buildPresentationTaskPlanTextWithImagePreviews,
 } from "@/lib/app/presentation/presentationPlanChatDisplay";
 import {
@@ -106,25 +109,6 @@ function isPresentationTaskPlan(value: unknown): value is PresentationTaskPlan {
     !!value &&
     typeof value === "object" &&
     (value as PresentationTaskPlan).version === "0.1-presentation-task-plan"
-  );
-}
-
-function createPresentationBlobUrl(args: {
-  contentBase64?: string;
-  mimeType?: string;
-}) {
-  if (!args.contentBase64 || typeof window === "undefined") return "";
-  const binary = window.atob(args.contentBase64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return URL.createObjectURL(
-    new Blob([bytes], {
-      type:
-        args.mimeType ||
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    })
   );
 }
 
@@ -375,59 +359,44 @@ export function useReferenceLibraryUiActions({
     const selectedImageIds = frameSpec
       ? collectFrameSpecPreferredImageIds(frameSpec)
       : new Set<string>();
-    const response = await fetch("/api/presentation-render", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
-        ...(frameSpec ? { frameSpec } : { spec }),
-        generateImages: selectedImageIds.size > 0,
-        imageMode: selectedImageIds.size > 0 ? "library" : undefined,
-        libraryImageAssets: frameSpec
-          ? await hydratePresentationLibraryImageAssets({
-              referenceLibraryItems: libraryItems,
-              imageLibraryReferenceEnabled: selectedImageIds.size > 0,
-              imageLibraryReferenceCount: 0,
-              frameSpec,
-              onlyRequiredImageAssets: true,
-            })
-          : undefined,
-      }),
+    const output = await renderPresentationPptx({
+      documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
+      ...(frameSpec ? { frameSpec } : { spec }),
+      generateImages: selectedImageIds.size > 0,
+      imageMode: selectedImageIds.size > 0 ? "library" : undefined,
+      libraryImageAssets: frameSpec
+        ? await hydratePresentationLibraryImageAssets({
+            referenceLibraryItems: libraryItems,
+            imageLibraryReferenceEnabled: selectedImageIds.size > 0,
+            imageLibraryReferenceCount: 0,
+            frameSpec,
+            onlyRequiredImageAssets: true,
+          })
+        : undefined,
+    }).catch((error) => {
+      setGptMessages((prev) => [
+        ...prev,
+        createLibraryUiMessage(
+          error instanceof Error && error.message.trim()
+            ? error.message
+            : "PPTX output failed."
+        ),
+      ]);
+      return null;
     });
-    const data = (await response.json().catch(() => ({}))) as {
-      output?: {
-        filename?: string;
-        path?: string;
-        contentBase64?: string;
-        mimeType?: string;
-        createdAt?: string;
-        slideCount?: number;
-      };
-      error?: unknown;
-    };
-    if (!response.ok || !data.output) {
-      const detail =
-        typeof data.error === "string" ? data.error : "PPTX output failed.";
-      setGptMessages((prev) => [...prev, createLibraryUiMessage(detail)]);
-      return;
-    }
-    const path =
-      data.output.path ||
-      createPresentationBlobUrl({
-        contentBase64: data.output.contentBase64,
-        mimeType: data.output.mimeType,
-      });
+    if (!output) return;
+    const path = output.path;
     const title = frameSpec?.title || spec?.title || item.title;
     const slideCount =
-      frameSpec?.slideFrames.length || spec?.slides.length || data.output.slideCount || 0;
-    const filename = data.output.filename || `${title}.pptx`;
+      frameSpec?.slideFrames.length || spec?.slides.length || output.slideCount || 0;
+    const filename = output.filename || `${title}.pptx`;
     const nextPlan: PresentationTaskPlan = {
       ...plan,
       latestPptx: {
         filename,
         path,
-        createdAt: data.output.createdAt || new Date().toISOString(),
-        slideCount: data.output.slideCount || slideCount,
+        createdAt: output.createdAt || new Date().toISOString(),
+        slideCount: output.slideCount || slideCount,
       },
       updatedAt: new Date().toISOString(),
     };
