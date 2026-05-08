@@ -101,9 +101,9 @@ export async function renderLibraryPresentationPlanPptx(args: {
     output,
     title: frameSpec?.title || spec?.title || args.item.title,
     slideCount:
+      output.slideCount ||
       frameSpec?.slideFrames.length ||
       spec?.slides.length ||
-      output.slideCount ||
       0,
     now: args.now,
   });

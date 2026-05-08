@@ -80,7 +80,7 @@ describe("presentationPlanPptxActions", () => {
       filename: "Cotton deck.pptx",
       path: "blob:pptx",
       createdAt: "2026-05-08T01:00:00.000Z",
-      slideCount: 1,
+      slideCount: 2,
       generatedImages: [],
       frameSpec: undefined,
     }));
@@ -111,11 +111,14 @@ describe("presentationPlanPptxActions", () => {
             filename: "Cotton deck.pptx",
             path: "blob:pptx",
             createdAt: "2026-05-08T01:00:00.000Z",
-            slideCount: 1,
+            slideCount: 2,
           },
           updatedAt: "2026-05-08T02:00:00.000Z",
         },
       },
+    });
+    expect(result).toMatchObject({
+      messageText: expect.stringContaining("Slides: 2"),
     });
   });
 

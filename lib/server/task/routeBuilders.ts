@@ -19,18 +19,27 @@ export function buildTaskCompletionResponsesRequest(args: {
   previousRaw: string;
   expectedBodySlideCount: number;
   actualBodySlideCount: number;
+  issues?: string[];
 }) {
   const base = buildTaskResponsesRequest(args.task);
   if (args.task.outputFormat !== "presentation_plan") return base;
+  const issues = args.issues?.length
+    ? args.issues.map((issue) => `- ${issue}`)
+    : [
+        `- Expected body slideFrames count from its own keyMessages/deckFrame: ${args.expectedBodySlideCount}.`,
+        `- Actual body slideFrames count: ${args.actualBodySlideCount}.`,
+      ];
   return {
     ...base,
     input: [
       base.input,
       "",
       "The previous JSON was structurally incomplete.",
-      `Expected body slideFrames count from its own keyMessages/deckFrame: ${args.expectedBodySlideCount}.`,
-      `Actual body slideFrames count: ${args.actualBodySlideCount}.`,
-      "Complete the same presentation plan JSON so slideFrames includes every body slide implied by keyMessages and deckFrame.slideCount.",
+      "Detected issues:",
+      ...issues,
+      "Complete the same presentation plan JSON so slideFrames includes every body slide implied by keyMessages and deckFrame.slideCount, and every slideFrame has usable blocks for its declared role/layout.",
+      "For textMain/adaptiveTextMain slides, include at least one non-visual text/list/callout block with non-empty text or items.",
+      "For visualMain/adaptiveVisualMain slides, include at least one visual block with a non-empty visualRequest brief, prompt, or visualSlots.",
       "Keep extractedItems, strategyItems, and keyMessages unless they contain an obvious parsing error.",
       "Do not reduce source coverage to make the plan shorter.",
       "Do not add opening or closing bookends into slideFrames.",
@@ -54,13 +63,21 @@ export function validatePresentationPlanCompleteness(args: {
     keyMessageCount,
     declaredBodySlideCount
   );
-  if (expectedBodySlideCount <= 1 || bodySlideCount >= expectedBodySlideCount) {
+  const issues: string[] = [];
+  if (expectedBodySlideCount > 1 && bodySlideCount < expectedBodySlideCount) {
+    issues.push(
+      `Expected ${expectedBodySlideCount} body slideFrame(s), but found ${bodySlideCount}.`
+    );
+  }
+  issues.push(...findPresentationPlanBlockIssues(args.parsed));
+  if (issues.length === 0) {
     return null;
   }
   return {
     actualBodySlideCount: bodySlideCount,
     expectedBodySlideCount,
-    message: `presentation_plan slideFrames is incomplete: ${bodySlideCount} body slideFrame(s) for ${expectedBodySlideCount} declared body slide(s).`,
+    issues,
+    message: `presentation_plan slideFrames is incomplete: ${issues.join(" ")}`,
   };
 }
 
@@ -208,6 +225,10 @@ function arrayValue(value: unknown) {
   return Array.isArray(value) ? value : [];
 }
 
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function stringArray(value: unknown) {
   return Array.isArray(value)
     ? value
@@ -330,6 +351,40 @@ function buildPresentationPlanJsonSchemaFormat() {
                         "callout",
                       ],
                     },
+                    heading: { type: "string" },
+                    text: { type: "string" },
+                    items: {
+                      type: "array",
+                      minItems: 1,
+                      items: { type: "string" },
+                    },
+                    visualRequest: {
+                      type: "object",
+                      additionalProperties: true,
+                      properties: {
+                        type: { type: "string" },
+                        brief: { type: "string" },
+                        prompt: { type: "string" },
+                        promptNote: { type: "string" },
+                        visualSlots: {
+                          type: "array",
+                          minItems: 1,
+                          items: {
+                            type: "object",
+                            additionalProperties: true,
+                            properties: {
+                              slotId: { type: "string" },
+                              label: { type: "string" },
+                              need: { type: "string" },
+                              keywords: {
+                                type: "array",
+                                items: { type: "string" },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
                   },
                 },
               },
@@ -365,6 +420,85 @@ function countParsedPresentationDeckSlides(parsed: TaskResult | null) {
     slideCount > 0
     ? slideCount
     : 0;
+}
+
+function findPresentationPlanBlockIssues(parsed: TaskResult | null) {
+  const document = parseParsedPresentationSlideFrameDocument(parsed);
+  const frames = Array.isArray(document?.slideFrames) ? document.slideFrames : [];
+  const issues: string[] = [];
+
+  frames.forEach((frame, index) => {
+    const candidate = objectValue(frame);
+    if (!candidate) {
+      issues.push(`Slide ${index + 1} is not a valid slideFrame object.`);
+      return;
+    }
+    const slideLabel = `Slide ${positiveInteger(candidate.slideNumber) || index + 1}`;
+    const blocks = arrayValue(candidate.blocks);
+    if (blocks.length === 0) {
+      issues.push(`${slideLabel} has no blocks.`);
+      return;
+    }
+    const layoutFrameId = stringValue(candidate.layoutFrameId);
+    const slideRole = stringValue(candidate.slideRole);
+    const textMain =
+      slideRole === "textMain" ||
+      layoutFrameId === "adaptiveTextMain" ||
+      layoutFrameId === "titleBody" ||
+      layoutFrameId === "textLeftVisualRight";
+    const visualMain =
+      slideRole === "visualMain" || layoutFrameId === "adaptiveVisualMain";
+    const hasUsableText = blocks.some(hasUsablePresentationTextBlock);
+    const hasUsableVisual = blocks.some(hasUsablePresentationVisualBlock);
+
+    if (textMain && !hasUsableText) {
+      issues.push(`${slideLabel} is ${layoutFrameId || slideRole || "textMain"} but has no usable text/list/callout block.`);
+    }
+    if (visualMain && !hasUsableVisual) {
+      issues.push(`${slideLabel} is ${layoutFrameId || slideRole || "visualMain"} but has no usable visualRequest.`);
+    }
+  });
+
+  return issues;
+}
+
+function hasUsablePresentationTextBlock(value: unknown) {
+  const block = objectValue(value);
+  if (!block || hasUsablePresentationVisualBlock(block)) return false;
+  const kind = stringValue(block.kind);
+  if (kind === "visual") return false;
+  return stringValue(block.text).length > 0 || stringArray(block.items).length > 0;
+}
+
+function hasUsablePresentationVisualBlock(value: unknown) {
+  const block = objectValue(value);
+  if (!block) return false;
+  const visualRequest = objectValue(block.visualRequest);
+  if (!visualRequest) return false;
+  return (
+    stringValue(visualRequest.brief).length > 0 ||
+    stringValue(visualRequest.prompt).length > 0 ||
+    stringValue(visualRequest.promptNote).length > 0 ||
+    hasUsableVisualSlots(visualRequest.visualSlots)
+  );
+}
+
+function hasUsableVisualSlots(value: unknown) {
+  return arrayValue(value).some((slot) => {
+    const candidate = objectValue(slot);
+    return (
+      !!candidate &&
+      (stringValue(candidate.label).length > 0 ||
+        stringValue(candidate.need).length > 0 ||
+        stringArray(candidate.keywords).length > 0)
+    );
+  });
+}
+
+function positiveInteger(value: unknown) {
+  return typeof value === "number" && Number.isInteger(value) && value > 0
+    ? value
+    : undefined;
 }
 
 function parseParsedPresentationSlideFrameDocument(parsed: TaskResult | null) {

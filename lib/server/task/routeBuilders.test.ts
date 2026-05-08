@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTaskCompletionResponsesRequest,
   buildTaskResponsesRequest,
   buildTaskRouteResponse,
   completePresentationPlanSlideFrames,
@@ -113,6 +114,122 @@ describe("task route builders", () => {
         },
       })?.message
     ).toContain("incomplete");
+  });
+
+  it("flags text-main presentation slides that only contain visual blocks", () => {
+    const result = validatePresentationPlanCompleteness({
+      task: {
+        ...sampleTask,
+        type: "PREP_TASK",
+        outputFormat: "presentation_plan",
+      },
+      parsed: {
+        taskId: "task",
+        type: "PREP_TASK",
+        status: "OK",
+        summary: "",
+        keyPoints: [],
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                deckFrame: { slideCount: 1 },
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Market overview",
+                    slideRole: "textMain",
+                    layoutFrameId: "adaptiveTextMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: { brief: "Market chart" },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+        warnings: [],
+        missingInfo: [],
+        nextSuggestion: [],
+      },
+    });
+
+    expect(result?.message).toContain("no usable text/list/callout block");
+  });
+
+  it("flags visual-main presentation slides that only contain text blocks", () => {
+    const result = validatePresentationPlanCompleteness({
+      task: {
+        ...sampleTask,
+        type: "PREP_TASK",
+        outputFormat: "presentation_plan",
+      },
+      parsed: {
+        taskId: "task",
+        type: "PREP_TASK",
+        status: "OK",
+        summary: "",
+        keyPoints: [],
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                deckFrame: { slideCount: 1 },
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Hero concept",
+                    slideRole: "visualMain",
+                    layoutFrameId: "adaptiveVisualMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "callout",
+                        styleId: "callout",
+                        text: "A short annotation",
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+        warnings: [],
+        missingInfo: [],
+        nextSuggestion: [],
+      },
+    });
+
+    expect(result?.message).toContain("no usable visualRequest");
+  });
+
+  it("passes block-level presentation issues to the correction prompt", () => {
+    const request = buildTaskCompletionResponsesRequest({
+      task: {
+        ...sampleTask,
+        type: "PREP_TASK",
+        outputFormat: "presentation_plan",
+      },
+      previousRaw: "{}",
+      expectedBodySlideCount: 1,
+      actualBodySlideCount: 1,
+      issues: ["Slide 1 is adaptiveTextMain but has no usable text/list/callout block."],
+    });
+
+    expect(request.input).toContain("Detected issues:");
+    expect(request.input).toContain(
+      "Slide 1 is adaptiveTextMain but has no usable text/list/callout block."
+    );
+    expect(request.input).toContain("every slideFrame has usable blocks");
   });
 
   it("fills missing presentation slideFrames from keyMessages", () => {

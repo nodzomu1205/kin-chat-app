@@ -10,6 +10,7 @@ import {
 import {
   buildPresentationTaskPlan,
   buildPresentationTaskStructuredInput,
+  createPresentationPlanDocumentId,
   formatPresentationTaskPlanText,
   isPresentationTaskInstruction,
   resolvePresentationTaskTitle,
@@ -142,10 +143,18 @@ export async function runAttachSearchResultToTaskFlow(
   });
 
   if (!currentTaskText) {
-    const importedPresentationPlan =
+    const sourcePresentationPlan =
       presentationMode && taskLibraryItem
         ? resolvePresentationPlanFromLibraryItem(taskLibraryItem)
         : null;
+    const importedPresentationPlan = sourcePresentationPlan
+      ? {
+          ...sourcePresentationPlan,
+          documentId: createPresentationPlanDocumentId(),
+          latestPptx: null,
+          updatedAt: new Date().toISOString(),
+        }
+      : null;
     if (importedPresentationPlan && taskLibraryItem) {
       const taskText = formatPresentationTaskPlanText(importedPresentationPlan);
       const assistantMsg: Message = {
@@ -172,53 +181,67 @@ export async function runAttachSearchResultToTaskFlow(
         setGptInput: args.setGptInput,
         setGptLoading: args.setGptLoading,
       });
-      await completeTaskFlowSuccess({
-        setGptMessages: args.setGptMessages,
-        assistantMessage: assistantMsg,
-        setGptState: args.setGptState,
-        persistCurrentGptState: args.persistCurrentGptState,
-        gptStateRef: args.gptStateRef,
-        requestRecentMessages,
-        chatRecentLimit: args.chatRecentLimit,
-        lastUserIntent: buildLibraryTaskFormationIntent(
-          taskLibraryItem.title || resolvedTitle
-        ),
-        activeReference: {
-          title: taskLibraryItem.title || resolvedTitle,
-          kind: taskLibraryItem.itemType || "library",
-          sourceId: taskLibraryItem.id,
-          excerpt: materialText.slice(0, 400),
-        },
-        applyChatUsage: args.applyChatUsage,
-        applyCompressionUsage: args.applyCompressionUsage,
-        handleGptMemory: args.handleGptMemory,
-        currentTaskTitleOverride: importedPresentationPlan.title || resolvedTitle,
-        activeDocument: {
-          title: taskLibraryItem.title || resolvedTitle,
-          kind: taskLibraryItem.itemType || "library",
-          sourceId: taskLibraryItem.id,
-          excerpt: materialText.slice(0, 400),
-          importedAt: new Date().toISOString(),
-        },
-      });
-      args.setCurrentTaskDraft((prev) =>
-        buildPreparedTaskDraftUpdate(prev, {
-          title: importedPresentationPlan.title || resolvedTitle,
-          userInstruction: nextUserInstruction,
-          taskTitleDebug: resolvedTitleResult.debug,
-          mode: "presentation",
-          presentationPlan: importedPresentationPlan,
-          body: taskText,
-          objective:
-            prev.objective ||
-            parsedInput.freeText ||
-            taskLibraryItem.title ||
-            "Imported from library item",
-          prepText: taskText,
-          sources: [source],
-        })
-      );
-      args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
+      try {
+        await completeTaskFlowSuccess({
+          setGptMessages: args.setGptMessages,
+          assistantMessage: assistantMsg,
+          setGptState: args.setGptState,
+          persistCurrentGptState: args.persistCurrentGptState,
+          gptStateRef: args.gptStateRef,
+          requestRecentMessages,
+          chatRecentLimit: args.chatRecentLimit,
+          lastUserIntent: buildLibraryTaskFormationIntent(
+            taskLibraryItem.title || resolvedTitle
+          ),
+          activeReference: {
+            title: taskLibraryItem.title || resolvedTitle,
+            kind: taskLibraryItem.itemType || "library",
+            sourceId: taskLibraryItem.id,
+            excerpt: materialText.slice(0, 400),
+          },
+          applyChatUsage: args.applyChatUsage,
+          applyCompressionUsage: args.applyCompressionUsage,
+          handleGptMemory: args.handleGptMemory,
+          currentTaskTitleOverride:
+            importedPresentationPlan.title || resolvedTitle,
+          activeDocument: {
+            title: taskLibraryItem.title || resolvedTitle,
+            kind: taskLibraryItem.itemType || "library",
+            sourceId: taskLibraryItem.id,
+            excerpt: materialText.slice(0, 400),
+            importedAt: new Date().toISOString(),
+          },
+        });
+        args.setCurrentTaskDraft((prev) =>
+          buildPreparedTaskDraftUpdate(prev, {
+            title: importedPresentationPlan.title || resolvedTitle,
+            userInstruction: nextUserInstruction,
+            taskTitleDebug: resolvedTitleResult.debug,
+            mode: "presentation",
+            presentationPlan: importedPresentationPlan,
+            body: taskText,
+            objective:
+              prev.objective ||
+              parsedInput.freeText ||
+              taskLibraryItem.title ||
+              "Imported from library item",
+            prepText: taskText,
+            sources: [source],
+          })
+        );
+        args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
+      } catch (error) {
+        console.error(error);
+        appendTaskInfoMessage(
+          args.setGptMessages,
+          formatTaskFlowErrorMessage(
+            "Importing the library item into a new task failed.",
+            error
+          )
+        );
+      } finally {
+        args.setGptLoading(false);
+      }
       return;
     }
 

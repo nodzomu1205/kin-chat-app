@@ -72,10 +72,12 @@ describe("runAttachSearchResultToTaskFlow", () => {
       updatedAt: "",
       sources: [],
     };
+    const setGptLoading = vi.fn();
 
     await runAttachSearchResultToTaskFlow({
       ...buildFlowArgs({
         messages,
+        setGptLoading,
         getCurrentDraft: () => draft,
         setDraft: (next) => {
           draft = next;
@@ -102,13 +104,19 @@ describe("runAttachSearchResultToTaskFlow", () => {
       "Library item imported into a new PPT design task."
     );
     expect(draft.mode).toBe("presentation");
-    expect(draft.presentationPlan).toBe(plan);
-    expect(draft.body).toContain("Document ID: ppt_saved");
+    expect(draft.presentationPlan).not.toBe(plan);
+    expect(draft.presentationPlan?.documentId).toMatch(/^ppt_/);
+    expect(draft.presentationPlan?.documentId).not.toBe("ppt_saved");
+    expect(draft.body).toContain(`Document ID: ${draft.presentationPlan?.documentId}`);
+    expect(draft.body).not.toContain("Document ID: ppt_saved");
+    expect(setGptLoading).toHaveBeenNthCalledWith(1, true);
+    expect(setGptLoading).toHaveBeenLastCalledWith(false);
   });
 });
 
 function buildFlowArgs(args: {
   messages: Message[];
+  setGptLoading?: (value: boolean) => void;
   getCurrentDraft: () => TaskDraft;
   setDraft: (next: TaskDraft) => void;
 }) {
@@ -125,7 +133,7 @@ function buildFlowArgs(args: {
       args.messages.splice(0, args.messages.length, ...updater(args.messages));
     },
     setGptInput: vi.fn(),
-    setGptLoading: vi.fn(),
+    setGptLoading: args.setGptLoading || vi.fn(),
     setGptState: vi.fn(),
     setCurrentTaskDraft: (updater: (prev: TaskDraft) => TaskDraft) => {
       args.setDraft(updater(args.getCurrentDraft()));

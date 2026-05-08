@@ -886,7 +886,7 @@ function extractPresentationPlanDocumentId(text: string) {
   return text.match(DOCUMENT_ID_LINE)?.[1]?.trim() || "";
 }
 
-function createPresentationPlanDocumentId() {
+export function createPresentationPlanDocumentId() {
   return `ppt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 

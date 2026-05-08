@@ -35,10 +35,12 @@ export async function hydratePresentationLibraryImageAssets(args: {
   onlyRequiredImageAssets?: boolean;
 }): Promise<PresentationRenderLibraryImageAsset[]> {
   const requiredImageIds = collectFrameSpecPreferredImageIds(args.frameSpec);
+  const hasRequiredImageIds = requiredImageIds.size > 0;
   const candidates = getPresentationImageLibraryCandidates({
     enabled:
-      args.imageLibraryReferenceEnabled ??
-      args.flowArgs?.imageLibraryReferenceEnabled,
+      hasRequiredImageIds ||
+      (args.imageLibraryReferenceEnabled ??
+        args.flowArgs?.imageLibraryReferenceEnabled),
     count:
       args.onlyRequiredImageAssets
         ? 0

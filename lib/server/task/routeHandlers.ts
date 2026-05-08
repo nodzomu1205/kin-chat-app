@@ -38,6 +38,7 @@ export async function handleTaskRoute(body: { task?: unknown }) {
         previousRaw: finalText,
         expectedBodySlideCount: incompletePlan.expectedBodySlideCount,
         actualBodySlideCount: incompletePlan.actualBodySlideCount,
+        issues: incompletePlan.issues,
       }),
       ""
     );

@@ -138,16 +138,27 @@ async function runRenderPresentationPptxFlow(args: {
     throw new Error("Document ID is required for PPTX rendering.");
   }
 
-  const foundPlan = findPresentationPlanByDocumentId({
+  const existingPlan = findPresentationPlanByDocumentId({
     documentId: args.documentId,
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
   });
+  const recentPlan = findRecentPresentationPlanByDocumentId({
+    documentId: args.documentId,
+    messages: args.flowArgs.gptStateRef.current.recentMessages || [],
+  });
   const planSource =
-    foundPlan ||
-    saveRecentPresentationPlanByDocumentId({
-      documentId: args.documentId,
-      flowArgs: args.flowArgs,
-    });
+    existingPlan
+      ? updateExistingPresentationPlanFromRecent({
+          existingPlan,
+          recentPlan,
+          flowArgs: args.flowArgs,
+        })
+      : recentPlan
+        ? saveRecentPresentationPlanByDocumentId({
+            documentId: args.documentId,
+            flowArgs: args.flowArgs,
+          })
+        : null;
   if (planSource) {
     const frameSpec = buildFramePresentationSpecFromTaskPlan(planSource.plan);
     if (!frameSpec) {
