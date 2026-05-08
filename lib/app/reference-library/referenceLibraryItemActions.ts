@@ -137,6 +137,10 @@ export type LibraryItemTextArtifact = {
   mimeType?: string;
 };
 
+type LibraryItemJsonSidecarArtifact = LibraryItemTextArtifact & {
+  mimeType: string;
+};
+
 export function buildLibraryItemTextArtifacts(
   item: ReferenceLibraryItem
 ): LibraryItemTextArtifact[] {
@@ -149,7 +153,7 @@ export function buildLibraryItemTextArtifacts(
 
 export function buildLibraryItemPresentationPlanSidecarExport(
   item: ReferenceLibraryItem
-): { fileName: string; text: string; mimeType: string } | null {
+): LibraryItemJsonSidecarArtifact | null {
   if (item.artifactType !== "presentation_plan") return null;
   if (!isPresentationTaskPlan(item.structuredPayload)) return null;
   return buildPresentationPlanSidecarArtifact({
@@ -162,7 +166,7 @@ export function buildLibraryItemPresentationPlanSidecarExport(
 
 export function buildLibraryItemSearchContextSidecarExport(
   item: ReferenceLibraryItem
-): { fileName: string; text: string; mimeType: string } | null {
+): LibraryItemJsonSidecarArtifact | null {
   const context = buildSearchContextFromLibraryItem(item);
   if (!context) return null;
   return buildSearchContextSidecarArtifact({
