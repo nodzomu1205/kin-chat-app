@@ -6,21 +6,12 @@ import {
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import {
-  collectFrameSpecPreferredImageIds,
-  hydratePresentationLibraryImageAssets,
-} from "@/lib/app/presentation/presentationRenderImages";
-import {
-  renderPresentationPptx,
-} from "@/lib/app/presentation/presentationRenderClient";
-import {
   buildPresentationTaskPlanTextWithImagePreviews,
 } from "@/lib/app/presentation/presentationPlanChatDisplay";
 import {
-  buildFramePresentationSpecFromTaskPlan,
-  buildPresentationSpecFromTaskPlan,
-  buildPresentationTaskPlanFromText,
-  hasRenderablePresentationTaskPlan,
-} from "@/lib/app/presentation/presentationTaskPlanning";
+  renderLibraryPresentationPlanPptx,
+  resolvePresentationPlanFromLibraryItem,
+} from "@/lib/app/reference-library/presentationPlanPptxActions";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
 import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText";
@@ -36,7 +27,6 @@ import {
 import { applyKinSysInfoInjection } from "@/lib/app/kin-protocol/kinInfoInjection";
 import type { GptMemoryRuntime } from "@/lib/app/ui-state/chatPageGptMemoryControls";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
-import type { PresentationTaskPlan } from "@/types/task";
 import type { ConversationUsageOptions, normalizeUsage } from "@/lib/shared/tokenStats";
 
 type UseReferenceLibraryUiActionsArgs = {
@@ -110,14 +100,6 @@ function downloadLibraryItemTextArtifacts(item: ReferenceLibraryItem) {
   }
 }
 
-function isPresentationTaskPlan(value: unknown): value is PresentationTaskPlan {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    (value as PresentationTaskPlan).version === "0.1-presentation-task-plan"
-  );
-}
-
 function createImageBlobUrl(args: { contentBase64?: string; mimeType?: string }) {
   if (!args.contentBase64 || typeof window === "undefined") return "";
   const binary = window.atob(args.contentBase64);
@@ -146,18 +128,6 @@ async function buildGeneratedImageChatDisplayText(item: ReferenceLibraryItem) {
     payload: hydrated,
     imagePath: path,
   });
-}
-
-function resolvePresentationPlanFromLibraryItem(item: ReferenceLibraryItem) {
-  if (item.artifactType !== "presentation_plan") return null;
-  const parsedPlan = buildPresentationTaskPlanFromText({
-    title: item.title,
-    text: item.excerptText,
-  });
-  const storedPlan = isPresentationTaskPlan(item.structuredPayload)
-    ? item.structuredPayload
-    : null;
-  return storedPlan || parsedPlan;
 }
 
 async function buildLibraryItemChatDisplayTextWithPreviews(item: ReferenceLibraryItem) {
@@ -346,43 +316,9 @@ export function useReferenceLibraryUiActions({
   const renderPresentationPlanToPpt = async (itemId: string) => {
     const item = getLibraryItemById(itemId);
     if (!item || item.artifactType !== "presentation_plan") return;
-    const parsedPlan = buildPresentationTaskPlanFromText({
-      title: item.title,
-      text: item.excerptText,
-    });
-    const storedPlan = isPresentationTaskPlan(item.structuredPayload)
-      ? item.structuredPayload
-      : null;
-    const plan = storedPlan || parsedPlan;
-    if (!hasRenderablePresentationTaskPlan(plan)) {
-      setGptMessages((prev) => [
-        ...prev,
-        createLibraryUiMessage(
-          "PPTX出力に必要なスライド設計JSONがありません。PPT設計書を更新してからPPTX出力してください。"
-        ),
-      ]);
-      focusGptPanel();
-      return;
-    }
-    const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
-    const spec = frameSpec ? null : buildPresentationSpecFromTaskPlan(plan);
-    const selectedImageIds = frameSpec
-      ? collectFrameSpecPreferredImageIds(frameSpec)
-      : new Set<string>();
-    const output = await renderPresentationPptx({
-      documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
-      ...(frameSpec ? { frameSpec } : { spec }),
-      generateImages: selectedImageIds.size > 0,
-      imageMode: selectedImageIds.size > 0 ? "library" : undefined,
-      libraryImageAssets: frameSpec
-        ? await hydratePresentationLibraryImageAssets({
-            referenceLibraryItems: libraryItems,
-            imageLibraryReferenceEnabled: selectedImageIds.size > 0,
-            imageLibraryReferenceCount: 0,
-            frameSpec,
-            onlyRequiredImageAssets: true,
-          })
-        : undefined,
+    const result = await renderLibraryPresentationPlanPptx({
+      item,
+      libraryItems,
     }).catch((error) => {
       setGptMessages((prev) => [
         ...prev,
@@ -394,37 +330,22 @@ export function useReferenceLibraryUiActions({
       ]);
       return null;
     });
-    if (!output) return;
-    const path = output.path;
-    const title = frameSpec?.title || spec?.title || item.title;
-    const slideCount =
-      frameSpec?.slideFrames.length || spec?.slides.length || output.slideCount || 0;
-    const filename = output.filename || `${title}.pptx`;
-    const nextPlan: PresentationTaskPlan = {
-      ...plan,
-      latestPptx: {
-        filename,
-        path,
-        createdAt: output.createdAt || new Date().toISOString(),
-        slideCount: output.slideCount || slideCount,
-      },
-      updatedAt: new Date().toISOString(),
-    };
-    updateStoredDocument(item.sourceId, {
-      structuredPayload: nextPlan,
-      summary: item.summary,
-    });
+    if (!result) return;
+    if (result.status === "not_renderable") {
+      setGptMessages((prev) => [
+        ...prev,
+        createLibraryUiMessage(
+          "PPTX出力に必要なスライド設計JSONがありません。PPT設計書を更新してからPPTX出力してください。"
+        ),
+      ]);
+      focusGptPanel();
+      return;
+    }
+    if (result.status !== "rendered") return;
+    updateStoredDocument(result.sourceId, result.patch);
     setGptMessages((prev) => [
       ...prev,
-      createLibraryUiMessage(
-        [
-          "Presentation PPTX created from design plan.",
-          "",
-          `Title: ${title}`,
-          `Slides: ${slideCount}`,
-          path ? `PPTX: [${filename}](${path})` : `File: ${filename}`,
-        ].join("\n")
-      ),
+      createLibraryUiMessage(result.messageText),
     ]);
     focusGptPanel();
   };
