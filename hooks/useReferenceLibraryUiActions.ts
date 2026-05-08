@@ -8,7 +8,7 @@ import {
 import {
   collectFrameSpecPreferredImageIds,
   hydratePresentationLibraryImageAssets,
-} from "@/lib/app/presentation/presentationGptFlow";
+} from "@/lib/app/presentation/presentationRenderImages";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
 } from "@/lib/app/presentation/presentationPlanChatDisplay";
