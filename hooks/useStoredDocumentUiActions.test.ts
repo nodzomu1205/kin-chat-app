@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getStoredDocumentDownloadImagePayload,
+  getStoredDocumentDownloadPresentationPlan,
   resolveStoredDocumentTextDownloadFileName,
 } from "@/hooks/useStoredDocumentUiActions";
 import type { StoredDocument } from "@/types/chat";
@@ -55,6 +56,31 @@ describe("getStoredDocumentDownloadImagePayload", () => {
     );
 
     expect(result).toBe(payload);
+  });
+});
+
+describe("getStoredDocumentDownloadPresentationPlan", () => {
+  it("returns the presentation plan only for presentation plan documents", () => {
+    const plan = {
+      version: "0.1-presentation-task-plan",
+      documentId: "ppt_saved",
+      title: "Saved PPT",
+      slides: [],
+    } as const;
+
+    expect(
+      getStoredDocumentDownloadPresentationPlan(
+        createStoredDocument({
+          artifactType: "presentation_plan",
+          structuredPayload: plan,
+        })
+      )
+    ).toBe(plan);
+    expect(
+      getStoredDocumentDownloadPresentationPlan(
+        createStoredDocument({ structuredPayload: plan })
+      )
+    ).toBeNull();
   });
 });
 

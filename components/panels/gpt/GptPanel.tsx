@@ -286,11 +286,28 @@ export default function GptPanel(props: GptPanelProps) {
     await chat.onInjectFile(file, buildDeviceImportOptions(settings));
   };
 
+  const handleInjectFileWithSidecar = async (
+    file: File,
+    sidecar?: File
+  ) => {
+    if (!file || settings.ingestLoading || !settings.canInjectFile) return;
+    await chat.onInjectFile(file, {
+      ...buildDeviceImportOptions(settings),
+      sidecarText: sidecar
+        ? {
+            fileName: sidecar.name,
+            text: await sidecar.text(),
+          }
+        : undefined,
+    });
+  };
+
   const handleInjectFiles = async (files?: FileList | null) => {
     if (!files || settings.ingestLoading || !settings.canInjectFile) return;
     const fileList = Array.from(files);
     const sidecars = fileList.filter(isTextSidecarFile);
     const pairedSidecars = new Set<File>();
+    const pairedPrimaryFiles = new Set<File>();
     for (const file of fileList) {
       if (!isImageFile(file)) continue;
       const sidecar = findMatchingSidecarFile(file, sidecars);
@@ -305,8 +322,22 @@ export default function GptPanel(props: GptPanelProps) {
           : undefined
       );
     }
+    const textFiles = fileList.filter(isPortablePresentationPlanTextFile);
+    for (const file of textFiles) {
+      const sidecar = findMatchingSidecarFile(file, sidecars);
+      if (!sidecar) continue;
+      pairedPrimaryFiles.add(file);
+      pairedSidecars.add(sidecar);
+      await handleInjectFileWithSidecar(file, sidecar);
+    }
     for (const file of fileList) {
-      if (isImageFile(file) || pairedSidecars.has(file)) continue;
+      if (
+        isImageFile(file) ||
+        pairedSidecars.has(file) ||
+        pairedPrimaryFiles.has(file)
+      ) {
+        continue;
+      }
       await handleInjectFile(file);
     }
   };
@@ -713,8 +744,12 @@ function isTextSidecarFile(file: File) {
   return /\.(txt|md|json)$/i.test(file.name);
 }
 
-function findMatchingSidecarFile(image: File, sidecars: File[]) {
-  const imageKey = sidecarKey(image.name);
+function isPortablePresentationPlanTextFile(file: File) {
+  return /\.(?:txt|md|markdown)$/i.test(file.name);
+}
+
+function findMatchingSidecarFile(file: File, sidecars: File[]) {
+  const imageKey = sidecarKey(file.name);
   return sidecars.find((sidecar) => sidecarKey(sidecar.name) === imageKey);
 }
 
@@ -722,8 +757,9 @@ function sidecarKey(name: string) {
   return name
     .toLowerCase()
     .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
+    .replace(/\.(?:txt|md|markdown|json)$/u, "")
     .replace(/\.generated-image$/u, "")
-    .replace(/\.(?:txt|md|json)$/u, "")
+    .replace(/\.presentation-plan$/u, "")
     .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
     .trim();
 }

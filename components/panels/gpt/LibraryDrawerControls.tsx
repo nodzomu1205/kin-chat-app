@@ -402,6 +402,7 @@ async function importFilesByType(args: {
   const sidecars = args.files.filter(isTextSidecarFile);
   const images = args.files.filter(isImageFile);
   const pairedSidecars = new Set<File>();
+  const pairedPrimaryFiles = new Set<File>();
   for (const image of images) {
     const sidecar = findMatchingSidecarFile(image, sidecars);
     if (sidecar) pairedSidecars.add(sidecar);
@@ -412,11 +413,28 @@ async function importFilesByType(args: {
             fileName: sidecar.name,
             text: await sidecar.text(),
           }
-        : undefined
+      : undefined
     );
   }
+  const textFiles = args.files.filter(isPortablePresentationPlanTextFile);
+  for (const file of textFiles) {
+    const sidecar = findMatchingSidecarFile(file, sidecars);
+    if (!sidecar) continue;
+    pairedPrimaryFiles.add(file);
+    pairedSidecars.add(sidecar);
+    await args.onImportDeviceFile(file, {
+      fileName: sidecar.name,
+      text: await sidecar.text(),
+    });
+  }
   for (const file of args.files) {
-    if (isImageFile(file) || pairedSidecars.has(file)) continue;
+    if (
+      isImageFile(file) ||
+      pairedSidecars.has(file) ||
+      pairedPrimaryFiles.has(file)
+    ) {
+      continue;
+    }
     await args.onImportDeviceFile(file);
   }
 }
@@ -431,8 +449,12 @@ function isTextSidecarFile(file: File) {
   return /\.(txt|md|json)$/i.test(file.name);
 }
 
-function findMatchingSidecarFile(image: File, sidecars: File[]) {
-  const imageKey = sidecarKey(image.name);
+function isPortablePresentationPlanTextFile(file: File) {
+  return /\.(?:txt|md|markdown)$/i.test(file.name);
+}
+
+function findMatchingSidecarFile(file: File, sidecars: File[]) {
+  const imageKey = sidecarKey(file.name);
   return sidecars.find((sidecar) => sidecarKey(sidecar.name) === imageKey);
 }
 
@@ -440,8 +462,9 @@ function sidecarKey(name: string) {
   return name
     .toLowerCase()
     .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
+    .replace(/\.(?:txt|md|markdown|json)$/u, "")
     .replace(/\.generated-image$/u, "")
-    .replace(/\.(?:txt|md|json)$/u, "")
+    .replace(/\.presentation-plan$/u, "")
     .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
     .trim();
 }

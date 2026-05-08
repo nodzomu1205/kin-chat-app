@@ -86,8 +86,14 @@ export default function GptDrawerRouter({
     setShowMemoryContent((prev) => !prev);
   };
 
-  const handleImportDeviceFile = async (file: File) => {
-    await chat.onInjectFile(file, buildDeviceImportOptions(settings));
+  const handleImportDeviceFile = async (
+    file: File,
+    sidecarText?: import("@/lib/app/image/imageImportFlow").ImageImportSidecarText
+  ) => {
+    await chat.onInjectFile(file, {
+      ...buildDeviceImportOptions(settings),
+      sidecarText,
+    });
   };
 
   if (activeDrawer === "memory") {

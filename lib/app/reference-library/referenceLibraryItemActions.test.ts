@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildLibraryItemChatDisplayText,
   buildLibraryItemDriveExport,
+  buildLibraryItemPresentationPlanSidecarExport,
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import type { ReferenceLibraryItem } from "@/types/chat";
@@ -128,5 +129,35 @@ describe("buildLibraryItemDriveExport", () => {
     expect(exported.fileName).toBe("img_123.txt");
     expect(exported.mimeType).toBeUndefined();
     expect(exported.text).toBe("Image ID: img_123\nPrompt:\nPrompt text");
+  });
+
+  it("exports presentation plan cards with a portable JSON sidecar", () => {
+    const exported = buildLibraryItemPresentationPlanSidecarExport(
+      createLibraryItem({
+        artifactType: "presentation_plan",
+        title: "PPT Design - Cotton",
+        filename: "PPT Design - Cotton.txt",
+        summary: "Existing summary",
+        structuredPayload: {
+          version: "0.1-presentation-task-plan",
+          documentId: "ppt_cotton",
+          title: "PPT Design - Cotton",
+          slides: [],
+        },
+      })
+    );
+
+    expect(exported?.fileName).toBe(
+      "PPT Design - Cotton.presentation-plan.json"
+    );
+    expect(exported?.mimeType).toBe("application/json");
+    expect(JSON.parse(exported?.text || "{}")).toMatchObject({
+      kind: "kin.presentation_plan",
+      summary: "Existing summary",
+      plan: {
+        version: "0.1-presentation-task-plan",
+        documentId: "ppt_cotton",
+      },
+    });
   });
 });

@@ -5,6 +5,11 @@ import {
 } from "@/lib/app/ingest/importSummaryText";
 import type { ReferenceLibraryItem } from "@/types/chat";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
+import {
+  buildPresentationPlanSidecarFileName,
+  buildPresentationPlanSidecarText,
+  isPresentationTaskPlan,
+} from "@/lib/app/presentation/presentationPlanPortable";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText";
 
@@ -121,5 +126,25 @@ export function buildLibraryItemDriveExport(item: ReferenceLibraryItem): {
   return {
     fileName: /\.[A-Za-z0-9]+$/.test(rawName) ? rawName : `${rawName}.txt`,
     text: buildLibraryItemChatDisplayText(item),
+  };
+}
+
+export function buildLibraryItemPresentationPlanSidecarExport(
+  item: ReferenceLibraryItem
+): { fileName: string; text: string; mimeType: string } | null {
+  if (item.artifactType !== "presentation_plan") return null;
+  if (!isPresentationTaskPlan(item.structuredPayload)) return null;
+  return {
+    fileName: buildPresentationPlanSidecarFileName({
+      filename: item.filename,
+      title: item.title,
+    }),
+    text: buildPresentationPlanSidecarText({
+      title: item.title,
+      filename: item.filename,
+      summary: item.summary,
+      plan: item.structuredPayload,
+    }),
+    mimeType: "application/json",
   };
 }

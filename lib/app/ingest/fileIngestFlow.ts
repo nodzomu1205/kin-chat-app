@@ -24,6 +24,10 @@ import {
 } from "@/lib/app/ingest/ingestDocumentModel";
 import { prepareIngestedStoredDocument } from "@/lib/app/ingest/ingestStoredDocumentPreparation";
 import {
+  buildPortablePresentationPlanStoredDocument,
+  parsePresentationPlanSidecarText,
+} from "@/lib/app/presentation/presentationPlanPortable";
+import {
   buildFileIngestBridgeState as buildFileIngestBridgeStateFromBuilders,
   buildFileIngestSavedInfoMessage,
   buildIngestKinInjectionBlocks as buildIngestKinInjectionBlocksFromBuilders,
@@ -41,6 +45,10 @@ type IngestFlowArgs = {
     simpleImageCharLimit: number;
     imageLibraryImportEnabled: boolean;
     imageLibraryImportMode: ImageLibraryImportMode;
+    sidecarText?: {
+      fileName: string;
+      text: string;
+    };
   };
   ingestLoading: boolean;
   currentTaskDraft: TaskDraft;
@@ -137,6 +145,34 @@ export async function runFileIngestFlow({
   setIngestLoading(true);
 
   try {
+    const portablePresentationPlan = parsePresentationPlanSidecarText(
+      options.sidecarText?.text
+    );
+    if (portablePresentationPlan) {
+      const text = await file.text();
+      const title =
+        portablePresentationPlan.title?.trim() ||
+        file.name.replace(/\.[^.]+$/u, "").trim() ||
+        file.name;
+      const storedDocument = buildPortablePresentationPlanStoredDocument({
+        title,
+        filename: file.name,
+        text,
+        summary: portablePresentationPlan.summary,
+        plan: portablePresentationPlan.plan,
+        taskId: currentTaskDraft.id || undefined,
+      });
+      recordIngestedDocument(storedDocument);
+      appendInfo(
+        setGptMessages,
+        buildFileIngestSavedInfoMessage({
+          fileTitle: title,
+          storedDocumentCharCount: storedDocument.charCount,
+        })
+      );
+      return;
+    }
+
     const { response, data, resolvedKind } = await requestFileIngest({
       file,
       options: buildSharedIngestOptions({

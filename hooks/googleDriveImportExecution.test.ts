@@ -14,7 +14,10 @@ import {
 } from "@/lib/app/google-drive/googleDriveApi";
 import { requestFileIngest } from "@/lib/app/ingest/ingestClient";
 import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
-import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
+import {
+  buildLibraryItemDriveExport,
+  buildLibraryItemPresentationPlanSidecarExport,
+} from "@/lib/app/reference-library/referenceLibraryItemActions";
 
 vi.mock("@/lib/app/google-drive/googleDriveApi", () => ({
   fetchDriveFileBlob: vi.fn(),
@@ -26,6 +29,7 @@ vi.mock("@/lib/app/google-drive/googleDriveApi", () => ({
 
 vi.mock("@/lib/app/reference-library/referenceLibraryItemActions", () => ({
   buildLibraryItemDriveExport: vi.fn(),
+  buildLibraryItemPresentationPlanSidecarExport: vi.fn(),
 }));
 
 vi.mock("@/lib/app/ingest/ingestClient", () => ({
@@ -145,6 +149,44 @@ describe("runDrivePickedDocumentsImport", () => {
       }
     );
   });
+
+  it("pairs selected presentation plan text imports with matching JSON sidecars", async () => {
+    const importDriveFile = vi.fn(async () => {});
+
+    await runDrivePickedDocumentsImport({
+      mode: "file_import",
+      docs: [
+        {
+          id: "plan-text",
+          name: "PPT Design - Cotton.txt",
+          mimeType: "text/plain",
+        },
+        {
+          id: "plan-json",
+          name: "PPT Design - Cotton.presentation-plan.json",
+          mimeType: "application/json",
+        },
+      ],
+      importDriveFile,
+      importDriveFolder: vi.fn(async () => {}),
+    });
+
+    expect(importDriveFile).toHaveBeenCalledTimes(1);
+    expect(importDriveFile).toHaveBeenCalledWith(
+      {
+        id: "plan-text",
+        name: "PPT Design - Cotton.txt",
+        mimeType: "text/plain",
+      },
+      {
+        sidecarFile: {
+          id: "plan-json",
+          name: "PPT Design - Cotton.presentation-plan.json",
+          mimeType: "application/json",
+        },
+      }
+    );
+  });
 });
 
 describe("runDriveFileImport", () => {
@@ -232,6 +274,87 @@ describe("runDriveFileImport", () => {
       "file_ingest"
     );
     expect(focusGptPanel).toHaveBeenCalled();
+  });
+
+  it("imports a presentation plan text file with a JSON sidecar without regenerating a summary", async () => {
+    const plan = {
+      version: "0.1-presentation-task-plan",
+      documentId: "ppt_cotton",
+      title: "PPT Design - Cotton",
+      slides: [
+        {
+          slideNumber: 1,
+          sectionLabel: "",
+          title: "Cotton",
+          keyMessage: "Overview",
+          supportingInfo: [],
+          keyVisual: "",
+          visualSupportingInfo: [],
+          placementComposition: "",
+          layoutItems: [],
+        },
+      ],
+    };
+    vi.mocked(fetchDriveFileBlob)
+      .mockResolvedValueOnce(new Blob(["PPT text"], { type: "text/plain" }))
+      .mockResolvedValueOnce(
+        new Blob([
+          JSON.stringify({
+            kind: "kin.presentation_plan",
+            version: "0.1",
+            title: "PPT Design - Cotton",
+            filename: "PPT Design - Cotton.txt",
+            summary: "Existing summary",
+            plan,
+          }),
+        ], { type: "application/json" })
+      );
+
+    const recordIngestedDocument = vi.fn((document) => ({
+      ...document,
+      id: "stored-plan",
+      sourceType: "ingested_file" as const,
+    }));
+    const appendUiMessage = vi.fn();
+
+    await runDriveFileImport({
+      file: {
+        id: "plan-text",
+        name: "PPT Design - Cotton.txt",
+        mimeType: "text/plain",
+      },
+      options: {
+        sidecarFile: {
+          id: "plan-json",
+          name: "PPT Design - Cotton.presentation-plan.json",
+          mimeType: "application/json",
+        },
+      },
+      ensureAccessToken: vi.fn(async () => "token-1"),
+      ingestOptions,
+      autoGenerateLibrarySummary: true,
+      recordIngestedDocument,
+      appendUiMessage,
+      applyIngestUsage: vi.fn(),
+      focusGptPanel: vi.fn(() => true),
+    });
+
+    expect(requestFileIngest).not.toHaveBeenCalled();
+    expect(resolveGeneratedImportSummary).not.toHaveBeenCalled();
+    expect(recordIngestedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        artifactType: "presentation_plan",
+        title: "PPT Design - Cotton",
+        filename: "PPT Design - Cotton.txt",
+        text: "PPT text",
+        summary: "Existing summary",
+        structuredPayload: plan,
+      })
+    );
+    expect(appendUiMessage).toHaveBeenCalledWith(
+      expect.stringContaining("PPT Design - Cotton"),
+      "file_ingest"
+    );
   });
 
   it("posts a Drive import failure message when ingest fails", async () => {
@@ -439,6 +562,9 @@ describe("runDriveLibraryItemUpload", () => {
       fileName: "Project notes.txt",
       text: "export body",
     });
+    vi.mocked(buildLibraryItemPresentationPlanSidecarExport).mockReturnValue(
+      null
+    );
     vi.mocked(uploadDriveTextFile).mockResolvedValue({
       id: "upload-1",
       name: "Project notes.txt",
@@ -646,30 +772,30 @@ describe("runDriveLibraryItemUpload", () => {
     await expect(blob?.text()).resolves.toBe("regenerated pptx");
   });
 
-  it("uploads presentation plan text and generated PPTX", async () => {
+  it("uploads presentation plan text and JSON sidecar without generating PPTX", async () => {
     vi.mocked(listDriveChildFolders).mockResolvedValue([]);
     vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
       fileName: "PPT Design - Cotton.txt",
       text: "presentation plan text",
       mimeType: "text/plain",
     });
-    vi.mocked(uploadDriveTextFile).mockResolvedValue({
-      id: "upload-plan",
-      name: "PPT Design - Cotton.txt",
-      webViewLink: "https://drive.example/upload-plan",
+    vi.mocked(buildLibraryItemPresentationPlanSidecarExport).mockReturnValue({
+      fileName: "PPT Design - Cotton.presentation-plan.json",
+      text: "{\"kind\":\"kin.presentation_plan\"}\n",
+      mimeType: "application/json",
     });
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          output: {
-            contentBase64: Buffer.from("plan pptx").toString("base64"),
-            mimeType:
-              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-          },
-        }),
-        { status: 200 }
-      )
-    );
+    vi.mocked(uploadDriveTextFile)
+      .mockResolvedValueOnce({
+        id: "upload-plan",
+        name: "PPT Design - Cotton.txt",
+        webViewLink: "https://drive.example/upload-plan",
+      })
+      .mockResolvedValueOnce({
+        id: "upload-sidecar",
+        name: "PPT Design - Cotton.presentation-plan.json",
+        webViewLink: "https://drive.example/upload-sidecar",
+      });
+    const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await runDriveLibraryItemUpload({
@@ -698,12 +824,7 @@ describe("runDriveLibraryItemUpload", () => {
     });
 
     expect(result).toBe("uploaded");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/presentation-render",
-      expect.objectContaining({
-        method: "POST",
-      })
-    );
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(uploadDriveTextFile).toHaveBeenCalledWith({
       accessToken: "upload-token",
       folderId: "parent-folder",
@@ -711,15 +832,14 @@ describe("runDriveLibraryItemUpload", () => {
       text: "presentation plan text",
       mimeType: "text/plain",
     });
-    expect(uploadDriveBlobFile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fileName: "PPT Design - Cotton.pptx",
-        mimeType:
-          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      })
-    );
-    const blob = vi.mocked(uploadDriveBlobFile).mock.calls[0]?.[0].blob;
-    await expect(blob?.text()).resolves.toBe("plan pptx");
+    expect(uploadDriveTextFile).toHaveBeenCalledWith({
+      accessToken: "upload-token",
+      folderId: "parent-folder",
+      fileName: "PPT Design - Cotton.presentation-plan.json",
+      text: "{\"kind\":\"kin.presentation_plan\"}\n",
+      mimeType: "application/json",
+    });
+    expect(uploadDriveBlobFile).not.toHaveBeenCalled();
   });
 
   it("uploads to a selected child folder", async () => {

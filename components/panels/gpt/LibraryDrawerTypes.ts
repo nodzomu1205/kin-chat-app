@@ -47,7 +47,10 @@ export type LibraryDrawerProps = Pick<
     | "onImportGoogleDriveFolder"
   > & {
     isMobile?: boolean;
-    onImportDeviceFile: (file: File) => void | Promise<void>;
+    onImportDeviceFile: (
+      file: File,
+      sidecarText?: ImageImportSidecarText
+    ) => void | Promise<void>;
     onImportDeviceImageFile: (
       file: File,
       sidecarText?: ImageImportSidecarText

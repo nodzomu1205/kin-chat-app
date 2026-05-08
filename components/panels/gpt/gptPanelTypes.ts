@@ -138,6 +138,7 @@ export type GptPanelChatProps = {
       simpleImageCharLimit: number;
       imageLibraryImportEnabled: boolean;
       imageLibraryImportMode: ImageLibraryImportMode;
+      sidecarText?: ImageImportSidecarText;
     }
   ) => void | Promise<void>;
   resetGptForCurrentKin: () => void;

@@ -2,6 +2,11 @@ import type { StoredDocument } from "@/types/chat";
 import type { GeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
+import {
+  buildPresentationPlanSidecarFileName,
+  buildPresentationPlanSidecarText,
+  isPresentationTaskPlan,
+} from "@/lib/app/presentation/presentationPlanPortable";
 
 export type StoredDocumentUiActionArgs = {
   getStoredDocument: (documentId: string) => StoredDocument | null;
@@ -43,16 +48,41 @@ export function useStoredDocumentUiActions({
       });
       return;
     }
+    const presentationPlan = getStoredDocumentDownloadPresentationPlan(document);
     downloadTextDocument({
       fileName: resolveStoredDocumentTextDownloadFileName(document),
       text: document.text,
     });
+    if (presentationPlan) {
+      downloadTextDocument({
+        fileName: buildPresentationPlanSidecarFileName({
+          filename: document.filename,
+          title: document.title,
+        }),
+        text: buildPresentationPlanSidecarText({
+          title: document.title,
+          filename: document.filename,
+          summary: document.summary,
+          plan: presentationPlan,
+        }),
+        mimeType: "application/json;charset=utf-8",
+      });
+    }
   };
 
   return {
     loadStoredDocumentToGptInput,
     downloadStoredDocument,
   };
+}
+
+export function getStoredDocumentDownloadPresentationPlan(
+  document: Pick<StoredDocument, "artifactType" | "structuredPayload">
+) {
+  if (document.artifactType !== "presentation_plan") return null;
+  return isPresentationTaskPlan(document.structuredPayload)
+    ? document.structuredPayload
+    : null;
 }
 
 export function getStoredDocumentDownloadImagePayload(
@@ -78,9 +108,15 @@ export function resolveStoredDocumentTextDownloadFileName(
   return fileName.includes(".") ? `${fileName}.txt` : `${fileName}.txt`;
 }
 
-function downloadTextDocument(args: { fileName: string; text: string }) {
+function downloadTextDocument(args: {
+  fileName: string;
+  text: string;
+  mimeType?: string;
+}) {
   if (typeof window === "undefined") return;
-  const blob = new Blob([args.text], { type: "text/plain;charset=utf-8" });
+  const blob = new Blob([args.text], {
+    type: args.mimeType || "text/plain;charset=utf-8",
+  });
   const url = window.URL.createObjectURL(blob);
   const anchor = window.document.createElement("a");
   anchor.href = url;

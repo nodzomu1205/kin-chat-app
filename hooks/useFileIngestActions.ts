@@ -20,6 +20,10 @@ function buildRunFileIngestFlowArgs(
     simpleImageCharLimit: number;
     imageLibraryImportEnabled: boolean;
     imageLibraryImportMode: ImageLibraryImportMode;
+    sidecarText?: {
+      fileName: string;
+      text: string;
+    };
   }
 ) {
   return {

@@ -7,7 +7,10 @@ import {
   uploadDriveTextFile,
   type DriveFolderNode,
 } from "@/lib/app/google-drive/googleDriveApi";
-import { buildLibraryItemDriveExport } from "@/lib/app/reference-library/referenceLibraryItemActions";
+import {
+  buildLibraryItemDriveExport,
+  buildLibraryItemPresentationPlanSidecarExport,
+} from "@/lib/app/reference-library/referenceLibraryItemActions";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
 import {
@@ -16,10 +19,9 @@ import {
 } from "@/lib/app/image/imageImportFlow";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import {
-  buildFramePresentationSpecFromTaskPlan,
-  buildPresentationSpecFromTaskPlan,
-  buildPresentationTaskPlanFromText,
-} from "@/lib/app/presentation/presentationTaskPlanning";
+  buildPortablePresentationPlanStoredDocument,
+  parsePresentationPlanSidecarText,
+} from "@/lib/app/presentation/presentationPlanPortable";
 import {
   requestFileIngest,
   resolveIngestErrorMessage,
@@ -50,7 +52,6 @@ import {
   type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
 import type { ReferenceLibraryItem } from "@/types/chat";
-import type { PresentationTaskPlan } from "@/types/task";
 
 export type DriveImportFile = {
   id: string;
@@ -113,6 +114,13 @@ export async function runDrivePickedDocumentsImport({
     const sidecar = findMatchingDriveTextSidecar(action.file, actions);
     if (sidecar) pairedSidecarIds.add(sidecar.id);
   }
+  for (const action of actions) {
+    if (action.kind !== "file" || isDriveImageMimeType(action.file.mimeType)) {
+      continue;
+    }
+    const sidecar = findMatchingDrivePresentationPlanSidecar(action.file, actions);
+    if (sidecar) pairedSidecarIds.add(sidecar.id);
+  }
 
   for (const action of actions) {
     if (action.kind === "folder") {
@@ -122,10 +130,10 @@ export async function runDrivePickedDocumentsImport({
     if (imageImportMode && !isDriveImageMimeType(action.file.mimeType)) {
       continue;
     }
-    if (importDriveImageFile && pairedSidecarIds.has(action.file.id)) continue;
+    if (pairedSidecarIds.has(action.file.id)) continue;
     const sidecarFile = isDriveImageMimeType(action.file.mimeType)
       ? findMatchingDriveTextSidecar(action.file, actions)
-      : undefined;
+      : findMatchingDrivePresentationPlanSidecar(action.file, actions);
     if (isDriveImageMimeType(action.file.mimeType) && importDriveImageFile) {
       await importDriveImageFile(action.file, {
         sidecarFile,
@@ -138,6 +146,7 @@ export async function runDrivePickedDocumentsImport({
 
 export type RunDriveFileImportArgs = {
   file: DriveImportFile;
+  options?: DriveImportOptions;
   ensureAccessToken: () => Promise<string>;
   ingestOptions: SharedIngestOptions;
   autoGenerateLibrarySummary: boolean;
@@ -155,6 +164,7 @@ export type RunDriveFileImportArgs = {
 
 export async function runDriveFileImport({
   file,
+  options = {},
   ensureAccessToken,
   ingestOptions,
   autoGenerateLibrarySummary,
@@ -176,6 +186,37 @@ export async function runDriveFileImport({
         ? "text/csv"
         : blob.type || file.mimeType || "application/octet-stream",
   });
+  const presentationSidecarText = await readDriveSidecarText({
+    accessToken,
+    sidecarFile: options.sidecarFile,
+  });
+  const portablePresentationPlan = parsePresentationPlanSidecarText(
+    presentationSidecarText
+  );
+  if (portablePresentationPlan) {
+    const text = await downloadedFile.text();
+    const title =
+      portablePresentationPlan.title?.trim() ||
+      resolveDrivePortableTitle(file.path || file.name);
+    const storedDocument = buildPortablePresentationPlanStoredDocument({
+      title,
+      filename: file.name,
+      text,
+      summary: portablePresentationPlan.summary,
+      plan: portablePresentationPlan.plan,
+      taskId: currentTaskId,
+    });
+    recordIngestedDocument(storedDocument);
+    appendUiMessage(
+      buildDriveImportSavedInfoMessage({
+        title,
+        storedDocumentCharCount: storedDocument.charCount,
+      }),
+      "file_ingest"
+    );
+    focusGptPanel();
+    return;
+  }
   const { response, data } = await requestFileIngest({
     file: downloadedFile,
     options: ingestOptions,
@@ -364,7 +405,12 @@ export async function runDriveFolderImport({
     if (sidecar) pairedSidecarIds.add(sidecar.id);
   }
   for (const file of files) {
-    if (importDriveImageFile && pairedSidecarIds.has(file.id)) continue;
+    if (isDriveImageMimeType(file.mimeType)) continue;
+    const sidecar = findMatchingDrivePresentationPlanSidecar(file, files);
+    if (sidecar) pairedSidecarIds.add(sidecar.id);
+  }
+  for (const file of files) {
+    if (pairedSidecarIds.has(file.id)) continue;
     if (isDriveImageMimeType(file.mimeType) && importDriveImageFile) {
       await importDriveImageFile(file, {
         manageLoading: false,
@@ -372,7 +418,10 @@ export async function runDriveFolderImport({
       });
       continue;
     }
-    await importDriveFile(file, { manageLoading: false });
+    await importDriveFile(file, {
+      manageLoading: false,
+      sidecarFile: findMatchingDrivePresentationPlanSidecar(file, files),
+    });
   }
 }
 
@@ -444,15 +493,28 @@ export async function runDriveLibraryItemUpload({
   uploadedNames.push(uploaded.name || primaryArtifact.fileName);
 
   for (const artifact of artifacts.slice(1)) {
-    if (artifact.kind !== "blob") continue;
-    const uploadedBinary = await uploadDriveBlobFile({
-      accessToken,
-      folderId: destinationFolderId,
-      fileName: artifact.fileName,
-      blob: artifact.blob,
-      mimeType: artifact.mimeType,
-    });
-    uploadedNames.push(uploadedBinary.name || artifact.fileName);
+    if (artifact.kind === "text") {
+      const uploadedText = await uploadDriveTextFile({
+        accessToken,
+        folderId: destinationFolderId,
+        fileName: artifact.fileName,
+        text: artifact.text,
+        ...(artifact.mimeType ? { mimeType: artifact.mimeType } : {}),
+      });
+      uploadedNames.push(uploadedText.name || artifact.fileName);
+      continue;
+    }
+    const uploadedBinary =
+      artifact.kind === "blob"
+        ? await uploadDriveBlobFile({
+            accessToken,
+            folderId: destinationFolderId,
+            fileName: artifact.fileName,
+            blob: artifact.blob,
+            mimeType: artifact.mimeType,
+          })
+        : null;
+    if (uploadedBinary) uploadedNames.push(uploadedBinary.name || artifact.fileName);
   }
 
   appendUiMessage(
@@ -490,6 +552,17 @@ async function buildDriveUploadArtifacts(
   };
   const imageArtifact = await buildGeneratedImageDriveArtifact(item);
   if (imageArtifact) return [primary, imageArtifact];
+  const presentationPlanSidecar =
+    buildLibraryItemPresentationPlanSidecarExport(item);
+  if (presentationPlanSidecar) {
+    return [
+      primary,
+      {
+        kind: "text" as const,
+        ...presentationPlanSidecar,
+      },
+    ];
+  }
   const pptxArtifact = await buildPresentationPptxDriveArtifact(item);
   return pptxArtifact ? [primary, pptxArtifact] : [primary];
 }
@@ -547,6 +620,31 @@ function findMatchingDriveTextSidecar(
   return undefined;
 }
 
+function findMatchingDrivePresentationPlanSidecar(
+  textFile: DriveImportFile,
+  files: Array<DriveImportFile | DrivePickedImportAction>
+): DriveImportFile | undefined {
+  if (isDriveImageMimeType(textFile.mimeType)) return undefined;
+  if (!/\.(?:txt|md|markdown)$/iu.test(textFile.name)) return undefined;
+  const textKey = driveSidecarKey(textFile.name);
+  if (!textKey) return undefined;
+  const textFolder = driveFolderPath(textFile.path);
+  for (const candidate of files) {
+    const file = "kind" in candidate
+      ? candidate.kind === "file"
+        ? candidate.file
+        : null
+      : candidate;
+    if (!file || file.id === textFile.id) continue;
+    if (!/\.json$/iu.test(file.name)) continue;
+    const candidatePath =
+      "path" in file && typeof file.path === "string" ? file.path : undefined;
+    if (driveFolderPath(candidatePath) !== textFolder) continue;
+    if (driveSidecarKey(file.name) === textKey) return file;
+  }
+  return undefined;
+}
+
 function driveFolderPath(path?: string) {
   if (!path) return "";
   const slashIndex = path.lastIndexOf("/");
@@ -557,10 +655,17 @@ function driveSidecarKey(name: string) {
   return name
     .toLowerCase()
     .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
+    .replace(/\.(?:txt|md|markdown|json)$/u, "")
     .replace(/\.generated-image$/u, "")
-    .replace(/\.(?:txt|md|json)$/u, "")
+    .replace(/\.presentation-plan$/u, "")
     .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
     .trim();
+}
+
+function resolveDrivePortableTitle(fileName: string) {
+  const lastSlashIndex = fileName.lastIndexOf("/");
+  const baseName = lastSlashIndex >= 0 ? fileName.slice(lastSlashIndex + 1) : fileName;
+  return baseName.replace(/\.[^.]+$/u, "").trim() || fileName;
 }
 
 async function readDriveSidecarText(args: {
@@ -579,10 +684,6 @@ async function readDriveSidecarText(args: {
 async function buildPresentationPptxDriveArtifact(
   item: ReferenceLibraryItem
 ): Promise<Extract<DriveUploadArtifact, { kind: "blob" }> | null> {
-  if (item.artifactType === "presentation_plan") {
-    return buildPresentationPlanPptxDriveArtifact(item);
-  }
-
   if (item.artifactType !== "presentation") return null;
   if (typeof fetch === "undefined") return null;
 
@@ -606,62 +707,6 @@ async function buildPresentationPptxDriveArtifact(
   return {
     kind: "blob",
     fileName: latest.filename,
-    blob,
-    mimeType:
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  };
-}
-
-function isPresentationTaskPlan(value: unknown): value is PresentationTaskPlan {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    (value as PresentationTaskPlan).version === "0.1-presentation-task-plan"
-  );
-}
-
-async function buildPresentationPlanPptxDriveArtifact(
-  item: ReferenceLibraryItem
-): Promise<Extract<DriveUploadArtifact, { kind: "blob" }> | null> {
-  if (typeof fetch === "undefined") return null;
-
-  const parsedPlan = buildPresentationTaskPlanFromText({
-    title: item.title,
-    text: item.excerptText,
-  });
-  const storedPlan = isPresentationTaskPlan(item.structuredPayload)
-    ? item.structuredPayload
-    : null;
-  const plan =
-    parsedPlan.slides.length > 0
-      ? {
-          ...parsedPlan,
-          latestPptx: storedPlan?.latestPptx || null,
-        }
-      : storedPlan || parsedPlan;
-  const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
-  const spec = frameSpec ? null : buildPresentationSpecFromTaskPlan(plan);
-  const latest = plan.latestPptx;
-  const fetchedBlob = latest?.path
-    ? await fetch(latest.path)
-        .then((response) => (response.ok ? response.blob() : null))
-        .catch(() => null)
-    : null;
-  const blob =
-    fetchedBlob ||
-    (await renderPresentationPptxBlob({
-      documentId: item.sourceId.replace(/[^A-Za-z0-9_-]+/g, "_"),
-      ...(frameSpec ? { frameSpec } : { spec }),
-    }));
-  if (!blob) return null;
-
-  return {
-    kind: "blob",
-    fileName:
-      latest?.filename ||
-      `${((frameSpec?.title || spec?.title) || item.title || "presentation-plan")
-        .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
-        .slice(0, 100)}.pptx`,
     blob,
     mimeType:
       "application/vnd.openxmlformats-officedocument.presentationml.presentation",

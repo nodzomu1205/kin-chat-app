@@ -85,6 +85,7 @@ export function useGoogleDrivePicker({
       try {
         await runDriveFileImport({
           file,
+          options,
           ensureAccessToken,
           ingestOptions,
           autoGenerateLibrarySummary,
