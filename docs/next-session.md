@@ -1,10 +1,10 @@
 # Next Session Handover
 
-Updated: 2026-05-07
+Updated: 2026-05-08
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-07 two-stage PPT visual workflow
+The newest active record is the 2026-05-08 PPT visual slot stabilization
 closeout. Start there for PPT work:
 
 - [`presentation-renderer/development-session-checklist.md`](./presentation-renderer/development-session-checklist.md)
@@ -35,6 +35,31 @@ The 2026-05-07 closeout confirmed this behavior in live testing:
 - Library display and `[PPT]` paths use selected images correctly.
 - Image-free placeholder PPTX and resolved-image PPTX are both useful.
 
+The 2026-05-08 recovery pass added these current invariants:
+
+- `/ppt Document ID + comment` updates a saved PPT design without losing
+  canonical `slideFrames`; if the LLM update result lacks usable `slideFrames`,
+  the saved design is preserved and no overwrite occurs.
+- Reopening Resolve visuals after all opening/body visual slots are selected
+  must not call the visual-normalization LLM or consume task tokens; it only
+  displays current selections.
+- Visual selection is slot-scoped. One selected slot in a multi-slot block must
+  not duplicate the selected image into sibling slots.
+- Visual label edits made through `/ppt Document ID + comment` preserve selected
+  image IDs but rebase `selectionMatches` and renderer-facing `brief` so the
+  PPTX caption/label uses the updated label.
+- `adaptiveVisualMain` and `adaptiveTextMain` are simple code/renderer
+  invariants, not broad update-prompt pressure. Do not reintroduce heavy prompt
+  rules that force local saved-plan edits to regenerate the whole deck.
+
+User live confirmation at close:
+
+- PPT design updates through `/ppt Document ID` worked and JSON was preserved.
+- Fully resolved Resolve visuals reopened quickly without LLM delay/token use.
+- Updated visual labels appeared in PPTX.
+- The multi-slot duplicate-image fix is covered by local regression tests but
+  still awaits future manual confirmation with another deck/material set.
+
 API image generation directly inside the PPT resolve flow is intentionally not
 part of the current stable path. Treat it as a future branch only if explicitly
 requested; the current stable path is image-library selection plus placeholders.
@@ -58,6 +83,16 @@ non-negotiable debugging rule: distinguish observed facts from hypotheses,
 trace `preferredImageId` through library metadata, hydration, resolver output,
 frameSpec, and PPTX XML/media, and do not use fallback behavior as a substitute
 for proving the primary route.
+
+Additional stop rule from the 2026-05-08 regressions:
+
+- Do not fix a PPT symptom by adding another broad fallback or global prompt
+  constraint. First identify the owning boundary: saved-plan update,
+  visual-slot selection, chat display, frameSpec projection, or renderer.
+- If the workflow starts from a saved structured document, incomplete incoming
+  LLM output is never an overwrite source.
+- If a slot/address format is touched, audit every consumer of that address
+  before asking for manual testing.
 
 For text/body layout, keep style decisions in frame/block-style data. Renderer
 V2 should execute `renderStyle.textStyle` and conservative defaults, not bake in

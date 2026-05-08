@@ -112,9 +112,9 @@ describe("presentationTaskPlanning", () => {
     expect(visibleText).toContain("Role: visualMain");
     expect(visibleText).toContain("- block2 textStack (textStackTopLeft)");
     expect(visibleText).toContain("- 表示本文: The process has three clear steps.");
-    expect(visibleText).toContain("- Intake");
-    expect(visibleText).toContain("- Review");
-    expect(visibleText).toContain("- Output");
+    expect(visibleText).not.toContain("- Intake");
+    expect(visibleText).not.toContain("- Review");
+    expect(visibleText).not.toContain("- Output");
     expect(visibleText).toContain(
       "- ビジュアルプロンプト: Draw intake, review, and output as connected steps."
     );
@@ -125,11 +125,63 @@ describe("presentationTaskPlanning", () => {
       left: {
         heading: "Three-step workflow diagram",
       },
-      right: {
-        heading: "Workflow",
-        body: "The process has three clear steps.",
-      },
     });
+  });
+
+  it("adds a visible text-only annotation to visual-only adaptive visual-main frames", () => {
+    const frameResult: TaskResult = {
+      taskId: "task-frame",
+      type: "PREP_TASK",
+      status: "OK",
+      summary: "Frame-based plan",
+      keyPoints: [],
+      detailBlocks: [
+        {
+          title: "Slide Frame JSON",
+          body: [
+            JSON.stringify({
+              slideFrames: [
+                {
+                  slideNumber: 1,
+                  title: "Ogikubo family area",
+                  masterFrameId: "titleLineFooter",
+                  layoutFrameId: "adaptiveVisualMain",
+                  slideRole: "visualMain",
+                  blocks: [
+                    {
+                      id: "block1",
+                      kind: "visual",
+                      styleId: "visualContain",
+                      visualRequest: {
+                        type: "photo",
+                        brief: "Ogikubo station area",
+                        prompt: "Ogikubo station and residential streets",
+                      },
+                    },
+                  ],
+                },
+              ],
+            }),
+          ],
+        },
+      ],
+      warnings: [],
+      missingInfo: [],
+      nextSuggestion: [],
+    };
+
+    const plan = buildPresentationTaskPlan({
+      title: "Ogikubo Deck",
+      result: frameResult,
+      rawText: "",
+      updatedAt: "2026-04-30T00:00:00.000Z",
+    });
+    const visibleText = formatPresentationTaskPlanText(plan);
+
+    expect(visibleText).toContain("- annotation textStack (textStackTopLeft)");
+    expect(visibleText).toContain(
+      "- 表示本文: Ogikubo family area is framed through the visual, with the key message summarized in the remaining space."
+    );
   });
 
   it("keeps visual resolution metadata in the renderer boundary while hiding it from the first design view", () => {
@@ -937,15 +989,16 @@ describe("presentationTaskPlanning", () => {
     });
 
     const spec = buildFramePresentationSpecFromTaskPlan(plan);
+    const visualBlocks = spec?.slideFrames[0].blocks.filter((block) => block.visualRequest) || [];
 
     expect(spec?.slideFrames[0].layoutFrameId).toBe("adaptiveVisualMain");
     expect(spec?.slideFrames[0].slideRole).toBe("visualMain");
-    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.preferredImageId)).toEqual([
+    expect(visualBlocks.map((block) => block.visualRequest?.preferredImageId)).toEqual([
       "img_field",
       "img_ginning",
       "img_spinning",
     ]);
-    expect(spec?.slideFrames[0].blocks.map((block) => block.visualRequest?.brief)).toEqual([
+    expect(visualBlocks.map((block) => block.visualRequest?.brief)).toEqual([
       "Field",
       "Ginning",
       "Spinning",
@@ -1828,5 +1881,60 @@ describe("presentationTaskPlanning", () => {
     const spec = buildFramePresentationSpecFromTaskPlan(plan);
 
     expect(spec?.slideFrames[0].blocks[0].renderStyle?.showHeading).toBe(false);
+  });
+
+  it("hides redundant adaptive visual-main annotation headings", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Ogikubo deck",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                deckFrame: {
+                  masterFrameId: "titleLineFooter",
+                  slideCount: 1,
+                },
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Ogikubo family area",
+                    layoutFrameId: "adaptiveVisualMain",
+                    slideRole: "visualMain",
+                    blocks: [
+                      {
+                        id: "visual",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Ogikubo station",
+                          prompt: "Ogikubo station and residential streets",
+                        },
+                      },
+                      {
+                        id: "annotation",
+                        kind: "callout",
+                        styleId: "callout",
+                        heading: "Ogikubo family area",
+                        text: "Station access and calm streets support family life.",
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+    });
+
+    const spec = buildFramePresentationSpecFromTaskPlan(plan);
+
+    expect(spec?.slideFrames[0].blocks[1].text).toContain("Station access");
+    expect(spec?.slideFrames[0].blocks[1].renderStyle?.showHeading).toBe(false);
   });
 });

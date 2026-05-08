@@ -2,6 +2,7 @@ import {
   presentationVisualSlotMatchKey,
   type PresentationVisualSlotNormalizedTextMap,
 } from "@/lib/app/presentation/presentationVisualSelection";
+import type { TokenUsage } from "@/hooks/useGptMemory";
 import type { PresentationTaskPlan, PresentationTaskVisualSlot } from "@/types/task";
 
 export type PresentationVisualNormalizationInput = {
@@ -80,8 +81,17 @@ function visualRequestInputs(args: {
 export async function requestPresentationVisualSlotNormalization(
   plan: PresentationTaskPlan
 ): Promise<PresentationVisualSlotNormalizedTextMap> {
+  return (await requestPresentationVisualSlotNormalizationResult(plan)).normalized;
+}
+
+export async function requestPresentationVisualSlotNormalizationResult(
+  plan: PresentationTaskPlan
+): Promise<{
+  normalized: PresentationVisualSlotNormalizedTextMap;
+  usage?: TokenUsage;
+}> {
   const slots = collectPresentationVisualNormalizationInputs(plan);
-  if (slots.length === 0) return {};
+  if (slots.length === 0) return { normalized: {} };
   const response = await fetch("/api/presentation-visual-normalize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -95,7 +105,10 @@ export async function requestPresentationVisualSlotNormalization(
         : "Presentation visual normalization failed."
     );
   }
-  return normalizeSlotTextMap(data?.normalized);
+  return {
+    normalized: normalizeSlotTextMap(data?.normalized),
+    usage: normalizeTokenUsage(data?.usage),
+  };
 }
 
 export function normalizeSlotTextMap(value: unknown): PresentationVisualSlotNormalizedTextMap {
@@ -105,4 +118,19 @@ export function normalizeSlotTextMap(value: unknown): PresentationVisualSlotNorm
       .map(([key, text]) => [key, typeof text === "string" ? text.trim() : ""])
       .filter(([key, text]) => !!key && !!text)
   );
+}
+
+function normalizeTokenUsage(value: unknown): TokenUsage | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  const inputTokens =
+    typeof record.inputTokens === "number" ? record.inputTokens : 0;
+  const outputTokens =
+    typeof record.outputTokens === "number" ? record.outputTokens : 0;
+  const totalTokens =
+    typeof record.totalTokens === "number"
+      ? record.totalTokens
+      : inputTokens + outputTokens;
+  if (inputTokens === 0 && outputTokens === 0 && totalTokens === 0) return undefined;
+  return { inputTokens, outputTokens, totalTokens };
 }

@@ -1,6 +1,6 @@
 # Engineering Judgment Policy
 
-Updated: 2026-05-07
+Updated: 2026-05-08
 
 ## Purpose
 
@@ -80,3 +80,39 @@ interpretation, routing, or other judgment-heavy logic.
    such as the presentation renderer suite. If an actual browser/API/manual
    step remains impossible to automate locally, explicitly say that this is the
    remaining verification boundary.
+
+10. Keep simple product invariants in code, not in broad prompt pressure.
+
+   If the intended behavior is simple, encode the invariant at the owning
+   boundary instead of expanding global LLM constraints. For example:
+   `adaptiveVisualMain` means primary visual plus a small body-text area;
+   `adaptiveTextMain` means primary text plus supporting visuals; `/ppt
+   Document ID + comment` means update the existing saved plan locally, not
+   regenerate or reinterpret the whole deck. Do not solve these by adding broad
+   prompt rules that also affect update flows.
+
+11. Never persist incomplete LLM output over a complete saved artifact.
+
+   Any update flow that starts from a saved structured document must validate
+   that the incoming result still has the required canonical structure before
+   writing it back. If a PPT update result lacks usable `slideFrames`, preserve
+   the existing saved design and report that the update could not be applied.
+   The same principle applies to task documents, memory records, and library
+   artifacts: an incomplete parse is not an overwrite source.
+
+12. Preserve unit-of-selection boundaries.
+
+   When a workflow exposes slots, blocks, images, or document IDs as user
+   addresses, the persistence model must preserve that same address granularity.
+   Selecting one visual slot must not imply selection of sibling slots.
+   Updating a visual label must update the persisted slot/match label used by
+   downstream rendering, not only the visible design text.
+
+13. Avoid fallback regrowth after a regression.
+
+   A fallback is not a repair unless the primary route and the failure condition
+   are proven. Repeated regressions in the PPT workflow came from adding
+   compensating branches and broad prompts instead of restoring the intended
+   boundary. Before adding any fallback, write down which invariant it protects,
+   why the primary path cannot provide it, and which regression test proves the
+   fallback does not become a second standard.

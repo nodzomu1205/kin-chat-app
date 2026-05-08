@@ -37,6 +37,16 @@ describe("rendererV2 adaptive layouts", () => {
     expect(boxes.annotation?.y).toBeGreaterThan(boxes.visual.y + boxes.visual.h);
   });
 
+  it("reserves right annotation space for landscape visual-main slides when requested", () => {
+    const boxes = resolveAdaptiveVisualMainBoxes(contentBox, 1.8, true, "right");
+
+    expect(boxes.visual.x).toBe(contentBox.x);
+    expect(boxes.visual.y).toBe(contentBox.y);
+    expect(boxes.annotation?.x).toBeGreaterThan(boxes.visual.x + boxes.visual.w);
+    expect(boxes.annotation?.w).toBeGreaterThanOrEqual(2.25);
+    expect(boxes.visual.w).toBeLessThan(contentBox.w - boxes.annotation!.w);
+  });
+
   it("keeps multiple visual-main images inside the adaptive visual area", () => {
     const boxes = resolveAdaptiveVisualMainMultiVisualBoxes(
       contentBox,
@@ -279,6 +289,117 @@ describe("rendererV2 adaptive layouts", () => {
     await expectImageRelationshipCount(zip, 2, 6);
     await expectImageRelationshipCount(zip, 3, 0);
     await expectImageRelationshipCount(zip, 4, 1);
+  });
+
+  it("renders adaptive visual-main image labels without inventing hidden annotation text", async () => {
+    const outputDir = join(process.cwd(), ".tmp-render-tests");
+    await mkdir(outputDir, { recursive: true });
+    const outputPath = join(outputDir, "frame-v2-adaptive-visual-label.pptx");
+
+    await renderFramePresentationToFile(
+      {
+        version: "0.1-frame",
+        title: "Adaptive visual",
+        theme: "business-clean",
+        deckFrame: {
+          slideCount: 1,
+          masterFrameId: "titleLineFooter"
+        },
+        slideFrames: [
+          {
+            slideNumber: 1,
+            title: "Tokyo overview",
+            masterFrameId: "titleLineFooter",
+            layoutFrameId: "adaptiveVisualMain",
+            blocks: [
+              {
+                id: "main",
+                kind: "visual",
+                styleId: "visualContain",
+                visualRequest: {
+                  type: "photo",
+                  brief: "Tokyo station label",
+                  prompt: "A landscape daylight view of Tokyo Station with nearby streets.",
+                  asset: {
+                    imageId: "img_tokyo",
+                    mimeType: "image/png",
+                    base64: onePixelPng,
+                    aspectRatio: 1.8
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      outputPath
+    );
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    const slideXml = await zip.file("ppt/slides/slide1.xml")?.async("text");
+    expect(slideXml).toContain("Tokyo station label");
+    expect(slideXml).not.toContain("A landscape daylight view of Tokyo Station");
+  });
+
+  it("renders right annotation text beside multi-image landscape visual-main slides", async () => {
+    const outputDir = join(process.cwd(), ".tmp-render-tests");
+    await mkdir(outputDir, { recursive: true });
+    const outputPath = join(outputDir, "frame-v2-adaptive-visual-multi-annotation.pptx");
+
+    await renderFramePresentationToFile(
+      {
+        version: "0.1-frame",
+        title: "Adaptive multi visual",
+        theme: "business-clean",
+        deckFrame: {
+          slideCount: 1,
+          masterFrameId: "titleLineFooter"
+        },
+        slideFrames: [
+          {
+            slideNumber: 1,
+            title: "Ogikubo family area",
+            masterFrameId: "titleLineFooter",
+            layoutFrameId: "adaptiveVisualMain",
+            layoutIntent: { textPlacement: "right" },
+            blocks: [
+              ...["station", "shopping", "residential"].map((id, index) => ({
+                id,
+                kind: "visual" as const,
+                styleId: "visualContain" as const,
+                visualRequest: {
+                  type: "photo" as const,
+                  brief: `Ogikubo image ${index + 1}`,
+                  prompt:
+                    index === 0
+                      ? "Ogikubo station, shopping streets, and residential areas for families."
+                      : undefined,
+                  asset: {
+                    imageId: `img_${id}`,
+                    mimeType: "image/png",
+                    base64: onePixelPng,
+                    aspectRatio: 1.8
+                  }
+                }
+              })),
+              {
+                id: "annotation",
+                kind: "callout",
+                styleId: "callout",
+                text: "Station access, shopping, and quiet residential streets support family routines."
+              }
+            ]
+          }
+        ]
+      },
+      outputPath
+    );
+
+    const zip = await JSZip.loadAsync(await readFile(outputPath));
+    await expectImageRelationshipCount(zip, 1, 3);
+    const slideXml = await zip.file("ppt/slides/slide1.xml")?.async("text");
+    expect(slideXml).toContain("Ogikubo image 1");
+    expect(slideXml).toContain("Station access, shopping");
   });
 
   it("keeps the unresolved visual block address visible for later replacement", () => {

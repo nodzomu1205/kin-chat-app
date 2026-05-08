@@ -432,14 +432,49 @@ function renderAdaptiveVisualMainFrame(
       renderBlock(slide, visualBlocks[index], theme, textFitContext, visualBox, density);
     });
     if (annotationBlock && boxes.annotation) {
-      renderTextBlock(slide, annotationBlock, theme, textFitContext, boxes.annotation);
+      renderAdaptiveVisualAnnotationBlock(slide, annotationBlock, theme, textFitContext, boxes.annotation);
     }
     return;
   }
   renderVisualBlockExact(slide, visualBlock, theme, boxes.visual, density);
   if (annotationBlock && boxes.annotation) {
-    renderTextBlock(slide, annotationBlock, theme, textFitContext, boxes.annotation);
+    renderAdaptiveVisualAnnotationBlock(slide, annotationBlock, theme, textFitContext, boxes.annotation);
   }
+}
+
+function renderAdaptiveVisualAnnotationBlock(
+  slide: PptxGenJS.Slide,
+  block: FrameBlock,
+  theme: RendererTheme,
+  textFitContext: TextFitContext,
+  box: Box
+) {
+  const renderBlock = adaptiveVisualAnnotationRenderBlock(block);
+  if (!renderBlock) return;
+  renderTextBlock(
+    slide,
+    renderBlock,
+    theme,
+    textFitContext,
+    box
+  );
+}
+
+function adaptiveVisualAnnotationRenderBlock(block: FrameBlock | undefined): FrameBlock | undefined {
+  const text = block?.text?.trim();
+  if (!block || !text) return undefined;
+  return {
+    ...block,
+    kind: "callout",
+    styleId: "callout",
+    heading: undefined,
+    items: undefined,
+    text,
+    renderStyle: {
+      ...block.renderStyle,
+      showHeading: false
+    }
+  };
 }
 
 function renderAdaptiveTextMainFrame(
@@ -564,11 +599,39 @@ export function resolveAdaptiveVisualMainBoxes(
           h: bottomH
         }
       : undefined;
+  const reservedRightAnnotation =
+    !rightAnnotation && preferredPlacement !== "bottomRight"
+      ? reserveRightAnnotationBox(box, aspectRatio, gap)
+      : undefined;
 
   if (preferredPlacement === "bottomRight") {
     return { visual, annotation: bottomAnnotation || rightAnnotation };
   }
-  return { visual, annotation: rightAnnotation || bottomAnnotation };
+  return reservedRightAnnotation || { visual, annotation: rightAnnotation || bottomAnnotation };
+}
+
+function reserveRightAnnotationBox(
+  box: Box,
+  aspectRatio: number | undefined,
+  gap: number
+): { visual: Box; annotation: Box } | undefined {
+  const annotationW = Math.min(3.2, Math.max(2.35, box.w * 0.24));
+  const visualArea = {
+    x: box.x,
+    y: box.y,
+    w: box.w - annotationW - gap,
+    h: box.h
+  };
+  if (visualArea.w < 2.8) return undefined;
+  const visual = containTopLeftBox(visualArea, aspectRatio);
+  const annotation = {
+    x: visualArea.x + visualArea.w + gap,
+    y: box.y,
+    w: annotationW,
+    h: Math.min(box.h, Math.max(1.2, visual.h))
+  };
+  if (annotation.w < 2.25 || annotation.h < 0.85) return undefined;
+  return { visual, annotation };
 }
 
 export function resolveAdaptiveTextMainBoxes(
@@ -905,7 +968,7 @@ function renderVisualBlockExact(
 ) {
   const visual = block?.visualRequest;
   if (visual?.asset?.base64) {
-    renderImageExact(slide, visual.asset, box);
+    renderImageExactWithOptionalCaption(slide, block, theme, box);
     return;
   }
   renderVisualFallback(slide, theme, block, box, density);
@@ -1038,6 +1101,22 @@ function renderImageExact(
     w: box.w,
     h: box.h
   });
+}
+
+function renderImageExactWithOptionalCaption(
+  slide: PptxGenJS.Slide,
+  block: FrameBlock | undefined,
+  theme: RendererTheme,
+  box: Box
+) {
+  const visual = block?.visualRequest;
+  const asset = visual?.asset;
+  if (!asset?.base64) return;
+  renderImageExact(slide, asset, box);
+  const caption = visual?.brief?.trim();
+  if (!caption || visual?.renderStyle?.showBrief === false || box.h < 1.45) return;
+  const captionH = Math.min(0.34, Math.max(0.24, box.h * 0.12));
+  renderImageOverlayLabel(slide, caption, theme, box, captionH);
 }
 
 function renderTextBlock(
@@ -1183,7 +1262,7 @@ function resolveFrameBlockBoxes(
     );
     return [
       { block: visualBlock, box: boxes.visual },
-      { block: annotationBlock, box: boxes.annotation || boxes.visual }
+      { block: adaptiveVisualAnnotationRenderBlock(annotationBlock), box: boxes.annotation || boxes.visual }
     ].filter(({ block }) => !!block);
   }
   if (frame.layoutFrameId === "adaptiveTextMain") {

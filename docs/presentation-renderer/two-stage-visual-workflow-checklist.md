@@ -1,6 +1,6 @@
 # Two-Stage Visual Workflow Checklist
 
-Updated: 2026-05-07
+Updated: 2026-05-08
 
 ## Purpose
 
@@ -41,6 +41,35 @@ Never treat user live testing as the first regression detector for a PPT flow.
 If a fix changes a format or address such as `Slide N / block X / slot Y`,
 audit every parser, command-draft helper, library insertion helper, formatter,
 and display preview path that consumes that format.
+
+## Regression Lessons From 2026-05-08
+
+Keep the two-stage PPT workflow simple:
+
+- Stage 1 is editable design JSON. It must keep complete `deckFrame +
+  slideFrames` and must not be overwritten by incomplete update output.
+- Stage 2 is visual slot resolution. Resolve only unresolved slots. If every
+  opening/body visual slot is already selected, reopening Resolve visuals must
+  display current selections without calling the visual-normalization LLM.
+- A block can contain multiple slots, but each slot is a single image decision.
+  Selecting one slot must not duplicate that image into sibling slots.
+- Visual label edits must reach the renderer boundary. If a saved design edit
+  changes a visual slot label while preserving an existing image ID, rebase the
+  selected match label/need onto the updated slot metadata so PPTX captions use
+  the new label.
+- Do not repair simple layout behavior by adding broad update-prompt pressure.
+  `adaptiveVisualMain` and `adaptiveTextMain` are renderer/normalization
+  invariants; `/ppt Document ID + comment` is a local saved-plan update.
+
+Required regression coverage for future changes in this area:
+
+1. incomplete `/ppt Document ID + comment` update result does not overwrite a
+   saved plan.
+2. fully resolved opening/body visuals do not call the visual-normalization
+   endpoint when Resolve is reopened.
+3. one selected slot in a multi-slot block persists only that selected image.
+4. saved-plan label edits preserve selected image IDs and update the PPTX
+   boundary label.
 
 ## Renderer Boundary Guardrails
 
@@ -104,7 +133,9 @@ Goal: users choose images only after the editable design is stable.
 | 33 | `off` clears a block selection | Command parser accepts `Slide N / block X: off` and clears IDs for that visual block | Parser/update path checked | Passed |
 | 34 | Re-resolving only changes addressed blocks | Applying a resolve command does not rewrite unrelated slide text or visuals | Plan update tests cover opening/body preservation | Passed |
 | 35 | Multiple IDs set multi-image policy | Multiple image IDs on one line produce `candidateImageIds` and appropriate usage policy | Plan update path checked | Passed |
-| 36 | API generation is intentionally deferred | The current stable Resolve flow uses image-library selection or unresolved placeholders; direct API image generation inside Resolve is future work only if explicitly requested | Code search confirms no active Resolve-to-API branch | Deferred |
+| 36 | Slot-level selections stay isolated | Selecting one slot in a multi-slot block stores only that slot's image and does not duplicate it into sibling slots | `presentationGptFlow.test.ts` | Passed |
+| 37 | Fully resolved plans do not rerun visual LLM | Reopening Resolve visuals for a fully selected opening/body plan shows current selections without calling the visual-normalization endpoint or charging task usage | `presentationGptFlow.test.ts`; user confirmed live behavior | Passed |
+| 38 | API generation is intentionally deferred | The current stable Resolve flow uses image-library selection or unresolved placeholders; direct API image generation inside Resolve is future work only if explicitly requested | Code search confirms no active Resolve-to-API branch | Deferred |
 
 ## Create PPT After Resolution
 
@@ -112,27 +143,28 @@ Goal: PPT output uses resolved images where available and placeholders elsewhere
 
 | No | Check | Code verification | Test / artifact verification | Status |
 |---:|---|---|---|---|
-| 37 | `Save and create PPT` saves before render | Flow persists the current plan before rendering | Flow test | Passed |
-| 38 | Render sends only required image bytes | Request payload includes only IDs referenced by the current frameSpec | Payload-focused flow tests | Passed |
-| 39 | Render compresses large library images | Large images are optimized for PPT transfer without modifying stored originals | Vercel 413 repair verified by user | Passed |
-| 40 | Image-free render still works after Stage 1 | Unresolved Stage 1 design can render directly with placeholders | User confirmed placeholder PPTX output | Passed |
-| 41 | Mixed render works after partial resolution | Some resolved images render while unresolved blocks remain placeholders | Flow tests and user review | Passed |
-| 42 | Fully resolved render works | All selected visuals hydrate and appear in PPTX | User confirmed final visual PPTX quality | Passed |
-| 43 | Cover visual behavior remains intact | `visualTitleCover` opening image is independently selectable and preserved through later body selections | Flow regression tests and user confirmation | Passed |
-| 44 | PPTX response stays below Vercel limits | Route does not echo image content base64 in JSON | Vercel live retry passed | Passed |
-| 45 | PPTX request stays below Vercel limits | Render request uses required/optimized assets only | Vercel live retry passed | Passed |
+| 39 | `Save and create PPT` saves before render | Flow persists the current plan before rendering | Flow test | Passed |
+| 40 | Render sends only required image bytes | Request payload includes only IDs referenced by the current frameSpec | Payload-focused flow tests | Passed |
+| 41 | Render compresses large library images | Large images are optimized for PPT transfer without modifying stored originals | Vercel 413 repair verified by user | Passed |
+| 42 | Image-free render still works after Stage 1 | Unresolved Stage 1 design can render directly with placeholders | User confirmed placeholder PPTX output | Passed |
+| 43 | Mixed render works after partial resolution | Some resolved images render while unresolved blocks remain placeholders | Flow tests and user review | Passed |
+| 44 | Fully resolved render works | All selected visuals hydrate and appear in PPTX | User confirmed final visual PPTX quality | Passed |
+| 45 | Cover visual behavior remains intact | `visualTitleCover` opening image is independently selectable and preserved through later body selections | Flow regression tests and user confirmation | Passed |
+| 46 | Updated labels reach PPTX boundary | `/ppt Document ID + comment` edits can change visual labels while preserving selected image IDs; renderer-facing `brief` uses the updated label | `presentationGptFlow.test.ts`; user confirmed live label display | Passed |
+| 47 | PPTX response stays below Vercel limits | Route does not echo image content base64 in JSON | Vercel live retry passed | Passed |
+| 48 | PPTX request stays below Vercel limits | Render request uses required/optimized assets only | Vercel live retry passed | Passed |
 
 ## Deprecated / Removed Command Paths
 
 | No | Check | Code verification | Test / artifact verification | Status |
 |---:|---|---|---|---|
-| 46 | Old `Images: on, library` direct render is removed or redirected | Parser/flow no longer treats this as the primary image-selection path | Command parser test | Passed |
-| 47 | Old `Images: on, API` direct render is removed or redirected | API generation is entered through Resolve visual blocks or explicit image generation action | Command parser test | Passed |
-| 48 | Old `Images: on, API, library` hybrid shortcut is removed or redirected | Hybrid behavior does not bypass Stage 2 review | Command parser test | Passed |
-| 49 | Deprecated commands produce neutral guidance | If old commands are used, they do not trigger image render or direct edit paths | Flow/parser test | Passed |
-| 50 | `titleLineFooter` suppresses redundant headings | When a slide title and first text/list heading are effectively the same, renderer input sets `showHeading: false` | Planning test + build | Passed |
-| 51 | PPT direct-edit approval UI is removed | Library settings no longer imports or renders the retired PPTX direct-edit approval queue | Build + reference scan | Passed |
-| 52 | `visualTitleCover` participates in Resolve visuals | Opening cover visual is listed, auto-matched, manually selectable, saved, and hydrated like body visual blocks | Visual selection + flow tests | Passed |
+| 49 | Old `Images: on, library` direct render is removed or redirected | Parser/flow no longer treats this as the primary image-selection path | Command parser test | Passed |
+| 50 | Old `Images: on, API` direct render is removed or redirected | API generation is entered through Resolve visual blocks or explicit image generation action | Command parser test | Passed |
+| 51 | Old `Images: on, API, library` hybrid shortcut is removed or redirected | Hybrid behavior does not bypass Stage 2 review | Command parser test | Passed |
+| 52 | Deprecated commands produce neutral guidance | If old commands are used, they do not trigger image render or direct edit paths | Flow/parser test | Passed |
+| 53 | `titleLineFooter` suppresses redundant headings | When a slide title and first text/list heading are effectively the same, renderer input sets `showHeading: false` | Planning test + build | Passed |
+| 54 | PPT direct-edit approval UI is removed | Library settings no longer imports or renders the retired PPTX direct-edit approval queue | Build + reference scan | Passed |
+| 55 | `visualTitleCover` participates in Resolve visuals | Opening cover visual is listed, auto-matched, manually selectable, saved, and hydrated like body visual blocks | Visual selection + flow tests | Passed |
 
 ## Verification Log
 
@@ -156,3 +188,4 @@ Record each implementation pass here.
 | 2026-05-07 | Two-stage route finalized + titleLineFooter heading cleanup | Parser now keeps only Save / Save and create PPT / Resolve visual blocks / Resolve visuals as active PPT menu commands; old image-mode, preview, direct-edit, and PPT-frame command entry points are no longer wired; `titleLineFooter` hides redundant slide-block headings at renderer-boundary time | `npm test -- lib/app/presentation/presentationGptPrompts.test.ts lib/app/presentation/presentationGptFlow.test.ts lib/app/presentation/presentationCommandParser.test.ts lib/app/presentation/presentationTaskPlanning.test.ts`; `npm run build` | Manual browser retry pending | Image hydration still remains render-time only; placeholder and selected-image paths are unchanged |
 | 2026-05-07 | Retired direct-edit approval + cover Resolve visuals | Removed PPTX direct-edit approval hook/module/tests and library settings UI; removed task direct-edit prompt/client path; `visualTitleCover` opening visuals now appear in Resolve visual blocks and accept `Opening slide / visual: img_...` selections | `npm test -- lib/app/presentation/presentationVisualSelection.test.ts lib/app/presentation/presentationGptFlow.test.ts lib/app/presentation/presentationCommandParser.test.ts`; `npm run build` | Manual browser retry pending | Reference scan across `components hooks lib types` shows no remaining direct-edit symbols |
 | 2026-05-07 | Final Save/recent sync + cleanup pass | PPT command assistant messages now update `recentMessages`, so Resolve -> Save uses the newly selected opening/body images even before library props refresh; deprecated direct-edit symbols were re-scanned; docs updated to make two-stage workflow the main path | `npm test -- lib/app/presentation/presentationGptFlow.test.ts lib/app/presentation/presentationCommandDraft.test.ts lib/app/presentation/presentationVisualSelection.test.ts`; `npm run build`; final cleanup scans | User confirmed all current PPT behavior is良好 | Search found no live DirectEdit/PptDirectEdit/presentationDirectEdit code paths; remaining `generateImages/imageMode` are render payload fields, not old user commands |
+| 2026-05-08 | PPT visual slot stabilization and regression recovery | Restored simple invariants after repeated regressions: incomplete saved-plan update output no longer overwrites existing `slideFrames`; fully resolved opening/body visuals do not rerun visual-normalization LLM; adaptive visual-main text is renderer-boundary body text; selected image IDs are preserved while updated visual labels are rebased into `selectionMatches` and PPTX-facing `brief`; one selected slot in a multi-slot block persists only that slot image | `npm test -- lib/app/presentation/presentationGptFlow.test.ts lib/app/presentation/presentationTaskPlanning.test.ts lib/app/presentation/presentationPlanValidation.test.ts lib/app/presentation/presentationRenderE2e.test.ts`; `npm test --prefix kin-presentation-renderer -- src/rendererV2.test.ts`; `npx tsc --noEmit`; `npm test`; `npm test --prefix kin-presentation-renderer`; `npm run check:utf8`; `npm run build` | User confirmed `/ppt Document ID` update preserves JSON, fully resolved Resolve visuals no longer consumes LLM time/tokens, and edited labels display in PPTX. Multi-slot duplicate-image fix is locally tested but pending future manual confirmation with another deck. | Do not reintroduce broad update-prompt pressure for simple layout invariants. Keep Stage 1 design JSON, Stage 2 slot selection, and renderer boundary separate. |

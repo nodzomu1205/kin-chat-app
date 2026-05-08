@@ -356,7 +356,100 @@ describe("presentationPlanValidation", () => {
     });
   });
 
-  it("keeps dense text on normal photo slides even if they were marked visualMain", () => {
+  it("adds a text-only annotation when adaptive visual-main has only a visual block", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "荻窪の住みやすさと家族向け魅力",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "adaptiveVisualMain",
+        slideRole: "visualMain",
+        blocks: [
+          {
+            id: "block1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "photo",
+              brief: "荻窪駅周辺",
+            },
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveVisualMain",
+      slideRole: "visualMain",
+      layoutIntent: {
+        notePolicy: "shortAnnotation",
+      },
+      blocks: [
+        { id: "block1" },
+        {
+          id: "annotation",
+          kind: "textStack",
+          styleId: "textStackTopLeft",
+          text: "荻窪の住みやすさと家族向け魅力は、交通・買い物などの利便性と落ち着いた住環境のバランスが、日常生活のしやすさにつながります。",
+          renderStyle: { showHeading: false },
+        },
+      ],
+    });
+  });
+
+  it("keeps all visual blocks selectable and normalizes annotation to text only", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Area",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "adaptiveVisualMain",
+        slideRole: "visualMain",
+        blocks: [
+          {
+            id: "visual1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: { type: "photo", brief: "Station" },
+          },
+          {
+            id: "visual2",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: { type: "photo", brief: "Residential street" },
+          },
+          {
+            id: "notes",
+            kind: "list",
+            styleId: "listCompact",
+            heading: "Area",
+            text: "Station access helps.",
+            items: ["Hidden item."],
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0].blocks.map((block) => block.id)).toEqual([
+      "visual1",
+      "visual2",
+      "notes",
+    ]);
+    expect(normalized[0].blocks[2]).toMatchObject({
+      kind: "textStack",
+      styleId: "textStackTopLeft",
+      text: "Station access helps.",
+      renderStyle: { showHeading: false },
+    });
+    expect(normalized[0].blocks[2].heading).toBeUndefined();
+    expect(normalized[0].blocks[2].items).toBeUndefined();
+  });
+
+  it("keeps dense text as adaptive text-main instead of thinning it into a visual annotation", () => {
     const frames: PresentationTaskSlideFrame[] = [
       {
         slideNumber: 1,
@@ -390,10 +483,15 @@ describe("presentationPlanValidation", () => {
 
     const normalized = normalizePresentationVisualMainPolicy(frames);
 
-    expect(normalized[0]).toMatchObject({
-      layoutFrameId: "adaptiveTextMain",
-      slideRole: "textMain",
-      blocks: [{ id: "block2" }, { id: "block1" }],
+    expect(normalized[0].layoutFrameId).toBe("adaptiveTextMain");
+    expect(normalized[0].slideRole).toBe("textMain");
+    expect(normalized[0].blocks.map((block) => block.id)).toEqual(["block2", "block1"]);
+    expect(normalized[0].blocks[0]).toMatchObject({
+      kind: "list",
+      styleId: "listCompact",
+      heading: "Education and livability",
+      text: "Preserve the original slide body when selected photos are hydrated.",
+      items: ["School access", "Safety", "Commute", "Rent"],
     });
   });
 

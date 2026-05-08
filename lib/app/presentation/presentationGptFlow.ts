@@ -18,7 +18,7 @@ import {
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
 import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
-import { requestPresentationVisualSlotNormalization } from "@/lib/app/presentation/presentationVisualNormalization";
+import { requestPresentationVisualSlotNormalizationResult } from "@/lib/app/presentation/presentationVisualNormalization";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
   collectSelectedVisualImageIds,
@@ -644,6 +644,23 @@ async function runUpdateSavedPresentationPlanFlow(args: {
     }),
     documentId: foundPlan.plan.documentId,
   };
+  if (!hasUsablePresentationPlanShape(incomingPlan)) {
+    args.flowArgs.applyTaskUsage?.(data?.usage);
+    appendPresentationAssistantMessage({
+      flowArgs: args.flowArgs,
+      text: [
+        "Presentation design update could not be applied.",
+        "",
+        `Document ID: ${args.documentId}`,
+        "",
+        "The update result did not include slideFrames, so the existing saved design was preserved.",
+        "",
+        await buildPresentationTaskPlanTextWithImagePreviews(foundPlan.plan),
+      ].join("\n"),
+      presentationPlan: foundPlan.plan,
+    });
+    return;
+  }
   const updatedPlan: PresentationTaskPlan = {
     ...mergePresentationPlanVisualSelections({
       incomingPlan,
@@ -700,19 +717,6 @@ async function runResolvePresentationVisualsFlow(args: {
   if (!foundPlan) {
     throw new Error(`Presentation plan document not found: ${args.documentId}`);
   }
-  const imageCandidates = getPresentationImageLibraryCandidates({
-    enabled: args.flowArgs.imageLibraryReferenceEnabled,
-    count: args.flowArgs.imageLibraryReferenceCount,
-    referenceLibraryItems: args.flowArgs.referenceLibraryItems,
-  });
-  const visualResolvedBasePlan = resolvePresentationVisualSlots({
-    plan: foundPlan.plan,
-    imageCandidates,
-    normalizedSlotTexts:
-      imageCandidates.length > 0
-        ? await requestPresentationVisualSlotNormalization(foundPlan.plan)
-        : {},
-  });
   const updatedPlan = applyPresentationVisualSelections(foundPlan.plan, selections);
   args.flowArgs.updateStoredDocument(foundPlan.sourceId, {
     title: foundPlan.item.title,
@@ -1120,14 +1124,78 @@ function preserveExistingVisualSelectionIfMissing(args: {
   if (collectSelectedVisualImageIds(args.existingVisual).length === 0) {
     return args.incomingVisual;
   }
+  const rebasedMatches = rebaseExistingSelectionMatches({
+    incomingVisual: args.incomingVisual,
+    existingVisual: args.existingVisual,
+  });
   return {
     ...args.incomingVisual,
     preferredImageId: args.existingVisual.preferredImageId,
     candidateImageIds: args.existingVisual.candidateImageIds,
-    selectionMatches: args.existingVisual.selectionMatches,
+    selectionMatches: rebasedMatches || args.existingVisual.selectionMatches,
     usagePolicy: args.existingVisual.usagePolicy,
     maxVisualItems: args.existingVisual.maxVisualItems,
   };
+}
+
+function rebaseExistingSelectionMatches(args: {
+  incomingVisual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>;
+  existingVisual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>;
+}) {
+  const incomingSlots = visualResolutionSlots(args.incomingVisual);
+  const existingSlots = visualResolutionSlots(args.existingVisual);
+  const existingMatches = (args.existingVisual.selectionMatches || []).filter(
+    (match) => match.status === "selected" && match.imageId
+  );
+  const selectedImageIds = collectSelectedVisualImageIds(args.existingVisual);
+  const baseMatches =
+    existingMatches.length > 0
+      ? existingMatches
+      : selectedImageIds.map((imageId, index) => ({
+          slotId: incomingSlots[index]?.slotId || existingSlots[index]?.slotId || `slot${index + 1}`,
+          label:
+            incomingSlots[index]?.label ||
+            args.incomingVisual.labels?.[index] ||
+            existingSlots[index]?.label ||
+            args.existingVisual.labels?.[index] ||
+            args.existingVisual.brief ||
+            "visual",
+          need:
+            incomingSlots[index]?.need ||
+            existingSlots[index]?.need ||
+            args.incomingVisual.prompt ||
+            args.incomingVisual.brief ||
+            args.existingVisual.prompt ||
+            args.existingVisual.brief ||
+            "visual",
+          status: "selected" as const,
+          imageId,
+          score: 1,
+          threshold: 1,
+        }));
+  if (baseMatches.length === 0) return undefined;
+  return baseMatches.map((match, index) => {
+    const incomingSlot =
+      incomingSlots.find((slot) => slot.slotId === match.slotId) ||
+      incomingSlots[index];
+    const existingSlot =
+      existingSlots.find((slot) => slot.slotId === match.slotId) ||
+      existingSlots[index];
+    return {
+      ...match,
+      slotId: incomingSlot?.slotId || match.slotId,
+      label:
+        incomingSlot?.label ||
+        args.incomingVisual.labels?.[index] ||
+        match.label,
+      need:
+        incomingSlot?.need ||
+        existingSlot?.need ||
+        args.incomingVisual.prompt ||
+        args.incomingVisual.brief ||
+        match.need,
+    };
+  });
 }
 
 async function buildPresentationVisualResolutionMessage(args: {
@@ -1148,14 +1216,22 @@ async function buildPresentationVisualResolutionMessage(args: {
     count: args.flowArgs.imageLibraryReferenceCount,
     referenceLibraryItems: args.flowArgs.referenceLibraryItems,
   });
-  const proposedPlan = resolvePresentationVisualSlots({
-    plan: foundPlan.plan,
-    imageCandidates,
-    normalizedSlotTexts:
-      imageCandidates.length > 0
-        ? await requestPresentationVisualSlotNormalization(foundPlan.plan)
-        : {},
-  });
+  const shouldResolveUnselectedSlots =
+    imageCandidates.length > 0 && hasUnresolvedPresentationVisualSlots(foundPlan.plan);
+  const normalizationResult =
+    shouldResolveUnselectedSlots
+      ? await requestPresentationVisualSlotNormalizationResult(foundPlan.plan)
+      : { normalized: {} };
+  if (normalizationResult.usage) {
+    args.flowArgs.applyTaskUsage?.(normalizationResult.usage);
+  }
+  const proposedPlan = shouldResolveUnselectedSlots
+    ? resolvePresentationVisualSlots({
+        plan: foundPlan.plan,
+        imageCandidates,
+        normalizedSlotTexts: normalizationResult.normalized,
+      })
+    : foundPlan.plan;
   const lines = [
     "Resolve visual blocks.",
     "",
@@ -1300,6 +1376,30 @@ function visualMatchForSlot(
     };
   }
   return null;
+}
+
+function hasUnresolvedPresentationVisualSlots(plan: PresentationTaskPlan) {
+  const openingVisual = plan.deckFrame?.openingSlide?.visualRequest;
+  if (openingVisual && !isPresentationVisualFullySelected(openingVisual)) {
+    return true;
+  }
+  for (const frame of plan.slideFrames) {
+    for (const block of frame.blocks) {
+      if (block.visualRequest && !isPresentationVisualFullySelected(block.visualRequest)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function isPresentationVisualFullySelected(
+  visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>
+) {
+  return visualResolutionSlots(visual).every((slot, index) => {
+    const match = visualMatchForSlot(visual, slot, index);
+    return match?.status === "selected" && !!match.imageId;
+  });
 }
 
 async function createPresentationImagePreviewUrl(imageId: string) {

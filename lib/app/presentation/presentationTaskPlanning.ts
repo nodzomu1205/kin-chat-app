@@ -137,13 +137,13 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "slideFrames must include every body slide implied by sourceSummary, keyMessages, and deckFrame.slideCount. Do not output only one representative/example slide.",
     "If keyMessages has five slide-level messages, create five body slideFrames in the same order unless the user explicitly requested a different count.",
     "Do not create slideDesign.slides[].parts as the preferred path. Do not rely on natural-language slide text and a parser to recover JSON.",
-    "Use the fixed frame package plus adaptive layouts: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4, adaptiveVisualMain needs a primary visual plus optional concise annotation, and adaptiveTextMain needs primary text plus optional supporting visuals.",
+    "Use the fixed frame package plus adaptive layouts: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4, adaptiveVisualMain needs a primary visual plus optional concise body text, and adaptiveTextMain needs primary text plus optional supporting visuals.",
     "For every slideFrame, decide slideRole from the slide key message first. Image-library presentationMeta is planning material only: compare the key message with visibleSubjects, embeddedTextItems, relationships, and semanticTags before deciding visualMain or textMain.",
     "Use visualMain only when the selected visual and the slide key message strongly match, so the visual can carry the main slide meaning with only concise annotation. Otherwise use textMain and treat visuals as supporting material.",
     "Do not classify a normal photo as visualMain merely because its library description, prompt, or visible subject list is detailed. Detailed scene metadata is still usually supporting material unless it directly matches the slide key message.",
     "When slideRole is visualMain, prefer layoutFrameId adaptiveVisualMain. Put the visual need in the first visual block, and use later text/callout blocks only for concise annotation, conclusion, source note, or guidance.",
     "When slideRole is textMain, prefer layoutFrameId adaptiveTextMain. Put the main text/list block first, then add one or more related visual blocks that can occupy the remaining right, bottom, or right-grid space.",
-    "For adaptiveVisualMain, the renderer will place the visual at the top-left, preserve aspect ratio, maximize it in the content area, and use remaining right or bottom-right space for annotation only when useful.",
+    "For adaptiveVisualMain, the renderer will place the visual at the top-left, preserve aspect ratio, maximize it in the content area, and use remaining right or bottom-right space for concise body text when useful.",
     "For adaptiveTextMain, the renderer will place text at the top-left, choose a text box shape that leaves the most useful remaining space, and place related images in that remaining area.",
     "Block styles define fields: listCompact = heading + items; textStackTopLeft = heading + text; visualContain/visualCover = visualRequest only; headlineCenter/callout = one emphasized text.",
     "Choose slide count from the material and strategy. If the source naturally implies 5-7 slides, create 5-7 slideFrames.",
@@ -170,7 +170,7 @@ export function buildPresentationTaskConstraints(mode: "create" | "update") {
     "Do not invent facts missing from the material. Put missing material in MISSING_INFO.",
     mode === "create"
       ? "For initial creation, use generic frames but keep the deck broad enough that it can be reduced later."
-      : "For updates, prioritize the user instruction and modify only the relevant slideFrames while preserving valid existing design.",
+      : "For updates, keep the existing deckFrame and slideFrames as the base, modify only the fields directly requested by the user, and return the complete valid deckFrame + slideFrames JSON.",
   ];
 }
 

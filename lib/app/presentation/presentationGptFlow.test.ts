@@ -4,6 +4,7 @@ import {
   runPresentationGptCommandFlow,
 } from "@/lib/app/presentation/presentationGptFlow";
 import {
+  buildFramePresentationSpecFromTaskPlan,
   buildPresentationTaskPlan,
   formatPresentationTaskPlanText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
@@ -89,6 +90,7 @@ describe("runPresentationGptCommandFlow", () => {
                   .join(" "),
               ])
             ),
+            usage: { inputTokens: 11, outputTokens: 7, totalTokens: 18 },
           }),
         };
       })
@@ -472,6 +474,7 @@ describe("runPresentationGptCommandFlow", () => {
     });
     const updateStoredDocument = vi.fn();
     const messages: Message[] = [];
+    vi.mocked(fetch).mockClear();
 
     const handled = await runPresentationGptCommandFlow({
       rawText: [
@@ -522,11 +525,11 @@ describe("runPresentationGptCommandFlow", () => {
       patch.structuredPayload.slideFrames[0].blocks[1].visualRequest
         ?.preferredImageId
     ).toBe("img_students");
+    expect(fetch).not.toHaveBeenCalled();
     expect(messages.at(-1)?.text).toContain(
       "ビジュアル内表示ラベル: Automatic classroom label"
     );
   });
-
   it("shows current selected images instead of automatic matches when reopening Resolve visual blocks", async () => {
     const design = buildRecentDesign("ppt_current_selection", {
       selectedImageId: "img_current",
@@ -541,7 +544,24 @@ describe("runPresentationGptCommandFlow", () => {
         },
       ],
     });
+    const openingVisual = design.plan.deckFrame?.openingSlide?.visualRequest;
+    if (openingVisual) {
+      openingVisual.preferredImageId = "img_cover_current";
+      openingVisual.candidateImageIds = ["img_cover_current"];
+      openingVisual.selectionMatches = [
+        {
+          slotId: "openingCover",
+          label: "表紙イメージ",
+          need: openingVisual.prompt || openingVisual.brief || "cover",
+          status: "selected",
+          imageId: "img_cover_current",
+          score: 1,
+          threshold: 1,
+        },
+      ];
+    }
     const messages: Message[] = [];
+    const applyTaskUsage = vi.fn();
 
     const handled = await runPresentationGptCommandFlow({
       rawText: "/ppt\nDocument ID: ppt_current_selection\nResolve visual blocks",
@@ -555,6 +575,7 @@ describe("runPresentationGptCommandFlow", () => {
         ],
         imageLibraryReferenceEnabled: true,
         imageLibraryReferenceCount: 10,
+        applyTaskUsage,
       }),
       assistantRequestArgs: {} as never,
     });
@@ -565,6 +586,8 @@ describe("runPresentationGptCommandFlow", () => {
     expect(messages.at(-1)?.text).toContain("Opening slide / visual / slot 1:");
     expect(messages.at(-1)?.text).toContain("表紙イメージ");
     expect(messages.at(-1)?.text).not.toContain("Opening slide / visual: img_auto");
+    expect(applyTaskUsage).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("lets Resolve visuals select a visualTitleCover opening image", async () => {
@@ -808,6 +831,62 @@ describe("runPresentationGptCommandFlow", () => {
     expect(patch.text).toContain("img_second");
   });
 
+  it("keeps only explicitly selected slot images when a block has multiple slots", async () => {
+    const design = buildRecentDesign("ppt_one_slot_selected", {
+      visualSlots: [
+        {
+          slotId: "first",
+          label: "First slot",
+          need: "first image",
+          order: 1,
+        },
+        {
+          slotId: "second",
+          label: "Second slot",
+          need: "second image",
+          order: 2,
+        },
+      ],
+    });
+    const updateStoredDocument = vi.fn();
+    const messages: Message[] = [];
+
+    const handled = await runPresentationGptCommandFlow({
+      rawText: [
+        "/ppt",
+        "Document ID: ppt_one_slot_selected",
+        "Resolve visuals",
+        "Slide 1 / block 2 / slot 1: img_first",
+      ].join("\n"),
+      flowArgs: buildFlowArgs({
+        messages,
+        recentMessages: [],
+        recordIngestedDocument: vi.fn(),
+        updateStoredDocument,
+        referenceLibraryItems: [buildPresentationPlanLibraryItem(design.plan)],
+      }),
+      assistantRequestArgs: {} as never,
+    });
+
+    expect(handled).toBe(true);
+    const patch = updateStoredDocument.mock.calls[0]?.[1] as {
+      structuredPayload: ReturnType<typeof buildRecentDesign>["plan"];
+      text: string;
+    };
+    const updatedVisual = patch.structuredPayload.slideFrames[0].blocks[1].visualRequest;
+    expect(updatedVisual?.preferredImageId).toBe("img_first");
+    expect(updatedVisual?.candidateImageIds).toEqual(["img_first"]);
+    expect(updatedVisual?.selectionMatches).toEqual([
+      expect.objectContaining({
+        slotId: "first",
+        imageId: "img_first",
+        status: "selected",
+      }),
+    ]);
+    expect(patch.text).toContain("img_first");
+    expect(patch.text).not.toContain("img_second");
+  });
+
   it("removes all block images when the legacy block-level Resolve visuals line uses off", async () => {
     const design = buildRecentDesign("ppt_block_off", {
       selectedImageId: "img_selected",
@@ -820,6 +899,22 @@ describe("runPresentationGptCommandFlow", () => {
         },
       ],
     });
+    const openingVisual = design.plan.deckFrame?.openingSlide?.visualRequest;
+    if (openingVisual) {
+      openingVisual.preferredImageId = "img_cover_current";
+      openingVisual.candidateImageIds = ["img_cover_current"];
+      openingVisual.selectionMatches = [
+        {
+          slotId: "openingCover",
+          label: "表紙イメージ",
+          need: openingVisual.prompt || openingVisual.brief || "cover",
+          status: "selected",
+          imageId: "img_cover_current",
+          score: 1,
+          threshold: 1,
+        },
+      ];
+    }
     const messages: Message[] = [];
     const updateStoredDocument = vi.fn();
 
@@ -950,6 +1045,164 @@ describe("runPresentationGptCommandFlow", () => {
     expect(messages.at(-1)?.text).toContain(
       "Presentation design updated and saved in the library."
     );
+  });
+
+  it("preserves selected image IDs but updates visual labels from saved PPT design edits", async () => {
+    const savedDesign = buildRecentDesign("ppt_library_update_label", {
+      selectedImageId: "img_saved",
+      visualLabel: "Old visual label",
+      visualSlots: [
+        {
+          slotId: "scene",
+          label: "Old visual label",
+          need: "old visual need",
+          order: 1,
+        },
+      ],
+    });
+    const updateStoredDocument = vi.fn();
+    const messages: Message[] = [];
+    runAutoUpdatePresentationTaskMock.mockResolvedValueOnce({
+      raw: "",
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+      parsed: {
+        taskId: "task",
+        type: "PREP_TASK",
+        status: "OK",
+        summary: "Updated design",
+        keyPoints: [],
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Updated overview",
+                    layoutFrameId: "adaptiveTextMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "textStack",
+                        styleId: "textStackTopLeft",
+                        heading: "Updated overview",
+                        text: "Updated body text.",
+                      },
+                      {
+                        id: "block2",
+                        kind: "visual",
+                        styleId: "visualContain",
+                        visualRequest: {
+                          type: "photo",
+                          brief: "Updated scene",
+                          prompt: "Updated visual prompt.",
+                          labels: ["New visual label"],
+                          visualSlots: [
+                            {
+                              slotId: "scene",
+                              label: "New visual label",
+                              need: "updated visual need",
+                              order: 1,
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+        warnings: [],
+        missingInfo: [],
+        nextSuggestion: [],
+      },
+    });
+
+    const handled = await runPresentationGptCommandFlow({
+      rawText: [
+        "/ppt",
+        "Document ID: ppt_library_update_label",
+        "Update the visual label.",
+      ].join("\n"),
+      flowArgs: buildFlowArgs({
+        messages,
+        recentMessages: [],
+        recordIngestedDocument: vi.fn(),
+        updateStoredDocument,
+        referenceLibraryItems: [buildPresentationPlanLibraryItem(savedDesign.plan)],
+      }),
+      assistantRequestArgs: {} as never,
+    });
+
+    expect(handled).toBe(true);
+    const patch = updateStoredDocument.mock.calls[0]?.[1] as {
+      structuredPayload: ReturnType<typeof buildRecentDesign>["plan"];
+    };
+    const updatedVisual = patch.structuredPayload.slideFrames[0].blocks[1].visualRequest;
+    expect(updatedVisual?.preferredImageId).toBe("img_saved");
+    expect(updatedVisual?.labels).toEqual(["New visual label"]);
+    expect(updatedVisual?.selectionMatches?.[0]).toMatchObject({
+      imageId: "img_saved",
+      label: "New visual label",
+      need: "updated visual need",
+    });
+    const frameSpec = buildFramePresentationSpecFromTaskPlan(patch.structuredPayload);
+    expect(frameSpec?.slideFrames[0].blocks[1].visualRequest?.brief).toBe(
+      "New visual label"
+    );
+  });
+
+  it("does not overwrite a saved PPT design when an update result lacks slideFrames", async () => {
+    const savedDesign = buildRecentDesign("ppt_library_update_empty", {
+      selectedImageId: "img_saved",
+      visualLabel: "Saved visual label",
+    });
+    const updateStoredDocument = vi.fn();
+    const messages: Message[] = [];
+    runAutoUpdatePresentationTaskMock.mockResolvedValueOnce({
+      raw: "",
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+      parsed: {
+        taskId: "task",
+        type: "PREP_TASK",
+        status: "OK",
+        summary: "Incomplete update",
+        keyPoints: [],
+        detailBlocks: [],
+        warnings: [],
+        missingInfo: [],
+        nextSuggestion: [],
+      },
+    });
+
+    const handled = await runPresentationGptCommandFlow({
+      rawText: [
+        "/ppt",
+        "Document ID: ppt_library_update_empty",
+        "Slide 3 visual should be Kichijoji station.",
+      ].join("\n"),
+      flowArgs: buildFlowArgs({
+        messages,
+        recentMessages: [],
+        recordIngestedDocument: vi.fn(),
+        updateStoredDocument,
+        referenceLibraryItems: [buildPresentationPlanLibraryItem(savedDesign.plan)],
+      }),
+      assistantRequestArgs: {} as never,
+    });
+
+    expect(handled).toBe(true);
+    expect(updateStoredDocument).not.toHaveBeenCalled();
+    expect(messages.at(-1)?.text).toContain(
+      "Presentation design update could not be applied."
+    );
+    expect(messages.at(-1)?.text).toContain(
+      "The update result did not include slideFrames"
+    );
+    expect(messages.at(-1)?.meta?.presentationPlan?.slideFrames).toHaveLength(1);
   });
 });
 
@@ -1100,6 +1353,7 @@ function buildFlowArgs(args: {
   referenceLibraryItems?: ReferenceLibraryItem[];
   imageLibraryReferenceEnabled?: boolean;
   imageLibraryReferenceCount?: number;
+  applyTaskUsage?: ReturnType<typeof vi.fn>;
 }) {
   return {
     referenceLibraryItems: args.referenceLibraryItems || [],
@@ -1115,5 +1369,6 @@ function buildFlowArgs(args: {
     imageLibraryReferenceEnabled: args.imageLibraryReferenceEnabled || false,
     imageLibraryReferenceCount: args.imageLibraryReferenceCount || 0,
     applyImageUsage: vi.fn(),
+    applyTaskUsage: args.applyTaskUsage || vi.fn(),
   } as unknown as Parameters<typeof runPresentationGptCommandFlow>[0]["flowArgs"];
 }

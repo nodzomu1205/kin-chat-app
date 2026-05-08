@@ -334,7 +334,7 @@ export function formatPresentationSlideFramePlanLines(
       );
     }
     frame.blocks.forEach((block) => {
-      formatReadableBlockDisplayLines(block).forEach((line) => lines.push(line));
+      formatReadableBlockDisplayLines(block, frame).forEach((line) => lines.push(line));
     });
   });
   return lines;
@@ -860,8 +860,18 @@ function blockVisualText(block: PresentationTaskSlideBlock | undefined) {
   return block.visualRequest.brief || block.visualRequest.prompt || "";
 }
 
-function formatReadableBlockDisplayLines(block: PresentationTaskSlideBlock) {
+function formatReadableBlockDisplayLines(
+  block: PresentationTaskSlideBlock,
+  frame?: PresentationTaskSlideFrame
+) {
   const lines = [`- ${block.id} ${block.kind} (${block.styleId})`];
+  if (
+    frame?.layoutFrameId === "adaptiveVisualMain" &&
+    !block.visualRequest
+  ) {
+    if (block.text) lines.push(`  - 表示本文: ${block.text}`);
+    return lines;
+  }
   if (block.heading) lines.push(`  - 表示見出し: ${block.heading}`);
   if (block.text) lines.push(`  - 表示本文: ${block.text}`);
   if (block.items?.length) {
