@@ -24,6 +24,35 @@ describe("extractorBuilders", () => {
     expect(snippet).toContain("Tokyo weather");
   });
 
+  it("does not select medium-length boilerplate without query evidence", () => {
+    const snippet = buildSnippetFromHtml({
+      html: [
+        "<p>Customer Support and Bloomberg Terminal Demo Request information</p>",
+        "<p>Privacy Policy and newsletter subscription settings are available here</p>",
+      ].join(""),
+      query: "iran situation",
+      fallbackSnippet: "fallback",
+    });
+
+    expect(
+      scoreLine(
+        "Customer Support and Bloomberg Terminal Demo Request information",
+        "iran situation"
+      )
+    ).toBeLessThanOrEqual(0);
+    expect(snippet).toBe("fallback");
+  });
+
+  it("matches compact Japanese queries through query fragments", () => {
+    const snippet = buildSnippetFromHtml({
+      html: "<p>イランの地域情勢について、各国政府が警戒を強めています。</p>",
+      query: "イラン情勢",
+      fallbackSnippet: "fallback",
+    });
+
+    expect(snippet).toContain("イラン");
+  });
+
   it("builds snippet seed from raw result items", () => {
     expect(
       buildSearchResultSnippetSeed({
