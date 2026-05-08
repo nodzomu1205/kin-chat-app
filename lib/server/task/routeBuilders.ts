@@ -334,6 +334,11 @@ function buildPresentationPlanJsonSchemaFormat() {
                   type: "object",
                   additionalProperties: true,
                   required: ["id", "kind", "styleId"],
+                  anyOf: [
+                    { type: "object", required: ["text"] },
+                    { type: "object", required: ["items"] },
+                    { type: "object", required: ["visualRequest"] },
+                  ],
                   properties: {
                     id: { type: "string" },
                     kind: {
@@ -361,6 +366,12 @@ function buildPresentationPlanJsonSchemaFormat() {
                     visualRequest: {
                       type: "object",
                       additionalProperties: true,
+                      anyOf: [
+                        { type: "object", required: ["brief"] },
+                        { type: "object", required: ["prompt"] },
+                        { type: "object", required: ["promptNote"] },
+                        { type: "object", required: ["visualSlots"] },
+                      ],
                       properties: {
                         type: { type: "string" },
                         brief: { type: "string" },
@@ -372,12 +383,18 @@ function buildPresentationPlanJsonSchemaFormat() {
                           items: {
                             type: "object",
                             additionalProperties: true,
+                            anyOf: [
+                              { type: "object", required: ["label"] },
+                              { type: "object", required: ["need"] },
+                              { type: "object", required: ["keywords"] },
+                            ],
                             properties: {
                               slotId: { type: "string" },
                               label: { type: "string" },
                               need: { type: "string" },
                               keywords: {
                                 type: "array",
+                                minItems: 1,
                                 items: { type: "string" },
                               },
                             },

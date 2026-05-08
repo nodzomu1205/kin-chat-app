@@ -57,6 +57,47 @@ describe("task route builders", () => {
     expect(slideFrames).not.toHaveProperty("maxItems");
   });
 
+  it("nudges presentation block schema toward usable text or visual payloads", () => {
+    const request = buildTaskResponsesRequest({
+      ...sampleTask,
+      type: "PREP_TASK",
+      outputFormat: "presentation_plan",
+    });
+    const schema = (request.text?.format as { schema?: { properties?: Record<string, unknown> } })
+      .schema;
+    const blockSchema = (
+      schema?.properties?.slideFrames as {
+        items?: {
+          properties?: {
+            blocks?: {
+              items?: {
+                anyOf?: Array<{ required: string[] }>;
+                properties?: Record<string, unknown>;
+              };
+            };
+          };
+        };
+      }
+    ).items?.properties?.blocks?.items;
+    const visualRequestSchema = blockSchema?.properties?.visualRequest as {
+      anyOf?: Array<{ required: string[] }>;
+      properties?: Record<string, unknown>;
+    };
+
+    expect(blockSchema?.anyOf).toEqual([
+      { type: "object", required: ["text"] },
+      { type: "object", required: ["items"] },
+      { type: "object", required: ["visualRequest"] },
+    ]);
+    expect(visualRequestSchema.anyOf).toEqual([
+      { type: "object", required: ["brief"] },
+      { type: "object", required: ["prompt"] },
+      { type: "object", required: ["promptNote"] },
+      { type: "object", required: ["visualSlots"] },
+    ]);
+    expect(visualRequestSchema.properties?.brief).toMatchObject({ type: "string" });
+  });
+
   it("builds the task route response payload", () => {
     expect(
       buildTaskRouteResponse({
