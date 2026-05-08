@@ -22,6 +22,7 @@ import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMulti
 import {
   buildIngestedDocumentFilename,
 } from "@/lib/app/ingest/ingestDocumentModel";
+import { extractReusableLibrarySummary } from "@/lib/app/ingest/importSummaryText";
 import { prepareIngestedStoredDocument } from "@/lib/app/ingest/ingestStoredDocumentPreparation";
 import {
   buildPortablePresentationPlanStoredDocument,
@@ -173,6 +174,8 @@ export async function runFileIngestFlow({
       return;
     }
 
+    const reusableLibrarySummary = await readReusableLibrarySummaryFromFile(file);
+
     const { response, data, resolvedKind } = await requestFileIngest({
       file,
       options: buildSharedIngestOptions({
@@ -222,6 +225,8 @@ export async function runFileIngestFlow({
       taskId: currentTaskDraft.id || undefined,
       autoGenerateSummary: autoGenerateLibrarySummary,
       currentUsage: totalIngestUsage,
+      fallbackSummary: reusableLibrarySummary,
+      reuseFallbackSummary: !!reusableLibrarySummary,
       onSummaryError: (error) => {
         console.warn("File import summary generation failed", error);
       },
@@ -339,4 +344,14 @@ export async function runFileIngestFlow({
 function isImageFile(file: File) {
   if (file.type.startsWith("image/")) return true;
   return /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name);
+}
+
+async function readReusableLibrarySummaryFromFile(file: File) {
+  if (!isTextLikeFile(file)) return "";
+  return extractReusableLibrarySummary(await file.text().catch(() => ""));
+}
+
+function isTextLikeFile(file: File) {
+  if (file.type.startsWith("text/")) return true;
+  return /\.(txt|md|markdown)$/i.test(file.name);
 }

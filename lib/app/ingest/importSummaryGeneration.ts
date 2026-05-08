@@ -14,6 +14,7 @@ export async function resolveGeneratedImportSummary(args: {
   canonicalText: string;
   currentUsage: NormalizedUsage;
   fallbackSummary?: string;
+  reuseFallbackSummary?: boolean;
   onError?: (error: unknown) => void;
 }) {
   const summarySourceText = buildCanonicalSummarySource(args.canonicalText);
@@ -21,6 +22,14 @@ export async function resolveGeneratedImportSummary(args: {
     ? cleanImportSummarySource(args.fallbackSummary).trim()
     : "";
   let totalUsage = args.currentUsage;
+
+  if (args.reuseFallbackSummary && summary) {
+    return {
+      summary,
+      summarySourceText,
+      totalUsage,
+    };
+  }
 
   if (!args.enabled || !summarySourceText.trim()) {
     return {

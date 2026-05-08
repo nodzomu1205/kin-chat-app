@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
 import { requestGeneratedLibrarySummary } from "@/lib/app/reference-library/librarySummaryClient";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
@@ -9,6 +9,10 @@ vi.mock("@/lib/app/reference-library/librarySummaryClient", () => ({
 }));
 
 describe("importSummaryGeneration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("keeps a local fallback summary and skips remote generation when disabled", async () => {
     const result = await resolveGeneratedImportSummary({
       enabled: false,
@@ -62,6 +66,29 @@ describe("importSummaryGeneration", () => {
       inputTokens: 13,
       outputTokens: 10,
       totalTokens: 23,
+    });
+  });
+
+  it("reuses an exported library summary without remote generation", async () => {
+    const result = await resolveGeneratedImportSummary({
+      enabled: true,
+      title: "Notes",
+      canonicalText: "Summary:\nExisting summary.\n\nDetail:\nNotes body",
+      currentUsage: normalizeUsage({
+        inputTokens: 2,
+        outputTokens: 3,
+        totalTokens: 5,
+      }),
+      fallbackSummary: "Existing summary.",
+      reuseFallbackSummary: true,
+    });
+
+    expect(requestGeneratedLibrarySummary).not.toHaveBeenCalled();
+    expect(result.summary).toBe("Existing summary.");
+    expect(result.totalUsage).toMatchObject({
+      inputTokens: 2,
+      outputTokens: 3,
+      totalTokens: 5,
     });
   });
 });

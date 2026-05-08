@@ -31,6 +31,7 @@ import {
 import {
   buildCanonicalSummarySource,
 } from "@/lib/app/ingest/ingestDocumentModel";
+import { extractReusableLibrarySummary } from "@/lib/app/ingest/importSummaryText";
 import { prepareIngestedStoredDocument } from "@/lib/app/ingest/ingestStoredDocumentPreparation";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
 import {
@@ -186,6 +187,9 @@ export async function runDriveFileImport({
         ? "text/csv"
         : blob.type || file.mimeType || "application/octet-stream",
   });
+  const reusableLibrarySummary = isTextLikeDriveFile(file)
+    ? extractReusableLibrarySummary(await downloadedFile.text().catch(() => ""))
+    : "";
   const presentationSidecarText = await readDriveSidecarText({
     accessToken,
     sidecarFile: options.sidecarFile,
@@ -248,14 +252,15 @@ export async function runDriveFileImport({
     taskId: currentTaskId,
     autoGenerateSummary: autoGenerateLibrarySummary,
     currentUsage: totalIngestUsage,
-    fallbackSummary:
-      autoGenerateLibrarySummary && rawTextForSummary
+    fallbackSummary: reusableLibrarySummary ||
+      (autoGenerateLibrarySummary && rawTextForSummary
         ? buildDriveImportSummary({
             result: data?.result,
             fallbackText: rawTextForSummary,
             fallbackTitle: title,
           })
-        : "",
+        : ""),
+    reuseFallbackSummary: !!reusableLibrarySummary,
     onSummaryError: (error) => {
       console.warn("Drive import summary generation failed", error);
     },
@@ -666,6 +671,11 @@ function resolveDrivePortableTitle(fileName: string) {
   const lastSlashIndex = fileName.lastIndexOf("/");
   const baseName = lastSlashIndex >= 0 ? fileName.slice(lastSlashIndex + 1) : fileName;
   return baseName.replace(/\.[^.]+$/u, "").trim() || fileName;
+}
+
+function isTextLikeDriveFile(file: DriveImportFile) {
+  if (file.mimeType.startsWith("text/")) return true;
+  return /\.(txt|md|markdown)$/iu.test(file.name);
 }
 
 async function readDriveSidecarText(args: {

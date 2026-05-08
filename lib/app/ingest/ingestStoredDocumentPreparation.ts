@@ -13,6 +13,7 @@ export type PrepareIngestedStoredDocumentArgs = {
   autoGenerateSummary: boolean;
   currentUsage: NormalizedUsage;
   fallbackSummary?: string;
+  reuseFallbackSummary?: boolean;
   timestamp?: string;
   onSummaryError?: (error: unknown) => void;
 };
@@ -25,6 +26,7 @@ export async function prepareIngestedStoredDocument({
   autoGenerateSummary,
   currentUsage,
   fallbackSummary,
+  reuseFallbackSummary,
   timestamp = new Date().toISOString(),
   onSummaryError,
 }: PrepareIngestedStoredDocumentArgs): Promise<{
@@ -38,6 +40,7 @@ export async function prepareIngestedStoredDocument({
     canonicalText: text,
     currentUsage,
     fallbackSummary,
+    reuseFallbackSummary,
     onError: onSummaryError,
   });
 

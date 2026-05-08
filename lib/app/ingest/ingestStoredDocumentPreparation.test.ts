@@ -47,6 +47,7 @@ describe("prepareIngestedStoredDocument", () => {
         totalTokens: 3,
       },
       fallbackSummary: "fallback",
+      reuseFallbackSummary: undefined,
       onError: undefined,
     });
     expect(result.summary).toBe("generated summary");

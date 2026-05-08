@@ -58,3 +58,12 @@ export function cleanImportedDocumentText(input: string) {
     .replace(/\s{2,}/g, " ")
     .trim();
 }
+
+export function extractReusableLibrarySummary(input: string) {
+  const normalized = input.replace(/\r\n/g, "\n").trim();
+  const match = normalized.match(
+    /^Summary:\s*\n([\s\S]*?)(?:\n{2,}Detail:\s*\n|$)/u
+  );
+  const summary = match?.[1] || "";
+  return cleanImportSummarySource(summary).trim();
+}
