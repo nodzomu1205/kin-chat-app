@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   enrichSnippetResults,
   extractOrganicResults,
+  mergeResultSnippets,
 } from "@/lib/search-domain/engineEnrichmentBuilders";
 
 describe("engineEnrichmentBuilders", () => {
@@ -14,7 +15,7 @@ describe("engineEnrichmentBuilders", () => {
     ).toEqual([{ title: "A" }]);
   });
 
-  it("enriches snippet results through the shared fetcher", async () => {
+  it("keeps original snippets and appends extracted evidence", async () => {
     const results = await enrichSnippetResults({
       items: [{ title: "A", link: "https://example.com", snippet: "old" }],
       limit: 5,
@@ -23,7 +24,20 @@ describe("engineEnrichmentBuilders", () => {
     });
 
     expect(results).toEqual([
-      { title: "A", link: "https://example.com", snippet: "new snippet" },
+      {
+        title: "A",
+        link: "https://example.com",
+        snippet: "old\n\nExtracted evidence:\nnew snippet",
+      },
     ]);
+  });
+
+  it("falls back to the original snippet when page extraction is empty", () => {
+    expect(
+      mergeResultSnippets({
+        originalSnippet: "SerpAPI snippet",
+        fetchedSnippet: "",
+      })
+    ).toBe("SerpAPI snippet");
   });
 });

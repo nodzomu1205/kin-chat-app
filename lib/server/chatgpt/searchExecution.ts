@@ -15,6 +15,8 @@ const SUPPORTED_SEARCH_ENGINES: SearchEngine[] = [
   "amazon_search",
 ];
 
+export const DEFAULT_SEARCH_RESULT_COUNT = 8;
+
 type SearchSource = {
   title: string;
   link: string;
@@ -162,7 +164,7 @@ export async function executeSearchRequest(params: {
     continuationToken: normalized.searchContinuationToken,
     askAiModeLink: normalized.searchAskAiModeLink,
     location: normalized.searchLocation,
-    maxResults: 5,
+    maxResults: DEFAULT_SEARCH_RESULT_COUNT,
   });
 
   return buildExecutedSearchResult(result);

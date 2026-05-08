@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   buildExecutedSearchResult,
+  DEFAULT_SEARCH_RESULT_COUNT,
   normalizeSearchEngines,
   normalizeSearchExecutionParams,
   normalizeSearchMode,
 } from "@/lib/server/chatgpt/searchExecution";
 
 describe("searchExecution", () => {
+  it("uses a broader default result count for richer search evidence", () => {
+    expect(DEFAULT_SEARCH_RESULT_COUNT).toBe(8);
+  });
+
   it("normalizes supported search modes safely", () => {
     expect(normalizeSearchMode("youtube")).toBe("youtube");
     expect(normalizeSearchMode("ai_first")).toBe("integrated");

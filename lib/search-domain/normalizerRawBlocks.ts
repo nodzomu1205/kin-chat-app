@@ -20,6 +20,8 @@ export function buildRawBlock(label: string, items: SearchSourceItem[]) {
       [
         `- ${item.title}`,
         item.link ? `  URL: ${item.link}` : "",
+        item.sourceType ? `  Type: ${item.sourceType}` : "",
+        item.publishedAt ? `  Published: ${item.publishedAt}` : "",
         item.snippet ? `  Snippet: ${item.snippet}` : "",
       ]
         .filter(Boolean)
