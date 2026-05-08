@@ -67,6 +67,7 @@ export default function ChatApp() {
 
   const referenceDomain = useChatPageReferenceDomain({
     searchHistory: searchDomain.searchHistory,
+    recordSearchContext: searchDomain.recordSearchContext,
     searchHistoryStorageMB: searchDomain.searchHistoryStorageMB,
     sourceDisplayCount: searchDomain.sourceDisplayCount,
     uploadKind: gptOptions.uploadKind,

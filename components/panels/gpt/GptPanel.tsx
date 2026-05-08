@@ -762,6 +762,7 @@ function sidecarKey(name: string) {
     .replace(/\.(?:txt|md|markdown|json)$/u, "")
     .replace(/\.generated-image$/u, "")
     .replace(/\.presentation-plan$/u, "")
+    .replace(/\.search-context$/u, "")
     .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
     .trim();
 }

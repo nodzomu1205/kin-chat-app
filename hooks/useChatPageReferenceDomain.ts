@@ -23,6 +23,7 @@ import type { SearchContext } from "@/types/task";
 
 type UseChatPageReferenceDomainArgs = {
   searchHistory: SearchContext[];
+  recordSearchContext: (context: SearchContext) => SearchContext;
   searchHistoryStorageMB: number;
   sourceDisplayCount: number;
   uploadKind: SharedIngestOptions["kind"];
@@ -158,6 +159,7 @@ export function useChatPageReferenceDomain(
     autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
     currentTaskId: args.currentTaskId,
     recordIngestedDocument,
+    recordSearchContext: args.recordSearchContext,
     setGptMessages: args.setGptMessages,
     setIngestLoading: args.setIngestLoading,
     applyIngestUsage: args.applyIngestUsage,

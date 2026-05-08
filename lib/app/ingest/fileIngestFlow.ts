@@ -17,7 +17,7 @@ import type {
 import { saveImportedImageFileToLibrary } from "@/lib/app/image/imageImportFlow";
 import type { Message, StoredDocument } from "@/types/chat";
 import type { KinMemoryState } from "@/types/chat";
-import type { TaskDraft } from "@/types/task";
+import type { SearchContext, TaskDraft } from "@/types/task";
 import type { PendingKinInjectionPurpose } from "@/lib/app/kin-protocol/kinMultipart";
 import {
   buildIngestedDocumentFilename,
@@ -28,6 +28,7 @@ import {
   buildPortablePresentationPlanStoredDocument,
   parsePresentationPlanSidecarText,
 } from "@/lib/app/presentation/presentationPlanPortable";
+import { parseSearchContextSidecarText } from "@/lib/app/search-history/searchContextPortable";
 import {
   buildFileIngestBridgeState as buildFileIngestBridgeStateFromBuilders,
   buildFileIngestSavedInfoMessage,
@@ -73,6 +74,7 @@ type IngestFlowArgs = {
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
+  recordSearchContext?: (context: SearchContext) => SearchContext;
   setActiveTabToKin?: () => void;
 };
 
@@ -139,6 +141,7 @@ export async function runFileIngestFlow({
   persistCurrentGptState,
   applyIngestUsage,
   recordIngestedDocument,
+  recordSearchContext,
   setActiveTabToKin,
 }: IngestFlowArgs) {
   if (ingestLoading) return;
@@ -170,6 +173,24 @@ export async function runFileIngestFlow({
           fileTitle: title,
           storedDocumentCharCount: storedDocument.charCount,
         })
+      );
+      return;
+    }
+    const portableSearchContext = parseSearchContextSidecarText(
+      options.sidecarText?.text
+    );
+    if (portableSearchContext && recordSearchContext) {
+      recordSearchContext({
+        ...portableSearchContext,
+        taskId: currentTaskDraft.id || portableSearchContext.taskId,
+      });
+      appendInfo(
+        setGptMessages,
+        buildFileIngestSavedInfoMessage({
+          fileTitle: portableSearchContext.query || file.name,
+          storedDocumentCharCount: portableSearchContext.rawText.length,
+        }),
+        "search"
       );
       return;
     }

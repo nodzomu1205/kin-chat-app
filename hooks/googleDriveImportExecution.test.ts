@@ -17,6 +17,7 @@ import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGen
 import {
   buildLibraryItemDriveExport,
   buildLibraryItemPresentationPlanSidecarExport,
+  buildLibraryItemSearchContextSidecarExport,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 
 vi.mock("@/lib/app/google-drive/googleDriveApi", () => ({
@@ -30,6 +31,7 @@ vi.mock("@/lib/app/google-drive/googleDriveApi", () => ({
 vi.mock("@/lib/app/reference-library/referenceLibraryItemActions", () => ({
   buildLibraryItemDriveExport: vi.fn(),
   buildLibraryItemPresentationPlanSidecarExport: vi.fn(),
+  buildLibraryItemSearchContextSidecarExport: vi.fn(),
 }));
 
 vi.mock("@/lib/app/ingest/ingestClient", () => ({
@@ -565,6 +567,7 @@ describe("runDriveLibraryItemUpload", () => {
     vi.mocked(buildLibraryItemPresentationPlanSidecarExport).mockReturnValue(
       null
     );
+    vi.mocked(buildLibraryItemSearchContextSidecarExport).mockReturnValue(null);
     vi.mocked(uploadDriveTextFile).mockResolvedValue({
       id: "upload-1",
       name: "Project notes.txt",

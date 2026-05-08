@@ -12,6 +12,11 @@ import {
 } from "@/lib/app/presentation/presentationPlanPortable";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText";
+import {
+  buildSearchContextFromLibraryItem,
+  buildSearchContextSidecarFileName,
+  buildSearchContextSidecarText,
+} from "@/lib/app/search-history/searchContextPortable";
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -144,6 +149,25 @@ export function buildLibraryItemPresentationPlanSidecarExport(
       filename: item.filename,
       summary: item.summary,
       plan: item.structuredPayload,
+    }),
+    mimeType: "application/json",
+  };
+}
+
+export function buildLibraryItemSearchContextSidecarExport(
+  item: ReferenceLibraryItem
+): { fileName: string; text: string; mimeType: string } | null {
+  const context = buildSearchContextFromLibraryItem(item);
+  if (!context) return null;
+  return {
+    fileName: buildSearchContextSidecarFileName({
+      filename: item.filename,
+      title: item.title,
+    }),
+    text: buildSearchContextSidecarText({
+      title: item.title,
+      filename: item.filename,
+      context,
     }),
     mimeType: "application/json",
   };

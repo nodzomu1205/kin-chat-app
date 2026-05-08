@@ -371,6 +371,7 @@ export function buildFileIngestActionArgs(
     focusKinPanel: groups.identity.focusKinPanel,
     ingestLoading: groups.uiState.ingestLoading,
     recordIngestedDocument: groups.services.recordIngestedDocument,
+    recordSearchContext: groups.search.recordSearchContext,
     resolveTaskTitleFromDraft: groups.task.resolveTaskTitleFromDraft,
     setCurrentTaskDraft: groups.task.setCurrentTaskDraft,
     setGptInput: groups.uiState.setGptInput,

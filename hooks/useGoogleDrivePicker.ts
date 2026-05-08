@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import type { Message, ReferenceLibraryItem, StoredDocument } from "@/types/chat";
+import type { SearchContext } from "@/types/task";
 import {
   DEFAULT_GOOGLE_DRIVE_FOLDER_LINK,
   resolveGoogleDriveFolderId,
@@ -34,6 +35,7 @@ type UseGoogleDrivePickerArgs = {
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
+  recordSearchContext: (context: SearchContext) => SearchContext;
   setGptMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   setIngestLoading: React.Dispatch<React.SetStateAction<boolean>>;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
@@ -64,6 +66,7 @@ export function useGoogleDrivePicker({
   autoGenerateLibrarySummary,
   currentTaskId,
   recordIngestedDocument,
+  recordSearchContext,
   setGptMessages,
   setIngestLoading,
   applyIngestUsage,
@@ -91,6 +94,7 @@ export function useGoogleDrivePicker({
           autoGenerateLibrarySummary,
           currentTaskId,
           recordIngestedDocument,
+          recordSearchContext,
           appendUiMessage: (text, sourceType) => {
             appendUiMessage(setGptMessages, text, sourceType);
           },
@@ -108,6 +112,7 @@ export function useGoogleDrivePicker({
       focusGptPanel,
       ingestOptions,
       recordIngestedDocument,
+      recordSearchContext,
       setIngestLoading,
       setGptMessages,
       autoGenerateLibrarySummary,

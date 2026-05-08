@@ -10,6 +10,7 @@ import {
 import {
   buildLibraryItemDriveExport,
   buildLibraryItemPresentationPlanSidecarExport,
+  buildLibraryItemSearchContextSidecarExport,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
@@ -22,6 +23,7 @@ import {
   buildPortablePresentationPlanStoredDocument,
   parsePresentationPlanSidecarText,
 } from "@/lib/app/presentation/presentationPlanPortable";
+import { parseSearchContextSidecarText } from "@/lib/app/search-history/searchContextPortable";
 import {
   requestFileIngest,
   resolveIngestErrorMessage,
@@ -53,6 +55,7 @@ import {
   type DrivePickerMode,
 } from "@/hooks/googleDrivePickerBuilders";
 import type { ReferenceLibraryItem } from "@/types/chat";
+import type { SearchContext } from "@/types/task";
 
 export type DriveImportFile = {
   id: string;
@@ -119,7 +122,7 @@ export async function runDrivePickedDocumentsImport({
     if (action.kind !== "file" || isDriveImageMimeType(action.file.mimeType)) {
       continue;
     }
-    const sidecar = findMatchingDrivePresentationPlanSidecar(action.file, actions);
+    const sidecar = findMatchingDrivePortableTextSidecar(action.file, actions);
     if (sidecar) pairedSidecarIds.add(sidecar.id);
   }
 
@@ -134,7 +137,7 @@ export async function runDrivePickedDocumentsImport({
     if (pairedSidecarIds.has(action.file.id)) continue;
     const sidecarFile = isDriveImageMimeType(action.file.mimeType)
       ? findMatchingDriveTextSidecar(action.file, actions)
-      : findMatchingDrivePresentationPlanSidecar(action.file, actions);
+      : findMatchingDrivePortableTextSidecar(action.file, actions);
     if (isDriveImageMimeType(action.file.mimeType) && importDriveImageFile) {
       await importDriveImageFile(action.file, {
         sidecarFile,
@@ -155,6 +158,7 @@ export type RunDriveFileImportArgs = {
   recordIngestedDocument: (
     document: Omit<StoredDocument, "id" | "sourceType">
   ) => StoredDocument;
+  recordSearchContext?: (context: SearchContext) => SearchContext;
   appendUiMessage: (
     text: string,
     sourceType?: DriveUiMessageSourceType
@@ -171,6 +175,7 @@ export async function runDriveFileImport({
   autoGenerateLibrarySummary,
   currentTaskId,
   recordIngestedDocument,
+  recordSearchContext,
   appendUiMessage,
   applyIngestUsage,
   focusGptPanel,
@@ -217,6 +222,24 @@ export async function runDriveFileImport({
         storedDocumentCharCount: storedDocument.charCount,
       }),
       "file_ingest"
+    );
+    focusGptPanel();
+    return;
+  }
+  const portableSearchContext = parseSearchContextSidecarText(
+    presentationSidecarText
+  );
+  if (portableSearchContext && recordSearchContext) {
+    recordSearchContext({
+      ...portableSearchContext,
+      taskId: currentTaskId || portableSearchContext.taskId,
+    });
+    appendUiMessage(
+      buildDriveImportSavedInfoMessage({
+        title: portableSearchContext.query || file.name,
+        storedDocumentCharCount: portableSearchContext.rawText.length,
+      }),
+      "search"
     );
     focusGptPanel();
     return;
@@ -411,7 +434,7 @@ export async function runDriveFolderImport({
   }
   for (const file of files) {
     if (isDriveImageMimeType(file.mimeType)) continue;
-    const sidecar = findMatchingDrivePresentationPlanSidecar(file, files);
+    const sidecar = findMatchingDrivePortableTextSidecar(file, files);
     if (sidecar) pairedSidecarIds.add(sidecar.id);
   }
   for (const file of files) {
@@ -425,7 +448,7 @@ export async function runDriveFolderImport({
     }
     await importDriveFile(file, {
       manageLoading: false,
-      sidecarFile: findMatchingDrivePresentationPlanSidecar(file, files),
+      sidecarFile: findMatchingDrivePortableTextSidecar(file, files),
     });
   }
 }
@@ -568,6 +591,16 @@ async function buildDriveUploadArtifacts(
       },
     ];
   }
+  const searchContextSidecar = buildLibraryItemSearchContextSidecarExport(item);
+  if (searchContextSidecar) {
+    return [
+      primary,
+      {
+        kind: "text" as const,
+        ...searchContextSidecar,
+      },
+    ];
+  }
   const pptxArtifact = await buildPresentationPptxDriveArtifact(item);
   return pptxArtifact ? [primary, pptxArtifact] : [primary];
 }
@@ -625,7 +658,7 @@ function findMatchingDriveTextSidecar(
   return undefined;
 }
 
-function findMatchingDrivePresentationPlanSidecar(
+function findMatchingDrivePortableTextSidecar(
   textFile: DriveImportFile,
   files: Array<DriveImportFile | DrivePickedImportAction>
 ): DriveImportFile | undefined {
@@ -663,6 +696,7 @@ function driveSidecarKey(name: string) {
     .replace(/\.(?:txt|md|markdown|json)$/u, "")
     .replace(/\.generated-image$/u, "")
     .replace(/\.presentation-plan$/u, "")
+    .replace(/\.search-context$/u, "")
     .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
     .trim();
 }

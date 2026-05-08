@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import {
   buildLibraryItemChatDisplayText,
   buildLibraryItemDriveExport,
+  buildLibraryItemSearchContextSidecarExport,
   buildLibraryItemKinSysInfo,
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
@@ -102,6 +103,15 @@ function downloadTextFile(fileName: string, text: string) {
   anchor.download = fileName;
   anchor.click();
   window.URL.revokeObjectURL(url);
+}
+
+function downloadLibraryItemTextArtifacts(item: ReferenceLibraryItem) {
+  const artifact = buildLibraryItemDriveExport(item);
+  downloadTextFile(artifact.fileName, artifact.text);
+  const searchSidecar = buildLibraryItemSearchContextSidecarExport(item);
+  if (searchSidecar) {
+    downloadTextFile(searchSidecar.fileName, searchSidecar.text);
+  }
 }
 
 function isPresentationTaskPlan(value: unknown): value is PresentationTaskPlan {
@@ -321,23 +331,20 @@ export function useReferenceLibraryUiActions({
     if (maybeUploaded instanceof Promise) {
       void maybeUploaded.then((status) => {
         if (status === "uploaded" || status === "cancelled") return;
-        const artifact = buildLibraryItemDriveExport(item);
-        downloadTextFile(artifact.fileName, artifact.text);
+        downloadLibraryItemTextArtifacts(item);
         openGoogleDriveFolder();
       });
       return;
     }
     if (maybeUploaded === "uploaded" || maybeUploaded === "cancelled") return;
-    const artifact = buildLibraryItemDriveExport(item);
-    downloadTextFile(artifact.fileName, artifact.text);
+    downloadLibraryItemTextArtifacts(item);
     openGoogleDriveFolder();
   };
 
   const downloadLibraryItem = (itemId: string) => {
     const item = getLibraryItemById(itemId);
     if (!item) return;
-    const artifact = buildLibraryItemDriveExport(item);
-    downloadTextFile(artifact.fileName, artifact.text);
+    downloadLibraryItemTextArtifacts(item);
   };
 
   const renderPresentationPlanToPpt = async (itemId: string) => {

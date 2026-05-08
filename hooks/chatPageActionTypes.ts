@@ -158,22 +158,12 @@ export type ChatPageSearchArgs = {
     text: string,
     options?: { setGptTab?: boolean }
   ) => { handled: boolean; accepted: boolean } | null;
-  recordSearchContext: (ctx: {
-    mode?: SearchMode;
-    engines?: SearchEngine[];
-    location?: string;
-    seriesId?: string;
-    continuationToken?: string;
-    metadata?: Record<string, unknown>;
-    taskId?: string;
-    actionId?: string;
-    query: string;
-    goal?: string;
-    outputMode?: "summary" | "raw_and_summary";
-    summaryText?: string;
-    rawText: string;
-    sources: { title: string; link: string }[];
-  }) => SearchContext;
+  recordSearchContext: (
+    ctx: Omit<SearchContext, "rawResultId" | "createdAt"> & {
+      rawResultId?: string;
+      createdAt?: string;
+    }
+  ) => SearchContext;
   getContinuationTokenForSeries: (seriesId: string) => string;
   getAskAiModeLinkForQuery: (query: string) => string;
   clearSearchHistory: () => void;
@@ -391,6 +381,7 @@ export type UseFileIngestActionsArgs = Pick<
   | "focusKinPanel"
   | "ingestLoading"
   | "recordIngestedDocument"
+  | "recordSearchContext"
   | "resolveTaskTitleFromDraft"
   | "setCurrentTaskDraft"
   | "setGptInput"

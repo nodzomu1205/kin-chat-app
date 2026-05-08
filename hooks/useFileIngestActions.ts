@@ -47,6 +47,7 @@ function buildRunFileIngestFlowArgs(
     persistCurrentGptState: args.gptMemoryRuntime.persistCurrentGptState,
     applyIngestUsage: args.applyIngestUsage,
     recordIngestedDocument: args.recordIngestedDocument,
+    recordSearchContext: args.recordSearchContext,
     setActiveTabToKin: args.focusKinPanel,
   };
 }
