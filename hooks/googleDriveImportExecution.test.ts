@@ -15,9 +15,7 @@ import {
 import { requestFileIngest } from "@/lib/app/ingest/ingestClient";
 import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
 import {
-  buildLibraryItemDriveExport,
-  buildLibraryItemPresentationPlanSidecarExport,
-  buildLibraryItemSearchContextSidecarExport,
+  buildLibraryItemTextArtifacts,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 
 vi.mock("@/lib/app/google-drive/googleDriveApi", () => ({
@@ -29,9 +27,7 @@ vi.mock("@/lib/app/google-drive/googleDriveApi", () => ({
 }));
 
 vi.mock("@/lib/app/reference-library/referenceLibraryItemActions", () => ({
-  buildLibraryItemDriveExport: vi.fn(),
-  buildLibraryItemPresentationPlanSidecarExport: vi.fn(),
-  buildLibraryItemSearchContextSidecarExport: vi.fn(),
+  buildLibraryItemTextArtifacts: vi.fn(),
 }));
 
 vi.mock("@/lib/app/ingest/ingestClient", () => ({
@@ -560,14 +556,12 @@ describe("runDriveFolderImport", () => {
 describe("runDriveLibraryItemUpload", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
-      fileName: "Project notes.txt",
-      text: "export body",
-    });
-    vi.mocked(buildLibraryItemPresentationPlanSidecarExport).mockReturnValue(
-      null
-    );
-    vi.mocked(buildLibraryItemSearchContextSidecarExport).mockReturnValue(null);
+    vi.mocked(buildLibraryItemTextArtifacts).mockReturnValue([
+      {
+        fileName: "Project notes.txt",
+        text: "export body",
+      },
+    ]);
     vi.mocked(uploadDriveTextFile).mockResolvedValue({
       id: "upload-1",
       name: "Project notes.txt",
@@ -609,11 +603,13 @@ describe("runDriveLibraryItemUpload", () => {
 
   it("uploads presentation JSON and the latest generated PPTX", async () => {
     vi.mocked(listDriveChildFolders).mockResolvedValue([]);
-    vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
-      fileName: "pres_1.presentation.json",
-      text: "{\"kind\":\"kin.presentation\"}\n",
-      mimeType: "application/json",
-    });
+    vi.mocked(buildLibraryItemTextArtifacts).mockReturnValue([
+      {
+        fileName: "pres_1.presentation.json",
+        text: "{\"kind\":\"kin.presentation\"}\n",
+        mimeType: "application/json",
+      },
+    ]);
     vi.mocked(uploadDriveTextFile).mockResolvedValue({
       id: "upload-json",
       name: "pres_1.presentation.json",
@@ -690,11 +686,13 @@ describe("runDriveLibraryItemUpload", () => {
 
   it("regenerates presentation PPTX when the stored Blob URL is unavailable", async () => {
     vi.mocked(listDriveChildFolders).mockResolvedValue([]);
-    vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
-      fileName: "pres_2.presentation.json",
-      text: "{\"kind\":\"kin.presentation\"}\n",
-      mimeType: "application/json",
-    });
+    vi.mocked(buildLibraryItemTextArtifacts).mockReturnValue([
+      {
+        fileName: "pres_2.presentation.json",
+        text: "{\"kind\":\"kin.presentation\"}\n",
+        mimeType: "application/json",
+      },
+    ]);
     vi.mocked(uploadDriveTextFile).mockResolvedValue({
       id: "upload-json",
       name: "pres_2.presentation.json",
@@ -777,16 +775,18 @@ describe("runDriveLibraryItemUpload", () => {
 
   it("uploads presentation plan text and JSON sidecar without generating PPTX", async () => {
     vi.mocked(listDriveChildFolders).mockResolvedValue([]);
-    vi.mocked(buildLibraryItemDriveExport).mockReturnValue({
-      fileName: "PPT Design - Cotton.txt",
-      text: "presentation plan text",
-      mimeType: "text/plain",
-    });
-    vi.mocked(buildLibraryItemPresentationPlanSidecarExport).mockReturnValue({
-      fileName: "PPT Design - Cotton.presentation-plan.json",
-      text: "{\"kind\":\"kin.presentation_plan\"}\n",
-      mimeType: "application/json",
-    });
+    vi.mocked(buildLibraryItemTextArtifacts).mockReturnValue([
+      {
+        fileName: "PPT Design - Cotton.txt",
+        text: "presentation plan text",
+        mimeType: "text/plain",
+      },
+      {
+        fileName: "PPT Design - Cotton.presentation-plan.json",
+        text: "{\"kind\":\"kin.presentation_plan\"}\n",
+        mimeType: "application/json",
+      },
+    ]);
     vi.mocked(uploadDriveTextFile)
       .mockResolvedValueOnce({
         id: "upload-plan",

@@ -8,9 +8,7 @@ import {
   type DriveFolderNode,
 } from "@/lib/app/google-drive/googleDriveApi";
 import {
-  buildLibraryItemDriveExport,
-  buildLibraryItemPresentationPlanSidecarExport,
-  buildLibraryItemSearchContextSidecarExport,
+  buildLibraryItemTextArtifacts,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import {
   isPortableJsonSidecarName,
@@ -579,33 +577,17 @@ async function buildDriveUploadArtifacts(
 ): Promise<
   [Extract<DriveUploadArtifact, { kind: "text" }>, ...DriveUploadArtifact[]]
 > {
-  const primary = {
+  const textArtifacts = buildLibraryItemTextArtifacts(item).map((artifact) => ({
     kind: "text" as const,
-    ...buildLibraryItemDriveExport(item),
-  };
+    ...artifact,
+  }));
+  const primary = textArtifacts[0];
+  if (!primary) {
+    throw new Error("Library item export did not produce a text artifact.");
+  }
   const imageArtifact = await buildGeneratedImageDriveArtifact(item);
-  if (imageArtifact) return [primary, imageArtifact];
-  const presentationPlanSidecar =
-    buildLibraryItemPresentationPlanSidecarExport(item);
-  if (presentationPlanSidecar) {
-    return [
-      primary,
-      {
-        kind: "text" as const,
-        ...presentationPlanSidecar,
-      },
-    ];
-  }
-  const searchContextSidecar = buildLibraryItemSearchContextSidecarExport(item);
-  if (searchContextSidecar) {
-    return [
-      primary,
-      {
-        kind: "text" as const,
-        ...searchContextSidecar,
-      },
-    ];
-  }
+  if (imageArtifact) return [primary, ...textArtifacts.slice(1), imageArtifact];
+  if (textArtifacts.length > 1) return [primary, ...textArtifacts.slice(1)];
   const pptxArtifact = await buildPresentationPptxDriveArtifact(item);
   return pptxArtifact ? [primary, pptxArtifact] : [primary];
 }
