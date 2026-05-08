@@ -127,6 +127,8 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
         BuildGptPanelArgs["references"]["onShowAllLibraryItemsInChat"];
       onSendAllLibraryItemsToKin:
         BuildGptPanelArgs["references"]["onSendAllLibraryItemsToKin"];
+      onDownloadLibraryItem:
+        BuildGptPanelArgs["references"]["onDownloadLibraryItem"];
       onUploadLibraryItemToGoogleDrive:
         BuildGptPanelArgs["references"]["onUploadLibraryItemToGoogleDrive"];
       onRenderPresentationPlanToPpt:

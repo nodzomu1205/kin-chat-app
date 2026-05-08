@@ -89,6 +89,8 @@ export type ChatPageWorkspaceViewReferencesArgs = {
     ChatPageGptPanelCompositionArgs["references"]["onShowAllLibraryItemsInChat"];
   onSendAllLibraryItemsToKin:
     ChatPageGptPanelCompositionArgs["references"]["onSendAllLibraryItemsToKin"];
+  onDownloadLibraryItem:
+    ChatPageGptPanelCompositionArgs["references"]["onDownloadLibraryItem"];
   onUploadLibraryItemToGoogleDrive:
     ChatPageGptPanelCompositionArgs["references"]["onUploadLibraryItemToGoogleDrive"];
   onRenderPresentationPlanToPpt:

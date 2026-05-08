@@ -250,6 +250,7 @@ describe("GptDrawerRouterHelpers", () => {
           onSendLibraryItemToKin: noop,
           onShowAllLibraryItemsInChat: noop,
           onSendAllLibraryItemsToKin: noop,
+          onDownloadLibraryItem: noop,
           onUploadLibraryItemToGoogleDrive: noop,
           onRenderPresentationPlanToPpt: noop,
           onImportDeviceImageFile: noop,

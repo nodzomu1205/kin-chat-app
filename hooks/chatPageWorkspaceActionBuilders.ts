@@ -99,6 +99,7 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onSendLibraryItemToKin: args.onSendLibraryItemToKin,
     onShowAllLibraryItemsInChat: args.onShowAllLibraryItemsInChat,
     onSendAllLibraryItemsToKin: args.onSendAllLibraryItemsToKin,
+    onDownloadLibraryItem: args.onDownloadLibraryItem,
     onUploadLibraryItemToGoogleDrive: args.onUploadLibraryItemToGoogleDrive,
     onRenderPresentationPlanToPpt: args.onRenderPresentationPlanToPpt,
     onImportDeviceImageFile: args.onImportDeviceImageFile,

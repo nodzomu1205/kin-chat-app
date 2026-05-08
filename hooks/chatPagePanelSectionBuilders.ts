@@ -53,6 +53,7 @@ export function buildChatPageWorkspaceGptReferences(
     onSendLibraryItemToKin: args.references.onSendLibraryItemToKin,
     onShowAllLibraryItemsInChat: args.references.onShowAllLibraryItemsInChat,
     onSendAllLibraryItemsToKin: args.references.onSendAllLibraryItemsToKin,
+    onDownloadLibraryItem: args.references.onDownloadLibraryItem,
     onUploadLibraryItemToGoogleDrive:
       args.references.onUploadLibraryItemToGoogleDrive,
     onRenderPresentationPlanToPpt:

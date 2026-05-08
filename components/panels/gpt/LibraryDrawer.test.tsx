@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import LibraryDrawer from "@/components/panels/gpt/LibraryDrawer";
 import { LibraryImportControls } from "@/components/panels/gpt/LibraryDrawerControls";
 import LibraryItemMetadata from "@/components/panels/gpt/LibraryItemMetadata";
+import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
 function renderLibraryDrawer(
@@ -33,6 +34,7 @@ function renderLibraryDrawer(
       onSendLibraryItemToKin={() => Promise.resolve()}
       onShowAllLibraryItemsInChat={() => Promise.resolve()}
       onSendAllLibraryItemsToKin={() => Promise.resolve()}
+      onDownloadLibraryItem={() => Promise.resolve()}
       onUploadLibraryItemToGoogleDrive={() => Promise.resolve()}
       onRenderPresentationPlanToPpt={() => Promise.resolve()}
       onOpenGoogleDriveFolder={() => {}}
@@ -167,6 +169,7 @@ describe("LibraryDrawer", () => {
     expect(html).toContain("max-width:100%");
     expect(html).toContain("flex-wrap:wrap");
     expect(html).toContain("width:100%");
+    expect(html).toContain(GPT_LIBRARY_DRAWER_TEXT.download);
   });
 
   it("renders library item labels without mojibake", () => {

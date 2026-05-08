@@ -33,6 +33,7 @@ export type LibraryDrawerProps = Pick<
   | "onSendLibraryItemToKin"
   | "onShowAllLibraryItemsInChat"
   | "onSendAllLibraryItemsToKin"
+  | "onDownloadLibraryItem"
   | "onUploadLibraryItemToGoogleDrive"
   | "onRenderPresentationPlanToPpt"
 > &

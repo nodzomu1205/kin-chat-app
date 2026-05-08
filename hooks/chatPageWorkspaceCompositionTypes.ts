@@ -180,6 +180,7 @@ export type ChatPageWorkspaceCompositionActions = {
       | "onSendLibraryItemToKin"
       | "onShowAllLibraryItemsInChat"
       | "onSendAllLibraryItemsToKin"
+      | "onDownloadLibraryItem"
       | "onUploadLibraryItemToGoogleDrive"
       | "onRenderPresentationPlanToPpt"
       | "onImportDeviceImageFile"

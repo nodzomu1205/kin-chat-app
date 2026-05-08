@@ -169,6 +169,7 @@ export default function TestTaskPage() {
         onSendLibraryItemToKin: noopAsync,
         onShowAllLibraryItemsInChat: noopAsync,
         onSendAllLibraryItemsToKin: noopAsync,
+        onDownloadLibraryItem: noopAsync,
         onUploadLibraryItemToGoogleDrive: noopAsync,
         onRenderPresentationPlanToPpt: noopAsync,
         onImportDeviceImageFile: noopAsync,

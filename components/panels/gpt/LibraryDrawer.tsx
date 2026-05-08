@@ -37,6 +37,7 @@ export default function LibraryDrawer({
   onSendLibraryItemToKin,
   onShowAllLibraryItemsInChat,
   onSendAllLibraryItemsToKin,
+  onDownloadLibraryItem,
   onUploadLibraryItemToGoogleDrive,
   onRenderPresentationPlanToPpt,
   onOpenGoogleDriveFolder,
@@ -192,6 +193,7 @@ export default function LibraryDrawer({
               onSaveStoredDocument={onSaveStoredDocument}
               onShowLibraryItemInChat={onShowLibraryItemInChat}
               onSendLibraryItemToKin={onSendLibraryItemToKin}
+              onDownloadLibraryItem={onDownloadLibraryItem}
               onUploadLibraryItemToGoogleDrive={onUploadLibraryItemToGoogleDrive}
               onRenderPresentationPlanToPpt={onRenderPresentationPlanToPpt}
               isMobile={isMobile}

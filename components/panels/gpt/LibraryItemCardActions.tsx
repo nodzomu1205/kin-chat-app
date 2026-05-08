@@ -22,6 +22,7 @@ export default function LibraryItemCardActions({
   onDownloadStoredDocument,
   onShowLibraryItemInChat,
   onSendLibraryItemToKin,
+  onDownloadLibraryItem,
   onUploadLibraryItemToGoogleDrive,
   onRenderPresentationPlanToPpt,
   setExpandedId,
@@ -41,6 +42,7 @@ export default function LibraryItemCardActions({
   onDownloadStoredDocument: LibraryDrawerProps["onDownloadStoredDocument"];
   onShowLibraryItemInChat: LibraryDrawerProps["onShowLibraryItemInChat"];
   onSendLibraryItemToKin: LibraryDrawerProps["onSendLibraryItemToKin"];
+  onDownloadLibraryItem: LibraryDrawerProps["onDownloadLibraryItem"];
   onUploadLibraryItemToGoogleDrive: LibraryDrawerProps["onUploadLibraryItemToGoogleDrive"];
   onRenderPresentationPlanToPpt: LibraryDrawerProps["onRenderPresentationPlanToPpt"];
   setExpandedId: React.Dispatch<React.SetStateAction<string>>;
@@ -98,7 +100,20 @@ export default function LibraryItemCardActions({
           >
             {GPT_LIBRARY_DRAWER_TEXT.download}
           </button>
-        ) : null}
+        ) : (
+          <button
+            type="button"
+            onClick={() => void onDownloadLibraryItem(item.id)}
+            style={{
+              ...pillButton,
+              background: "#ffffff",
+              color: "#2563eb",
+              border: "1px solid #bfdbfe",
+            }}
+          >
+            {GPT_LIBRARY_DRAWER_TEXT.download}
+          </button>
+        )}
 
         {!isGeneratedImage ? (
           <select

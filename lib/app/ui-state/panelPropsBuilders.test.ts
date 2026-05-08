@@ -159,6 +159,7 @@ describe("panelPropsBuilders", () => {
           onSendLibraryItemToKin: vi.fn(),
           onShowAllLibraryItemsInChat: vi.fn(),
           onSendAllLibraryItemsToKin: vi.fn(),
+          onDownloadLibraryItem: vi.fn(),
           onUploadLibraryItemToGoogleDrive: vi.fn(),
           onRenderPresentationPlanToPpt: vi.fn(),
           onImportDeviceImageFile: vi.fn(),

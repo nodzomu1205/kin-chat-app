@@ -273,6 +273,7 @@ export type GptPanelReferenceProps = {
       mode: LibraryBulkActionMode,
       scope?: LibraryBulkActionScope
     ) => void | Promise<void>;
+    onDownloadLibraryItem: (itemId: string) => void | Promise<void>;
     onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
     onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
     onImportDeviceImageFile: (

@@ -333,6 +333,13 @@ export function useReferenceLibraryUiActions({
     openGoogleDriveFolder();
   };
 
+  const downloadLibraryItem = (itemId: string) => {
+    const item = getLibraryItemById(itemId);
+    if (!item) return;
+    const artifact = buildLibraryItemDriveExport(item);
+    downloadTextFile(artifact.fileName, artifact.text);
+  };
+
   const renderPresentationPlanToPpt = async (itemId: string) => {
     const item = getLibraryItemById(itemId);
     if (!item || item.artifactType !== "presentation_plan") return;
@@ -430,6 +437,7 @@ export function useReferenceLibraryUiActions({
     sendLibraryItemToKin,
     showAllLibraryItemsInChat,
     sendAllLibraryItemsToKin,
+    downloadLibraryItem,
     uploadLibraryItemToGoogleDrive,
     renderPresentationPlanToPpt,
     importGoogleDriveFile,
