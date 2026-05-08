@@ -3,10 +3,8 @@ import type {
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
 } from "@/types/task";
-import type { PresentationSpec } from "@/lib/app/presentation/presentationTypes";
 import { normalizeDeckFrame } from "@/lib/app/presentation/presentationSlideFrameDeckFrame";
 import { normalizeSlideFrame } from "@/lib/app/presentation/presentationSlideFrameNormalization";
-import { buildSlideSpecFromFrame } from "@/lib/app/presentation/presentationSlideFrameSpecBuilder";
 import { normalizeVisualRequest } from "@/lib/app/presentation/presentationSlideFrameVisualRequest";
 import {
   arrayValue,
@@ -19,6 +17,7 @@ export {
   PRESENTATION_LAYOUT_FRAMES,
   PRESENTATION_MASTER_FRAMES,
 } from "@/lib/app/presentation/presentationSlideFrameDefinitions";
+export { buildPresentationSpecFromSlideFrames } from "@/lib/app/presentation/presentationSlideFrameSpecBuilder";
 
 export type PresentationSlideFrameDocument = {
   deckFrame?: PresentationTaskDeckFrame;
@@ -132,23 +131,6 @@ export function formatPresentationSlideFramePlanLines(
   return lines;
 }
 
-export function buildPresentationSpecFromSlideFrames(args: {
-  title: string;
-  frames: PresentationTaskSlideFrame[];
-  strategyItems?: string[];
-}): PresentationSpec {
-  return {
-    version: "0.1",
-    title: args.title || "Presentation",
-    language: "ja",
-    audience: findStrategyValue(args.strategyItems || [], "audience"),
-    purpose: findStrategyValue(args.strategyItems || [], "purpose"),
-    theme: "business-clean",
-    density: "standard",
-    slides: args.frames.map((frame) => buildSlideSpecFromFrame(frame)),
-  };
-}
-
 export function hasRenderablePresentationSlideFrames(value: unknown) {
   return Array.isArray(value) && value.length > 0;
 }
@@ -232,13 +214,6 @@ function selectedImageIdForVisualSlot(
     new Set([visual.preferredImageId, ...(visual.candidateImageIds || [])].filter(Boolean))
   );
   return selectedIds[slotIndex] || (slotIndex === 0 ? selectedIds[0] || "" : "");
-}
-
-function findStrategyValue(items: string[], key: string) {
-  const matched = items.find((item) =>
-    item.toLowerCase().startsWith(`${key.toLowerCase()}:`)
-  );
-  return matched?.replace(new RegExp(`^${key}\\s*:\\s*`, "i"), "").trim() || undefined;
 }
 
 export function sanitizeReadableSlideFrameTitle(value: string) {

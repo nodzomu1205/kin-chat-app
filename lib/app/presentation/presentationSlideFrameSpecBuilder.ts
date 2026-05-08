@@ -6,8 +6,26 @@ import type {
   BulletItem,
   CardContent,
   ColumnContent,
+  PresentationSpec,
   SlideSpec,
 } from "@/lib/app/presentation/presentationTypes";
+
+export function buildPresentationSpecFromSlideFrames(args: {
+  title: string;
+  frames: PresentationTaskSlideFrame[];
+  strategyItems?: string[];
+}): PresentationSpec {
+  return {
+    version: "0.1",
+    title: args.title || "Presentation",
+    language: "ja",
+    audience: findStrategyValue(args.strategyItems || [], "audience"),
+    purpose: findStrategyValue(args.strategyItems || [], "purpose"),
+    theme: "business-clean",
+    density: "standard",
+    slides: args.frames.map((frame) => buildSlideSpecFromFrame(frame)),
+  };
+}
 
 export function buildSlideSpecFromFrame(frame: PresentationTaskSlideFrame): SlideSpec {
   if (frame.layoutFrameId === "singleCenter") {
@@ -137,4 +155,11 @@ function blockMessage(block: PresentationTaskSlideBlock | undefined) {
 function blockVisualText(block: PresentationTaskSlideBlock | undefined) {
   if (!block?.visualRequest) return "";
   return block.visualRequest.brief || block.visualRequest.prompt || "";
+}
+
+function findStrategyValue(items: string[], key: string) {
+  const matched = items.find((item) =>
+    item.toLowerCase().startsWith(`${key.toLowerCase()}:`)
+  );
+  return matched?.replace(new RegExp(`^${key}\\s*:\\s*`, "i"), "").trim() || undefined;
 }
