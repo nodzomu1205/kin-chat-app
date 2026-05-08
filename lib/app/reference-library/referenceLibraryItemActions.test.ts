@@ -114,6 +114,7 @@ describe("buildLibraryItemDriveExport", () => {
         artifactType: "generated_image",
         title: "Image",
         subtitle: "Image ID: img_123",
+        summary: "Image summary",
         filename: "img_123.txt",
         excerptText: "Image ID: img_123\nPrompt:\nPrompt text",
         structuredPayload: {
@@ -129,7 +130,8 @@ describe("buildLibraryItemDriveExport", () => {
 
     expect(exported.fileName).toBe("img_123.txt");
     expect(exported.mimeType).toBeUndefined();
-    expect(exported.text).toBe("Image ID: img_123\nPrompt:\nPrompt text");
+    expect(exported.text).toContain("Summary:\nImage summary");
+    expect(exported.text).toContain("Detail:\nImage ID: img_123\nPrompt:\nPrompt text");
   });
 
   it("exports presentation plan cards with a portable JSON sidecar", () => {
@@ -191,6 +193,8 @@ describe("buildLibraryItemTextArtifacts", () => {
         itemType: "search",
         title: "Iran news",
         filename: "Iran news.txt",
+        summary: "Existing search summary",
+        excerptText: "raw search detail",
         rawResultId: "RAW-1",
         sources: [{ title: "Source", link: "https://example.com" }],
       })
@@ -200,5 +204,12 @@ describe("buildLibraryItemTextArtifacts", () => {
       "Iran news.txt",
       "Iran news.search-context.json",
     ]);
+    expect(artifacts[0]?.text).toContain("Summary:\nExisting search summary");
+    expect(JSON.parse(artifacts[1]?.text || "{}").context).toMatchObject({
+      summaryText: "Existing search summary",
+      metadata: {
+        librarySummaryGenerated: true,
+      },
+    });
   });
 });

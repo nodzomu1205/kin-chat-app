@@ -32,14 +32,16 @@ export function buildSearchContextFromLibraryItem(
   const rawResultId = item.rawResultId || item.sourceId;
   if (!rawResultId) return null;
   const askAiModeItems = item.askAiModeItems || [];
+  const summaryText = item.summary || "";
   return {
     rawResultId,
     query: item.title || "Search result",
-    summaryText: item.summary || "",
+    summaryText,
     rawText: item.excerptText || "",
     sources: item.sources || [],
     metadata: {
       ...(askAiModeItems.length > 0 ? { askAiModeItems } : {}),
+      ...(summaryText.trim() ? { librarySummaryGenerated: true } : {}),
     },
     createdAt: item.createdAt || new Date().toISOString(),
   };
@@ -76,7 +78,18 @@ export function parseSearchContextSidecarText(
   const payload = parsed as Partial<SearchContextSidecarPayload>;
   if (payload.kind !== PORTABLE_SEARCH_CONTEXT_KIND) return null;
   if (!isSearchContext(payload.context)) return null;
-  return payload.context;
+  return markSearchContextSummaryReusable(payload.context);
+}
+
+function markSearchContextSummaryReusable(context: SearchContext): SearchContext {
+  if (!context.summaryText?.trim()) return context;
+  return {
+    ...context,
+    metadata: {
+      ...(context.metadata || {}),
+      librarySummaryGenerated: true,
+    },
+  };
 }
 
 function isSearchContext(value: unknown): value is SearchContext {

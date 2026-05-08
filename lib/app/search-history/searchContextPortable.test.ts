@@ -54,7 +54,31 @@ describe("searchContextPortable", () => {
       context,
     });
 
-    expect(parseSearchContextSidecarText(text)).toEqual(context);
+    expect(parseSearchContextSidecarText(text)).toEqual({
+      ...context,
+      metadata: {
+        librarySummaryGenerated: true,
+      },
+    });
+  });
+
+  it("marks exported search library summaries as reusable", () => {
+    const context = buildSearchContextFromLibraryItem({
+      id: "search:RAW-1",
+      sourceId: "RAW-1",
+      itemType: "search",
+      title: "Cotton market",
+      subtitle: "Search",
+      summary: "Existing search summary",
+      excerptText: "raw result",
+      createdAt: "2026-05-08T00:00:00.000Z",
+      updatedAt: "2026-05-08T00:00:00.000Z",
+      rawResultId: "RAW-1",
+      sources: [],
+    });
+
+    expect(context?.summaryText).toBe("Existing search summary");
+    expect(context?.metadata?.librarySummaryGenerated).toBe(true);
   });
 
   it("uses a stable search sidecar filename", () => {

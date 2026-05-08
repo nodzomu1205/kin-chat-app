@@ -105,8 +105,7 @@ export function buildLibraryItemDriveExport(item: ReferenceLibraryItem): {
       return {
         fileName: item.filename?.trim() || `${payload.imageId}.txt`,
         text: normalizeWhitespace(
-          item.excerptText?.trim() ||
-            item.summary?.trim() ||
+          buildLibraryItemChatDisplayText(item) ||
             buildGeneratedImageDisplayText({ payload })
         ),
       };
