@@ -138,4 +138,46 @@ describe("presentationPlanValidation adaptive visual layout", () => {
     expect(normalized[0].blocks[2].heading).toBeUndefined();
     expect(normalized[0].blocks[2].items).toBeUndefined();
   });
+
+  it("infers adaptive visual layout from legacy visual-left frames with diagrams", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "Supply chain map",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "visualLeftTextRight",
+        blocks: [
+          {
+            id: "block1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "diagram",
+              brief: "Supply chain process diagram with labels",
+              preferredImageId: "img_flow",
+            },
+          },
+          {
+            id: "block2",
+            kind: "callout",
+            styleId: "callout",
+            text: "Follow the three major phases.",
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0]).toMatchObject({
+      layoutFrameId: "adaptiveVisualMain",
+      slideRole: "visualMain",
+      layoutIntent: {
+        primaryImageId: "img_flow",
+        textPlacement: "right",
+        notePolicy: "shortAnnotation",
+      },
+      blocks: [{ id: "block1" }, { id: "block2" }],
+    });
+  });
 });
