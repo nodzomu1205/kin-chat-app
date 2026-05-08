@@ -16,6 +16,7 @@ export default function LibraryItemStoredDocumentEditor({
   setDraftSummary,
   setDraftText,
   setEditingId,
+  onSaveSearchHistoryItem,
   onSaveStoredDocument,
 }: {
   item: ReferenceLibraryItem;
@@ -27,6 +28,7 @@ export default function LibraryItemStoredDocumentEditor({
   setDraftSummary: React.Dispatch<React.SetStateAction<string>>;
   setDraftText: React.Dispatch<React.SetStateAction<string>>;
   setEditingId: React.Dispatch<React.SetStateAction<string>>;
+  onSaveSearchHistoryItem: LibraryDrawerProps["onSaveSearchHistoryItem"];
   onSaveStoredDocument: LibraryDrawerProps["onSaveStoredDocument"];
 }) {
   return (
@@ -82,11 +84,19 @@ export default function LibraryItemStoredDocumentEditor({
         <button
           type="button"
           onClick={() => {
-            onSaveStoredDocument(item.sourceId, {
-              title: draftTitle.trim() || item.title,
-              summary: draftSummary.trim(),
-              text: draftText,
-            });
+            if (item.itemType === "search" && item.rawResultId) {
+              onSaveSearchHistoryItem(item.rawResultId, {
+                query: draftTitle.trim() || item.title,
+                summaryText: draftSummary.trim(),
+                rawText: draftText,
+              });
+            } else {
+              onSaveStoredDocument(item.sourceId, {
+                title: draftTitle.trim() || item.title,
+                summary: draftSummary.trim(),
+                text: draftText,
+              });
+            }
             setEditingId("");
           }}
           style={{

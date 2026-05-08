@@ -151,6 +151,7 @@ export default function TestTaskPage() {
       onSelectTaskSearchResult: noop,
       onMoveSearchHistoryItem: noop,
       onDeleteSearchHistoryItem: noop,
+      onSaveSearchHistoryItem: noop,
       onLoadMultipartAssemblyToGptInput: noop,
       onDownloadMultipartAssembly: noop,
       onDeleteMultipartAssembly: noop,

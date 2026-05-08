@@ -108,6 +108,7 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     onSelectTaskSearchResult: (rawResultId: string) => void;
     onMoveSearchHistoryItem: BuildGptPanelArgs["references"]["onMoveSearchHistoryItem"];
     onDeleteSearchHistoryItem: BuildGptPanelArgs["references"]["onDeleteSearchHistoryItem"];
+    onSaveSearchHistoryItem: BuildGptPanelArgs["references"]["onSaveSearchHistoryItem"];
     onLoadMultipartAssemblyToGptInput: BuildGptPanelArgs["references"]["onLoadMultipartAssemblyToGptInput"];
     onDownloadMultipartAssembly: BuildGptPanelArgs["references"]["onDownloadMultipartAssembly"];
     onDeleteMultipartAssembly: BuildGptPanelArgs["references"]["onDeleteMultipartAssembly"];

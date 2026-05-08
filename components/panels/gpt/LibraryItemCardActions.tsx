@@ -141,26 +141,24 @@ export default function LibraryItemCardActions({
           </select>
         ) : null}
 
-        {item.itemType !== "search" ? (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(item.id);
-              setDraftTitle(item.title);
-              setDraftSummary(item.summary || "");
-              setDraftText(item.excerptText);
-              if (!isExpanded) setExpandedId(item.id);
-            }}
-            style={{
-              ...pillButton,
-              background: "#ffffff",
-              color: "#0f766e",
-              border: "1px solid #99f6e4",
-            }}
-          >
-            {GPT_LIBRARY_DRAWER_TEXT.edit}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            setEditingId(item.id);
+            setDraftTitle(item.title);
+            setDraftSummary(item.summary || "");
+            setDraftText(item.excerptText);
+            if (!isExpanded) setExpandedId(item.id);
+          }}
+          style={{
+            ...pillButton,
+            background: "#ffffff",
+            color: "#0f766e",
+            border: "1px solid #99f6e4",
+          }}
+        >
+          {GPT_LIBRARY_DRAWER_TEXT.edit}
+        </button>
       </div>
 
       <div

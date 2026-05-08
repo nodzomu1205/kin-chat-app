@@ -154,6 +154,7 @@ describe("panelPropsBuilders", () => {
         onStartAskAiModeSearch: vi.fn(),
         onImportYouTubeTranscript: vi.fn(),
         onSendYouTubeTranscriptToKin: vi.fn(),
+          onSaveSearchHistoryItem: vi.fn(),
           onSaveStoredDocument: vi.fn(),
           onShowLibraryItemInChat: vi.fn(),
           onSendLibraryItemToKin: vi.fn(),

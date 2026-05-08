@@ -32,6 +32,7 @@ export default function LibraryDrawer({
   onDownloadStoredDocument,
   onDeleteStoredDocument,
   onDeleteSearchHistoryItem,
+  onSaveSearchHistoryItem,
   onSaveStoredDocument,
   onShowLibraryItemInChat,
   onSendLibraryItemToKin,
@@ -190,6 +191,7 @@ export default function LibraryDrawer({
               onDownloadStoredDocument={onDownloadStoredDocument}
               onDeleteStoredDocument={onDeleteStoredDocument}
               onDeleteSearchHistoryItem={onDeleteSearchHistoryItem}
+              onSaveSearchHistoryItem={onSaveSearchHistoryItem}
               onSaveStoredDocument={onSaveStoredDocument}
               onShowLibraryItemInChat={onShowLibraryItemInChat}
               onSendLibraryItemToKin={onSendLibraryItemToKin}

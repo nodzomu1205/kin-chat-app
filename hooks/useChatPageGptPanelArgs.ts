@@ -114,6 +114,7 @@ export function useChatPageGptPanelArgs(
       onSelectTaskSearchResult: args.references.onSelectTaskSearchResult,
       onMoveSearchHistoryItem: args.references.onMoveSearchHistoryItem,
       onDeleteSearchHistoryItem: args.references.onDeleteSearchHistoryItem,
+      onSaveSearchHistoryItem: args.references.onSaveSearchHistoryItem,
       onLoadMultipartAssemblyToGptInput:
         args.references.onLoadMultipartAssemblyToGptInput,
       onDownloadMultipartAssembly: args.references.onDownloadMultipartAssembly,

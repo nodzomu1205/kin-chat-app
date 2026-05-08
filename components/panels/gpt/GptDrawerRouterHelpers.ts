@@ -266,6 +266,7 @@ export function buildLibraryDrawerProps({
     onDownloadStoredDocument: references.onDownloadStoredDocument,
     onDeleteStoredDocument: references.onDeleteStoredDocument,
     onDeleteSearchHistoryItem: references.onDeleteSearchHistoryItem,
+    onSaveSearchHistoryItem: references.onSaveSearchHistoryItem,
     onSaveStoredDocument: references.onSaveStoredDocument,
     onShowLibraryItemInChat: references.onShowLibraryItemInChat,
     onSendLibraryItemToKin: references.onSendLibraryItemToKin,

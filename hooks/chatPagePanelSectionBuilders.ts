@@ -36,6 +36,7 @@ export function buildChatPageWorkspaceGptReferences(
     onSelectTaskSearchResult: args.search.onSelectTaskSearchResult,
     onMoveSearchHistoryItem: args.search.onMoveSearchHistoryItem,
     onDeleteSearchHistoryItem: args.search.onDeleteSearchHistoryItem,
+    onSaveSearchHistoryItem: args.search.onSaveSearchHistoryItem,
     onLoadMultipartAssemblyToGptInput:
       args.references.onLoadMultipartAssemblyToGptInput,
     onDownloadMultipartAssembly: args.references.onDownloadMultipartAssembly,

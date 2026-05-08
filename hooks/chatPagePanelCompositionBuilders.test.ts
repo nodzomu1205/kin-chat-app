@@ -172,6 +172,7 @@ describe("chatPagePanelCompositionBuilders", () => {
         onSelectTaskSearchResult: vi.fn(),
         onMoveSearchHistoryItem: vi.fn(),
         onDeleteSearchHistoryItem: vi.fn(),
+        onSaveSearchHistoryItem: vi.fn(),
       },
       references: {
         multipartAssemblies: [],
@@ -311,6 +312,7 @@ describe("chatPagePanelCompositionBuilders", () => {
         onSelectTaskSearchResult: vi.fn(),
         onMoveSearchHistoryItem: vi.fn(),
         onDeleteSearchHistoryItem: vi.fn(),
+        onSaveSearchHistoryItem: vi.fn(),
       },
       references: {
         multipartAssemblies: [],

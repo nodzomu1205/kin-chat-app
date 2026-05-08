@@ -158,6 +158,7 @@ export type ChatPageWorkspaceCompositionActions = {
     | "onMoveSearchHistoryItem"
     | "onSelectTaskSearchResult"
     | "onDeleteSearchHistoryItem"
+    | "onSaveSearchHistoryItem"
     | "onChangeSearchMode"
     | "onChangeSearchEngines"
     | "onChangeSearchLocation"

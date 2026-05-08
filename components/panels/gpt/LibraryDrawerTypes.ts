@@ -28,6 +28,7 @@ export type LibraryDrawerProps = Pick<
   | "onDownloadStoredDocument"
   | "onDeleteStoredDocument"
   | "onDeleteSearchHistoryItem"
+  | "onSaveSearchHistoryItem"
   | "onSaveStoredDocument"
   | "onShowLibraryItemInChat"
   | "onSendLibraryItemToKin"

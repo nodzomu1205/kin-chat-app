@@ -42,6 +42,7 @@ type Props = Pick<
   | "onDownloadStoredDocument"
   | "onDeleteStoredDocument"
   | "onDeleteSearchHistoryItem"
+  | "onSaveSearchHistoryItem"
   | "onSaveStoredDocument"
   | "onShowLibraryItemInChat"
   | "onSendLibraryItemToKin"
@@ -84,6 +85,7 @@ export default function LibraryItemCard({
   onDownloadStoredDocument,
   onDeleteStoredDocument,
   onDeleteSearchHistoryItem,
+  onSaveSearchHistoryItem,
   onSaveStoredDocument,
   onShowLibraryItemInChat,
   onSendLibraryItemToKin,
@@ -196,6 +198,7 @@ export default function LibraryItemCard({
           onStartAskAiModeSearch={onStartAskAiModeSearch}
           onImportYouTubeTranscript={onImportYouTubeTranscript}
           onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
+          onSaveSearchHistoryItem={onSaveSearchHistoryItem}
           onSaveStoredDocument={onSaveStoredDocument}
         />
       ) : null}
@@ -222,6 +225,7 @@ function LibraryItemCardBody({
   onStartAskAiModeSearch,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
+  onSaveSearchHistoryItem,
   onSaveStoredDocument,
 }: {
   item: ReferenceLibraryItem;
@@ -242,6 +246,7 @@ function LibraryItemCardBody({
   onStartAskAiModeSearch: LibraryDrawerProps["onStartAskAiModeSearch"];
   onImportYouTubeTranscript: LibraryDrawerProps["onImportYouTubeTranscript"];
   onSendYouTubeTranscriptToKin: LibraryDrawerProps["onSendYouTubeTranscriptToKin"];
+  onSaveSearchHistoryItem: LibraryDrawerProps["onSaveSearchHistoryItem"];
   onSaveStoredDocument: LibraryDrawerProps["onSaveStoredDocument"];
 }) {
   return (
@@ -264,17 +269,7 @@ function LibraryItemCardBody({
 
       {imagePayload ? <GeneratedImagePreview payload={imagePayload} /> : null}
 
-      {item.itemType === "search" ? (
-        <LibraryItemSearchPreview
-          item={item}
-          askAiModeCandidates={askAiModeCandidates}
-          sourceDisplayCount={sourceDisplayCount}
-          isMobile={isMobile}
-          onStartAskAiModeSearch={onStartAskAiModeSearch}
-          onImportYouTubeTranscript={onImportYouTubeTranscript}
-          onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
-        />
-      ) : isEditing ? (
+      {isEditing ? (
         <LibraryItemStoredDocumentEditor
           item={item}
           isMobile={isMobile}
@@ -285,7 +280,18 @@ function LibraryItemCardBody({
           setDraftSummary={setDraftSummary}
           setDraftText={setDraftText}
           setEditingId={setEditingId}
+          onSaveSearchHistoryItem={onSaveSearchHistoryItem}
           onSaveStoredDocument={onSaveStoredDocument}
+        />
+      ) : item.itemType === "search" ? (
+        <LibraryItemSearchPreview
+          item={item}
+          askAiModeCandidates={askAiModeCandidates}
+          sourceDisplayCount={sourceDisplayCount}
+          isMobile={isMobile}
+          onStartAskAiModeSearch={onStartAskAiModeSearch}
+          onImportYouTubeTranscript={onImportYouTubeTranscript}
+          onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
         />
       ) : (
         <LibraryItemPreviewTextArea

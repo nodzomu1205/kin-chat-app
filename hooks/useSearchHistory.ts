@@ -240,6 +240,21 @@ export function useSearchHistory(params?: {
     );
   };
 
+  const updateSearchHistoryItem = (
+    rawResultId: string,
+    patch: Partial<Pick<SearchContext, "query" | "summaryText" | "rawText">>
+  ) => {
+    const applyPatch = (context: SearchContext): SearchContext =>
+      context.rawResultId === rawResultId
+        ? {
+            ...context,
+            ...patch,
+          }
+        : context;
+    setLastSearchContext((prev) => (prev ? applyPatch(prev) : prev));
+    setSearchHistory((prev) => prev.map(applyPatch));
+  };
+
   const enrichSearchContextSummary = async (context: SearchContext) => {
     const summaryRequest = buildSearchContextLibrarySummaryRequest(context);
     if (!summaryRequest) return;
@@ -290,6 +305,7 @@ export function useSearchHistory(params?: {
     getTaskSearchContext,
     moveSearchHistoryItem,
     recordSearchContext,
+    updateSearchHistoryItem,
     getContinuationTokenForSeries,
     getAskAiModeLinkForQuery,
     clearSearchHistory,

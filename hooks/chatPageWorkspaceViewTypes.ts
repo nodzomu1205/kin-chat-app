@@ -72,6 +72,8 @@ export type ChatPageWorkspaceViewSearchArgs = ChatPageControllerSearchArgs & {
     ChatPageGptPanelCompositionArgs["references"]["onSelectTaskSearchResult"];
   onDeleteSearchHistoryItem:
     ChatPageGptPanelCompositionArgs["references"]["onDeleteSearchHistoryItem"];
+  onSaveSearchHistoryItem:
+    ChatPageGptPanelCompositionArgs["references"]["onSaveSearchHistoryItem"];
   sourceDisplayCount: ChatPageGptPanelCompositionArgs["settings"]["sourceDisplayCount"];
   onChangeSearchMode:
     ChatPageGptPanelCompositionArgs["settings"]["onChangeSearchMode"];

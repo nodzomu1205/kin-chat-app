@@ -75,6 +75,7 @@ function buildWorkspaceActionsSearch(args: ChatPageWorkspaceActionsSearch) {
     onMoveSearchHistoryItem: args.onMoveSearchHistoryItem,
     onSelectTaskSearchResult: args.onSelectTaskSearchResult,
     onDeleteSearchHistoryItem: args.onDeleteSearchHistoryItem,
+    onSaveSearchHistoryItem: args.onSaveSearchHistoryItem,
     onChangeSearchMode: args.onChangeSearchMode,
     onChangeSearchEngines: args.onChangeSearchEngines,
     onChangeSearchLocation: args.onChangeSearchLocation,

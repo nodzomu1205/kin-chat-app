@@ -245,6 +245,7 @@ describe("GptDrawerRouterHelpers", () => {
         onStartAskAiModeSearch: noop,
         onImportYouTubeTranscript: noop,
         onSendYouTubeTranscriptToKin: noop,
+          onSaveSearchHistoryItem: noop,
           onSaveStoredDocument: noop,
           onShowLibraryItemInChat: noop,
           onSendLibraryItemToKin: noop,

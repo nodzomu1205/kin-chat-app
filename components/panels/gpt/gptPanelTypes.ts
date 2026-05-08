@@ -241,6 +241,10 @@ export type GptPanelReferenceProps = {
     direction: "up" | "down"
   ) => void;
   onDeleteSearchHistoryItem: (rawResultId: string) => void;
+  onSaveSearchHistoryItem: (
+    rawResultId: string,
+    patch: Partial<Pick<SearchContext, "query" | "summaryText" | "rawText">>
+  ) => void;
   onLoadMultipartAssemblyToGptInput: (assemblyId: string) => void;
   onDownloadMultipartAssembly: (assemblyId: string) => void;
   onDeleteMultipartAssembly: (assemblyId: string) => void;

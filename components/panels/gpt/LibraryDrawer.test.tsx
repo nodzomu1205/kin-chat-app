@@ -29,6 +29,7 @@ function renderLibraryDrawer(
       onDownloadStoredDocument={() => {}}
       onDeleteStoredDocument={() => {}}
       onDeleteSearchHistoryItem={() => {}}
+      onSaveSearchHistoryItem={() => {}}
       onSaveStoredDocument={() => {}}
       onShowLibraryItemInChat={() => {}}
       onSendLibraryItemToKin={() => Promise.resolve()}
@@ -170,6 +171,7 @@ describe("LibraryDrawer", () => {
     expect(html).toContain("flex-wrap:wrap");
     expect(html).toContain("width:100%");
     expect(html).toContain(GPT_LIBRARY_DRAWER_TEXT.download);
+    expect(html).toContain(GPT_LIBRARY_DRAWER_TEXT.edit);
   });
 
   it("renders library item labels without mojibake", () => {

@@ -147,6 +147,7 @@ export function useChatPageWorkspaceDomainInputs(
       sourceDisplayCount: searchDomain.sourceDisplayCount,
       onChangeSourceDisplayCount: searchDomain.setSourceDisplayCount,
       onMoveSearchHistoryItem: searchDomain.moveSearchHistoryItem,
+      onSaveSearchHistoryItem: searchDomain.updateSearchHistoryItem,
       recordSearchContext: searchDomain.recordSearchContext,
       getContinuationTokenForSeries: searchDomain.getContinuationTokenForSeries,
       getAskAiModeLinkForQuery: searchDomain.getAskAiModeLinkForQuery,
