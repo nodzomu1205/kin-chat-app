@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPortableSearchContextImport,
   buildSearchContextFromLibraryItem,
+  buildSearchContextSidecarArtifact,
   buildSearchContextSidecarFileName,
   buildSearchContextSidecarText,
   parseSearchContextSidecarText,
@@ -86,6 +87,31 @@ describe("searchContextPortable", () => {
     expect(
       buildSearchContextSidecarFileName({ filename: "Cotton market.txt" })
     ).toBe("Cotton market.search-context.json");
+  });
+
+  it("builds a reusable search context sidecar artifact", () => {
+    const artifact = buildSearchContextSidecarArtifact({
+      title: "Cotton market",
+      filename: "Cotton market.txt",
+      context: {
+        rawResultId: "RAW-1",
+        query: "Cotton market",
+        summaryText: "summary",
+        rawText: "raw result",
+        sources: [],
+        createdAt: "2026-05-08T00:00:00.000Z",
+      },
+    });
+
+    expect(artifact.fileName).toBe("Cotton market.search-context.json");
+    expect(artifact.mimeType).toBe("application/json");
+    expect(JSON.parse(artifact.text)).toMatchObject({
+      kind: "kin.search_context",
+      context: {
+        rawResultId: "RAW-1",
+        query: "Cotton market",
+      },
+    });
   });
 
   it("builds an imported search context record with task context", () => {

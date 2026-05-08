@@ -13,8 +13,7 @@ import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { buildGeneratedImageDisplayText } from "@/lib/app/image/imageDisplayText";
 import {
   buildSearchContextFromLibraryItem,
-  buildSearchContextSidecarFileName,
-  buildSearchContextSidecarText,
+  buildSearchContextSidecarArtifact,
 } from "@/lib/app/search-history/searchContextPortable";
 
 function normalizeWhitespace(value: string): string {
@@ -166,16 +165,9 @@ export function buildLibraryItemSearchContextSidecarExport(
 ): { fileName: string; text: string; mimeType: string } | null {
   const context = buildSearchContextFromLibraryItem(item);
   if (!context) return null;
-  return {
-    fileName: buildSearchContextSidecarFileName({
-      filename: item.filename,
-      title: item.title,
-    }),
-    text: buildSearchContextSidecarText({
-      title: item.title,
-      filename: item.filename,
-      context,
-    }),
-    mimeType: "application/json",
-  };
+  return buildSearchContextSidecarArtifact({
+    title: item.title,
+    filename: item.filename,
+    context,
+  });
 }

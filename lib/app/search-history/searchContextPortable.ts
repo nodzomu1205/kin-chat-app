@@ -64,6 +64,25 @@ export function buildSearchContextSidecarText(args: {
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
+export function buildSearchContextSidecarArtifact(args: {
+  title?: string;
+  filename?: string;
+  context: SearchContext;
+}) {
+  return {
+    fileName: buildSearchContextSidecarFileName({
+      filename: args.filename,
+      title: args.title,
+    }),
+    text: buildSearchContextSidecarText({
+      title: args.title,
+      filename: args.filename,
+      context: args.context,
+    }),
+    mimeType: "application/json",
+  };
+}
+
 export function parseSearchContextSidecarText(
   text?: string | null
 ): SearchContext | null {
