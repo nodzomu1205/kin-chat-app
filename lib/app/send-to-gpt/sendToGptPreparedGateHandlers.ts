@@ -206,6 +206,7 @@ export async function handlePptDesignRequestGate(args: {
       title,
       result: data?.parsed,
       rawText: data?.raw,
+      generationDebug: data?.meta?.presentationPlan,
     });
     const designText = formatPresentationTaskPlanText(plan);
     const responseText = [

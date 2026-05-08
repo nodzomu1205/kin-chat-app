@@ -73,6 +73,10 @@ describe("handleTaskRoute", () => {
       "The previous JSON was structurally incomplete."
     );
     expect(body.usage).toEqual({ inputTokens: 21, outputTokens: 42, totalTokens: 63 });
+    expect(body.meta.presentationPlan).toEqual({
+      correctionAttempted: true,
+      correctionIssues: ["Expected 5 body slideFrame(s), but found 1."],
+    });
   });
 
   it("repairs an incomplete completion response instead of returning a 500", async () => {
@@ -100,5 +104,9 @@ describe("handleTaskRoute", () => {
     expect(mockedCallOpenAIResponses).toHaveBeenCalledTimes(2);
     expect(parsedFrame.slideFrames).toHaveLength(5);
     expect(parsedFrame.deckFrame.slideCount).toBe(5);
+    expect(body.meta.presentationPlan).toMatchObject({
+      correctionAttempted: true,
+      deterministicCompletionApplied: true,
+    });
   });
 });

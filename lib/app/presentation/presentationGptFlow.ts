@@ -372,6 +372,7 @@ async function runUpdateSavedPresentationPlanFlow(args: {
       title: foundPlan.plan.title || foundPlan.item.title || "PPT design",
       result: data?.parsed,
       rawText: data?.raw,
+      generationDebug: data?.meta?.presentationPlan,
     }),
     documentId: foundPlan.plan.documentId,
   };

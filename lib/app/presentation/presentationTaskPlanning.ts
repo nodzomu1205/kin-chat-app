@@ -1,5 +1,6 @@
 ﻿import type {
   PresentationTaskPlan,
+  PresentationTaskGenerationDebug,
   PresentationTaskSlideFrame,
   PresentationTaskSlidePlan,
   TaskResult,
@@ -357,6 +358,7 @@ export function buildPresentationTaskPlan(args: {
   result: TaskResult | null;
   rawText: string;
   updatedAt?: string;
+  generationDebug?: PresentationTaskGenerationDebug;
 }): PresentationTaskPlan {
   const legacyPlan = buildLegacyPresentationTaskPlan(args);
   const slideFrameItems = findBlock(args.result, [
@@ -385,6 +387,7 @@ export function buildPresentationTaskPlan(args: {
       slideJsonParsed: true,
       slideCount: slideFrames.length,
       generatedAt: args.updatedAt || new Date().toISOString(),
+      ...(args.generationDebug ? { generation: args.generationDebug } : {}),
     },
   };
 }

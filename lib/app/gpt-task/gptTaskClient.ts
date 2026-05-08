@@ -3,7 +3,7 @@ import type {
   ImageDetail,
   IngestMode,
 } from "@/components/panels/gpt/gptPanelTypes";
-import type { TaskResult } from "@/types/task";
+import type { PresentationTaskGenerationDebug, TaskResult } from "@/types/task";
 import type { UsageSummary } from "@/lib/server/chatgpt/openaiResponse";
 import {
   buildPrepInputFromIngestResult,
@@ -20,6 +20,9 @@ type TaskApiResponse = {
   raw: string;
   parsed: TaskResult | null;
   usage: UsageSummary;
+  meta?: {
+    presentationPlan?: PresentationTaskGenerationDebug;
+  };
 };
 
 export function formatTaskResultText(parsed: TaskResult | null, raw: string) {

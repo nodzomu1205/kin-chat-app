@@ -538,10 +538,12 @@ export function buildTaskRouteResponse(args: {
   raw: string;
   parsed: TaskResult | null;
   usage: UsageSummary;
+  meta?: unknown;
 }) {
   return {
     raw: args.raw,
     parsed: args.parsed,
     usage: args.usage,
+    ...(args.meta ? { meta: args.meta } : {}),
   };
 }

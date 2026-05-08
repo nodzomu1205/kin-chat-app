@@ -31,7 +31,18 @@ export async function handleTaskRoute(body: { task?: unknown }) {
   let finalUsage = usage;
   let parsed = parseTaskResult(finalText);
   const incompletePlan = validatePresentationPlanCompleteness({ task, parsed });
+  let presentationPlanMeta:
+    | {
+        correctionAttempted: boolean;
+        correctionIssues: string[];
+        deterministicCompletionApplied?: boolean;
+      }
+    | undefined;
   if (incompletePlan) {
+    presentationPlanMeta = {
+      correctionAttempted: true,
+      correctionIssues: incompletePlan.issues,
+    };
     const completed = await callOpenAIResponses(
       buildTaskCompletionResponsesRequest({
         task,
@@ -47,6 +58,11 @@ export async function handleTaskRoute(body: { task?: unknown }) {
     parsed = parseTaskResult(finalText);
     const stillIncomplete = validatePresentationPlanCompleteness({ task, parsed });
     if (stillIncomplete) {
+      presentationPlanMeta = {
+        correctionAttempted: true,
+        correctionIssues: [...incompletePlan.issues, ...stillIncomplete.issues],
+        deterministicCompletionApplied: true,
+      };
       finalText = completePresentationPlanSlideFrames(finalText);
       parsed = parseTaskResult(finalText);
       const unrecoverable = validatePresentationPlanCompleteness({ task, parsed });
@@ -61,6 +77,9 @@ export async function handleTaskRoute(body: { task?: unknown }) {
       raw: finalText,
       parsed,
       usage: finalUsage,
+      meta: presentationPlanMeta
+        ? { presentationPlan: presentationPlanMeta }
+        : undefined,
     })
   );
 }

@@ -166,6 +166,7 @@ export async function runPrepTaskFromInputFlow(
           title: resolvedTitle,
           result: data?.parsed,
           rawText: data?.raw,
+          generationDebug: data?.meta?.presentationPlan,
         })
       : null;
     const taskText = presentationMode
@@ -339,6 +340,7 @@ export async function runUpdateTaskFromInputFlow(
           title: resolvedTitle,
           result: data?.parsed,
           rawText: data?.raw,
+          generationDebug: data?.meta?.presentationPlan,
         })
       : undefined;
     const taskText = presentationMode
@@ -509,6 +511,7 @@ export async function runUpdateTaskFromLastGptMessageFlow(
           title: resolvedTitle,
           result: data?.parsed,
           rawText: data?.raw,
+          generationDebug: data?.meta?.presentationPlan,
         })
       : undefined;
     const taskText = presentationMode

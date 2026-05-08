@@ -1384,6 +1384,49 @@ describe("presentationTaskPlanning", () => {
     expect(hasPresentationTaskPlanSlideFrames(parsedPlan)).toBe(true);
   });
 
+  it("keeps task-route generation debug on parsed presentation plans", () => {
+    const plan = buildPresentationTaskPlan({
+      title: "Debugged plan",
+      result: {
+        ...result,
+        detailBlocks: [
+          {
+            title: "Slide Frame JSON",
+            body: [
+              JSON.stringify({
+                slideFrames: [
+                  {
+                    slideNumber: 1,
+                    title: "Slide 1",
+                    layoutFrameId: "adaptiveTextMain",
+                    blocks: [
+                      {
+                        id: "block1",
+                        kind: "list",
+                        styleId: "listCompact",
+                        items: ["Point"],
+                      },
+                    ],
+                  },
+                ],
+              }),
+            ],
+          },
+        ],
+      },
+      rawText: "",
+      generationDebug: {
+        correctionAttempted: true,
+        correctionIssues: ["Slide 1 was repaired."],
+      },
+    });
+
+    expect(plan.debug?.generation).toEqual({
+      correctionAttempted: true,
+      correctionIssues: ["Slide 1 was repaired."],
+    });
+  });
+
   it("uses slide design JSON as the source of truth when task result includes it", () => {
     const taskResult: TaskResult = {
       ...result,

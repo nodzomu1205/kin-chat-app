@@ -202,6 +202,13 @@ export type PresentationTaskPlanDebug = {
   slideJsonParsed: boolean;
   slideCount: number;
   generatedAt: string;
+  generation?: PresentationTaskGenerationDebug;
+};
+
+export type PresentationTaskGenerationDebug = {
+  correctionAttempted?: boolean;
+  correctionIssues?: string[];
+  deterministicCompletionApplied?: boolean;
 };
 
 export type PresentationTaskMasterFrameId =
