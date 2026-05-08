@@ -21,6 +21,15 @@ import {
   PRESENTATION_LAYOUT_FRAMES,
   PRESENTATION_MASTER_FRAMES,
 } from "@/lib/app/presentation/presentationSlideFrameDefinitions";
+import {
+  arrayValue,
+  numberValue,
+  objectValue,
+  parseJsonValueFromLines,
+  positiveNumberValue,
+  stringArray,
+  stringValue,
+} from "@/lib/app/presentation/presentationSlideFrameValueUtils";
 export {
   PRESENTATION_BLOCK_STYLES,
   PRESENTATION_BOOKEND_FRAMES,
@@ -890,47 +899,6 @@ function findStrategyValue(items: string[], key: string) {
   return matched?.replace(new RegExp(`^${key}\\s*:\\s*`, "i"), "").trim() || undefined;
 }
 
-function extractJsonCandidate(lines: string[]) {
-  const joined = lines
-    .map((line) => line.replace(/^\s*-\s*/, "").trim())
-    .join("\n")
-    .trim();
-  const fenced = joined.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
-  if (fenced) return fenced;
-  const firstArray = joined.indexOf("[");
-  const firstObject = joined.indexOf("{");
-  const start =
-    firstArray >= 0 && firstObject >= 0
-      ? Math.min(firstArray, firstObject)
-      : Math.max(firstArray, firstObject);
-  return start >= 0 ? joined.slice(start).trim() : joined;
-}
-
-function parseJsonValueFromLines(lines: string[]) {
-  if (lines.length === 0) return null;
-  try {
-    return JSON.parse(extractJsonCandidate(lines));
-  } catch {
-    return null;
-  }
-}
-
-function objectValue(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function arrayValue(value: unknown) {
-  return Array.isArray(value) ? value : [];
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" || typeof value === "number"
-    ? String(value).trim()
-    : "";
-}
-
 export function sanitizeReadableSlideFrameTitle(value: string) {
   return value
     .replace(/\s*[（(]\s*見出し\s*なし\s*[）)]\s*/g, "")
@@ -943,19 +911,4 @@ export function sanitizeSlideFrameTitle(value: string) {
     .replace(/\s*[（(]\s*見出し\s*なし\s*[）)]\s*/g, "")
     .replace(/\s*[・・]\s*heading\s*none\s*[・・]\s*/gi, "")
     .trim();
-}
-
-function stringArray(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(stringValue).filter(Boolean);
-  const text = stringValue(value);
-  return text ? [text] : [];
-}
-
-function numberValue(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function positiveNumberValue(value: unknown) {
-  const number = numberValue(value);
-  return number && number > 0 ? number : undefined;
 }
