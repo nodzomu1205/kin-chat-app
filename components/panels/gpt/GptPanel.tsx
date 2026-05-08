@@ -750,7 +750,9 @@ function isPortablePresentationPlanTextFile(file: File) {
 
 function findMatchingSidecarFile(file: File, sidecars: File[]) {
   const imageKey = sidecarKey(file.name);
-  return sidecars.find((sidecar) => sidecarKey(sidecar.name) === imageKey);
+  return sidecars.find(
+    (sidecar) => sidecar !== file && sidecarKey(sidecar.name) === imageKey
+  );
 }
 
 function sidecarKey(name: string) {
