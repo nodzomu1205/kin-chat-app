@@ -7,6 +7,11 @@ import type {
   LibraryBulkActionScope,
 } from "@/lib/app/reference-library/libraryItemAggregation";
 import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
+import {
+  isPortablePresentationPlanTextName,
+  isPortableTextSidecarName,
+  portableSidecarKey,
+} from "@/lib/app/reference-library/portableSidecarNames";
 
 export function iconButton(tone: "default" | "danger" = "default"): React.CSSProperties {
   return {
@@ -446,30 +451,19 @@ function isImageFile(file: File) {
 
 function isTextSidecarFile(file: File) {
   if (file.type.startsWith("text/")) return true;
-  return /\.(txt|md|json)$/i.test(file.name);
+  return isPortableTextSidecarName(file.name);
 }
 
 function isPortablePresentationPlanTextFile(file: File) {
-  return /\.(?:txt|md|markdown)$/i.test(file.name);
+  return isPortablePresentationPlanTextName(file.name);
 }
 
 function findMatchingSidecarFile(file: File, sidecars: File[]) {
-  const imageKey = sidecarKey(file.name);
+  const imageKey = portableSidecarKey(file.name);
   return sidecars.find(
-    (sidecar) => sidecar !== file && sidecarKey(sidecar.name) === imageKey
+    (sidecar) =>
+      sidecar !== file && portableSidecarKey(sidecar.name) === imageKey
   );
-}
-
-function sidecarKey(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
-    .replace(/\.(?:txt|md|markdown|json)$/u, "")
-    .replace(/\.generated-image$/u, "")
-    .replace(/\.presentation-plan$/u, "")
-    .replace(/\.search-context$/u, "")
-    .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
-    .trim();
 }
 
 function DriveMenuButton({

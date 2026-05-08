@@ -12,6 +12,11 @@ import {
   buildLibraryItemPresentationPlanSidecarExport,
   buildLibraryItemSearchContextSidecarExport,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
+import {
+  isPortableJsonSidecarName,
+  isPortablePresentationPlanTextName,
+  portableSidecarKey,
+} from "@/lib/app/reference-library/portableSidecarNames";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
 import {
@@ -636,7 +641,7 @@ function findMatchingDriveTextSidecar(
   imageFile: DriveImportFile,
   files: Array<DriveImportFile | DrivePickedImportAction>
 ): DriveImportFile | undefined {
-  const imageKey = driveSidecarKey(imageFile.name);
+  const imageKey = portableSidecarKey(imageFile.name);
   if (!imageKey) return undefined;
   const imageFolder = driveFolderPath(imageFile.path);
   for (const candidate of files) {
@@ -653,7 +658,7 @@ function findMatchingDriveTextSidecar(
     if (driveFolderPath(candidatePath) !== imageFolder) {
       continue;
     }
-    if (driveSidecarKey(file.name) === imageKey) return file;
+    if (portableSidecarKey(file.name) === imageKey) return file;
   }
   return undefined;
 }
@@ -663,8 +668,8 @@ function findMatchingDrivePortableTextSidecar(
   files: Array<DriveImportFile | DrivePickedImportAction>
 ): DriveImportFile | undefined {
   if (isDriveImageMimeType(textFile.mimeType)) return undefined;
-  if (!/\.(?:txt|md|markdown)$/iu.test(textFile.name)) return undefined;
-  const textKey = driveSidecarKey(textFile.name);
+  if (!isPortablePresentationPlanTextName(textFile.name)) return undefined;
+  const textKey = portableSidecarKey(textFile.name);
   if (!textKey) return undefined;
   const textFolder = driveFolderPath(textFile.path);
   for (const candidate of files) {
@@ -674,11 +679,11 @@ function findMatchingDrivePortableTextSidecar(
         : null
       : candidate;
     if (!file || file.id === textFile.id) continue;
-    if (!/\.json$/iu.test(file.name)) continue;
+    if (!isPortableJsonSidecarName(file.name)) continue;
     const candidatePath =
       "path" in file && typeof file.path === "string" ? file.path : undefined;
     if (driveFolderPath(candidatePath) !== textFolder) continue;
-    if (driveSidecarKey(file.name) === textKey) return file;
+    if (portableSidecarKey(file.name) === textKey) return file;
   }
   return undefined;
 }
@@ -687,18 +692,6 @@ function driveFolderPath(path?: string) {
   if (!path) return "";
   const slashIndex = path.lastIndexOf("/");
   return slashIndex >= 0 ? path.slice(0, slashIndex) : "";
-}
-
-function driveSidecarKey(name: string) {
-  return name
-    .toLowerCase()
-    .replace(/\.(?:png|jpe?g|webp|gif|bmp|svg)$/u, "")
-    .replace(/\.(?:txt|md|markdown|json)$/u, "")
-    .replace(/\.generated-image$/u, "")
-    .replace(/\.presentation-plan$/u, "")
-    .replace(/\.search-context$/u, "")
-    .replace(/\s*\[[\d,]+\s*chars?\]$/u, "")
-    .trim();
 }
 
 function resolveDrivePortableTitle(fileName: string) {
