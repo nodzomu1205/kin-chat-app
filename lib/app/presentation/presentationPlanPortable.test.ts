@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPortablePresentationPlanStoredDocument,
+  buildPresentationPlanSidecarArtifact,
   buildPresentationPlanSidecarFileName,
   buildPresentationPlanSidecarText,
   buildStoredDocumentFromPortablePresentationPlanImport,
@@ -38,6 +39,25 @@ describe("presentationPlanPortable", () => {
         filename: "Portable PPT.txt",
       })
     ).toBe("Portable PPT.presentation-plan.json");
+  });
+
+  it("builds a reusable presentation plan sidecar artifact", () => {
+    const artifact = buildPresentationPlanSidecarArtifact({
+      title: "Portable PPT",
+      filename: "Portable PPT.txt",
+      summary: "Existing summary",
+      plan,
+    });
+
+    expect(artifact.fileName).toBe("Portable PPT.presentation-plan.json");
+    expect(artifact.mimeType).toBe("application/json");
+    expect(JSON.parse(artifact.text)).toMatchObject({
+      kind: "kin.presentation_plan",
+      summary: "Existing summary",
+      plan: {
+        documentId: "ppt_portable",
+      },
+    });
   });
 
   it("builds an ingested presentation plan record without changing the plan", () => {

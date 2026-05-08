@@ -60,6 +60,27 @@ export function buildPresentationPlanSidecarText(args: {
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
+export function buildPresentationPlanSidecarArtifact(args: {
+  title?: string;
+  filename?: string;
+  summary?: string;
+  plan: PresentationTaskPlan;
+}) {
+  return {
+    fileName: buildPresentationPlanSidecarFileName({
+      filename: args.filename,
+      title: args.title,
+    }),
+    text: buildPresentationPlanSidecarText({
+      title: args.title,
+      filename: args.filename,
+      summary: args.summary,
+      plan: args.plan,
+    }),
+    mimeType: "application/json",
+  };
+}
+
 export function parsePresentationPlanSidecarText(
   text?: string | null
 ): ParsedPresentationPlanSidecar | null {

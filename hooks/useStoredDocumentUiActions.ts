@@ -3,8 +3,7 @@ import type { GeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary"
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
 import { hydrateGeneratedImagePayload } from "@/lib/app/image/imageAssetStorage";
 import {
-  buildPresentationPlanSidecarFileName,
-  buildPresentationPlanSidecarText,
+  buildPresentationPlanSidecarArtifact,
   isPresentationTaskPlan,
 } from "@/lib/app/presentation/presentationPlanPortable";
 
@@ -54,17 +53,14 @@ export function useStoredDocumentUiActions({
       text: document.text,
     });
     if (presentationPlan) {
+      const sidecarArtifact = buildPresentationPlanSidecarArtifact({
+        title: document.title,
+        filename: document.filename,
+        summary: document.summary,
+        plan: presentationPlan,
+      });
       downloadTextDocument({
-        fileName: buildPresentationPlanSidecarFileName({
-          filename: document.filename,
-          title: document.title,
-        }),
-        text: buildPresentationPlanSidecarText({
-          title: document.title,
-          filename: document.filename,
-          summary: document.summary,
-          plan: presentationPlan,
-        }),
+        ...sidecarArtifact,
         mimeType: "application/json;charset=utf-8",
       });
     }

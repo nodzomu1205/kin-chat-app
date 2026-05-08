@@ -6,8 +6,7 @@ import {
 import type { ReferenceLibraryItem } from "@/types/chat";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import {
-  buildPresentationPlanSidecarFileName,
-  buildPresentationPlanSidecarText,
+  buildPresentationPlanSidecarArtifact,
   isPresentationTaskPlan,
 } from "@/lib/app/presentation/presentationPlanPortable";
 import { isGeneratedImageLibraryPayload } from "@/lib/app/image/imageLibrary";
@@ -154,19 +153,12 @@ export function buildLibraryItemPresentationPlanSidecarExport(
 ): { fileName: string; text: string; mimeType: string } | null {
   if (item.artifactType !== "presentation_plan") return null;
   if (!isPresentationTaskPlan(item.structuredPayload)) return null;
-  return {
-    fileName: buildPresentationPlanSidecarFileName({
-      filename: item.filename,
-      title: item.title,
-    }),
-    text: buildPresentationPlanSidecarText({
-      title: item.title,
-      filename: item.filename,
-      summary: item.summary,
-      plan: item.structuredPayload,
-    }),
-    mimeType: "application/json",
-  };
+  return buildPresentationPlanSidecarArtifact({
+    title: item.title,
+    filename: item.filename,
+    summary: item.summary,
+    plan: item.structuredPayload,
+  });
 }
 
 export function buildLibraryItemSearchContextSidecarExport(
