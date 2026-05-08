@@ -1,5 +1,6 @@
 import type { ReferenceLibraryItem } from "@/types/chat";
 import type { SearchContext } from "@/types/task";
+import { buildPortableSidecarFileName } from "@/lib/app/reference-library/portableSidecarNames";
 
 const PORTABLE_SEARCH_CONTEXT_KIND = "kin.search_context";
 
@@ -12,21 +13,16 @@ export type SearchContextSidecarPayload = {
   context: SearchContext;
 };
 
-function sanitizePortableBaseName(value: string) {
-  return value
-    .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
-    .replace(/\.(?:txt|md|markdown|json)$/iu, "");
-}
-
 export function buildSearchContextSidecarFileName(args: {
   filename?: string;
   title?: string;
 }) {
-  const rawName = sanitizePortableBaseName(
-    args.filename || args.title || "search-context"
-  );
-  return `${rawName || "search-context"}.search-context.json`;
+  return buildPortableSidecarFileName({
+    filename: args.filename,
+    title: args.title,
+    fallbackBaseName: "search-context",
+    marker: "search-context",
+  });
 }
 
 export function buildSearchContextFromLibraryItem(

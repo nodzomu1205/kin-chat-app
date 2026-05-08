@@ -1,5 +1,6 @@
 import type { StoredDocument } from "@/types/chat";
 import type { PresentationTaskPlan } from "@/types/task";
+import { buildPortableSidecarFileName } from "@/lib/app/reference-library/portableSidecarNames";
 
 const PORTABLE_PRESENTATION_PLAN_KIND = "kin.presentation_plan";
 
@@ -25,11 +26,12 @@ export function buildPresentationPlanSidecarFileName(args: {
   filename?: string;
   title?: string;
 }) {
-  const rawName = (args.filename || args.title || "presentation-plan")
-    .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
-    .replace(/\.(?:txt|md|markdown|json)$/iu, "");
-  return `${rawName || "presentation-plan"}.presentation-plan.json`;
+  return buildPortableSidecarFileName({
+    filename: args.filename,
+    title: args.title,
+    fallbackBaseName: "presentation-plan",
+    marker: "presentation-plan",
+  });
 }
 
 export function buildPresentationPlanSidecarText(args: {

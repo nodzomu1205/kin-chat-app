@@ -1,3 +1,22 @@
+export function sanitizePortableBaseName(value: string) {
+  return value
+    .trim()
+    .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
+    .replace(/\.(?:txt|md|markdown|json)$/iu, "");
+}
+
+export function buildPortableSidecarFileName(args: {
+  filename?: string;
+  title?: string;
+  fallbackBaseName: string;
+  marker: string;
+}) {
+  const rawName = sanitizePortableBaseName(
+    args.filename || args.title || args.fallbackBaseName
+  );
+  return `${rawName || args.fallbackBaseName}.${args.marker}.json`;
+}
+
 export function portableSidecarKey(name: string) {
   return name
     .toLowerCase()

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPortableSidecarFileName,
   isPortableJsonSidecarName,
   isPortablePresentationPlanTextName,
   isPortableTextSidecarName,
   portableSidecarKey,
+  sanitizePortableBaseName,
 } from "@/lib/app/reference-library/portableSidecarNames";
 
 describe("portableSidecarNames", () => {
@@ -21,5 +23,16 @@ describe("portableSidecarNames", () => {
     expect(isPortableJsonSidecarName("deck.search-context.json")).toBe(true);
     expect(isPortablePresentationPlanTextName("deck.md")).toBe(true);
     expect(isPortablePresentationPlanTextName("deck.json")).toBe(false);
+  });
+
+  it("builds sanitized portable sidecar filenames", () => {
+    expect(sanitizePortableBaseName("bad:name.txt")).toBe("bad_name");
+    expect(
+      buildPortableSidecarFileName({
+        filename: "Deck.txt",
+        fallbackBaseName: "presentation-plan",
+        marker: "presentation-plan",
+      })
+    ).toBe("Deck.presentation-plan.json");
   });
 });
