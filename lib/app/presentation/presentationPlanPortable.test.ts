@@ -3,6 +3,7 @@ import {
   buildPortablePresentationPlanStoredDocument,
   buildPresentationPlanSidecarFileName,
   buildPresentationPlanSidecarText,
+  buildStoredDocumentFromPortablePresentationPlanImport,
   parsePresentationPlanSidecarText,
 } from "@/lib/app/presentation/presentationPlanPortable";
 
@@ -58,6 +59,30 @@ describe("presentationPlanPortable", () => {
       structuredPayload: plan,
       createdAt: "2026-05-08T00:00:00.000Z",
       updatedAt: "2026-05-08T00:00:00.000Z",
+    });
+  });
+
+  it("builds an imported presentation plan record from parsed sidecar data", () => {
+    const document = buildStoredDocumentFromPortablePresentationPlanImport({
+      sidecar: {
+        summary: "Existing summary",
+        plan,
+      },
+      filename: "Portable PPT.txt",
+      text: "PPT text",
+      fallbackTitle: "Fallback title",
+      taskId: "task-1",
+      timestamp: "2026-05-08T00:00:00.000Z",
+    });
+
+    expect(document).toMatchObject({
+      artifactType: "presentation_plan",
+      title: "Fallback title",
+      filename: "Portable PPT.txt",
+      text: "PPT text",
+      summary: "Existing summary",
+      taskId: "task-1",
+      structuredPayload: plan,
     });
   });
 });

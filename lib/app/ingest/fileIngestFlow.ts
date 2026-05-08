@@ -25,7 +25,7 @@ import {
 import { extractReusableLibrarySummary } from "@/lib/app/ingest/importSummaryText";
 import { prepareIngestedStoredDocument } from "@/lib/app/ingest/ingestStoredDocumentPreparation";
 import {
-  buildPortablePresentationPlanStoredDocument,
+  buildStoredDocumentFromPortablePresentationPlanImport,
   parsePresentationPlanSidecarText,
 } from "@/lib/app/presentation/presentationPlanPortable";
 import { parseSearchContextSidecarText } from "@/lib/app/search-history/searchContextPortable";
@@ -154,23 +154,18 @@ export async function runFileIngestFlow({
     );
     if (portablePresentationPlan) {
       const text = await file.text();
-      const title =
-        portablePresentationPlan.title?.trim() ||
-        file.name.replace(/\.[^.]+$/u, "").trim() ||
-        file.name;
-      const storedDocument = buildPortablePresentationPlanStoredDocument({
-        title,
+      const storedDocument = buildStoredDocumentFromPortablePresentationPlanImport({
+        sidecar: portablePresentationPlan,
         filename: file.name,
         text,
-        summary: portablePresentationPlan.summary,
-        plan: portablePresentationPlan.plan,
+        fallbackTitle: file.name,
         taskId: currentTaskDraft.id || undefined,
       });
       recordIngestedDocument(storedDocument);
       appendInfo(
         setGptMessages,
         buildFileIngestSavedInfoMessage({
-          fileTitle: title,
+          fileTitle: storedDocument.title,
           storedDocumentCharCount: storedDocument.charCount,
         })
       );

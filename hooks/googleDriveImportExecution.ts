@@ -23,7 +23,7 @@ import {
 } from "@/lib/app/image/imageImportFlow";
 import { parsePresentationPayload } from "@/lib/app/presentation/presentationDocumentBuilders";
 import {
-  buildPortablePresentationPlanStoredDocument,
+  buildStoredDocumentFromPortablePresentationPlanImport,
   parsePresentationPlanSidecarText,
 } from "@/lib/app/presentation/presentationPlanPortable";
 import { parseSearchContextSidecarText } from "@/lib/app/search-history/searchContextPortable";
@@ -207,21 +207,17 @@ export async function runDriveFileImport({
   );
   if (portablePresentationPlan) {
     const text = await downloadedFile.text();
-    const title =
-      portablePresentationPlan.title?.trim() ||
-      resolveDrivePortableTitle(file.path || file.name);
-    const storedDocument = buildPortablePresentationPlanStoredDocument({
-      title,
+    const storedDocument = buildStoredDocumentFromPortablePresentationPlanImport({
+      sidecar: portablePresentationPlan,
       filename: file.name,
       text,
-      summary: portablePresentationPlan.summary,
-      plan: portablePresentationPlan.plan,
+      fallbackTitle: resolveDrivePortableTitle(file.path || file.name),
       taskId: currentTaskId,
     });
     recordIngestedDocument(storedDocument);
     appendUiMessage(
       buildDriveImportSavedInfoMessage({
-        title,
+        title: storedDocument.title,
         storedDocumentCharCount: storedDocument.charCount,
       }),
       "file_ingest"

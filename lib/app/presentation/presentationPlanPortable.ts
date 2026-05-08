@@ -14,6 +14,13 @@ export type PresentationPlanSidecarPayload = {
   plan: PresentationTaskPlan;
 };
 
+export type ParsedPresentationPlanSidecar = {
+  title?: string;
+  filename?: string;
+  summary?: string;
+  plan: PresentationTaskPlan;
+};
+
 export function isPresentationTaskPlan(value: unknown): value is PresentationTaskPlan {
   return (
     !!value &&
@@ -53,12 +60,9 @@ export function buildPresentationPlanSidecarText(args: {
   return `${JSON.stringify(payload, null, 2)}\n`;
 }
 
-export function parsePresentationPlanSidecarText(text?: string | null): {
-  title?: string;
-  filename?: string;
-  summary?: string;
-  plan: PresentationTaskPlan;
-} | null {
+export function parsePresentationPlanSidecarText(
+  text?: string | null
+): ParsedPresentationPlanSidecar | null {
   if (!text?.trim()) return null;
   let parsed: unknown;
   try {
@@ -104,4 +108,28 @@ export function buildPortablePresentationPlanStoredDocument(args: {
     createdAt: timestamp,
     updatedAt: timestamp,
   };
+}
+
+export function buildStoredDocumentFromPortablePresentationPlanImport(args: {
+  sidecar: ParsedPresentationPlanSidecar;
+  filename: string;
+  text: string;
+  fallbackTitle: string;
+  taskId?: string;
+  timestamp?: string;
+}) {
+  const title =
+    args.sidecar.title?.trim() ||
+    args.fallbackTitle.trim() ||
+    args.filename.replace(/\.[^.]+$/u, "").trim() ||
+    args.filename;
+  return buildPortablePresentationPlanStoredDocument({
+    title,
+    filename: args.filename,
+    text: args.text,
+    summary: args.sidecar.summary,
+    plan: args.sidecar.plan,
+    taskId: args.taskId,
+    timestamp: args.timestamp,
+  });
 }
