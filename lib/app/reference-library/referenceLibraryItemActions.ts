@@ -134,6 +134,22 @@ export function buildLibraryItemDriveExport(item: ReferenceLibraryItem): {
   };
 }
 
+export type LibraryItemTextArtifact = {
+  fileName: string;
+  text: string;
+  mimeType?: string;
+};
+
+export function buildLibraryItemTextArtifacts(
+  item: ReferenceLibraryItem
+): LibraryItemTextArtifact[] {
+  return [
+    buildLibraryItemDriveExport(item),
+    buildLibraryItemPresentationPlanSidecarExport(item),
+    buildLibraryItemSearchContextSidecarExport(item),
+  ].filter((artifact): artifact is LibraryItemTextArtifact => !!artifact);
+}
+
 export function buildLibraryItemPresentationPlanSidecarExport(
   item: ReferenceLibraryItem
 ): { fileName: string; text: string; mimeType: string } | null {

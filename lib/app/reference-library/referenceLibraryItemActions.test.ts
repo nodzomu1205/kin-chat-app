@@ -3,6 +3,7 @@ import {
   buildLibraryItemChatDisplayText,
   buildLibraryItemDriveExport,
   buildLibraryItemPresentationPlanSidecarExport,
+  buildLibraryItemTextArtifacts,
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
 import type { ReferenceLibraryItem } from "@/types/chat";
@@ -159,5 +160,45 @@ describe("buildLibraryItemDriveExport", () => {
         documentId: "ppt_cotton",
       },
     });
+  });
+});
+
+describe("buildLibraryItemTextArtifacts", () => {
+  it("includes a presentation plan sidecar next to the text export", () => {
+    const artifacts = buildLibraryItemTextArtifacts(
+      createLibraryItem({
+        artifactType: "presentation_plan",
+        title: "PPT Design - Cotton",
+        filename: "PPT Design - Cotton.txt",
+        structuredPayload: {
+          version: "0.1-presentation-task-plan",
+          documentId: "ppt_cotton",
+          title: "PPT Design - Cotton",
+          slides: [],
+        },
+      })
+    );
+
+    expect(artifacts.map((artifact) => artifact.fileName)).toEqual([
+      "PPT Design - Cotton.txt",
+      "PPT Design - Cotton.presentation-plan.json",
+    ]);
+  });
+
+  it("includes a search context sidecar next to the text export", () => {
+    const artifacts = buildLibraryItemTextArtifacts(
+      createLibraryItem({
+        itemType: "search",
+        title: "Iran news",
+        filename: "Iran news.txt",
+        rawResultId: "RAW-1",
+        sources: [{ title: "Source", link: "https://example.com" }],
+      })
+    );
+
+    expect(artifacts.map((artifact) => artifact.fileName)).toEqual([
+      "Iran news.txt",
+      "Iran news.search-context.json",
+    ]);
   });
 });

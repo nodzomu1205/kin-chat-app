@@ -1,8 +1,7 @@
 import React, { useEffect } from "react";
 import {
   buildLibraryItemChatDisplayText,
-  buildLibraryItemDriveExport,
-  buildLibraryItemSearchContextSidecarExport,
+  buildLibraryItemTextArtifacts,
   buildLibraryItemKinSysInfo,
   normalizeLibraryChatDisplayText,
 } from "@/lib/app/reference-library/referenceLibraryItemActions";
@@ -106,11 +105,8 @@ function downloadTextFile(fileName: string, text: string) {
 }
 
 function downloadLibraryItemTextArtifacts(item: ReferenceLibraryItem) {
-  const artifact = buildLibraryItemDriveExport(item);
-  downloadTextFile(artifact.fileName, artifact.text);
-  const searchSidecar = buildLibraryItemSearchContextSidecarExport(item);
-  if (searchSidecar) {
-    downloadTextFile(searchSidecar.fileName, searchSidecar.text);
+  for (const artifact of buildLibraryItemTextArtifacts(item)) {
+    downloadTextFile(artifact.fileName, artifact.text);
   }
 }
 
