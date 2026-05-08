@@ -6,6 +6,14 @@ import {
 import type { ReferenceLibraryItem } from "@/types/chat";
 import type { PresentationTaskPlan } from "@/types/task";
 
+vi.mock("@/lib/app/image/imageAssetStorage", () => ({
+  loadGeneratedImageAsset: vi.fn(async (imageId: string) => ({
+    imageId,
+    mimeType: "image/png",
+    base64: "base64-image",
+  })),
+}));
+
 const renderablePlan: PresentationTaskPlan = {
   version: "0.1-presentation-task-plan",
   documentId: "ppt_plan",
@@ -109,6 +117,72 @@ describe("presentationPlanPptxActions", () => {
         },
       },
     });
+  });
+
+  it("hydrates selected library images for PPTX rendering", async () => {
+    const selectedPlan: PresentationTaskPlan = {
+      ...renderablePlan,
+      slideFrames: renderablePlan.slideFrames.map((frame) => ({
+        ...frame,
+        blocks: frame.blocks.map((block) => ({
+          ...block,
+          visualRequest: {
+            type: "photo",
+            brief: "Selected cotton field",
+            preferredImageId: "img_selected",
+          },
+        })),
+      })),
+    };
+    const renderPptx = vi.fn(async () => ({
+      id: "pptx_1",
+      format: "pptx" as const,
+      filename: "Cotton deck.pptx",
+      path: "blob:pptx",
+      createdAt: "2026-05-08T01:00:00.000Z",
+      slideCount: 1,
+      generatedImages: [],
+      frameSpec: undefined,
+    }));
+
+    await renderLibraryPresentationPlanPptx({
+      item: createItem({ structuredPayload: selectedPlan }),
+      libraryItems: [
+        {
+          id: "doc:img_selected",
+          sourceId: "img_selected",
+          itemType: "kin_created",
+          artifactType: "generated_image",
+          title: "Selected image",
+          subtitle: "Image ID: img_selected",
+          summary: "Selected image",
+          excerptText: "Image ID: img_selected",
+          createdAt: "2026-05-08T00:00:00.000Z",
+          updatedAt: "2026-05-08T00:00:00.000Z",
+          structuredPayload: {
+            version: "0.1-generated-image",
+            imageId: "img_selected",
+            mimeType: "image/png",
+            prompt: "Cotton field",
+            createdAt: "2026-05-08T00:00:00.000Z",
+          },
+        },
+      ],
+      renderPptx,
+    });
+
+    expect(renderPptx).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generateImages: true,
+        imageMode: "library",
+        libraryImageAssets: [
+          expect.objectContaining({
+            imageId: "img_selected",
+            base64: "base64-image",
+          }),
+        ],
+      })
+    );
   });
 
   it("reports non-renderable presentation plans without calling render", async () => {

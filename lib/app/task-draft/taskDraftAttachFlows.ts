@@ -37,6 +37,7 @@ import {
   buildLibraryTaskAttachIntent,
   buildLibraryTaskFormationIntent,
 } from "@/lib/app/task-draft/taskDraftIntentText";
+import { resolvePresentationPlanFromLibraryItem } from "@/lib/app/reference-library/presentationPlanPptxActions";
 import type { AttachSearchResultToTaskFlowArgs } from "@/lib/app/task-draft/taskDraftActionFlowTypes";
 import type { Message } from "@/types/chat";
 import {
@@ -141,6 +142,86 @@ export async function runAttachSearchResultToTaskFlow(
   });
 
   if (!currentTaskText) {
+    const importedPresentationPlan =
+      presentationMode && taskLibraryItem
+        ? resolvePresentationPlanFromLibraryItem(taskLibraryItem)
+        : null;
+    if (importedPresentationPlan && taskLibraryItem) {
+      const taskText = formatPresentationTaskPlanText(importedPresentationPlan);
+      const assistantMsg: Message = {
+        id: generateId(),
+        role: "gpt",
+        text: [
+          "Library item imported into a new PPT design task.",
+          taskText,
+        ].join("\n\n"),
+        meta: {
+          kind: "task_prep",
+          sourceType: taskLibraryItem?.itemType === "search" ? "search" : "manual",
+          presentationPlan: importedPresentationPlan,
+        },
+      };
+      const source = buildLibraryTaskSource({
+        taskLibraryItem,
+        taskSearchContext,
+        materialText,
+      });
+
+      startTaskFlowRequest({
+        setGptMessages: args.setGptMessages,
+        setGptInput: args.setGptInput,
+        setGptLoading: args.setGptLoading,
+      });
+      await completeTaskFlowSuccess({
+        setGptMessages: args.setGptMessages,
+        assistantMessage: assistantMsg,
+        setGptState: args.setGptState,
+        persistCurrentGptState: args.persistCurrentGptState,
+        gptStateRef: args.gptStateRef,
+        requestRecentMessages,
+        chatRecentLimit: args.chatRecentLimit,
+        lastUserIntent: buildLibraryTaskFormationIntent(
+          taskLibraryItem.title || resolvedTitle
+        ),
+        activeReference: {
+          title: taskLibraryItem.title || resolvedTitle,
+          kind: taskLibraryItem.itemType || "library",
+          sourceId: taskLibraryItem.id,
+          excerpt: materialText.slice(0, 400),
+        },
+        applyChatUsage: args.applyChatUsage,
+        applyCompressionUsage: args.applyCompressionUsage,
+        handleGptMemory: args.handleGptMemory,
+        currentTaskTitleOverride: importedPresentationPlan.title || resolvedTitle,
+        activeDocument: {
+          title: taskLibraryItem.title || resolvedTitle,
+          kind: taskLibraryItem.itemType || "library",
+          sourceId: taskLibraryItem.id,
+          excerpt: materialText.slice(0, 400),
+          importedAt: new Date().toISOString(),
+        },
+      });
+      args.setCurrentTaskDraft((prev) =>
+        buildPreparedTaskDraftUpdate(prev, {
+          title: importedPresentationPlan.title || resolvedTitle,
+          userInstruction: nextUserInstruction,
+          taskTitleDebug: resolvedTitleResult.debug,
+          mode: "presentation",
+          presentationPlan: importedPresentationPlan,
+          body: taskText,
+          objective:
+            prev.objective ||
+            parsedInput.freeText ||
+            taskLibraryItem.title ||
+            "Imported from library item",
+          prepText: taskText,
+          sources: [source],
+        })
+      );
+      args.applyTaskUsage(resolvedTitleResult.usage, { countRun: false });
+      return;
+    }
+
     const prepInput = presentationMode
       ? buildPresentationTaskStructuredInput({
           title: resolvedTitle,

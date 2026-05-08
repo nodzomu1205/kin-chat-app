@@ -41,7 +41,24 @@ export function resolvePresentationPlanFromLibraryItem(
   const storedPlan = isPresentationTaskPlan(item.structuredPayload)
     ? item.structuredPayload
     : null;
-  return storedPlan || parsedPlan;
+  if (!storedPlan) return parsedPlan;
+  if (!parsedPlan.slideFrames.length && !parsedPlan.slides.length) return storedPlan;
+
+  const storedImageCount = countSelectedPresentationImageIds(storedPlan);
+  const parsedImageCount = countSelectedPresentationImageIds(parsedPlan);
+  if (parsedImageCount > storedImageCount) {
+    return {
+      ...parsedPlan,
+      latestPptx: storedPlan.latestPptx || parsedPlan.latestPptx,
+    };
+  }
+
+  return storedPlan.slideFrames.length ? storedPlan : parsedPlan;
+}
+
+function countSelectedPresentationImageIds(plan: PresentationTaskPlan) {
+  const frameSpec = buildFramePresentationSpecFromTaskPlan(plan);
+  return collectFrameSpecPreferredImageIds(frameSpec).size;
 }
 
 export async function renderLibraryPresentationPlanPptx(args: {
