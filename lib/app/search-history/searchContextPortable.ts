@@ -81,6 +81,22 @@ export function parseSearchContextSidecarText(
   return markSearchContextSummaryReusable(payload.context);
 }
 
+export function buildPortableSearchContextImport(args: {
+  context: SearchContext;
+  filename: string;
+  taskId?: string;
+}) {
+  const context = {
+    ...args.context,
+    taskId: args.taskId || args.context.taskId,
+  };
+  return {
+    context,
+    title: context.query || args.filename,
+    charCount: context.rawText.length,
+  };
+}
+
 function markSearchContextSummaryReusable(context: SearchContext): SearchContext {
   if (!context.summaryText?.trim()) return context;
   return {

@@ -26,7 +26,10 @@ import {
   buildStoredDocumentFromPortablePresentationPlanImport,
   parsePresentationPlanSidecarText,
 } from "@/lib/app/presentation/presentationPlanPortable";
-import { parseSearchContextSidecarText } from "@/lib/app/search-history/searchContextPortable";
+import {
+  buildPortableSearchContextImport,
+  parseSearchContextSidecarText,
+} from "@/lib/app/search-history/searchContextPortable";
 import {
   requestFileIngest,
   resolveIngestErrorMessage,
@@ -229,14 +232,16 @@ export async function runDriveFileImport({
     presentationSidecarText
   );
   if (portableSearchContext && recordSearchContext) {
-    recordSearchContext({
-      ...portableSearchContext,
-      taskId: currentTaskId || portableSearchContext.taskId,
+    const importedSearchContext = buildPortableSearchContextImport({
+      context: portableSearchContext,
+      filename: file.name,
+      taskId: currentTaskId,
     });
+    recordSearchContext(importedSearchContext.context);
     appendUiMessage(
       buildDriveImportSavedInfoMessage({
-        title: portableSearchContext.query || file.name,
-        storedDocumentCharCount: portableSearchContext.rawText.length,
+        title: importedSearchContext.title,
+        storedDocumentCharCount: importedSearchContext.charCount,
       }),
       "search"
     );

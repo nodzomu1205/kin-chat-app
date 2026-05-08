@@ -28,7 +28,10 @@ import {
   buildStoredDocumentFromPortablePresentationPlanImport,
   parsePresentationPlanSidecarText,
 } from "@/lib/app/presentation/presentationPlanPortable";
-import { parseSearchContextSidecarText } from "@/lib/app/search-history/searchContextPortable";
+import {
+  buildPortableSearchContextImport,
+  parseSearchContextSidecarText,
+} from "@/lib/app/search-history/searchContextPortable";
 import {
   buildFileIngestBridgeState as buildFileIngestBridgeStateFromBuilders,
   buildFileIngestSavedInfoMessage,
@@ -175,15 +178,17 @@ export async function runFileIngestFlow({
       options.sidecarText?.text
     );
     if (portableSearchContext && recordSearchContext) {
-      recordSearchContext({
-        ...portableSearchContext,
-        taskId: currentTaskDraft.id || portableSearchContext.taskId,
+      const importedSearchContext = buildPortableSearchContextImport({
+        context: portableSearchContext,
+        filename: file.name,
+        taskId: currentTaskDraft.id || undefined,
       });
+      recordSearchContext(importedSearchContext.context);
       appendInfo(
         setGptMessages,
         buildFileIngestSavedInfoMessage({
-          fileTitle: portableSearchContext.query || file.name,
-          storedDocumentCharCount: portableSearchContext.rawText.length,
+          fileTitle: importedSearchContext.title,
+          storedDocumentCharCount: importedSearchContext.charCount,
         }),
         "search"
       );

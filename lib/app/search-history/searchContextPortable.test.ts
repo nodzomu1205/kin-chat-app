@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPortableSearchContextImport,
   buildSearchContextFromLibraryItem,
   buildSearchContextSidecarFileName,
   buildSearchContextSidecarText,
@@ -85,5 +86,30 @@ describe("searchContextPortable", () => {
     expect(
       buildSearchContextSidecarFileName({ filename: "Cotton market.txt" })
     ).toBe("Cotton market.search-context.json");
+  });
+
+  it("builds an imported search context record with task context", () => {
+    const imported = buildPortableSearchContextImport({
+      context: {
+        rawResultId: "RAW-1",
+        query: "",
+        summaryText: "",
+        rawText: "raw result",
+        sources: [],
+        createdAt: "2026-05-08T00:00:00.000Z",
+        taskId: "old-task",
+      },
+      filename: "Iran.search-context.json",
+      taskId: "task-1",
+    });
+
+    expect(imported).toMatchObject({
+      title: "Iran.search-context.json",
+      charCount: 10,
+      context: {
+        rawResultId: "RAW-1",
+        taskId: "task-1",
+      },
+    });
   });
 });
