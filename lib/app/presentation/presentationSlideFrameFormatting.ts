@@ -3,6 +3,7 @@ import type {
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
 } from "@/types/task";
+import { selectedImageIdForVisualSlot } from "@/lib/app/presentation/presentationVisualSlotSelection";
 
 export function formatPresentationSlideFramePlanLines(
   frames: PresentationTaskSlideFrame[],
@@ -149,19 +150,4 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
   }
 
   return lines;
-}
-
-function selectedImageIdForVisualSlot(
-  visual: NonNullable<PresentationTaskSlideBlock["visualRequest"]>,
-  slotId: string,
-  slotIndex: number
-) {
-  const match = (visual.selectionMatches || []).find(
-    (item) => item.slotId === slotId && item.status === "selected" && item.imageId
-  );
-  if (match?.imageId) return match.imageId;
-  const selectedIds = Array.from(
-    new Set([visual.preferredImageId, ...(visual.candidateImageIds || [])].filter(Boolean))
-  );
-  return selectedIds[slotIndex] || (slotIndex === 0 ? selectedIds[0] || "" : "");
 }
