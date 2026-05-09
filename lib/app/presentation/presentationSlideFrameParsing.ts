@@ -41,3 +41,7 @@ export function parsePresentationSlideFramesFromJsonLines(
 ): PresentationTaskSlideFrame[] {
   return parsePresentationSlideFrameDocumentFromJsonLines(lines).slideFrames;
 }
+
+export function hasRenderablePresentationSlideFrames(value: unknown) {
+  return Array.isArray(value) && value.length > 0;
+}

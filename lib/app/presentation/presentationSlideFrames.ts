@@ -10,6 +10,7 @@ export {
   PRESENTATION_MASTER_FRAMES,
 } from "@/lib/app/presentation/presentationSlideFrameDefinitions";
 export {
+  hasRenderablePresentationSlideFrames,
   parsePresentationSlideFrameDocumentFromJsonLines,
   parsePresentationSlideFramesFromJsonLines,
   type PresentationSlideFrameDocument,
@@ -95,10 +96,6 @@ export function formatPresentationSlideFramePlanLines(
     });
   });
   return lines;
-}
-
-export function hasRenderablePresentationSlideFrames(value: unknown) {
-  return Array.isArray(value) && value.length > 0;
 }
 
 function formatReadableBlockDisplayLines(
