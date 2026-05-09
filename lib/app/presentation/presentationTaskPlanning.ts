@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   PresentationTaskPlan,
   PresentationTaskGenerationDebug,
   PresentationTaskSlideFrame,
@@ -33,147 +33,14 @@ import {
   syncDeckFrameSlideCount,
 } from "@/lib/app/presentation/presentationPlanValidation";
 
-const PPT_MARKER = /(?:^|\s)\/ppt(?:\s|$)/i;
+export {
+  buildPresentationTaskConstraints,
+  buildPresentationTaskStructuredInput,
+  isPresentationTaskInstruction,
+  resolvePresentationTaskTitle,
+  stripPresentationTaskMarker,
+} from "@/lib/app/presentation/presentationTaskInput";
 const DOCUMENT_ID_LINE = /^Document ID\s*:\s*(.+)$/im;
-
-export function isPresentationTaskInstruction(text: string) {
-  return PPT_MARKER.test(text);
-}
-
-export function stripPresentationTaskMarker(text: string) {
-  return text
-    .replace(PPT_MARKER, " ")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .join("\n")
-    .trim();
-}
-
-export function buildPresentationTaskStructuredInput(args: {
-  title?: string;
-  userInstruction?: string;
-  body?: string;
-  material?: string;
-  currentPlanText?: string;
-  libraryReferenceContext?: string;
-  imageLibraryContext?: string;
-}) {
-  return [
-    `\u30d7\u30ec\u30bc\u30f3\u30bf\u30a4\u30c8\u30eb: ${args.title?.trim() || "\u672a\u8a2d\u5b9a"}`,
-    `\u30e6\u30fc\u30b6\u30fc\u6307\u793a: ${args.userInstruction?.trim() || "\u306a\u3057"}`,
-    args.currentPlanText?.trim()
-      ? `\u73fe\u5728\u306ePPT\u8a2d\u8a08\u66f8:\n${args.currentPlanText.trim()}`
-      : "",
-    args.body?.trim() ? `\u5165\u529b\u672c\u6587:\n${args.body.trim()}` : "",
-    args.material?.trim() ? `\u53d6\u8fbc\u7d20\u6750:\n${args.material.trim()}` : "",
-  ].concat(
-    args.libraryReferenceContext?.trim()
-      ? [`Library reference context:\n${args.libraryReferenceContext.trim()}`]
-      : []
-  )
-    .concat(
-    args.imageLibraryContext?.trim()
-      ? [`Image library reference candidates:\n${args.imageLibraryContext.trim()}`]
-      : []
-    )
-    .concat(
-      args.imageLibraryContext?.trim()
-        ? [
-            [
-              "Image library selection policy:",
-              "- Do not refer to a specific image-library asset by identifier.",
-              "- For visual blocks that may use image-library assets, provide visualRequest.visualSlots instead.",
-              "- Each visualSlot must describe exactly one needed image with slotId, label, need, optional keywords, and order.",
-              "- The app will match visualSlots to image-library metadata deterministically after your JSON is parsed.",
-              "- Keep slot order aligned with the corresponding text order, such as upstream, midstream, downstream.",
-              "- If a slide has no concrete image need, omit visualSlots instead of forcing a vague slot.",
-            ].join("\n"),
-          ]
-        : []
-    )
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-export function resolvePresentationTaskTitle(args: {
-  presentationMode: boolean;
-  explicitTitle?: string;
-  currentTitle?: string;
-  currentTaskName?: string;
-  generatedTitle?: string;
-  fallbackTitle: string;
-  preserveExistingTitle: boolean;
-}) {
-  if (!args.presentationMode) {
-    return args.generatedTitle || args.fallbackTitle;
-  }
-
-  const explicitTitle = args.explicitTitle?.trim();
-  if (explicitTitle) return explicitTitle;
-
-  if (args.preserveExistingTitle) {
-    const existingTitle =
-      args.currentTitle?.trim() || args.currentTaskName?.trim();
-    if (existingTitle) return existingTitle;
-  }
-
-  return args.generatedTitle || args.fallbackTitle;
-}
-
-export function buildPresentationTaskConstraints(mode: "create" | "update") {
-  return [
-    "This is a PPT design task inside task formation, not a normal task.",
-    "Create or revise a PPT design document that the user can review in chat before PPTX output.",
-    "Use the user's/source language for all user-facing fields such as summary, extractedItems, strategyItems, keyMessages, slide titles, headings, text, and list items unless the user explicitly requests another language.",
-    "Preserve source breadth first; the user will reduce density later through revision instructions.",
-    "Keep extractedItems as atomic facts: one process step, country group, risk, or initiative per bullet. Do not collapse distinct facts into one generic summary.",
-    "The canonical slide design source is deckFrame + slideFrames JSON. Natural-language slide design text is only a projection from that JSON.",
-    "deckFrame holds deck-wide settings such as body slide count, common master, background/wallpaper, page number, logo, openingSlide, and closingSlide. Do not repeat common settings on every slide.",
-    "Use deckFrame.openingSlide and deckFrame.closingSlide for title-cover and END/summary slides. Do not include those bookend slides in slideFrames; slideFrames are the body slides only.",
-    "When deckFrame.openingSlide.frameId is visualTitleCover, give openingSlide.visualRequest its own cover-specific prompt, labels, and visualSlots. Do not copy the visualRequest from Slide 1 or any body slide.",
-    "For summaryClosing, summarize across all body slideFrames. Do not reuse only the final body slide as the summary source.",
-    "If the last body slideFrame is already a summary, recap, conclusion, or future-outlook slide, do not use summaryClosing for deckFrame.closingSlide. Use a simple endSlide closing instead.",
-    "If page numbers are enabled and bookend slides exist, prefer pageNumber.scope: \"bodyOnly\" so the cover and ending slide stay unnumbered unless the user asks for all-slide numbering.",
-    "In slideFrames, omit masterFrameId unless a slide intentionally overrides deckFrame.masterFrameId.",
-    "slideFrames must include every body slide implied by sourceSummary, keyMessages, and deckFrame.slideCount. Do not output only one representative/example slide.",
-    "If keyMessages has five slide-level messages, create five body slideFrames in the same order unless the user explicitly requested a different count.",
-    "Do not create slideDesign.slides[].parts as the preferred path. Do not rely on natural-language slide text and a parser to recover JSON.",
-    "Use the fixed frame package plus adaptive layouts: one-block layouts need 1 block, two-column layouts need 2, heroTopDetailsBottom and threeColumns need 3, twoByTwoGrid needs 4, adaptiveVisualMain needs a primary visual plus optional concise body text, and adaptiveTextMain needs primary text plus optional supporting visuals.",
-    "For every slideFrame, decide slideRole from the slide key message first. Image-library presentationMeta is planning material only: compare the key message with visibleSubjects, embeddedTextItems, relationships, and semanticTags before deciding visualMain or textMain.",
-    "Use visualMain only when the selected visual and the slide key message strongly match, so the visual can carry the main slide meaning with only concise annotation. Otherwise use textMain and treat visuals as supporting material.",
-    "Do not classify a normal photo as visualMain merely because its library description, prompt, or visible subject list is detailed. Detailed scene metadata is still usually supporting material unless it directly matches the slide key message.",
-    "When slideRole is visualMain, prefer layoutFrameId adaptiveVisualMain. Put the visual need in the first visual block, and use later text/callout blocks only for concise annotation, conclusion, source note, or guidance.",
-    "When slideRole is textMain, prefer layoutFrameId adaptiveTextMain. Put the main text/list block first, then add one or more related visual blocks that can occupy the remaining right, bottom, or right-grid space.",
-    "For adaptiveVisualMain, the renderer will place the visual at the top-left, preserve aspect ratio, maximize it in the content area, and use remaining right or bottom-right space for concise body text when useful.",
-    "For adaptiveTextMain, the renderer will place text at the top-left, choose a text box shape that leaves the most useful remaining space, and place related images in that remaining area.",
-    "Block styles define fields: listCompact = heading + items; textStackTopLeft = heading + text; visualContain/visualCover = visualRequest only; headlineCenter/callout = one emphasized text.",
-    "Choose slide count from the material and strategy. If the source naturally implies 5-7 slides, create 5-7 slideFrames.",
-    "Do not collapse a multi-topic source into the schema minimum. Cover each distinct process group, country/context group, risk group, and response/initiative group at a natural deck granularity.",
-    "The visible chat text must show the actual messages that will appear in PPTX. Do not replace display text or items with counts such as '+ 6 items'.",
-    "For every visual block, include the full concrete visual prompt in visualRequest.prompt. Do not leave it empty in initial creation; write a prompt for the intended placeholder/API image even before any image is selected.",
-    "For every visual block, include visualRequest.labels with at least one short in-image display label in the same language as the deck. This label is shown in the editable Stage 1 design and may appear in placeholders.",
-    "If image-library candidates are provided, do not refer to specific image-library assets by identifier. Existing assets can only be described through visualRequest.visualSlots; stored asset selection happens after parsing.",
-    "For each visual block that should use existing image-library assets, provide visualRequest.visualSlots. Each slot must include slotId, label, need, optional keywords, and order.",
-    "Each visualSlot represents exactly one image and exactly one display label. If a visual block needs one image, create one slot. If it needs two images, create two ordered slots. Do not represent multiple intended images with one broad prompt or one shared label.",
-    "Use one visualSlot for each distinct visual meaning that should be represented. For example, upstream / midstream / downstream should be three ordered slots when the slide text uses that order.",
-    "visualSlot.label should be short display text and must not be narrower than visualSlot.need or the likely selected visual. For example, if the slot covers agriculture plus primary processing, do not label it as agriculture only.",
-    "Do not assert a specific country, location, company, person, or named system in visualSlot.label unless the image-library metadata explicitly supports that same entity; otherwise use a generic label such as cotton field example or leave the specific need unresolved.",
-    "visualSlot.need and keywords should describe the visible subject that would satisfy the slot, preferably in concrete English nouns as well as the deck language when useful.",
-    "When several images may support a textMain slide, create several ordered visualSlots; the app will select matching stored assets and the renderer will decide how many fit.",
-    "When no provided image-library asset is likely to fit a needed visual, still describe the need as a visualSlot; the app may leave it unresolved rather than substituting a weak image.",
-    "Image-library presentationMeta is planning material for defining visualSlots only. Do not copy asset references from the candidate list into slideFrames.",
-    "For layout after visual slot selection, landscape images should go in wide/hero visual areas, portrait images should go in vertical/narrow visual areas, and square images should go in balanced visual areas. Avoid defaulting to 50/50 left-right layouts when the selected asset shape would make the image feel cramped or distorted.",
-    "For ordinary scene photos, product photos, factory photos, farm photos, and store photos, prefer adaptiveTextMain unless the slide key message directly asks the viewer to inspect that specific photo or the image's embedded labels/relationships are central to the message.",
-    "If a selected image leaves natural empty space after aspect-preserving placement, use that space for concise annotation only; do not fill it with repeated transcription of the image contents.",
-    "Use layoutIntent.textPlacement right or bottomRight for visualMain annotations when the remaining space is predictable. Use layoutIntent.visualPlacement right, bottom, or rightGrid for textMain supporting visuals.",
-    "Keep text sizes visually consistent across slideFrames. Use renderStyle.textStyle only when a touched block needs explicit sizing; otherwise let the renderer fit text within deck typography limits.",
-    "If the user gives a revision instruction, preserve reusable frame choices where valid and update the affected slideFrame fields.",
-    "Do not invent facts missing from the material. Put missing material in MISSING_INFO.",
-    mode === "create"
-      ? "For initial creation, use generic frames but keep the deck broad enough that it can be reduced later."
-      : "For updates, keep the existing deckFrame and slideFrames as the base, modify only the fields directly requested by the user, and return the complete valid deckFrame + slideFrames JSON.",
-  ];
-}
 
 function findBlock(result: TaskResult | null, names: string[]) {
   if (!result) return [];
