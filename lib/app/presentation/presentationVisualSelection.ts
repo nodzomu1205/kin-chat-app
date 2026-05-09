@@ -19,6 +19,11 @@ import type {
   CandidateScore,
   PresentationVisualSlotNormalizedTextMap,
 } from "@/lib/app/presentation/presentationVisualSelectionScoring";
+import {
+  hasSelectedVisualImageIds,
+  hasUserConfirmedVisualSelection,
+  normalizeSlots,
+} from "@/lib/app/presentation/presentationVisualSelectionState";
 
 export {
   presentationVisualSlotMatchKey,
@@ -213,36 +218,6 @@ function resolveVisualRequestSlots(
       showBrief: true,
     },
   };
-}
-
-function hasUserConfirmedVisualSelection(visual: PresentationTaskVisualRequest) {
-  const selectedIds = selectedVisualImageIdSet(visual);
-  if (selectedIds.size === 0) return false;
-  return (visual.selectionMatches || []).some(
-    (match) =>
-      match.status === "selected" &&
-      !!match.imageId?.trim() &&
-      selectedIds.has(match.imageId.trim())
-  );
-}
-
-function hasSelectedVisualImageIds(visual: PresentationTaskVisualRequest) {
-  return selectedVisualImageIdSet(visual).size > 0;
-}
-
-function selectedVisualImageIdSet(visual: PresentationTaskVisualRequest) {
-  return new Set(
-    [visual.preferredImageId, ...(visual.candidateImageIds || [])]
-      .filter((imageId): imageId is string => !!imageId?.trim())
-      .map((imageId) => imageId.trim())
-  );
-}
-
-function normalizeSlots(slots: PresentationTaskVisualSlot[] | undefined) {
-  return (slots || [])
-    .filter((slot) => slot.need.trim() || slot.label.trim())
-    .slice()
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
 function deriveVisualSlotsFromFrame(
