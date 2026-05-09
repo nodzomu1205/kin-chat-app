@@ -7,6 +7,12 @@ import {
   emptyStructuredSlideContent,
   syncStructuredSlideContent,
 } from "@/lib/app/presentation/slidePartsStructuredContent";
+import {
+  arrayValue,
+  numberValue,
+  objectValue,
+  stringValue,
+} from "@/lib/app/presentation/slidePartsJsonValues";
 
 export const SLIDE_PART_ROLES = {
   title: ["タイトル", "title"],
@@ -86,24 +92,6 @@ function buildSlideFromParts(args: {
   slide.keyVisual = slideDisplayVisual(slide);
   syncStructuredSlideContent(slide);
   return slide;
-}
-
-function objectValue(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function stringValue(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function numberValue(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function arrayValue(value: unknown) {
-  return Array.isArray(value) ? value : [];
 }
 
 function extractJsonCandidate(lines: string[]) {
