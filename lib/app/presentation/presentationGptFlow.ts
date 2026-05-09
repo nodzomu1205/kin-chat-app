@@ -26,6 +26,7 @@ import {
   mergePresentationPlanVisualSelections,
 } from "@/lib/app/presentation/presentationVisualSelectionMerge";
 import { buildPresentationVisualResolutionMessage } from "@/lib/app/presentation/presentationVisualResolutionMessage";
+import { appendPresentationAssistantMessage } from "@/lib/app/presentation/presentationAssistantMessages";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
 } from "@/lib/app/presentation/presentationPlanChatDisplay";
@@ -190,52 +191,6 @@ async function runRenderPresentationPptxFlow(args: {
   }
 
   throw new Error(`Presentation plan document not found: ${args.documentId}`);
-}
-
-function appendPresentationAssistantMessage(args: {
-  flowArgs: SendToGptFlowStepArgs;
-  text: string;
-  presentationPlan?: PresentationTaskPlan;
-}) {
-  const message = createPresentationAssistantMessage({
-    text: args.text,
-    presentationPlan: args.presentationPlan,
-  });
-  appendPresentationAssistantMessageToSetter({
-    setGptMessages: args.flowArgs.setGptMessages,
-    message,
-  });
-  const currentRecent = args.flowArgs.gptStateRef.current.recentMessages || [];
-  const recentLimit = args.flowArgs.chatRecentLimit || 20;
-  args.flowArgs.gptStateRef.current = {
-    ...args.flowArgs.gptStateRef.current,
-    recentMessages: [...currentRecent, message].slice(-recentLimit),
-  };
-}
-
-function appendPresentationAssistantMessageToSetter(args: {
-  setGptMessages: SendToGptFlowStepArgs["setGptMessages"];
-  message: Message;
-}) {
-  args.setGptMessages((prev) => [...prev, args.message]);
-}
-
-function createPresentationAssistantMessage(args: {
-  text: string;
-  presentationPlan?: PresentationTaskPlan;
-}): Message {
-  return {
-    id: generateId(),
-    role: "gpt",
-    text: args.text,
-    meta: args.presentationPlan
-      ? {
-          kind: "task_info",
-          sourceType: "manual",
-          presentationPlan: args.presentationPlan,
-        }
-      : undefined,
-  };
 }
 
 function saveRecentPresentationPlanByDocumentId(args: {
