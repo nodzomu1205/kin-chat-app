@@ -1,11 +1,11 @@
 import { generateId } from "@/lib/shared/uuid";
 import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
 import {
-  buildPresentationTaskPlan,
   buildFramePresentationSpecFromTaskPlan,
   buildPresentationCommandLink,
   buildPresentationTaskStructuredInput,
   buildPresentationTaskPlanFromText,
+  buildPresentationTaskPlan,
   formatPresentationTaskPlanText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
 import { findPresentationPlanByDocumentId } from "@/lib/app/presentation/presentationPlanLibrary";
@@ -17,13 +17,7 @@ import {
   buildPresentationImageLibraryContext,
   getPresentationImageLibraryCandidates,
 } from "@/lib/app/presentation/presentationImageLibrary";
-import {
-  collectFrameSpecPreferredImageIds,
-  hydratePresentationLibraryImageAssets,
-} from "@/lib/app/presentation/presentationRenderImages";
-import {
-  renderPresentationPptx,
-} from "@/lib/app/presentation/presentationRenderClient";
+import { renderFramePresentationPptx } from "@/lib/app/presentation/presentationRenderFlow";
 import {
   applyPresentationVisualSelections,
   parsePresentationVisualSelectionCommand,
@@ -35,7 +29,6 @@ import { buildPresentationVisualResolutionMessage } from "@/lib/app/presentation
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
 } from "@/lib/app/presentation/presentationPlanChatDisplay";
-import { normalizeImageGenerationUsage } from "@/lib/app/image/imageDisplayText";
 import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlowRequest";
 import {
   applySendToGptRequestStart,
@@ -167,23 +160,11 @@ async function runRenderPresentationPptxFlow(args: {
     if (!frameSpec) {
       throw new Error(`Presentation plan is not renderable: ${args.documentId}`);
     }
-    const selectedImageIds = collectFrameSpecPreferredImageIds(frameSpec);
-    const shouldHydrateLibraryImages = selectedImageIds.size > 0;
-    const output = await renderPresentationPptx({
+    const output = await renderFramePresentationPptx({
       documentId: args.documentId,
       frameSpec,
-      generateImages: shouldHydrateLibraryImages,
-      imageMode: selectedImageIds.size > 0 ? "library" : undefined,
-      libraryImageAssets: await hydratePresentationLibraryImageAssets({
-        flowArgs: args.flowArgs,
-        frameSpec,
-        onlyRequiredImageAssets: true,
-      }),
+      flowArgs: args.flowArgs,
     });
-    applyGeneratedImageUsage(
-      output.generatedImages,
-      args.flowArgs.applyImageUsage
-    );
     const updatedPlan = {
       ...planSource.plan,
       latestPptx: output,
@@ -209,18 +190,6 @@ async function runRenderPresentationPptxFlow(args: {
   }
 
   throw new Error(`Presentation plan document not found: ${args.documentId}`);
-}
-
-function applyGeneratedImageUsage(
-  generatedImages: Array<{
-    usage?: import("@/lib/server/presentation/imageGeneration").ImageGenerationUsage;
-  }> | undefined,
-  applyImageUsage?: SendToGptFlowStepArgs["applyImageUsage"]
-) {
-  for (const image of generatedImages || []) {
-    const usage = normalizeImageGenerationUsage(image.usage);
-    if (usage) applyImageUsage?.(usage);
-  }
 }
 
 function appendPresentationAssistantMessage(args: {
