@@ -9,6 +9,10 @@ import {
   normalizeText,
   tokenize,
 } from "@/lib/app/presentation/presentationVisualText";
+import {
+  normalizedTextContainsAlias,
+  requiredNamedPhraseGroupsForSlot,
+} from "@/lib/app/presentation/presentationVisualEntityEvidence";
 
 export { presentationVisualSlotMatchKey } from "@/lib/app/presentation/presentationVisualSlotKeys";
 export {
@@ -179,49 +183,4 @@ const BROAD_MATCH_TERMS = new Set([
   "risks",
   "supply",
   "chain",
-]);
-
-function requiredNamedPhraseGroupsForSlot(
-  slot: PresentationTaskVisualSlot,
-  normalizedSlotTexts: PresentationVisualSlotNormalizedTextMap | undefined
-) {
-  const rawText = normalizedSlotTexts?.[presentationVisualSlotMatchKey(slot)] || "";
-  const quoted = Array.from(rawText.matchAll(/["'`]([^"'`]{2,40})["'`]/g))
-    .map((match) => match[1]?.trim())
-    .filter((value): value is string => !!value && !isGenericNamedPhrase(value));
-  const acronyms = Array.from(rawText.matchAll(/\b[A-Z][A-Z0-9&.-]{1,12}\b/g))
-    .map((match) => match[0]?.trim())
-    .filter(
-      (value): value is string =>
-        !!value && !isGenericNamedPhrase(value)
-    );
-  return Array.from(new Set([...quoted, ...acronyms])).map((value) => [value]);
-}
-
-function normalizedTextContainsAlias(normalizedText: string, alias: string) {
-  const normalizedAlias = normalizeText(alias);
-  if (/^[a-z0-9.]+$/i.test(normalizedAlias) && normalizedAlias.length <= 3) {
-    return new RegExp(`(^|[^a-z0-9])${escapeRegExp(normalizedAlias)}([^a-z0-9]|$)`, "i")
-      .test(normalizedText);
-  }
-  return normalizedText.includes(normalizedAlias);
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function isGenericNamedPhrase(value: string) {
-  return GENERIC_NAMED_PHRASES.has(normalizeText(value));
-}
-
-const GENERIC_NAMED_PHRASES = new Set([
-  "ppt",
-  "pptx",
-  "pdf",
-  "json",
-  "id",
-  "image",
-  "photo",
-  "visual",
 ]);
