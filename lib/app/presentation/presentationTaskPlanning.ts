@@ -10,7 +10,6 @@ import type {
   PresentationSpec,
 } from "@/lib/app/presentation/presentationTypes";
 import {
-  cleanBulletPrefix,
   formatPresentationSlidePlanLines,
   layoutItemBullets,
   parsePresentationTaskSlidesFromJsonLines,
@@ -32,6 +31,14 @@ import {
   normalizePresentationVisualMainPolicy,
   syncDeckFrameSlideCount,
 } from "@/lib/app/presentation/presentationPlanValidation";
+import {
+  extractSummaryFromText,
+  findBlock,
+  findExactBlock,
+  findExactSection,
+  findSection,
+  parseSectionLines,
+} from "@/lib/app/presentation/presentationTaskSections";
 
 export {
   buildPresentationTaskConstraints,
@@ -41,73 +48,6 @@ export {
   stripPresentationTaskMarker,
 } from "@/lib/app/presentation/presentationTaskInput";
 const DOCUMENT_ID_LINE = /^Document ID\s*:\s*(.+)$/im;
-
-function findBlock(result: TaskResult | null, names: string[]) {
-  if (!result) return [];
-  const normalizedNames = names.map((name) => name.toLowerCase());
-  return (
-    result.detailBlocks.find((block) =>
-      normalizedNames.some((name) => block.title.toLowerCase().includes(name))
-    )?.body || []
-  );
-}
-
-function findExactBlock(result: TaskResult | null, names: string[]) {
-  if (!result) return [];
-  const normalizedNames = names.map((name) => name.toLowerCase());
-  return (
-    result.detailBlocks.find((block) =>
-      normalizedNames.some((name) => block.title.toLowerCase() === name)
-    )?.body || []
-  );
-}
-
-function parseSectionLines(text: string) {
-  const sections: Record<string, string[]> = {};
-  let current = "";
-  text.split(/\r?\n/).forEach((rawLine) => {
-    const line = rawLine.trim();
-    if (!line) return;
-    const sectionMatch = line.match(/^\u25a0\s*(.+)$/u);
-    if (sectionMatch) {
-      current = sectionMatch[1].trim();
-      sections[current] = sections[current] || [];
-      return;
-    }
-    if (current && line.startsWith("-")) {
-      sections[current].push(cleanBulletPrefix(line));
-    }
-  });
-  return sections;
-}
-
-function findSection(sections: Record<string, string[]>, names: string[]) {
-  const normalizedNames = names.map((name) => name.toLowerCase());
-  const entry = Object.entries(sections).find(([title]) =>
-    normalizedNames.some((name) => title.toLowerCase().includes(name))
-  );
-  return entry?.[1] || [];
-}
-
-function findExactSection(sections: Record<string, string[]>, names: string[]) {
-  const normalizedNames = names.map((name) => name.toLowerCase());
-  const entry = Object.entries(sections).find(([title]) => {
-    const normalizedTitle = title.toLowerCase();
-    return normalizedNames.some((name) => normalizedTitle === name);
-  });
-  return entry?.[1] || [];
-}
-
-function extractSummaryFromText(text: string) {
-  return (
-    text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .find((line) => line.startsWith("概要:"))
-      ?.replace(/^概要:\s*/, "")
-      .trim() || ""
-  );
-}
 
 export function buildPresentationTaskPlanFromText(args: {
   title: string;
