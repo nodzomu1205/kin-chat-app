@@ -4,8 +4,17 @@ import type {
 } from "@/types/task";
 import type { PresentationImageLibraryCandidate } from "@/lib/app/presentation/presentationImageLibrary";
 import { presentationVisualSlotMatchKey } from "@/lib/app/presentation/presentationVisualSlotKeys";
+import {
+  candidateLabel,
+  normalizeText,
+  tokenize,
+} from "@/lib/app/presentation/presentationVisualText";
 
 export { presentationVisualSlotMatchKey } from "@/lib/app/presentation/presentationVisualSlotKeys";
+export {
+  candidateLabel,
+  tokenize,
+} from "@/lib/app/presentation/presentationVisualText";
 
 export type CandidateScore = {
   candidate: PresentationImageLibraryCandidate;
@@ -148,51 +157,10 @@ function candidateText(
     .join(" ");
 }
 
-export function candidateLabel(candidate: PresentationImageLibraryCandidate) {
-  return (
-    candidate.presentationMeta?.visibleSubjects.find(Boolean) ||
-    candidate.presentationMeta?.embeddedTextItems.find((item) => item.text.trim())?.text ||
-    candidate.title ||
-    candidate.imageId
-  );
-}
-
-export function tokenize(value: string) {
-  const normalized = normalizeText(value);
-  const words = normalized
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((term) => term.length >= 2 && !STOP_TERMS.has(term));
-  const cjkBigrams = Array.from(normalized.matchAll(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]{2,}/gu))
-    .flatMap((match) => bigrams(match[0]))
-    .filter((term) => !STOP_TERMS.has(term));
-  return Array.from(new Set([...words, ...cjkBigrams]));
-}
-
-function bigrams(value: string) {
-  const chars = Array.from(value);
-  if (chars.length <= 2) return [value];
-  return chars.slice(0, -1).map((char, index) => `${char}${chars[index + 1]}`);
-}
-
-function normalizeText(value: string) {
-  return value.toLowerCase().normalize("NFKC");
-}
-
 function termScore(term: string, tier: "primary" | "secondary") {
   const base = term.length >= 5 ? 3 : term.length >= 3 ? 2 : 1;
   return tier === "primary" ? base : Math.max(1, base - 1);
 }
-
-const STOP_TERMS = new Set([
-  "and",
-  "for",
-  "the",
-  "with",
-  "image",
-  "photo",
-  "picture",
-  "visual",
-]);
 
 const BROAD_MATCH_TERMS = new Set([
   "cotton",
