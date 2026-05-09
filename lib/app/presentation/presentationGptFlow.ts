@@ -26,6 +26,11 @@ import {
   renderPresentationPptx,
 } from "@/lib/app/presentation/presentationRenderClient";
 import { resolvePresentationVisualSlots } from "@/lib/app/presentation/presentationVisualSelection";
+import {
+  applyPresentationVisualSelections,
+  parsePresentationVisualSelectionCommand,
+  visualResolutionSlots,
+} from "@/lib/app/presentation/presentationVisualSelectionCommands";
 import { requestPresentationVisualSlotNormalizationResult } from "@/lib/app/presentation/presentationVisualNormalization";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
@@ -469,121 +474,6 @@ async function runResolvePresentationVisualsFlow(args: {
   });
 }
 
-type PresentationVisualSelectionCommand = {
-  target: "opening" | "block";
-  slideNumber: number;
-  blockNumber: number;
-  slotNumber?: number;
-  off: boolean;
-  imageIds: string[];
-};
-
-function parsePresentationVisualSelectionCommand(
-  body: string
-): PresentationVisualSelectionCommand[] {
-  return body
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .flatMap((line): PresentationVisualSelectionCommand[] => {
-      const openingMatch = line.match(/^Opening\s+slide\s*\/\s*visual(?:\s*\/\s*slot\s+(\d+))?\s*:\s*(.*)$/i);
-      if (openingMatch) {
-        const rawValue = openingMatch[2]?.trim() || "";
-        return [
-          {
-            target: "opening" as const,
-            slideNumber: 0,
-            blockNumber: 0,
-            slotNumber: openingMatch[1] ? Number(openingMatch[1]) : undefined,
-            off: /^off$/i.test(rawValue),
-            imageIds: /^off$/i.test(rawValue)
-              ? []
-              : rawValue
-                  .split(/[,\s]+/)
-                  .map((item) => item.trim())
-                  .filter(Boolean),
-          },
-        ];
-      }
-      const match = line.match(/^Slide\s+(\d+)\s*\/\s*block\s+(\d+)(?:\s*\/\s*slot\s+(\d+))?\s*:\s*(.*)$/i);
-      if (!match) return [];
-      const rawValue = match[4]?.trim() || "";
-      return [
-        {
-          target: "block" as const,
-          slideNumber: Number(match[1]),
-          blockNumber: Number(match[2]),
-          slotNumber: match[3] ? Number(match[3]) : undefined,
-          off: /^off$/i.test(rawValue),
-          imageIds: /^off$/i.test(rawValue)
-            ? []
-            : rawValue
-                .split(/[,\s]+/)
-                .map((item) => item.trim())
-                .filter(Boolean),
-        },
-      ];
-    });
-}
-
-function applyPresentationVisualSelections(
-  plan: PresentationTaskPlan,
-  selections: ReturnType<typeof parsePresentationVisualSelectionCommand>
-): PresentationTaskPlan {
-  const openingSelections = selections.filter((item) => item.target === "opening");
-  const openingBlockSelection = openingSelections.find((item) => !item.slotNumber);
-  const updatedPlan: PresentationTaskPlan = {
-    ...plan,
-    updatedAt: new Date().toISOString(),
-    deckFrame:
-      openingSelections.length > 0 && plan.deckFrame?.openingSlide?.visualRequest
-        ? {
-            ...plan.deckFrame,
-            openingSlide: {
-              ...plan.deckFrame.openingSlide,
-              visualRequest: openingBlockSelection
-                ? applyVisualImageSelection(
-                    plan.deckFrame.openingSlide.visualRequest,
-                    openingBlockSelection
-                  )
-                : applyVisualSlotSelections(
-                    plan.deckFrame.openingSlide.visualRequest,
-                    openingSelections
-                  ),
-            },
-          }
-        : plan.deckFrame,
-    slideFrames: plan.slideFrames.map((frame) => {
-      const blocks = frame.blocks.map((block, index) => {
-        const blockSelections = selections.filter(
-          (item) =>
-            item.target === "block" &&
-            item.slideNumber === frame.slideNumber && item.blockNumber === index + 1
-        );
-        if (blockSelections.length === 0 || !block.visualRequest) return block;
-        const blockSelection = blockSelections.find((item) => !item.slotNumber);
-        return {
-          ...block,
-          visualRequest: blockSelection
-            ? applyVisualImageSelection(block.visualRequest, blockSelection)
-            : applyVisualSlotSelections(block.visualRequest, blockSelections),
-        };
-      });
-      const primaryImageId =
-        blocks.find((block) => block.visualRequest?.preferredImageId)?.visualRequest
-          ?.preferredImageId || undefined;
-      return {
-        ...frame,
-        blocks,
-        layoutIntent: {
-          ...frame.layoutIntent,
-          primaryImageId,
-        },
-      };
-    }),
-  };
-  return updatedPlan;
-}
-
 function mergeVisualSelectionProposal<
   T extends NonNullable<
     PresentationTaskSlideFrame["blocks"][number]["visualRequest"]
@@ -605,107 +495,6 @@ function mergeVisualSelectionProposal<
     usagePolicy: proposedVisual.usagePolicy,
     maxVisualItems: proposedVisual.maxVisualItems,
     asset: proposedVisual.asset,
-  };
-}
-
-function applyVisualImageSelection(
-  visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>,
-  selection: ReturnType<typeof parsePresentationVisualSelectionCommand>[number]
-) {
-  if (selection.off) {
-    return {
-      ...visual,
-      preferredImageId: undefined,
-      candidateImageIds: undefined,
-      selectionMatches: undefined,
-      asset: undefined,
-    };
-  }
-  if (selection.imageIds.length === 0) return visual;
-  const firstSlot = (visual.visualSlots || [])
-    .slice()
-    .sort((a, b) => (a.order || 0) - (b.order || 0))[0];
-  const label = firstSlot?.label || visual.labels?.[0] || visual.brief || "visual";
-  const slotId = firstSlot?.slotId || label;
-  const need = firstSlot?.need || visual.prompt || visual.brief || label;
-  const usagePolicy =
-    selection.imageIds.length > 1
-      ? ("useOneOrMore" as const)
-      : ("useOneBest" as const);
-  return {
-    ...visual,
-    preferredImageId: selection.imageIds[0],
-    candidateImageIds: selection.imageIds,
-    usagePolicy,
-    maxVisualItems: selection.imageIds.length,
-    selectionMatches: selection.imageIds.map((imageId) => ({
-      slotId,
-      label,
-      need,
-      status: "selected" as const,
-      imageId,
-      score: 1,
-      threshold: 1,
-    })),
-  };
-}
-
-function applyVisualSlotSelections(
-  visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>,
-  selections: ReturnType<typeof parsePresentationVisualSelectionCommand>
-) {
-  const slots = visualResolutionSlots(visual);
-  if (slots.length === 0) return visual;
-  const selectedSlotNumbers = new Set(
-    selections
-      .map((selection) => selection.slotNumber)
-      .filter((slotNumber): slotNumber is number => typeof slotNumber === "number")
-  );
-  const preservedMatches = (visual.selectionMatches || []).filter((match) => {
-    const slotIndex = slots.findIndex((slot) => slot.slotId === match.slotId);
-    return slotIndex < 0 || !selectedSlotNumbers.has(slotIndex + 1);
-  });
-  const nextMatches = [...preservedMatches];
-  for (const selection of selections) {
-    if (!selection.slotNumber) continue;
-    const slot = slots[selection.slotNumber - 1];
-    if (!slot || selection.off) continue;
-    const imageId = selection.imageIds[0]?.trim();
-    if (!imageId) continue;
-    nextMatches.push({
-      slotId: slot.slotId,
-      label: slot.label,
-      need: slot.need,
-      status: "selected" as const,
-      imageId,
-      score: 1,
-      threshold: 1,
-    });
-  }
-  const selectedMatches = slots.flatMap((slot) => {
-    const match = nextMatches.find(
-      (item) => item.slotId === slot.slotId && item.status === "selected" && item.imageId
-    );
-    return match ? [match] : [];
-  });
-  const imageIds = selectedMatches.map((match) => match.imageId as string);
-  return {
-    ...visual,
-    preferredImageId: imageIds[0],
-    candidateImageIds: imageIds.length > 0 ? imageIds : undefined,
-    usagePolicy:
-      imageIds.length > 1
-        ? ("useOneOrMore" as const)
-        : imageIds.length === 1
-          ? ("useOneBest" as const)
-          : undefined,
-    maxVisualItems: imageIds.length > 0 ? imageIds.length : undefined,
-    labels:
-      selectedMatches.length > 0
-        ? selectedMatches.map((match) => match.label).filter(Boolean)
-        : visual.labels,
-    selectionMatches: nextMatches.length > 0 ? nextMatches : undefined,
-    asset: undefined,
   };
 }
 
@@ -1065,24 +854,6 @@ async function appendVisualSlotResolutionLines(
       ])
     );
   }
-}
-
-function visualResolutionSlots(
-  visual: NonNullable<PresentationTaskSlideFrame["blocks"][number]["visualRequest"]>
-) {
-  const slots = (visual.visualSlots || [])
-    .filter((slot) => slot.need.trim() || slot.label.trim())
-    .slice()
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
-  if (slots.length > 0) return slots;
-  return [
-    {
-      slotId: "slot1",
-      label: visual.labels?.[0] || visual.brief || "Visual",
-      need: visual.prompt || visual.brief || "Visual",
-      order: 1,
-    },
-  ];
 }
 
 function visualMatchForSlot(
