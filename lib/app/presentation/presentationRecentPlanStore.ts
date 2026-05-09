@@ -2,6 +2,10 @@ import {
   buildPresentationTaskPlanFromText,
   formatPresentationTaskPlanText,
 } from "@/lib/app/presentation/presentationTaskPlanning";
+import { findPresentationPlanByDocumentId } from "@/lib/app/presentation/presentationPlanLibrary";
+import {
+  mergePresentationPlanVisualSelections,
+} from "@/lib/app/presentation/presentationVisualSelectionMerge";
 import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
 import type { Message } from "@/types/chat";
 import type { PresentationTaskPlan } from "@/types/task";
@@ -78,4 +82,33 @@ export function findRecentPresentationPlanByDocumentId(args: {
 
 export function hasUsablePresentationPlanShape(plan: PresentationTaskPlan) {
   return plan.slideFrames.length > 0;
+}
+
+export function updateExistingPresentationPlanFromRecent(args: {
+  existingPlan: NonNullable<ReturnType<typeof findPresentationPlanByDocumentId>>;
+  recentPlan: PresentationTaskPlan | null;
+  flowArgs: SendToGptFlowStepArgs;
+}) {
+  const plan = args.recentPlan
+    ? {
+        ...mergePresentationPlanVisualSelections({
+          incomingPlan: args.recentPlan,
+          existingPlan: args.existingPlan.plan,
+        }),
+        latestPptx: args.existingPlan.plan.latestPptx || args.recentPlan.latestPptx || null,
+        updatedAt: new Date().toISOString(),
+      }
+    : args.existingPlan.plan;
+  if (args.recentPlan) {
+    args.flowArgs.updateStoredDocument(args.existingPlan.sourceId, {
+      title: args.existingPlan.item.title,
+      text: formatPresentationTaskPlanText(plan),
+      structuredPayload: plan,
+      summary: args.existingPlan.item.summary,
+    });
+  }
+  return {
+    ...args.existingPlan,
+    plan,
+  };
 }

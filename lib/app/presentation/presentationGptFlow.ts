@@ -30,6 +30,7 @@ import {
   findRecentPresentationPlanByDocumentId,
   hasUsablePresentationPlanShape,
   saveRecentPresentationPlanByDocumentId,
+  updateExistingPresentationPlanFromRecent,
 } from "@/lib/app/presentation/presentationRecentPlanStore";
 import {
   buildPresentationTaskPlanTextWithImagePreviews,
@@ -371,33 +372,4 @@ function buildPresentationSaveMessage(args: {
       "Resolve visual blocks",
     ], "run"),
   ].join("\n");
-}
-
-function updateExistingPresentationPlanFromRecent(args: {
-  existingPlan: NonNullable<ReturnType<typeof findPresentationPlanByDocumentId>>;
-  recentPlan: PresentationTaskPlan | null;
-  flowArgs: SendToGptFlowStepArgs;
-}) {
-  const plan = args.recentPlan
-    ? {
-        ...mergePresentationPlanVisualSelections({
-          incomingPlan: args.recentPlan,
-          existingPlan: args.existingPlan.plan,
-        }),
-        latestPptx: args.existingPlan.plan.latestPptx || args.recentPlan.latestPptx || null,
-        updatedAt: new Date().toISOString(),
-      }
-    : args.existingPlan.plan;
-  if (args.recentPlan) {
-    args.flowArgs.updateStoredDocument(args.existingPlan.sourceId, {
-      title: args.existingPlan.item.title,
-      text: formatPresentationTaskPlanText(plan),
-      structuredPayload: plan,
-      summary: args.existingPlan.item.summary,
-    });
-  }
-  return {
-    ...args.existingPlan,
-    plan,
-  };
 }
