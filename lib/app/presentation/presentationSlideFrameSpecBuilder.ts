@@ -1,14 +1,18 @@
 import type {
-  PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
 } from "@/types/task";
 import type {
-  BulletItem,
-  CardContent,
-  ColumnContent,
   PresentationSpec,
   SlideSpec,
 } from "@/lib/app/presentation/presentationTypes";
+import {
+  blockMessage,
+  blockToBullets,
+  blockToCard,
+  blockVisualText,
+  buildColumn,
+  visualBlock,
+} from "@/lib/app/presentation/presentationSlideFrameBlockSpec";
 
 export function buildPresentationSpecFromSlideFrames(args: {
   title: string;
@@ -88,73 +92,6 @@ export function buildSlideSpecFromFrame(frame: PresentationTaskSlideFrame): Slid
     takeaway: frame.blocks.find((block) => block.kind === "callout")?.text,
     notes: frame.speakerIntent,
   };
-}
-
-function buildColumn(
-  block: PresentationTaskSlideBlock | undefined,
-  fallbackHeading: string
-): ColumnContent {
-  if (!block) {
-    return { heading: fallbackHeading, bullets: [{ text: "Content to be refined" }] };
-  }
-  const visualText = blockVisualText(block);
-  if (block.visualRequest) {
-    return {
-      heading: visualText || fallbackHeading,
-      bullets: blockToBullets(block),
-    };
-  }
-  return {
-    heading: block.heading || visualText || fallbackHeading,
-    body: block.text,
-    bullets: blockToBullets(block),
-  };
-}
-
-function blockToCard(block: PresentationTaskSlideBlock): CardContent {
-  const visualText = blockVisualText(block);
-  return {
-    title: block.heading || visualText || block.id,
-    body: block.text || undefined,
-    bullets: blockToBullets(block),
-    kind: block.visualRequest
-      ? "visual"
-      : block.kind === "callout" || block.styleId === "callout"
-        ? "callout"
-        : "text",
-  };
-}
-
-function blockToBullets(block: PresentationTaskSlideBlock | undefined): BulletItem[] {
-  if (!block) return [];
-  const bullets: BulletItem[] = [];
-  (block.items || []).forEach((text) => bullets.push({ text }));
-  if (block.visualRequest?.prompt) {
-    bullets.push({ text: `Prompt: ${block.visualRequest.prompt}`, emphasis: "muted" });
-  } else if (block.visualRequest?.promptNote) {
-    bullets.push({
-      text: `Prompt needed: ${block.visualRequest.promptNote}`,
-      emphasis: "muted",
-    });
-  }
-  if (block.visualRequest?.labels?.length) {
-    bullets.push({ text: `Labels: ${block.visualRequest.labels.join(", ")}`, emphasis: "muted" });
-  }
-  return bullets;
-}
-
-function visualBlock(frame: PresentationTaskSlideFrame) {
-  return frame.blocks.find((block) => block.visualRequest);
-}
-
-function blockMessage(block: PresentationTaskSlideBlock | undefined) {
-  if (!block) return "";
-  return block.text || "";
-}
-
-function blockVisualText(block: PresentationTaskSlideBlock | undefined) {
-  if (!block?.visualRequest) return "";
-  return block.visualRequest.brief || block.visualRequest.prompt || "";
 }
 
 function findStrategyValue(items: string[], key: string) {
