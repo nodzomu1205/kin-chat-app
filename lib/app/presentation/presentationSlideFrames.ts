@@ -3,52 +3,18 @@ import type {
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
 } from "@/types/task";
-import { normalizeDeckFrame } from "@/lib/app/presentation/presentationSlideFrameDeckFrame";
-import { normalizeSlideFrame } from "@/lib/app/presentation/presentationSlideFrameNormalization";
-import { normalizeVisualRequest } from "@/lib/app/presentation/presentationSlideFrameVisualRequest";
-import {
-  arrayValue,
-  objectValue,
-  parseJsonValueFromLines,
-} from "@/lib/app/presentation/presentationSlideFrameValueUtils";
 export {
   PRESENTATION_BLOCK_STYLES,
   PRESENTATION_BOOKEND_FRAMES,
   PRESENTATION_LAYOUT_FRAMES,
   PRESENTATION_MASTER_FRAMES,
 } from "@/lib/app/presentation/presentationSlideFrameDefinitions";
+export {
+  parsePresentationSlideFrameDocumentFromJsonLines,
+  parsePresentationSlideFramesFromJsonLines,
+  type PresentationSlideFrameDocument,
+} from "@/lib/app/presentation/presentationSlideFrameParsing";
 export { buildPresentationSpecFromSlideFrames } from "@/lib/app/presentation/presentationSlideFrameSpecBuilder";
-
-export type PresentationSlideFrameDocument = {
-  deckFrame?: PresentationTaskDeckFrame;
-  slideFrames: PresentationTaskSlideFrame[];
-};
-
-export function parsePresentationSlideFrameDocumentFromJsonLines(
-  lines: string[]
-): PresentationSlideFrameDocument {
-  const parsed = parseJsonValueFromLines(lines);
-  if (!parsed) return { slideFrames: [] };
-
-  const root = objectValue(parsed);
-  const slideValues = root
-    ? arrayValue(root.slideFrames || root.slides)
-    : arrayValue(parsed);
-  const slideFrames = slideValues
-    .map((value, index) => normalizeSlideFrame(value, index))
-    .filter((frame): frame is PresentationTaskSlideFrame => !!frame);
-
-  return {
-    deckFrame: normalizeDeckFrame(root, slideFrames, normalizeVisualRequest),
-    slideFrames,
-  };
-}
-
-export function parsePresentationSlideFramesFromJsonLines(
-  lines: string[]
-): PresentationTaskSlideFrame[] {
-  return parsePresentationSlideFrameDocumentFromJsonLines(lines).slideFrames;
-}
 
 export function formatPresentationSlideFramePlanLines(
   frames: PresentationTaskSlideFrame[],
