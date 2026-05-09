@@ -4,6 +4,7 @@ import type {
   PresentationTaskVisualRequest,
 } from "@/types/task";
 import { findRepresentativeVisual } from "@/lib/app/presentation/presentationDeckRepresentativeVisual";
+import { isBodySlideSummaryReuse } from "@/lib/app/presentation/presentationDeckSummaryReuse";
 
 export function syncDeckFrameSlideCount(
   deckFrame: PresentationTaskDeckFrame | undefined,
@@ -190,21 +191,6 @@ function isSummaryLikeFrame(frame: PresentationTaskSlideFrame | undefined) {
     "closing",
   ];
   return summaryTerms.some((term) => text.includes(term));
-}
-
-function isBodySlideSummaryReuse(
-  title: string | undefined,
-  frames: PresentationTaskSlideFrame[]
-) {
-  const normalizedTitle = title?.trim();
-  if (!normalizedTitle) return false;
-  return frames.some((frame) => {
-    const textBlocks = frame.blocks.filter((block) => !block.visualRequest);
-    return (
-      frame.title.trim() === normalizedTitle ||
-      textBlocks.some((block) => block.heading?.trim() === normalizedTitle)
-    );
-  });
 }
 
 function summarizeFinalFrame(frame: PresentationTaskSlideFrame | undefined) {
