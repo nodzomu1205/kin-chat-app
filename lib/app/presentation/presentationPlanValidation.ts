@@ -3,7 +3,6 @@
 } from "@/types/task";
 import {
   mergeConsecutiveDuplicateVisualOnlyFrames,
-  normalizeFrameTitle,
   resolveVisualImageId,
 } from "@/lib/app/presentation/presentationFrameTitleNormalization";
 import {
@@ -15,9 +14,9 @@ import {
 import {
   hasLargeNeighboringText,
   isDenseTextBlock,
-  normalizeDenseHeroDetailsFrames,
 } from "@/lib/app/presentation/presentationDenseFrameNormalization";
 import { inferAdaptiveSlideRole } from "@/lib/app/presentation/presentationAdaptiveSlideRole";
+import { finalizeFrameNormalization } from "@/lib/app/presentation/presentationFrameFinalization";
 
 export { syncDeckFrameSlideCount } from "@/lib/app/presentation/presentationDeckFrameValidation";
 
@@ -57,16 +56,6 @@ export function normalizePresentationVisualMainPolicy(
         });
 
   return finalizeFrameNormalization(applyAdaptiveLayoutPolicy(visualNormalized));
-}
-
-function finalizeFrameNormalization(
-  frames: PresentationTaskSlideFrame[]
-): PresentationTaskSlideFrame[] {
-  return normalizeDenseHeroDetailsFrames(frames).map((frame, index) => ({
-    ...frame,
-    slideNumber: index + 1,
-    title: normalizeFrameTitle(frame.title),
-  }));
 }
 
 function applyAdaptiveLayoutPolicy(
