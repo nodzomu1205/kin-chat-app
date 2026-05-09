@@ -3,6 +3,10 @@ import type {
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
 } from "@/types/task";
+import {
+  sanitizeReadableSlideFrameTitle as sanitizeReadableSlideFrameTitleValue,
+  sanitizeSlideFrameTitle as sanitizeSlideFrameTitleValue,
+} from "@/lib/app/presentation/presentationSlideFrameNormalization";
 export {
   PRESENTATION_BLOCK_STYLES,
   PRESENTATION_BOOKEND_FRAMES,
@@ -180,6 +184,9 @@ function selectedImageIdForVisualSlot(
 }
 
 export function sanitizeReadableSlideFrameTitle(value: string) {
+  return sanitizeReadableSlideFrameTitleValue(value);
+  // Legacy replacements below are intentionally left untouched until the
+  // display formatting block is moved, to avoid editing mojibake text in place.
   return value
     .replace(/\s*[（(]\s*見出し\s*なし\s*[）)]\s*/g, "")
     .replace(/\s*[（(]\s*heading\s*none\s*[）)]\s*/gi, "")
@@ -187,6 +194,9 @@ export function sanitizeReadableSlideFrameTitle(value: string) {
 }
 
 export function sanitizeSlideFrameTitle(value: string) {
+  return sanitizeSlideFrameTitleValue(value);
+  // Legacy replacements below are intentionally left untouched until the
+  // display formatting block is moved, to avoid editing mojibake text in place.
   return value
     .replace(/\s*[（(]\s*見出し\s*なし\s*[）)]\s*/g, "")
     .replace(/\s*[・・]\s*heading\s*none\s*[・・]\s*/gi, "")
