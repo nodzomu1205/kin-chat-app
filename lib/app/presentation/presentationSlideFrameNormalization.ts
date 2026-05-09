@@ -1,12 +1,10 @@
 import type {
-  PresentationTaskLayoutFrameId,
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
 } from "@/types/task";
 import {
   supportedBlockKind,
   supportedBlockStyleId,
-  supportedLayoutFrameId,
   supportedMasterFrameId,
   supportedNotePolicy,
   supportedSlideRole,
@@ -21,6 +19,7 @@ import {
   normalizeBlockDisplayFields,
   normalizeBlockIds,
 } from "@/lib/app/presentation/presentationSlideFrameBlockNormalization";
+import { normalizeLayoutFrameId } from "@/lib/app/presentation/presentationSlideFrameLayout";
 import {
   arrayValue,
   numberValue,
@@ -28,22 +27,6 @@ import {
   stringArray,
   stringValue,
 } from "@/lib/app/presentation/presentationSlideFrameValueUtils";
-
-const LAYOUT_BLOCK_LIMITS: Record<
-  PresentationTaskLayoutFrameId,
-  { min: number; max: number }
-> = {
-  singleCenter: { min: 1, max: 1 },
-  titleBody: { min: 1, max: 1 },
-  leftRight50: { min: 2, max: 2 },
-  visualLeftTextRight: { min: 2, max: 2 },
-  textLeftVisualRight: { min: 2, max: 2 },
-  heroTopDetailsBottom: { min: 3, max: 3 },
-  threeColumns: { min: 3, max: 3 },
-  twoByTwoGrid: { min: 4, max: 4 },
-  adaptiveVisualMain: { min: 1, max: 7 },
-  adaptiveTextMain: { min: 1, max: 7 },
-};
 
 export function normalizeSlideFrame(
   value: unknown,
@@ -111,28 +94,6 @@ function normalizeLayoutIntent(
   if (visualPlacement) layoutIntent.visualPlacement = visualPlacement;
   if (notePolicy) layoutIntent.notePolicy = notePolicy;
   return Object.keys(layoutIntent).length > 0 ? layoutIntent : undefined;
-}
-
-function normalizeLayoutFrameId(
-  value: unknown,
-  blocks: PresentationTaskSlideBlock[]
-): PresentationTaskLayoutFrameId {
-  const requested = supportedLayoutFrameId(value);
-  const limits = LAYOUT_BLOCK_LIMITS[requested];
-  if (blocks.length >= limits.min && blocks.length <= limits.max) {
-    return requested;
-  }
-  if (blocks.length === 1) return "titleBody";
-  if (blocks.length === 2) {
-    const firstVisual = !!blocks[0]?.visualRequest;
-    const secondVisual = !!blocks[1]?.visualRequest;
-    if (firstVisual && !secondVisual) return "visualLeftTextRight";
-    if (!firstVisual && secondVisual) return "textLeftVisualRight";
-    return "leftRight50";
-  }
-  if (blocks.length === 3) return "threeColumns";
-  if (blocks.length === 4) return "twoByTwoGrid";
-  return "titleBody";
 }
 
 export function sanitizeReadableSlideFrameTitle(value: string) {
