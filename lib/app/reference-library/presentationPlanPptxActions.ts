@@ -1,9 +1,7 @@
 import type { ReferenceLibraryItem, StoredDocument } from "@/types/chat";
 import type { PresentationTaskPlan } from "@/types/task";
-import {
-  collectFrameSpecPreferredImageIds,
-  hydratePresentationLibraryImageAssets,
-} from "@/lib/app/presentation/presentationRenderImages";
+import { hydratePresentationLibraryImageAssets } from "@/lib/app/presentation/presentationRenderImages";
+import { collectFrameSpecPreferredImageIds } from "@/lib/app/presentation/presentationRenderImageIds";
 import {
   renderPresentationPptx,
 } from "@/lib/app/presentation/presentationRenderClient";

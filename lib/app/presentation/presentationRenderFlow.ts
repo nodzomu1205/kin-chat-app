@@ -1,7 +1,5 @@
-import {
-  collectFrameSpecPreferredImageIds,
-  hydratePresentationLibraryImageAssets,
-} from "@/lib/app/presentation/presentationRenderImages";
+import { hydratePresentationLibraryImageAssets } from "@/lib/app/presentation/presentationRenderImages";
+import { collectFrameSpecPreferredImageIds } from "@/lib/app/presentation/presentationRenderImageIds";
 import { renderPresentationPptx } from "@/lib/app/presentation/presentationRenderClient";
 import { normalizeImageGenerationUsage } from "@/lib/app/image/imageDisplayText";
 import type { SendToGptFlowStepArgs } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
