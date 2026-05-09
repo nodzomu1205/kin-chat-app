@@ -4,6 +4,8 @@ import React from "react";
 import { pillButton } from "@/components/panels/gpt/gptPanelStyles";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import type { LibraryDrawerProps } from "@/components/panels/gpt/LibraryDrawerTypes";
+import { isPresentationTaskPlan } from "@/lib/app/presentation/presentationPlanPortable";
+import { syncPresentationPlanStructuredPayloadFromEditedText } from "@/lib/app/presentation/presentationPlanTextEditSync";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
 export default function LibraryItemStoredDocumentEditor({
@@ -91,11 +93,22 @@ export default function LibraryItemStoredDocumentEditor({
                 rawText: draftText,
               });
             } else {
-              onSaveStoredDocument(item.sourceId, {
+              const structuredPayload =
+                item.artifactType === "presentation_plan" &&
+                isPresentationTaskPlan(item.structuredPayload)
+                  ? syncPresentationPlanStructuredPayloadFromEditedText({
+                      plan: item.structuredPayload,
+                      title: draftTitle.trim() || item.title,
+                      text: draftText,
+                    })
+                  : null;
+              const patch = {
                 title: draftTitle.trim() || item.title,
                 summary: draftSummary.trim(),
                 text: draftText,
-              });
+                ...(structuredPayload ? { structuredPayload } : {}),
+              };
+              onSaveStoredDocument(item.sourceId, patch);
             }
             setEditingId("");
           }}

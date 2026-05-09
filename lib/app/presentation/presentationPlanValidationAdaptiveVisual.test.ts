@@ -89,6 +89,47 @@ describe("presentationPlanValidation adaptive visual layout", () => {
     });
   });
 
+  it("replaces generic adaptive visual-main annotation text with the slide intent", () => {
+    const frames: PresentationTaskSlideFrame[] = [
+      {
+        slideNumber: 1,
+        title: "イラン情勢の要点",
+        masterFrameId: "titleLineFooter",
+        layoutFrameId: "adaptiveVisualMain",
+        slideRole: "visualMain",
+        speakerIntent:
+          "核協議の停滞と周辺国への影響を結び、外交・安全保障・市場の緊張が同時に高まっている点を示す。",
+        blocks: [
+          {
+            id: "visual1",
+            kind: "visual",
+            styleId: "visualContain",
+            visualRequest: {
+              type: "map",
+              brief: "イランと周辺地域の緊張関係",
+            },
+          },
+          {
+            id: "notes",
+            kind: "textStack",
+            styleId: "textStackTopLeft",
+            text: "これはイラン情勢について解説しています。",
+          },
+        ],
+      },
+    ];
+
+    const normalized = normalizePresentationVisualMainPolicy(frames);
+
+    expect(normalized[0].blocks[1]).toMatchObject({
+      id: "annotation",
+      kind: "textStack",
+      styleId: "textStackTopLeft",
+      text: "核協議の停滞と周辺国への影響を結び、外交・安全保障・市場の緊張が同時に高まっている点を示す。",
+      renderStyle: { showHeading: false },
+    });
+  });
+
   it("keeps all visual blocks selectable and normalizes annotation to text only", () => {
     const frames: PresentationTaskSlideFrame[] = [
       {
