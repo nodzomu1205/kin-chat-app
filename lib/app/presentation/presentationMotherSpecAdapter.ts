@@ -3,10 +3,14 @@ import type {
   PresentationDensity,
   PresentationMotherBody,
   PresentationMotherSpec,
-  PresentationMotherVisual,
   PresentationSpec,
   SlideSpec,
 } from "@/lib/app/presentation/presentationTypes";
+import {
+  hasVisualRequest,
+  visualHeading,
+  visualLabel,
+} from "@/lib/app/presentation/presentationMotherVisualHelpers";
 
 export function adaptMotherSpecToPresentationSpec(
   motherSpec: PresentationMotherSpec,
@@ -177,22 +181,4 @@ function limitItems(
     dense: { message: 8, visual: 4 },
   };
   return items.slice(0, limits[renderDensity][kind]);
-}
-
-function visualLabel(visual: PresentationMotherVisual) {
-  if (visual.type === "none" && !visual.brief) return "";
-  return [visual.type, visual.brief].filter(Boolean).join(": ");
-}
-
-function visualHeading(visual: PresentationMotherVisual) {
-  if (visual.type === "none") return "Visual";
-  return `${visual.type} request`;
-}
-
-function hasVisualRequest(body: PresentationMotherBody) {
-  return (
-    body.keyVisual.type !== "none" ||
-    !!body.keyVisual.brief ||
-    body.keyVisualFacts.length > 0
-  );
 }
