@@ -3,6 +3,10 @@ import type {
   PresentationTaskSlidePlan,
 } from "@/types/task";
 import type { BulletItem } from "@/lib/app/presentation/presentationTypes";
+import {
+  emptyStructuredSlideContent,
+  syncStructuredSlideContent,
+} from "@/lib/app/presentation/slidePartsStructuredContent";
 
 export const SLIDE_PART_ROLES = {
   title: ["タイトル", "title"],
@@ -55,38 +59,6 @@ function cleanDisplayText(value: string) {
     .replace(/^\[+|\]+$/g, "")
     .replace(/^[「"']+|[」"']+$/g, "")
     .trim();
-}
-
-function emptyStructuredSlideContent(): PresentationTaskSlidePlan["structuredContent"] {
-  return {
-    title: "",
-    mainMessage: "",
-    facts: [],
-    visual: {
-      brief: "",
-      supportingFacts: [],
-    },
-    layout: {
-      instruction: "",
-      elements: [],
-    },
-  };
-}
-
-function syncStructuredSlideContent(slide: PresentationTaskSlidePlan) {
-  slide.structuredContent = {
-    title: slide.title,
-    mainMessage: slide.keyMessage,
-    facts: [...slide.supportingInfo],
-    visual: {
-      brief: slide.keyVisual,
-      supportingFacts: [...slide.visualSupportingInfo],
-    },
-    layout: {
-      instruction: slide.placementComposition,
-      elements: [...slide.layoutItems],
-    },
-  };
 }
 
 function buildSlideFromParts(args: {
