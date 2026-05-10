@@ -1,6 +1,6 @@
 import type { PresentationTaskSlidePlan } from "@/types/task";
 import type { BulletItem } from "@/lib/app/presentation/presentationTypes";
-import { slideDisplayVisual } from "@/lib/app/presentation/slidePartsParser";
+import { slideDisplayVisual } from "@/lib/app/presentation/slidePartsDisplay";
 
 export function bulletsFromSlide(slide: PresentationTaskSlidePlan): BulletItem[] {
   const items = slide.supportingInfo.filter(Boolean);

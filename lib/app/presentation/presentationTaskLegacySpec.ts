@@ -5,7 +5,7 @@ import {
   slideDisplayMessage,
   slideDisplayTitle,
   slideDisplayVisual,
-} from "@/lib/app/presentation/slidePartsParser";
+} from "@/lib/app/presentation/slidePartsDisplay";
 import {
   buildPresentationSpecFromSlideFrames,
   hasRenderablePresentationSlideFrames,
