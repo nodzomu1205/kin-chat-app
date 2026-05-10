@@ -320,6 +320,7 @@ export type PresentationTaskVisualRequest = {
   renderStyle?: {
     orientation?: "horizontal" | "vertical";
     showBrief?: boolean;
+    hiddenLabelSlotIds?: string[];
   };
 };
 

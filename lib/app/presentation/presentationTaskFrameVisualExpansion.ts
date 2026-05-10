@@ -37,20 +37,22 @@ function expandVisualCandidateBlock(
   const imageIds = Array.from(
     new Set([visual.preferredImageId, ...(visual.candidateImageIds || [])].filter(Boolean))
   ).slice(0, maxVisualItems) as string[];
-  const matchLabelsByImageId = new Map(
+  const matchesByImageId = new Map(
     (visual.selectionMatches || [])
       .filter((match) => match.status === "selected" && match.imageId)
-      .map((match) => [match.imageId as string, match.label])
+      .map((match) => [match.imageId as string, match])
   );
-  const labels =
-    visual.labels && visual.labels.length === imageIds.length
-      ? visual.labels
-      : imageIds.map((imageId) => matchLabelsByImageId.get(imageId) || "").filter(Boolean)
-          .length === imageIds.length
-      ? imageIds.map((imageId) => matchLabelsByImageId.get(imageId) || "")
-      : undefined;
+  const hiddenLabelSlotIds = new Set(visual.renderStyle?.hiddenLabelSlotIds || []);
+  const alignedLabels =
+    visual.labels && visual.labels.length === imageIds.length ? visual.labels : undefined;
+  const labelForImage = (imageId: string | undefined, index: number) => {
+    const match = imageId ? matchesByImageId.get(imageId) : undefined;
+    const slotId = match?.slotId || visual.visualSlots?.[index]?.slotId;
+    if (slotId && hiddenLabelSlotIds.has(slotId)) return "";
+    return alignedLabels?.[index] || match?.label || "";
+  };
   if (visual.usagePolicy === "useOneBest" || maxVisualItems <= 1 || imageIds.length <= 1) {
-    const label = imageIds[0] ? labels?.[0] || matchLabelsByImageId.get(imageIds[0]) : undefined;
+    const label = labelForImage(imageIds[0], 0);
     return [
       {
         ...block,
@@ -70,12 +72,12 @@ function expandVisualCandidateBlock(
     id: index === 0 ? block.id : `${block.id}_${index + 1}`,
     visualRequest: {
       ...visual,
-      brief: labels?.[index] || visual.brief,
+      brief: labelForImage(imageId, index) || visual.brief,
       preferredImageId: imageId,
       candidateImageIds: imageIds,
       renderStyle: {
         ...visual.renderStyle,
-        showBrief: labels?.[index] ? visual.renderStyle?.showBrief : false,
+        showBrief: labelForImage(imageId, index) ? visual.renderStyle?.showBrief : false,
       },
     },
   }));

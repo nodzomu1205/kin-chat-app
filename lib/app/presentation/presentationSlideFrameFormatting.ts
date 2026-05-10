@@ -116,6 +116,7 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
   if (!visual) return [];
 
   const lines: string[] = [];
+  const hiddenLabelSlotIds = new Set(visual.renderStyle?.hiddenLabelSlotIds || []);
   const slots = (visual.visualSlots || [])
     .filter((slot) => slot.need.trim() || slot.label.trim())
     .slice()
@@ -130,7 +131,7 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
         lines.push(`    - 選択済み画像: ${selectedImageId}`);
       }
     });
-    return lines;
+    return removeHiddenVisualSlotLabelLines(lines, slots, hiddenLabelSlotIds);
   }
   if (visual.prompt) {
     lines.push(`  - ビジュアルプロンプト: ${visual.prompt}`);
@@ -139,7 +140,7 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
   }
 
   const displayLabel = visual.labels?.find((label) => label.trim()) || visual.brief;
-  if (displayLabel) {
+  if (displayLabel && visual.renderStyle?.showBrief !== false) {
     lines.push(`  - ビジュアル内表示ラベル: ${displayLabel}`);
   }
   const selectedImageIds = Array.from(
@@ -150,4 +151,30 @@ function formatStageOneVisualDisplayLines(block: PresentationTaskSlideBlock) {
   }
 
   return lines;
+}
+
+function removeHiddenVisualSlotLabelLines(
+  lines: string[],
+  slots: NonNullable<PresentationTaskSlideBlock["visualRequest"]>["visualSlots"],
+  hiddenLabelSlotIds: Set<string>
+) {
+  if (!slots?.length || hiddenLabelSlotIds.size === 0) return lines;
+  const hiddenSlotNumbers = new Set(
+    slots
+      .map((slot, index) => (hiddenLabelSlotIds.has(slot.slotId) ? index + 1 : null))
+      .filter((value): value is number => value !== null)
+  );
+  if (hiddenSlotNumbers.size === 0) return lines;
+  const next: string[] = [];
+  let currentSlotNumber: number | null = null;
+  for (const line of lines) {
+    const slotMatch = line.match(/Visual slot\s+(\d+):/i);
+    if (slotMatch) currentSlotNumber = Number(slotMatch[1]);
+    const isLabelLine =
+      currentSlotNumber !== null &&
+      hiddenSlotNumbers.has(currentSlotNumber) &&
+      /visual\s*label|label|ビジュアル内表示ラベル|繝ｩ繝吶Ν/i.test(line);
+    if (!isLabelLine) next.push(line);
+  }
+  return next;
 }

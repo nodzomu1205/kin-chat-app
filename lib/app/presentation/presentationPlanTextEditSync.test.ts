@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { syncPresentationPlanStructuredPayloadFromEditedText } from "@/lib/app/presentation/presentationPlanTextEditSync";
+import {
+  buildFramePresentationSpecFromTaskPlan,
+  formatPresentationTaskPlanText,
+} from "@/lib/app/presentation/presentationTaskPlanning";
 import type { PresentationTaskPlan } from "@/types/task";
 
 function createPlan(): PresentationTaskPlan {
@@ -15,6 +19,36 @@ function createPlan(): PresentationTaskPlan {
     deckFrame: {
       slideCount: 1,
       masterFrameId: "titleLineFooter",
+      openingSlide: {
+        enabled: true,
+        frameId: "visualTitleCover",
+        title: "Original cover",
+        visualRequest: {
+          type: "photo",
+          brief: "Original cover label",
+          prompt: "Original cover prompt",
+          visualSlots: [
+            {
+              slotId: "cover",
+              label: "Original cover label",
+              need: "Original cover need",
+              order: 1,
+            },
+          ],
+          selectionMatches: [
+            {
+              slotId: "cover",
+              label: "Original cover label",
+              need: "Original cover need",
+              status: "selected",
+              imageId: "img_cover",
+              score: 1,
+              threshold: 0.2,
+            },
+          ],
+          preferredImageId: "img_cover",
+        },
+      },
     },
     slideFrames: [
       {
@@ -65,6 +99,7 @@ function createPlan(): PresentationTaskPlan {
                   threshold: 0.2,
                 },
               ],
+              preferredImageId: "img_main",
             },
           },
           {
@@ -196,5 +231,101 @@ describe("presentationPlanTextEditSync", () => {
       text: "Edited lead",
     });
     expect(synced.slideFrames[0].blocks[1].items).toBeUndefined();
+  });
+
+  it("syncs edited opening slide title and visual slot text", () => {
+    const editedText = [
+      "- Opening slide: visualTitleCover / Edited cover",
+      "- openingVisual visual (visualCover)",
+      "-   - Visual slot 1:",
+      "-     - Visual prompt: Edited cover need",
+      "-     - Visual label: Edited cover label",
+    ].join("\n");
+
+    const synced = syncPresentationPlanStructuredPayloadFromEditedText({
+      plan: createPlan(),
+      text: editedText,
+    });
+
+    const opening = synced.deckFrame?.openingSlide;
+    expect(opening?.title).toBe("Edited cover");
+    expect(opening?.visualRequest?.visualSlots?.[0]).toMatchObject({
+      slotId: "cover",
+      label: "Edited cover label",
+      need: "Edited cover need",
+    });
+    expect(opening?.visualRequest?.selectionMatches?.[0]).toMatchObject({
+      slotId: "cover",
+      label: "Edited cover label",
+      need: "Edited cover need",
+      imageId: "img_cover",
+    });
+  });
+
+  it("hides a deleted visual slot label while preserving the selected visual", () => {
+    const editedText = [
+      "- Slide 1: Edited slide",
+      "- visual1 visual (visualContain)",
+      "-   - Visual slot 1:",
+      "-     - Visual prompt: Edited need",
+    ].join("\n");
+
+    const synced = syncPresentationPlanStructuredPayloadFromEditedText({
+      plan: createPlan(),
+      text: editedText,
+    });
+    const visual = synced.slideFrames[0].blocks[0].visualRequest;
+    expect(visual?.visualSlots?.[0]).toMatchObject({
+      slotId: "main",
+      label: "Original label",
+      need: "Edited need",
+    });
+    expect(visual?.preferredImageId).toBe("img_main");
+    expect(visual?.selectionMatches?.[0]).toMatchObject({
+      slotId: "main",
+      label: "Original label",
+      need: "Edited need",
+      imageId: "img_main",
+    });
+    expect(visual?.renderStyle?.hiddenLabelSlotIds).toEqual(["main"]);
+
+    const frameSpec = buildFramePresentationSpecFromTaskPlan(synced);
+    expect(frameSpec?.slideFrames[0].blocks[0].visualRequest).toMatchObject({
+      preferredImageId: "img_main",
+      renderStyle: expect.objectContaining({ showBrief: false }),
+    });
+    const visibleText = formatPresentationTaskPlanText(synced);
+    expect(visibleText).toContain("Visual slot 1:");
+    expect(visibleText).toContain("Edited need");
+    expect(visibleText).toContain("img_main");
+    expect(visibleText).not.toContain("Original label");
+  });
+
+  it("syncs a direct visual prompt edit when no visual slots are present", () => {
+    const plan = createPlan();
+    const visual = plan.slideFrames[0].blocks[0].visualRequest;
+    if (visual) {
+      visual.visualSlots = undefined;
+      visual.selectionMatches = undefined;
+      visual.prompt = "Original direct prompt";
+      visual.labels = ["Original direct label"];
+    }
+    const editedText = [
+      "- Slide 1: Edited slide",
+      "- visual1 visual (visualContain)",
+      "-   - Visual prompt: Edited direct prompt",
+      "-   - Visual label: Edited direct label",
+    ].join("\n");
+
+    const synced = syncPresentationPlanStructuredPayloadFromEditedText({
+      plan,
+      text: editedText,
+    });
+
+    expect(synced.slideFrames[0].blocks[0].visualRequest).toMatchObject({
+      prompt: "Edited direct prompt",
+      brief: "Edited direct label",
+      labels: ["Edited direct label"],
+    });
   });
 });

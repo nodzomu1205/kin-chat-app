@@ -1,7 +1,10 @@
 import type {
+  PresentationTaskBookendSlide,
+  PresentationTaskDeckFrame,
   PresentationTaskSlideBlock,
   PresentationTaskSlideFrame,
   PresentationTaskVisualMatch,
+  PresentationTaskVisualRequest,
   PresentationTaskVisualSlot,
 } from "@/types/task";
 
@@ -21,10 +24,30 @@ export type EditedBlock = {
   items: string[];
   visualSlotsSeen: boolean;
   visualSlots: EditedVisualSlot[];
+  promptSeen?: boolean;
+  prompt?: string;
+  labelSeen?: boolean;
+  label?: string;
 };
 
 export type EditedVisualSlot = {
+  needSeen?: boolean;
   need?: string;
+  labelSeen?: boolean;
+  label?: string;
+};
+
+export type EditedBookendSlide = {
+  title?: string;
+  visual?: EditedVisualRequest;
+};
+
+export type EditedVisualRequest = {
+  visualSlotsSeen: boolean;
+  visualSlots: EditedVisualSlot[];
+  promptSeen?: boolean;
+  prompt?: string;
+  labelSeen?: boolean;
   label?: string;
 };
 
@@ -48,40 +71,36 @@ export function mergeEditedFrame(
   };
 }
 
+export function mergeEditedDeckFrame(
+  deckFrame: PresentationTaskDeckFrame | undefined,
+  edited: {
+    openingSlide?: EditedBookendSlide;
+    closingSlide?: EditedBookendSlide;
+  }
+): PresentationTaskDeckFrame | undefined {
+  if (!deckFrame) return deckFrame;
+  return {
+    ...deckFrame,
+    openingSlide: mergeEditedBookendSlide(
+      deckFrame.openingSlide,
+      edited.openingSlide
+    ),
+    closingSlide: mergeEditedBookendSlide(
+      deckFrame.closingSlide,
+      edited.closingSlide
+    ),
+  };
+}
+
 function mergeEditedBlock(
   block: PresentationTaskSlideBlock,
   edited: EditedBlock | undefined
 ): PresentationTaskSlideBlock {
   if (!edited) return block;
   if (block.visualRequest) {
-    if (!edited.visualSlotsSeen) {
-      return {
-        ...block,
-        visualRequest: {
-          ...block.visualRequest,
-          visualSlots: undefined,
-          selectionMatches: undefined,
-        },
-      };
-    }
-    const visualSlots = mergeEditedVisualSlots(
-      block.visualRequest.visualSlots || [],
-      edited.visualSlots
-    );
     return {
       ...block,
-      visualRequest: {
-        ...block.visualRequest,
-        visualSlots: visualSlots.length > 0 ? visualSlots : undefined,
-        labels:
-          visualSlots.length > 0
-            ? visualSlots.map((slot) => slot.label)
-            : block.visualRequest.labels,
-        selectionMatches: rebaseEditedSelectionMatches(
-          block.visualRequest.selectionMatches,
-          visualSlots
-        ),
-      },
+      visualRequest: mergeEditedVisualRequest(block.visualRequest, edited),
     };
   }
   return {
@@ -94,25 +113,133 @@ function mergeEditedBlock(
   };
 }
 
+function mergeEditedBookendSlide(
+  slide: PresentationTaskBookendSlide | undefined,
+  edited: EditedBookendSlide | undefined
+): PresentationTaskBookendSlide | undefined {
+  if (!slide || !edited) return slide;
+  return {
+    ...slide,
+    title: edited.title?.trim() || slide.title,
+    visualRequest:
+      slide.visualRequest && edited.visual
+        ? mergeEditedVisualRequest(slide.visualRequest, edited.visual)
+        : slide.visualRequest,
+  };
+}
+
+export function mergeEditedVisualRequest(
+  visual: PresentationTaskVisualRequest,
+  edited: EditedVisualRequest
+): PresentationTaskVisualRequest {
+  let next: PresentationTaskVisualRequest = { ...visual };
+  if (edited.promptSeen) {
+    const prompt = edited.prompt?.trim() || "";
+    next = {
+      ...next,
+      prompt: prompt || undefined,
+    };
+  }
+  if (edited.labelSeen) {
+    const label = edited.label?.trim() || "";
+    next = label
+      ? {
+          ...next,
+          brief: label,
+          labels: [label],
+          renderStyle: {
+            ...next.renderStyle,
+            showBrief: next.renderStyle?.showBrief,
+          },
+        }
+      : {
+          ...next,
+          labels: undefined,
+          renderStyle: {
+            ...next.renderStyle,
+            showBrief: false,
+          },
+        };
+  }
+  if (
+    !edited.visualSlotsSeen &&
+    !edited.promptSeen &&
+    !edited.labelSeen &&
+    visual.visualSlots?.length
+  ) {
+    return {
+      ...next,
+      visualSlots: undefined,
+      selectionMatches: undefined,
+    };
+  }
+  if (!edited.visualSlotsSeen) {
+    return next;
+  }
+  if (edited.visualSlots.length === 0) {
+    return {
+      ...next,
+      visualSlots: undefined,
+      selectionMatches: undefined,
+      labels: undefined,
+      renderStyle: clearHiddenLabelSlotIds(next.renderStyle),
+    };
+  }
+  const merged = mergeEditedVisualSlots(next.visualSlots || [], edited.visualSlots);
+  const visualSlots = merged.slots;
+  return {
+    ...next,
+    visualSlots: visualSlots.length > 0 ? visualSlots : undefined,
+    labels:
+      visualSlots.length > 0
+        ? visualSlots.map((slot) => slot.label)
+        : next.labels,
+    selectionMatches: rebaseEditedSelectionMatches(
+      next.selectionMatches,
+      visualSlots
+    ),
+    renderStyle: setHiddenLabelSlotIds(
+      next.renderStyle,
+      merged.hiddenLabelSlotIds
+    ),
+  };
+}
+
 function mergeEditedVisualSlots(
   originalSlots: PresentationTaskVisualSlot[],
   editedSlots: EditedVisualSlot[]
-): PresentationTaskVisualSlot[] {
+): { slots: PresentationTaskVisualSlot[]; hiddenLabelSlotIds: string[] } {
   const slots: PresentationTaskVisualSlot[] = [];
+  const hiddenLabelSlotIds: string[] = [];
   editedSlots.forEach((edited, index) => {
     const original = originalSlots[index];
-    const label = edited.label?.trim() || original?.label || edited.need?.trim() || "";
-    const need = edited.need?.trim() || original?.need || label;
+    const explicitLabel = edited.labelSeen ? edited.label?.trim() || "" : undefined;
+    const label =
+      explicitLabel ||
+      original?.label ||
+      edited.need?.trim() ||
+      original?.need ||
+      "";
+    const need =
+      edited.needSeen
+        ? edited.need?.trim() || original?.need || label
+        : original?.need || edited.need?.trim() || label;
     if (!label && !need) return;
-    slots.push({
+    const slot = {
       ...(original || {}),
       slotId: original?.slotId || `slot${index + 1}`,
       order: original?.order || index + 1,
       label,
       need,
-    });
+    };
+    slots.push(slot);
+    if (edited.labelSeen && !explicitLabel) {
+      hiddenLabelSlotIds.push(slot.slotId);
+    } else if (!edited.labelSeen && original?.label) {
+      hiddenLabelSlotIds.push(slot.slotId);
+    }
   });
-  return slots;
+  return { slots, hiddenLabelSlotIds };
 }
 
 function rebaseEditedSelectionMatches(
@@ -132,6 +259,28 @@ function rebaseEditedSelectionMatches(
             need: slot.need,
           }
         : match;
-    });
+  });
   return nextMatches.length > 0 ? nextMatches : undefined;
+}
+
+function setHiddenLabelSlotIds(
+  renderStyle: PresentationTaskVisualRequest["renderStyle"],
+  hiddenLabelSlotIds: string[]
+) {
+  if (hiddenLabelSlotIds.length === 0) return clearHiddenLabelSlotIds(renderStyle);
+  return {
+    ...renderStyle,
+    hiddenLabelSlotIds,
+  };
+}
+
+function clearHiddenLabelSlotIds(
+  renderStyle: PresentationTaskVisualRequest["renderStyle"]
+) {
+  if (!renderStyle || !("hiddenLabelSlotIds" in renderStyle)) return renderStyle;
+  const { hiddenLabelSlotIds: _hiddenLabelSlotIds, ...rest } = renderStyle as
+    PresentationTaskVisualRequest["renderStyle"] & {
+      hiddenLabelSlotIds?: string[];
+    };
+  return rest;
 }
