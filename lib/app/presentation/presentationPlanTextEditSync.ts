@@ -5,9 +5,11 @@ import {
   type EditedBlock,
   type EditedBookendSlide,
   type EditedFrame,
-  type EditedVisualRequest,
-  type EditedVisualSlot,
 } from "@/lib/app/presentation/presentationPlanTextEditMerge";
+import type {
+  EditedVisualRequest,
+  EditedVisualSlot,
+} from "@/lib/app/presentation/presentationPlanTextEditVisualMerge";
 
 export function syncPresentationPlanStructuredPayloadFromEditedText(args: {
   plan: PresentationTaskPlan;
