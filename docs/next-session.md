@@ -1,12 +1,13 @@
 # Next Session Handover
 
-Updated: 2026-05-08
+Updated: 2026-05-10
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-08 PPT visual slot stabilization
-closeout. Start there for PPT work:
+The newest active record is the 2026-05-10 PPT / library maintenance closeout.
+Start there for PPT or library work:
 
+- [`HANDOFF-2026-05-10.md`](./HANDOFF-2026-05-10.md)
 - [`presentation-renderer/development-session-checklist.md`](./presentation-renderer/development-session-checklist.md)
 - [`presentation-renderer/two-stage-visual-workflow-checklist.md`](./presentation-renderer/two-stage-visual-workflow-checklist.md)
 - [`presentation-renderer/next-implementation-notes.md`](./presentation-renderer/next-implementation-notes.md)
@@ -15,6 +16,27 @@ closeout. Start there for PPT work:
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
 ## Current Next Start
+
+The 2026-05-10 closeout ended with a clean worktree after:
+
+- restoring PPT presentation-plan library export/import pairing
+- restoring search-card summary/context persistence
+- repairing selected-image render parity between library `[PPT]` and Resolve
+  `Save and create PPT`
+- stabilizing sparse PPT plan output through upstream validation/completion
+- syncing library-card edits back into presentation-plan JSON for opening slide
+  title, visual prompts, visual labels, and intentional visual-label deletion
+- ensuring library show display, JSON, frameSpec, and PPTX output all observe
+  the same edited visual-label state
+- splitting several PPT helper files into smaller boundaries
+
+Default next action:
+
+1. If the user reports a live regression, trace the exact projection boundary:
+   library text, structured JSON, chat display, frameSpec, or renderer.
+2. If continuing maintenance, choose one small PPT file/helper family and run
+   focused tests before committing.
+3. Do not start with broad prompt rewrites or renderer fallback changes.
 
 The current PPT creation path is the two-stage visual workflow:
 
