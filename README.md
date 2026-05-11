@@ -32,6 +32,12 @@ The current product direction is:
   - LLM fallback for ambiguous phrasing
   - approval-based refinement
 - Library and stored documents
+- Library RAG foundation
+  - Supabase pgvector schema
+  - reference-library item to RAG document/chunk projection
+  - server-side RAG index/search endpoints
+  - optional send-to-GPT RAG context resolution
+  - see `docs/library-rag-mvp.md`
 - File ingest
 - YouTube transcript fetch and Kin delivery
 - Kin task protocol

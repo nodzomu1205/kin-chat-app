@@ -178,6 +178,7 @@ describe("chatPagePanelCompositionBuilders", () => {
         multipartAssemblies: [],
         storedDocuments: [],
         referenceLibraryItems: [],
+        libraryRagIndexStates: {},
         selectedTaskLibraryItemId: "",
         onLoadMultipartAssemblyToGptInput: vi.fn(),
         onDownloadMultipartAssembly: vi.fn(),
@@ -189,6 +190,7 @@ describe("chatPagePanelCompositionBuilders", () => {
         onMoveLibraryItem: vi.fn(),
         onSelectTaskLibraryItem: vi.fn(),
         onChangeLibraryItemMode: vi.fn(),
+        onIndexLibraryItemForRag: vi.fn(),
         onSaveStoredDocument: vi.fn(),
       },
       gpt: {
@@ -318,6 +320,7 @@ describe("chatPagePanelCompositionBuilders", () => {
         multipartAssemblies: [],
         storedDocuments: [],
         referenceLibraryItems: [],
+        libraryRagIndexStates: {},
         selectedTaskLibraryItemId: "",
         onLoadMultipartAssemblyToGptInput: vi.fn(),
         onDownloadMultipartAssembly: vi.fn(),
@@ -329,6 +332,7 @@ describe("chatPagePanelCompositionBuilders", () => {
         onMoveLibraryItem: vi.fn(),
         onSelectTaskLibraryItem: vi.fn(),
         onChangeLibraryItemMode: vi.fn(),
+        onIndexLibraryItemForRag: vi.fn(),
         onSaveStoredDocument: vi.fn(),
       },
       gpt: {

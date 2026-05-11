@@ -57,9 +57,15 @@ function buildTaskDraftImageLibraryContext(args: AttachSearchResultToTaskFlowArg
   );
 }
 
-function buildTaskDraftLibraryReferenceContext(
-  args: AttachSearchResultToTaskFlowArgs
+async function buildTaskDraftLibraryReferenceContext(
+  args: AttachSearchResultToTaskFlowArgs,
+  query: string
 ) {
+  if (args.buildLibraryReferenceContextForQuery) {
+    return args.buildLibraryReferenceContextForQuery(query, {
+      usageBucket: "task",
+    });
+  }
   return args.buildLibraryReferenceContext();
 }
 
@@ -251,7 +257,12 @@ export async function runAttachSearchResultToTaskFlow(
           userInstruction: nextUserInstruction,
           body: parsedInput.freeText || normalizedInput,
           material: materialText,
-          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+          libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+            args,
+            [parsedInput.freeText || normalizedInput, materialText]
+              .filter(Boolean)
+              .join("\n\n")
+          ),
           imageLibraryContext: buildTaskDraftImageLibraryContext(args),
         })
       : buildTaskStructuredInput({
@@ -260,7 +271,12 @@ export async function runAttachSearchResultToTaskFlow(
           body: materialText,
           searchRawText:
             taskLibraryItem?.itemType === "search" ? taskSearchContext?.rawText || "" : "",
-          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+          libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+            args,
+            [parsedInput.freeText || normalizedInput, materialText]
+              .filter(Boolean)
+              .join("\n\n")
+          ),
         });
 
     startTaskFlowRequest({
@@ -383,7 +399,12 @@ export async function runAttachSearchResultToTaskFlow(
         currentPlanText: currentTaskText,
         body: parsedInput.freeText || normalizedInput,
         material: materialText,
-        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+        libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+          args,
+          [parsedInput.freeText || normalizedInput, materialText]
+            .filter(Boolean)
+            .join("\n\n")
+        ),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildTaskInput({
@@ -392,7 +413,12 @@ export async function runAttachSearchResultToTaskFlow(
         actionInstruction: parsedInput.freeText || normalizedInput,
         body: currentTaskText,
         material: materialText,
-        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+        libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+          args,
+          [parsedInput.freeText || normalizedInput, materialText]
+            .filter(Boolean)
+            .join("\n\n")
+        ),
       });
 
   startTaskFlowRequest({

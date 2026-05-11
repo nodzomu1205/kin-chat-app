@@ -110,6 +110,7 @@ export function useChatPageGptPanelArgs(
       multipartAssemblies: args.references.multipartAssemblies,
       storedDocuments: args.references.storedDocuments,
       referenceLibraryItems: args.references.referenceLibraryItems,
+      libraryRagIndexStates: args.references.libraryRagIndexStates,
       selectedTaskLibraryItemId: args.references.selectedTaskLibraryItemId,
       onSelectTaskSearchResult: args.references.onSelectTaskSearchResult,
       onMoveSearchHistoryItem: args.references.onMoveSearchHistoryItem,
@@ -127,6 +128,7 @@ export function useChatPageGptPanelArgs(
       onMoveLibraryItem: args.references.onMoveLibraryItem,
       onSelectTaskLibraryItem: args.references.onSelectTaskLibraryItem,
       onChangeLibraryItemMode: args.references.onChangeLibraryItemMode,
+      onIndexLibraryItemForRag: args.references.onIndexLibraryItemForRag,
       onStartAskAiModeSearch: args.controller.gpt.startAskAiModeSearch,
       onImportYouTubeTranscript: args.controller.gpt.importYouTubeTranscript,
       onSendYouTubeTranscriptToKin:

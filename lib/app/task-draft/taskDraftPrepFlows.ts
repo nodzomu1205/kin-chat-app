@@ -67,12 +67,18 @@ function buildTaskDraftImageLibraryContext(
   );
 }
 
-function buildTaskDraftLibraryReferenceContext(
+async function buildTaskDraftLibraryReferenceContext(
   args:
     | PrepTaskFromInputFlowArgs
     | UpdateTaskFromInputFlowArgs
-    | UpdateTaskFromLastGptMessageFlowArgs
+    | UpdateTaskFromLastGptMessageFlowArgs,
+  query: string
 ) {
+  if (args.buildLibraryReferenceContextForQuery) {
+    return args.buildLibraryReferenceContextForQuery(query, {
+      usageBucket: "task",
+    });
+  }
   return args.buildLibraryReferenceContext();
 }
 
@@ -90,6 +96,24 @@ export async function runPrepTaskFromInputFlow(
     : text;
   const parsedInput = args.applyPrefixedTaskFieldsFromText(normalizedText);
   const taskBodySource = parsedInput.freeText || normalizedText;
+  const userMsg: Message = {
+    id: generateId(),
+    role: "user",
+    text: presentationMode ? `[PPT design prep]\n${text}` : `[Task prep]\n${text}`,
+  };
+  const { requestRecentMessages } = buildTaskFlowRecentContext({
+    gptStateRef: args.gptStateRef,
+    chatRecentLimit: args.chatRecentLimit,
+    userMessage: userMsg,
+  });
+
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    userMessage: userMsg,
+  });
+
   const fallbackTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
     freeText: taskBodySource,
@@ -127,7 +151,10 @@ export async function runPrepTaskFromInputFlow(
         userInstruction: nextUserInstruction,
         body: taskBodySource,
         material: args.currentTaskDraft.searchContext?.rawText || "",
-        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+        libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+          args,
+          taskBodySource
+        ),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildTaskStructuredInput({
@@ -135,27 +162,11 @@ export async function runPrepTaskFromInputFlow(
         userInstruction: nextUserInstruction,
         body: taskBodySource,
         searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
-        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+        libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+          args,
+          taskBodySource
+        ),
       });
-
-  const userMsg: Message = {
-    id: generateId(),
-    role: "user",
-    text: presentationMode ? `[PPT design prep]\n${text}` : `[Task prep]\n${text}`,
-  };
-
-  const { requestRecentMessages } = buildTaskFlowRecentContext({
-    gptStateRef: args.gptStateRef,
-    chatRecentLimit: args.chatRecentLimit,
-    userMessage: userMsg,
-  });
-
-  startTaskFlowRequest({
-    setGptMessages: args.setGptMessages,
-    setGptInput: args.setGptInput,
-    setGptLoading: args.setGptLoading,
-    userMessage: userMsg,
-  });
 
   try {
     const data = presentationMode
@@ -250,6 +261,30 @@ export async function runUpdateTaskFromInputFlow(
     : additionalText;
   const parsedInput =
     args.applyPrefixedTaskFieldsFromText(normalizedAdditionalText);
+  const userMsg: Message = {
+    id: generateId(),
+    role: "user",
+    text: presentationMode
+      ? `[PPT design update]\n${additionalText}`
+      : `[Task update]\n${additionalText}`,
+    meta: {
+      kind: "task_info",
+      sourceType: "manual",
+    },
+  };
+  const { requestRecentMessages } = buildTaskFlowRecentContext({
+    gptStateRef: args.gptStateRef,
+    chatRecentLimit: args.chatRecentLimit,
+    userMessage: userMsg,
+  });
+
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    userMessage: userMsg,
+  });
+
   const fallbackTitle = resolveUpdateTaskTitle({
     explicitTitle: parsedInput.title,
     currentTitle: args.currentTaskDraft.title,
@@ -291,7 +326,10 @@ export async function runUpdateTaskFromInputFlow(
         currentPlanText: currentTaskText,
         body: parsedInput.freeText || normalizedAdditionalText,
         material: args.currentTaskDraft.searchContext?.rawText || "",
-        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+        libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+          args,
+          parsedInput.freeText || normalizedAdditionalText
+        ),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : buildMergedTaskInput(
@@ -302,34 +340,12 @@ export async function runUpdateTaskFromInputFlow(
           title: resolvedTitle,
           userInstruction: nextUserInstruction,
           searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
-          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+          libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+            args,
+            parsedInput.freeText || normalizedAdditionalText
+          ),
         }
       );
-
-  const userMsg: Message = {
-    id: generateId(),
-    role: "user",
-    text: presentationMode
-      ? `[PPT design update]\n${additionalText}`
-      : `[Task update]\n${additionalText}`,
-    meta: {
-      kind: "task_info",
-      sourceType: "manual",
-    },
-  };
-
-  const { requestRecentMessages } = buildTaskFlowRecentContext({
-    gptStateRef: args.gptStateRef,
-    chatRecentLimit: args.chatRecentLimit,
-    userMessage: userMsg,
-  });
-
-  startTaskFlowRequest({
-    setGptMessages: args.setGptMessages,
-    setGptInput: args.setGptInput,
-    setGptLoading: args.setGptLoading,
-    userMessage: userMsg,
-  });
 
   try {
     const data = presentationMode
@@ -467,7 +483,10 @@ export async function runUpdateTaskFromLastGptMessageFlow(
         currentPlanText: currentTaskText,
         body: directionInstruction,
         material: lastGptMessage.text.trim(),
-        libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+        libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+          args,
+          [directionInstruction, lastGptMessage.text.trim()].filter(Boolean).join("\n\n")
+        ),
         imageLibraryContext: buildTaskDraftImageLibraryContext(args),
       })
     : currentTaskText
@@ -479,7 +498,12 @@ export async function runUpdateTaskFromLastGptMessageFlow(
             "Review the latest GPT response, refine the task, and return an updated draft.",
           body: currentTaskText,
           material: lastGptMessage.text.trim(),
-          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+          libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+            args,
+            [directionInstruction, lastGptMessage.text.trim()]
+              .filter(Boolean)
+              .join("\n\n")
+          ),
         })
       : buildTaskStructuredInput({
           title: resolvedTitle,
@@ -488,7 +512,12 @@ export async function runUpdateTaskFromLastGptMessageFlow(
             "Review the latest GPT response and generate a clean task draft from it.",
           body: lastGptMessage.text.trim(),
           searchRawText: args.currentTaskDraft.searchContext?.rawText || "",
-          libraryReferenceContext: buildTaskDraftLibraryReferenceContext(args),
+          libraryReferenceContext: await buildTaskDraftLibraryReferenceContext(
+            args,
+            [directionInstruction, lastGptMessage.text.trim()]
+              .filter(Boolean)
+              .join("\n\n")
+          ),
         });
 
   const { requestRecentMessages } = buildTaskFlowRecentContext({

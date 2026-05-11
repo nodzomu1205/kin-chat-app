@@ -119,6 +119,66 @@ describe("referenceLibraryState", () => {
     expect(context).toContain(" end");
   });
 
+  it("can emit RAG context without direct card context", () => {
+    const context = buildReferenceLibraryContext({
+      autoLibraryReferenceEnabled: false,
+      libraryReferenceCount: 0,
+      libraryRagReferenceEnabled: true,
+      libraryRagReferenceCount: 3,
+      libraryItems: [
+        {
+          id: "doc:1",
+          itemType: "ingested_file",
+          title: "Direct source",
+          summary: "Direct summary",
+          excerptText: "Direct excerpt",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ] as never,
+      libraryReferenceMode: "summary_with_excerpt",
+      libraryItemModeOverrides: {},
+      sourceDisplayCount: 1,
+      ragReferenceContext: "<<RAG_LIBRARY_CONTEXT>>\nMatched chunk\n<<END_RAG_LIBRARY_CONTEXT>>",
+    });
+
+    expect(context).toContain("<<RAG_LIBRARY_CONTEXT>>");
+    expect(context).toContain("Matched chunk");
+    expect(context).not.toContain("<<STORED_LIBRARY_CONTEXT>>");
+    expect(context).not.toContain("Direct summary");
+  });
+
+  it("can combine direct library context and RAG context with separate settings", () => {
+    const context = buildReferenceLibraryContext({
+      autoLibraryReferenceEnabled: true,
+      libraryReferenceCount: 1,
+      libraryRagReferenceEnabled: true,
+      libraryRagReferenceCount: 8,
+      libraryItems: [
+        {
+          id: "doc:1",
+          itemType: "ingested_file",
+          title: "Direct source",
+          summary: "Direct summary",
+          excerptText: "",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ] as never,
+      libraryReferenceMode: "summary_only",
+      libraryItemModeOverrides: {},
+      sourceDisplayCount: 1,
+      ragReferenceContext: "<<RAG_LIBRARY_CONTEXT>>\nMatched chunk\n<<END_RAG_LIBRARY_CONTEXT>>",
+    });
+
+    expect(context).toContain("<<STORED_LIBRARY_CONTEXT>>");
+    expect(context).toContain("Direct summary");
+    expect(context).toContain("<<RAG_LIBRARY_CONTEXT>>");
+    expect(context.indexOf("<<STORED_LIBRARY_CONTEXT>>")).toBeLessThan(
+      context.indexOf("<<RAG_LIBRARY_CONTEXT>>")
+    );
+  });
+
   it("estimates tokens from the generated context", () => {
     expect(
       estimateReferenceLibraryTokens({
@@ -140,5 +200,20 @@ describe("referenceLibraryState", () => {
         sourceDisplayCount: 3,
       })
     ).toBeGreaterThan(0);
+  });
+
+  it("does not add speculative RAG tokens before a query has concrete matches", () => {
+    expect(
+      estimateReferenceLibraryTokens({
+        autoLibraryReferenceEnabled: false,
+        libraryReferenceCount: 0,
+        libraryRagReferenceEnabled: true,
+        libraryRagReferenceCount: 3,
+        libraryItems: [] as never,
+        libraryReferenceMode: "summary_only",
+        libraryItemModeOverrides: {},
+        sourceDisplayCount: 3,
+      })
+    ).toBe(0);
   });
 });

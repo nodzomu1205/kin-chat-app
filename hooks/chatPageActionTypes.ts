@@ -193,6 +193,10 @@ export type ChatPageServicesArgs = {
   imageLibraryImportMode: import("@/components/panels/gpt/gptPanelTypes").ImageLibraryImportMode;
   imageDescriptionIngestOptions: import("@/lib/app/ingest/ingestClient").SharedIngestOptions;
   buildLibraryReferenceContext: () => string;
+  buildLibraryReferenceContextForQuery?: (
+    query: string,
+    options?: { usageBucket?: "chat" | "task" }
+  ) => Promise<string>;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
   imageLibraryReferenceEnabled: boolean;
@@ -241,6 +245,7 @@ export type UseGptMessageActionsArgs = Pick<
   | "imageDescriptionIngestOptions"
   | "autoGenerateLibrarySummary"
   | "buildLibraryReferenceContext"
+  | "buildLibraryReferenceContextForQuery"
   | "chatBridgeSettings"
   | "currentTaskDraft"
   | "getAskAiModeLinkForQuery"
@@ -334,6 +339,7 @@ export type UseTaskDraftActionsArgs = Pick<
   | "imageLibraryReferenceCount"
   | "lastSearchContext"
   | "buildLibraryReferenceContext"
+  | "buildLibraryReferenceContextForQuery"
   | "referenceLibraryItems"
   | "setCurrentTaskDraft"
   | "setGptInput"

@@ -6,6 +6,8 @@ export type ChatPageWorkspaceViewReferencesArgs = {
   storedDocuments: ChatPageGptPanelCompositionArgs["references"]["storedDocuments"];
   referenceLibraryItems:
     ChatPageGptPanelCompositionArgs["references"]["referenceLibraryItems"];
+  libraryRagIndexStates:
+    ChatPageGptPanelCompositionArgs["references"]["libraryRagIndexStates"];
   selectedTaskLibraryItemId:
     ChatPageGptPanelCompositionArgs["references"]["selectedTaskLibraryItemId"];
   onDeleteMultipartAssembly:
@@ -28,10 +30,14 @@ export type ChatPageWorkspaceViewReferencesArgs = {
     ChatPageGptPanelCompositionArgs["references"]["onSelectTaskLibraryItem"];
   onChangeLibraryItemMode:
     ChatPageGptPanelCompositionArgs["references"]["onChangeLibraryItemMode"];
+  onIndexLibraryItemForRag:
+    ChatPageGptPanelCompositionArgs["references"]["onIndexLibraryItemForRag"];
   onSaveStoredDocument:
     ChatPageGptPanelCompositionArgs["references"]["onSaveStoredDocument"];
   buildLibraryReferenceContext:
     ChatPageControllerServicesSectionArgs["buildLibraryReferenceContext"];
+  buildLibraryReferenceContextForQuery:
+    ChatPageControllerServicesSectionArgs["buildLibraryReferenceContextForQuery"];
   applyRegisteredTaskRuntimeSettings:
     ChatPageControllerServicesSectionArgs["applyRegisteredTaskRuntimeSettings"];
   autoLibraryReferenceEnabled:
@@ -48,6 +54,22 @@ export type ChatPageWorkspaceViewReferencesArgs = {
     ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryIndexResponseCount"];
   libraryReferenceCount:
     ChatPageGptPanelCompositionArgs["settings"]["libraryReferenceCount"];
+  libraryRagReferenceEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryRagReferenceEnabled"];
+  onChangeLibraryRagReferenceEnabled:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryRagReferenceEnabled"];
+  libraryRagReferenceCount:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryRagReferenceCount"];
+  onChangeLibraryRagReferenceCount:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryRagReferenceCount"];
+  libraryRagCandidateCount:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryRagCandidateCount"];
+  onChangeLibraryRagCandidateCount:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryRagCandidateCount"];
+  libraryRagSimilarityThreshold:
+    ChatPageGptPanelCompositionArgs["settings"]["libraryRagSimilarityThreshold"];
+  onChangeLibraryRagSimilarityThreshold:
+    ChatPageGptPanelCompositionArgs["settings"]["onChangeLibraryRagSimilarityThreshold"];
   imageLibraryReferenceEnabled:
     ChatPageGptPanelCompositionArgs["settings"]["imageLibraryReferenceEnabled"];
   onChangeImageLibraryReferenceEnabled:

@@ -95,6 +95,7 @@ export default function ChatApp() {
     gptMemoryRuntime: taskProtocolDomain.gptMemoryRuntime,
     applyChatUsage: tokenUsage.applyChatUsage,
     applyIngestUsage: tokenUsage.applyIngestUsage,
+    applyTaskUsage: tokenUsage.applyTaskUsage,
     applyCompressionUsage: tokenUsage.applyCompressionUsage,
     focusGptPanel: chatUi.focusGptPanel,
     focusKinPanel: chatUi.focusKinPanel,

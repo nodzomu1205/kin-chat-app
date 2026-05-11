@@ -25,6 +25,10 @@ import {
   TextField,
   ToggleButtons,
 } from "@/components/panels/gpt/GptSettingsShared";
+
+const compactNumberFieldWidth = 220;
+const compactStatFieldWidth = 260;
+
 export function IngestSettingsSection(props: {
   isMobile?: boolean;
   uploadKind: UploadKind;
@@ -90,6 +94,7 @@ export function IngestSettingsSection(props: {
                 label={GPT_SETTINGS_DRAWER_TEXT.charLimit}
                 value={String(unifiedLimit)}
                 onChange={(v) => applyUnifiedLimit(Number(v || 0))}
+                maxWidth={compactNumberFieldWidth}
               />
             </div>
           </div>
@@ -197,6 +202,7 @@ export function GoogleDriveLibrarySection(props: {
           <ReadonlyStatField
             label={GPT_GOOGLE_DRIVE_TEXT.settings.folderIdLabel}
             value={props.folderId || "-"}
+            maxWidth={compactStatFieldWidth}
           />
           <ReadonlyStatField
             label={GPT_GOOGLE_DRIVE_TEXT.settings.integrationModeLabel}
@@ -205,6 +211,7 @@ export function GoogleDriveLibrarySection(props: {
                 ? GPT_GOOGLE_DRIVE_TEXT.settings.integrationModeManual
                 : GPT_GOOGLE_DRIVE_TEXT.settings.integrationModePicker
             }
+            maxWidth={compactStatFieldWidth}
           />
         </div>
       </div>

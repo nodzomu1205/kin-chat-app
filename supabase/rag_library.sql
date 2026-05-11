@@ -1,0 +1,110 @@
+create extension if not exists vector;
+create extension if not exists pgcrypto;
+
+create table if not exists public.rag_documents (
+  id uuid primary key default gen_random_uuid(),
+  library_item_id text not null unique,
+  source_id text not null,
+  item_type text not null,
+  artifact_type text,
+  title text not null,
+  summary text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  content_hash text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.rag_document_chunks (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid not null references public.rag_documents(id) on delete cascade,
+  chunk_index integer not null,
+  content text not null,
+  token_estimate integer not null default 0,
+  metadata jsonb not null default '{}'::jsonb,
+  embedding vector(1536),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(document_id, chunk_index)
+);
+
+create index if not exists rag_documents_library_item_id_idx
+  on public.rag_documents(library_item_id);
+
+create index if not exists rag_documents_source_id_idx
+  on public.rag_documents(source_id);
+
+create index if not exists rag_documents_metadata_idx
+  on public.rag_documents using gin(metadata);
+
+create index if not exists rag_document_chunks_document_id_idx
+  on public.rag_document_chunks(document_id);
+
+create index if not exists rag_document_chunks_metadata_idx
+  on public.rag_document_chunks using gin(metadata);
+
+create index if not exists rag_document_chunks_embedding_idx
+  on public.rag_document_chunks using hnsw (embedding vector_cosine_ops)
+  where embedding is not null;
+
+create or replace function public.set_rag_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists rag_documents_set_updated_at on public.rag_documents;
+create trigger rag_documents_set_updated_at
+before update on public.rag_documents
+for each row execute function public.set_rag_updated_at();
+
+drop trigger if exists rag_document_chunks_set_updated_at on public.rag_document_chunks;
+create trigger rag_document_chunks_set_updated_at
+before update on public.rag_document_chunks
+for each row execute function public.set_rag_updated_at();
+
+create or replace function public.match_rag_library_chunks(
+  query_embedding vector(1536),
+  match_count integer default 8,
+  match_threshold double precision default 0,
+  filter_metadata jsonb default '{}'::jsonb
+)
+returns table (
+  chunk_id uuid,
+  document_id uuid,
+  library_item_id text,
+  source_id text,
+  title text,
+  item_type text,
+  artifact_type text,
+  chunk_index integer,
+  content text,
+  similarity double precision,
+  document_metadata jsonb,
+  chunk_metadata jsonb
+)
+language sql stable
+as $$
+  select
+    chunks.id as chunk_id,
+    documents.id as document_id,
+    documents.library_item_id,
+    documents.source_id,
+    documents.title,
+    documents.item_type,
+    documents.artifact_type,
+    chunks.chunk_index,
+    chunks.content,
+    1 - (chunks.embedding <=> query_embedding) as similarity,
+    documents.metadata as document_metadata,
+    chunks.metadata as chunk_metadata
+  from public.rag_document_chunks chunks
+  join public.rag_documents documents on documents.id = chunks.document_id
+  where chunks.embedding is not null
+    and documents.metadata @> filter_metadata
+    and 1 - (chunks.embedding <=> query_embedding) >= match_threshold
+  order by chunks.embedding <=> query_embedding
+  limit greatest(match_count, 1);
+$$;

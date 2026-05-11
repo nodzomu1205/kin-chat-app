@@ -251,6 +251,7 @@ export function buildLibraryDrawerProps({
   return {
     multipartAssemblies: references.multipartAssemblies,
     referenceLibraryItems: references.referenceLibraryItems,
+    libraryRagIndexStates: references.libraryRagIndexStates,
     libraryReferenceCount: settings.libraryReferenceCount,
     imageLibraryReferenceCount: settings.imageLibraryReferenceCount,
     sourceDisplayCount: settings.sourceDisplayCount,
@@ -258,6 +259,7 @@ export function buildLibraryDrawerProps({
     onSelectTaskLibraryItem: references.onSelectTaskLibraryItem,
     onMoveLibraryItem: references.onMoveLibraryItem,
     onChangeLibraryItemMode: references.onChangeLibraryItemMode,
+    onIndexLibraryItemForRag: references.onIndexLibraryItemForRag,
     onStartAskAiModeSearch: references.onStartAskAiModeSearch,
     onImportYouTubeTranscript: references.onImportYouTubeTranscript,
     onSendYouTubeTranscriptToKin: references.onSendYouTubeTranscriptToKin,
@@ -344,6 +346,10 @@ export function buildGptSettingsDrawerProps({
     libraryReferenceMode: settings.libraryReferenceMode,
     libraryIndexResponseCount: settings.libraryIndexResponseCount,
     libraryReferenceCount: settings.libraryReferenceCount,
+    libraryRagReferenceEnabled: settings.libraryRagReferenceEnabled,
+    libraryRagReferenceCount: settings.libraryRagReferenceCount,
+    libraryRagCandidateCount: settings.libraryRagCandidateCount,
+    libraryRagSimilarityThreshold: settings.libraryRagSimilarityThreshold,
     imageLibraryReferenceEnabled: settings.imageLibraryReferenceEnabled,
     imageLibraryReferenceCount: settings.imageLibraryReferenceCount,
     imageLibraryCardLimit: settings.imageLibraryCardLimit,
@@ -367,6 +373,14 @@ export function buildGptSettingsDrawerProps({
     onChangeLibraryIndexResponseCount:
       settings.onChangeLibraryIndexResponseCount,
     onChangeLibraryReferenceCount: settings.onChangeLibraryReferenceCount,
+    onChangeLibraryRagReferenceEnabled:
+      settings.onChangeLibraryRagReferenceEnabled,
+    onChangeLibraryRagReferenceCount:
+      settings.onChangeLibraryRagReferenceCount,
+    onChangeLibraryRagCandidateCount:
+      settings.onChangeLibraryRagCandidateCount,
+    onChangeLibraryRagSimilarityThreshold:
+      settings.onChangeLibraryRagSimilarityThreshold,
     onChangeImageLibraryReferenceEnabled:
       settings.onChangeImageLibraryReferenceEnabled,
     onChangeImageLibraryReferenceCount:

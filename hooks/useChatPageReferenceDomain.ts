@@ -55,6 +55,7 @@ type UseChatPageReferenceDomainArgs = {
     options?: ConversationUsageOptions
   ) => void;
   applyIngestUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyTaskUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   applyCompressionUsage: (usage: Parameters<typeof normalizeUsage>[0]) => void;
   focusGptPanel: () => boolean;
   focusKinPanel: () => boolean;
@@ -85,12 +86,21 @@ export function useChatPageReferenceDomain(
 
   const {
     libraryItems,
+    libraryRagIndexStates,
     selectedTaskLibraryItemId,
     setSelectedTaskLibraryItemId,
     autoLibraryReferenceEnabled,
     setAutoLibraryReferenceEnabled,
     libraryReferenceMode,
     setLibraryReferenceMode,
+    libraryRagReferenceEnabled,
+    setLibraryRagReferenceEnabled,
+    libraryRagReferenceCount,
+    setLibraryRagReferenceCount,
+    libraryRagCandidateCount,
+    setLibraryRagCandidateCount,
+    libraryRagSimilarityThreshold,
+    setLibraryRagSimilarityThreshold,
     libraryIndexResponseCount,
     setLibraryIndexResponseCount,
     imageLibraryReferenceEnabled,
@@ -103,10 +113,12 @@ export function useChatPageReferenceDomain(
     setLibraryReferenceCount,
     libraryStorageMB,
     setLibraryItemModeOverride,
+    indexLibraryItemForRag,
     moveLibraryItem,
     getTaskLibraryItem,
     getLibraryItemById,
     buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery,
     estimateLibraryReferenceTokens,
   } = useReferenceLibrary({
     storedDocuments: allDocuments,
@@ -115,6 +127,9 @@ export function useChatPageReferenceDomain(
     documentStorageMB,
     multipartStorageMB,
     sourceDisplayCount: args.sourceDisplayCount,
+    applyRagIndexUsage: args.applyIngestUsage,
+    applyRagReferenceUsage: args.applyChatUsage,
+    applyRagTaskReferenceUsage: args.applyTaskUsage,
   });
 
   useEffect(() => {
@@ -286,12 +301,21 @@ export function useChatPageReferenceDomain(
     deleteStoredDocument,
     moveStoredDocument,
     libraryItems,
+    libraryRagIndexStates,
     selectedTaskLibraryItemId,
     setSelectedTaskLibraryItemId,
     autoLibraryReferenceEnabled,
     setAutoLibraryReferenceEnabled,
     libraryReferenceMode,
     setLibraryReferenceMode,
+    libraryRagReferenceEnabled,
+    setLibraryRagReferenceEnabled,
+    libraryRagReferenceCount,
+    setLibraryRagReferenceCount,
+    libraryRagCandidateCount,
+    setLibraryRagCandidateCount,
+    libraryRagSimilarityThreshold,
+    setLibraryRagSimilarityThreshold,
     libraryIndexResponseCount,
     setLibraryIndexResponseCount,
     imageLibraryReferenceEnabled,
@@ -304,9 +328,11 @@ export function useChatPageReferenceDomain(
     setLibraryReferenceCount,
     libraryStorageMB,
     setLibraryItemModeOverride,
+    indexLibraryItemForRag,
     moveLibraryItem,
     getTaskLibraryItem,
     buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery,
     libraryReferenceEstimatedTokens,
     googleDriveFolderLink,
     setGoogleDriveFolderLink,

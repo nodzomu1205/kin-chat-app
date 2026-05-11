@@ -13,10 +13,24 @@ import {
   buildLibraryItemEditDraftCommand,
   insertImageIdIntoGptDraft,
 } from "@/lib/app/reference-library/libraryDraftCommands";
+import { fetchRagLibraryDocuments } from "@/lib/app/reference-library/ragLibraryDocumentsClient";
+import {
+  readRagLibraryReferenceLogs,
+  type RagLibraryReferenceLogEntry,
+} from "@/lib/app/reference-library/ragLibraryReferenceLog";
+import type { RagLibraryStoredDocument } from "@/lib/app/reference-library/ragLibraryTypes";
+
+const tabs: Array<{ id: LibraryDrawerView; label: string }> = [
+  { id: "library", label: "ライブラリ" },
+  { id: "images", label: "画像" },
+  { id: "db", label: "DB" },
+  { id: "dbLog", label: "DB参照ログ" },
+];
 
 export default function LibraryDrawer({
   multipartAssemblies,
   referenceLibraryItems,
+  libraryRagIndexStates,
   libraryReferenceCount,
   imageLibraryReferenceCount,
   sourceDisplayCount,
@@ -24,6 +38,7 @@ export default function LibraryDrawer({
   onSelectTaskLibraryItem,
   onMoveLibraryItem,
   onChangeLibraryItemMode,
+  onIndexLibraryItemForRag,
   onStartAskAiModeSearch,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
@@ -64,8 +79,17 @@ export default function LibraryDrawer({
   const [draftTitle, setDraftTitle] = useState("");
   const [draftSummary, setDraftSummary] = useState("");
   const [draftText, setDraftText] = useState("");
+  const [dbDocuments, setDbDocuments] = useState<RagLibraryStoredDocument[]>([]);
+  const [dbConfigured, setDbConfigured] = useState(true);
+  const [dbLoading, setDbLoading] = useState(false);
+  const [dbError, setDbError] = useState("");
+  const [dbLoaded, setDbLoaded] = useState(false);
+  const [dbReferenceLogs, setDbReferenceLogs] = useState<
+    RagLibraryReferenceLogEntry[]
+  >([]);
   const deviceInputId = React.useId();
-  const activeLibraryView = controlledActiveLibraryView ?? uncontrolledActiveLibraryView;
+  const activeLibraryView =
+    controlledActiveLibraryView ?? uncontrolledActiveLibraryView;
   const setActiveLibraryView = React.useCallback(
     (view: LibraryDrawerView) => {
       if (onChangeLibraryView) {
@@ -82,6 +106,44 @@ export default function LibraryDrawer({
     if (!libraryViewRequest) return;
     setActiveLibraryView(libraryViewRequest.view);
   }, [controlledActiveLibraryView, libraryViewRequest, setActiveLibraryView]);
+
+  const loadDbDocuments = React.useCallback(async () => {
+    setDbLoading(true);
+    setDbError("");
+    try {
+      const result = await fetchRagLibraryDocuments({ limit: 50 });
+      setDbConfigured(result.configured);
+      setDbDocuments(result.documents);
+      setDbLoaded(true);
+    } catch (error) {
+      setDbError(error instanceof Error ? error.message : "DB items failed to load.");
+    } finally {
+      setDbLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (activeLibraryView !== "db" || dbLoaded || dbLoading) return;
+    void loadDbDocuments();
+  }, [activeLibraryView, dbLoaded, dbLoading, loadDbDocuments]);
+
+  const loadDbReferenceLogs = React.useCallback(() => {
+    setDbReferenceLogs(readRagLibraryReferenceLogs());
+  }, []);
+
+  React.useEffect(() => {
+    loadDbReferenceLogs();
+    window.addEventListener(
+      "rag-library-reference-log-updated",
+      loadDbReferenceLogs
+    );
+    return () => {
+      window.removeEventListener(
+        "rag-library-reference-log-updated",
+        loadDbReferenceLogs
+      );
+    };
+  }, [loadDbReferenceLogs]);
 
   const handleDraftLibraryItemEditCommand = React.useCallback(
     (itemId: string) => {
@@ -105,11 +167,24 @@ export default function LibraryDrawer({
 
   const visibleItems =
     activeLibraryView === "images"
-      ? referenceLibraryItems.filter((item) => item.artifactType === "generated_image")
-      : referenceLibraryItems.filter((item) => item.artifactType !== "generated_image");
+      ? referenceLibraryItems.filter(
+          (item) => item.artifactType === "generated_image"
+        )
+      : activeLibraryView === "library"
+        ? referenceLibraryItems.filter(
+            (item) => item.artifactType !== "generated_image"
+          )
+        : [];
 
   return (
-    <section style={{ ...sectionCardStyle, minWidth: 0, maxWidth: "100%", overflowX: "hidden" }}>
+    <section
+      style={{
+        ...sectionCardStyle,
+        minWidth: 0,
+        maxWidth: "100%",
+        overflowX: "hidden",
+      }}
+    >
       <LibraryImportControls
         driveImportMenuOpen={driveImportMenuOpen}
         setDriveImportMenuOpen={setDriveImportMenuOpen}
@@ -132,13 +207,11 @@ export default function LibraryDrawer({
           gap: 6,
           marginTop: 10,
           borderBottom: "1px solid #e2e8f0",
+          overflowX: "auto",
         }}
         aria-label="ライブラリ表示切替"
       >
-        {[
-          { id: "library" as const, label: "ライブラリ" },
-          { id: "images" as const, label: "画像" },
-        ].map((tab) => {
+        {tabs.map((tab) => {
           const active = activeLibraryView === tab.id;
           return (
             <button
@@ -147,13 +220,16 @@ export default function LibraryDrawer({
               onClick={() => setActiveLibraryView(tab.id)}
               style={{
                 border: 0,
-                borderBottom: active ? "2px solid #0f766e" : "2px solid transparent",
+                borderBottom: active
+                  ? "2px solid #0f766e"
+                  : "2px solid transparent",
                 background: "transparent",
                 color: active ? "#0f766e" : "#64748b",
                 fontSize: 12,
                 fontWeight: 800,
                 padding: "7px 8px",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
               {tab.label}
@@ -162,10 +238,20 @@ export default function LibraryDrawer({
         })}
       </div>
 
-      {visibleItems.length === 0 ? (
+      {activeLibraryView === "db" ? (
+        <LibraryDbPanel
+          configured={dbConfigured}
+          documents={dbDocuments}
+          loading={dbLoading}
+          error={dbError}
+          onRefresh={loadDbDocuments}
+        />
+      ) : activeLibraryView === "dbLog" ? (
+        <LibraryDbLogPanel logs={dbReferenceLogs} onRefresh={loadDbReferenceLogs} />
+      ) : visibleItems.length === 0 ? (
         <div style={{ marginTop: 12, fontSize: 13, color: "#64748b" }}>
           {activeLibraryView === "images"
-            ? "保存画像はまだありません。"
+            ? "保存済み画像はまだありません。"
             : GPT_LIBRARY_DRAWER_TEXT.emptyAll}
         </div>
       ) : (
@@ -176,6 +262,7 @@ export default function LibraryDrawer({
               item={item}
               multipartAssemblies={multipartAssemblies}
               referenceLibraryItems={referenceLibraryItems}
+              libraryRagIndexStates={libraryRagIndexStates}
               libraryReferenceCount={libraryReferenceCount}
               imageLibraryReferenceCount={imageLibraryReferenceCount}
               sourceDisplayCount={sourceDisplayCount}
@@ -183,6 +270,7 @@ export default function LibraryDrawer({
               onSelectTaskLibraryItem={onSelectTaskLibraryItem}
               onMoveLibraryItem={onMoveLibraryItem}
               onChangeLibraryItemMode={onChangeLibraryItemMode}
+              onIndexLibraryItemForRag={onIndexLibraryItemForRag}
               onStartAskAiModeSearch={onStartAskAiModeSearch}
               onImportYouTubeTranscript={onImportYouTubeTranscript}
               onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
@@ -219,6 +307,186 @@ export default function LibraryDrawer({
   );
 }
 
+function LibraryDbPanel({
+  configured,
+  documents,
+  loading,
+  error,
+  onRefresh,
+}: {
+  configured: boolean;
+  documents: RagLibraryStoredDocument[];
+  loading: boolean;
+  error: string;
+  onRefresh: () => void | Promise<void>;
+}) {
+  if (!configured) {
+    return (
+      <div style={placeholderStyle}>
+        <div style={placeholderTitleStyle}>DB未設定</div>
+        <div style={placeholderBodyStyle}>
+          Supabaseの環境変数が未設定です。SUPABASE_URL と
+          SUPABASE_SERVICE_ROLE_KEY を設定するとDB項目を表示できます。
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+      <div style={panelHeaderStyle}>
+        <div>
+          <div style={placeholderTitleStyle}>DB</div>
+          <div style={placeholderBodyStyle}>
+            登録済みDBドキュメントと、その配下のチャンクを表示します。
+          </div>
+        </div>
+        <button type="button" onClick={() => void onRefresh()} style={refreshButtonStyle}>
+          更新
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={placeholderStyle}>DBを読み込み中です。</div>
+      ) : error ? (
+        <div style={{ ...placeholderStyle, borderColor: "#fecaca", background: "#fef2f2" }}>
+          <div style={{ ...placeholderTitleStyle, color: "#991b1b" }}>DB読込エラー</div>
+          <div style={placeholderBodyStyle}>{error}</div>
+        </div>
+      ) : documents.length === 0 ? (
+        <div style={placeholderStyle}>
+          <div style={placeholderTitleStyle}>DB項目はまだありません</div>
+          <div style={placeholderBodyStyle}>
+            ライブラリカードの「DBへ送付」を実行すると、ここに表示されます。
+          </div>
+        </div>
+      ) : (
+        documents.map((document) => (
+          <details key={document.id} style={dbCardStyle}>
+            <summary style={dbSummaryStyle}>
+              <div style={{ minWidth: 0 }}>
+                <div style={dbTitleStyle}>{document.title}</div>
+                <div style={dbMetaStyle}>
+                  {document.itemType} / chunks {document.chunks.length}
+                  {document.updatedAt ? ` / ${formatDateTime(document.updatedAt)}` : ""}
+                </div>
+              </div>
+              <span style={dbPillStyle}>{document.chunks.length} chunks</span>
+            </summary>
+            {document.summary ? (
+              <div style={dbSummaryTextStyle}>{document.summary}</div>
+            ) : null}
+            <div style={chunkListStyle}>
+              {document.chunks.length === 0 ? (
+                <div style={placeholderBodyStyle}>チャンクはありません。</div>
+              ) : (
+                document.chunks.map((chunk) => (
+                  <div key={chunk.id} style={chunkCardStyle}>
+                    <div style={chunkHeaderStyle}>
+                      <span>Chunk {chunk.chunkIndex}</span>
+                      <span>{chunk.tokenEstimate} tokens</span>
+                    </div>
+                    <div style={chunkContentStyle}>{chunk.content}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </details>
+        ))
+      )}
+    </div>
+  );
+}
+
+function LibraryDbLogPanel({
+  logs,
+  onRefresh,
+}: {
+  logs: RagLibraryReferenceLogEntry[];
+  onRefresh: () => void;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+      <div style={panelHeaderStyle}>
+        <div>
+          <div style={placeholderTitleStyle}>DB参照ログ</div>
+          <div style={placeholderBodyStyle}>
+            会話やタスクで実際に参照されたDB項目、チャンク、類似度、使用区分を記録します。
+          </div>
+        </div>
+        <button type="button" onClick={onRefresh} style={refreshButtonStyle}>
+          更新
+        </button>
+      </div>
+
+      {logs.length === 0 ? (
+        <div style={placeholderStyle}>
+          <div style={placeholderTitleStyle}>参照ログはまだありません</div>
+          <div style={placeholderBodyStyle}>
+            RAG参照をONにして会話またはタスク操作を実行すると、DB検索結果がここに表示されます。
+          </div>
+        </div>
+      ) : (
+        logs.map((log) => (
+          <details key={log.id} style={dbCardStyle} open={log === logs[0]}>
+            <summary style={dbSummaryStyle}>
+              <div style={{ minWidth: 0 }}>
+                <div style={dbTitleStyle}>
+                  {log.usageBucket === "task" ? "タスク" : "会話"} /{" "}
+                  {log.matches.length} matches / {log.contextChars} chars
+                </div>
+                <div style={dbMetaStyle}>
+                  {formatDateTime(log.createdAt)}
+                  {log.skippedReason ? ` / skipped: ${log.skippedReason}` : ""}
+                </div>
+              </div>
+              <span style={dbPillStyle}>{log.matches.length} hits</span>
+            </summary>
+            <div style={dbSummaryTextStyle}>Query: {log.query}</div>
+            <div style={chunkListStyle}>
+              {log.matches.length === 0 ? (
+                <div style={placeholderBodyStyle}>
+                  DB検索は実行されましたが、参照チャンクはありません。
+                </div>
+              ) : (
+                log.matches.map((match, index) => (
+                  <div
+                    key={`${log.id}-${match.chunkId || index}`}
+                    style={chunkCardStyle}
+                  >
+                    <div style={chunkHeaderStyle}>
+                      <span>
+                        {match.title} / chunk {match.chunkIndex}
+                      </span>
+                      <span>
+                        {typeof match.similarity === "number"
+                          ? match.similarity.toFixed(4)
+                          : "similarity n/a"}
+                      </span>
+                    </div>
+                    <div style={chunkContentStyle}>{match.contentPreview}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </details>
+        ))
+      )}
+    </div>
+  );
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function mergeAcceptValues(...values: string[]) {
   return Array.from(
     new Set(
@@ -229,3 +497,127 @@ function mergeAcceptValues(...values: string[]) {
     )
   ).join(",");
 }
+
+const placeholderStyle: React.CSSProperties = {
+  marginTop: 12,
+  border: "1px solid #dbeafe",
+  background: "#f8fafc",
+  borderRadius: 8,
+  padding: 14,
+};
+
+const placeholderTitleStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#0f172a",
+};
+
+const placeholderBodyStyle: React.CSSProperties = {
+  marginTop: 6,
+  fontSize: 12,
+  lineHeight: 1.6,
+  color: "#475569",
+};
+
+const panelHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 10,
+  alignItems: "center",
+  border: "1px solid #dbeafe",
+  background: "#f8fafc",
+  borderRadius: 8,
+  padding: 12,
+};
+
+const refreshButtonStyle: React.CSSProperties = {
+  border: "1px solid #99f6e4",
+  background: "#ffffff",
+  color: "#0f766e",
+  borderRadius: 999,
+  padding: "6px 12px",
+  fontSize: 12,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const dbCardStyle: React.CSSProperties = {
+  border: "1px solid #dbeafe",
+  background: "#ffffff",
+  borderRadius: 8,
+  padding: 10,
+};
+
+const dbSummaryStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  cursor: "pointer",
+};
+
+const dbTitleStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#0f172a",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+const dbMetaStyle: React.CSSProperties = {
+  marginTop: 4,
+  fontSize: 11,
+  color: "#64748b",
+};
+
+const dbPillStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 800,
+  color: "#047857",
+  background: "#ecfdf5",
+  border: "1px solid #a7f3d0",
+  borderRadius: 999,
+  padding: "2px 8px",
+  whiteSpace: "nowrap",
+};
+
+const dbSummaryTextStyle: React.CSSProperties = {
+  marginTop: 8,
+  fontSize: 12,
+  color: "#334155",
+  lineHeight: 1.5,
+};
+
+const chunkListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 10,
+};
+
+const chunkCardStyle: React.CSSProperties = {
+  border: "1px solid #e2e8f0",
+  background: "#f8fafc",
+  borderRadius: 8,
+  padding: 10,
+};
+
+const chunkHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 8,
+  fontSize: 11,
+  fontWeight: 800,
+  color: "#475569",
+};
+
+const chunkContentStyle: React.CSSProperties = {
+  marginTop: 6,
+  fontSize: 12,
+  color: "#0f172a",
+  lineHeight: 1.5,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  maxHeight: 160,
+  overflow: "auto",
+};

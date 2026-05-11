@@ -188,6 +188,12 @@ export function LibrarySettingsWorkspaceView(props: {
         libraryReferenceMode={props.settings.libraryReferenceMode}
         libraryIndexResponseCount={props.settings.libraryIndexResponseCount}
         libraryReferenceCount={props.settings.libraryReferenceCount}
+        libraryRagReferenceEnabled={props.settings.libraryRagReferenceEnabled}
+        libraryRagReferenceCount={props.settings.libraryRagReferenceCount}
+        libraryRagCandidateCount={props.settings.libraryRagCandidateCount}
+        libraryRagSimilarityThreshold={
+          props.settings.libraryRagSimilarityThreshold
+        }
         libraryStorageMB={props.settings.libraryStorageMB}
         libraryReferenceEstimatedTokens={
           props.settings.libraryReferenceEstimatedTokens
@@ -200,6 +206,18 @@ export function LibrarySettingsWorkspaceView(props: {
           props.settings.onChangeLibraryIndexResponseCount
         }
         onChangeLibraryReferenceCount={props.settings.onChangeLibraryReferenceCount}
+        onChangeLibraryRagReferenceEnabled={
+          props.settings.onChangeLibraryRagReferenceEnabled
+        }
+        onChangeLibraryRagReferenceCount={
+          props.settings.onChangeLibraryRagReferenceCount
+        }
+        onChangeLibraryRagCandidateCount={
+          props.settings.onChangeLibraryRagCandidateCount
+        }
+        onChangeLibraryRagSimilarityThreshold={
+          props.settings.onChangeLibraryRagSimilarityThreshold
+        }
       />
 
       <ImageLibraryReferenceSettingsSection

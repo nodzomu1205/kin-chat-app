@@ -70,19 +70,30 @@ export function getEffectiveLibraryItemMode(params: {
 export function buildReferenceLibraryContext(params: {
   autoLibraryReferenceEnabled: boolean;
   libraryReferenceCount: number;
+  libraryRagReferenceEnabled?: boolean;
+  libraryRagReferenceCount?: number;
   libraryItems: ReferenceLibraryItem[];
   libraryReferenceMode: LibraryReferenceMode;
   libraryItemModeOverrides: Record<string, LibraryItemModeOverride>;
   sourceDisplayCount: number;
+  ragReferenceContext?: string;
 }) {
+  const contextParts: string[] = [];
+  if (params.libraryRagReferenceEnabled && (params.libraryRagReferenceCount ?? 0) > 0) {
+    const ragContext = params.ragReferenceContext?.trim();
+    if (ragContext) {
+      contextParts.push(ragContext);
+    }
+  }
+
   if (!params.autoLibraryReferenceEnabled || params.libraryReferenceCount <= 0) {
-    return "";
+    return contextParts.join("\n\n").trim();
   }
 
   const targets = params.libraryItems
     .filter(isReferenceableLibraryItem)
     .slice(0, params.libraryReferenceCount);
-  if (targets.length === 0) return "";
+  if (targets.length === 0) return contextParts.join("\n\n").trim();
 
   const lines = ["<<STORED_LIBRARY_CONTEXT>>"];
 
@@ -114,16 +125,20 @@ export function buildReferenceLibraryContext(params: {
   });
 
   lines.push("<<END_STORED_LIBRARY_CONTEXT>>");
-  return lines.join("\n").trim();
+  contextParts.unshift(lines.join("\n").trim());
+  return contextParts.join("\n\n").trim();
 }
 
 export function estimateReferenceLibraryTokens(params: {
   autoLibraryReferenceEnabled: boolean;
   libraryReferenceCount: number;
+  libraryRagReferenceEnabled?: boolean;
+  libraryRagReferenceCount?: number;
   libraryItems: ReferenceLibraryItem[];
   libraryReferenceMode: LibraryReferenceMode;
   libraryItemModeOverrides: Record<string, LibraryItemModeOverride>;
   sourceDisplayCount: number;
+  ragReferenceContext?: string;
 }) {
   const context = buildReferenceLibraryContext(params);
   if (!context) return 0;

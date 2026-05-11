@@ -104,6 +104,7 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     multipartAssemblies: BuildGptPanelArgs["references"]["multipartAssemblies"];
     storedDocuments: StoredDocument[];
     referenceLibraryItems: ReferenceLibraryItem[];
+    libraryRagIndexStates: BuildGptPanelArgs["references"]["libraryRagIndexStates"];
     selectedTaskLibraryItemId: string;
     onSelectTaskSearchResult: (rawResultId: string) => void;
     onMoveSearchHistoryItem: BuildGptPanelArgs["references"]["onMoveSearchHistoryItem"];
@@ -119,6 +120,7 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
     onMoveLibraryItem: BuildGptPanelArgs["references"]["onMoveLibraryItem"];
     onSelectTaskLibraryItem: (itemId: string) => void;
     onChangeLibraryItemMode: BuildGptPanelArgs["references"]["onChangeLibraryItemMode"];
+    onIndexLibraryItemForRag: BuildGptPanelArgs["references"]["onIndexLibraryItemForRag"];
     onSaveStoredDocument: BuildGptPanelArgs["references"]["onSaveStoredDocument"];
       onShowLibraryItemInChat:
         BuildGptPanelArgs["references"]["onShowLibraryItemInChat"];

@@ -140,6 +140,8 @@ export function buildChatPageControllerServicesArgs(
     imageLibraryImportMode: args.usage.imageLibraryImportMode,
     imageDescriptionIngestOptions: args.usage.imageDescriptionIngestOptions,
     buildLibraryReferenceContext: args.references.buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery:
+      args.references.buildLibraryReferenceContextForQuery,
     referenceLibraryItems: args.references.referenceLibraryItems,
     libraryIndexResponseCount: args.references.libraryIndexResponseCount,
     imageLibraryReferenceEnabled:
@@ -207,6 +209,8 @@ export function buildGptMessageActionArgs(
     imageDescriptionIngestOptions: groups.services.imageDescriptionIngestOptions,
     autoGenerateLibrarySummary: groups.services.autoGenerateLibrarySummary,
     buildLibraryReferenceContext: groups.services.buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery:
+      groups.services.buildLibraryReferenceContextForQuery,
     chatBridgeSettings: groups.protocol.chatBridgeSettings,
     currentTaskDraft: groups.task.currentTaskDraft,
     getAskAiModeLinkForQuery: groups.search.getAskAiModeLinkForQuery,
@@ -313,6 +317,8 @@ export function buildTaskDraftActionArgs(
     imageLibraryReferenceCount: groups.services.imageLibraryReferenceCount,
     lastSearchContext: groups.search.lastSearchContext,
     buildLibraryReferenceContext: groups.services.buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery:
+      groups.services.buildLibraryReferenceContextForQuery,
     referenceLibraryItems: groups.services.referenceLibraryItems,
     setCurrentTaskDraft: groups.task.setCurrentTaskDraft,
     setGptInput: groups.uiState.setGptInput,

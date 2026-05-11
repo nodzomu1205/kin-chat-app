@@ -226,12 +226,14 @@ export function NumberField(props: {
   help?: string;
   onBlur?: () => void;
   onEnter?: () => void;
+  maxWidth?: number | string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
   return (
-    <div>
+    <div style={{ maxWidth: props.maxWidth, width: "100%" }}>
       <div style={labelStyle}>{props.label}</div>
       <input
-        inputMode="numeric"
+        inputMode={props.inputMode ?? "numeric"}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
         onBlur={props.onBlur}
@@ -296,9 +298,10 @@ export function ReadonlyStatField(props: {
   label: string;
   value: string;
   help?: string;
+  maxWidth?: number | string;
 }) {
   return (
-    <div>
+    <div style={{ maxWidth: props.maxWidth, width: "100%" }}>
       <div style={labelStyle}>{props.label}</div>
       <div
         style={{

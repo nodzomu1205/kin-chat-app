@@ -119,6 +119,10 @@ export type ChatPageControllerCompositionArgs = {
     imageLibraryImportMode: UseChatPageActionsArgs["imageLibraryImportMode"];
     imageDescriptionIngestOptions: UseChatPageActionsArgs["imageDescriptionIngestOptions"];
     buildLibraryReferenceContext: () => string;
+    buildLibraryReferenceContextForQuery?: (
+      query: string,
+      options?: { usageBucket?: "chat" | "task" }
+    ) => Promise<string>;
     referenceLibraryItems: ReferenceLibraryItem[];
     libraryIndexResponseCount: number;
     imageLibraryReferenceEnabled: UseChatPageActionsArgs["imageLibraryReferenceEnabled"];

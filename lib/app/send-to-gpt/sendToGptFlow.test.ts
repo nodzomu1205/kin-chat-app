@@ -1,5 +1,8 @@
 ﻿import { afterEach, describe, expect, it, vi } from "vitest";
-import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
+import {
+  runSendToGptFlow,
+  shouldUseDbReferenceForInput,
+} from "@/lib/app/send-to-gpt/sendToGptFlow";
 import {
   buildNormalizedRequestText as buildEffectiveRequestText,
   buildNormalizedRequestText,
@@ -249,6 +252,10 @@ describe("runSendToGptFlow", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(messages).toEqual([
       expect.objectContaining({
+        role: "user",
+        text: "TITLE: 新しい計画",
+      }),
+      expect.objectContaining({
         role: "gpt",
         text: getTaskDirectiveOnlyResponseText(),
         meta: {
@@ -262,6 +269,53 @@ describe("runSendToGptFlow", () => {
 });
 
 describe("sendToGptFlowHelpers", () => {
+  it("skips DB reference for PPT output operations, not PPT design edits", () => {
+    expect(
+      shouldUseDbReferenceForInput(
+        "/ppt\nDocument ID: ppt_123\nSave and create PPT"
+      )
+    ).toBe(false);
+    expect(shouldUseDbReferenceForInput("/ppt\nDocument ID: ppt_123\nSave")).toBe(
+      false
+    );
+    expect(
+      shouldUseDbReferenceForInput(
+        "/ppt\nDocument ID: ppt_123\nResolve visual blocks"
+      )
+    ).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput(
+        "/ppt\nDocument ID: ppt_123\nMake slide 3 richer"
+      )
+    ).toBe(true);
+    expect(shouldUseDbReferenceForInput("/ppt\nCreate a cotton strategy deck")).toBe(
+      true
+    );
+  });
+
+  it("uses DB reference for generative SYS requests but skips action-only SYS requests", () => {
+    expect(
+      shouldUseDbReferenceForInput(
+        "<<SYS_PPT_DESIGN_REQUEST>>\nBODY: Create a school strategy deck\n<<END_SYS_PPT_DESIGN_REQUEST>>"
+      )
+    ).toBe(true);
+    expect(
+      shouldUseDbReferenceForInput(
+        "<<SYS_ASK_GPT>>\nBODY: Recommend schools for a returnee student\n<<END_SYS_ASK_GPT>>"
+      )
+    ).toBe(true);
+    expect(
+      shouldUseDbReferenceForInput(
+        "<<SYS_FILE_SAVING_REQUEST>>\nDOCUMENT_ID: draft_1\n<<END_SYS_FILE_SAVING_REQUEST>>"
+      )
+    ).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput(
+        "<<SYS_YOUTUBE_TRANSCRIPT_REQUEST>>\nURL: https://example.com\n<<END_SYS_YOUTUBE_TRANSCRIPT_REQUEST>>"
+      )
+    ).toBe(false);
+  });
+
   it("builds normalized request text from the effective search query", () => {
     const params = {
       rawText: "元の入力",

@@ -14,6 +14,7 @@ function renderLibraryDrawer(
     <LibraryDrawer
       multipartAssemblies={[]}
       referenceLibraryItems={[]}
+      libraryRagIndexStates={{}}
       libraryReferenceCount={0}
       imageLibraryReferenceCount={0}
       sourceDisplayCount={1}
@@ -21,6 +22,7 @@ function renderLibraryDrawer(
       onSelectTaskLibraryItem={() => {}}
       onMoveLibraryItem={() => {}}
       onChangeLibraryItemMode={() => {}}
+      onIndexLibraryItemForRag={() => Promise.resolve()}
       onStartAskAiModeSearch={() => Promise.resolve()}
       onImportYouTubeTranscript={() => Promise.resolve()}
       onSendYouTubeTranscriptToKin={() => Promise.resolve()}
@@ -172,6 +174,34 @@ describe("LibraryDrawer", () => {
     expect(html).toContain("width:100%");
     expect(html).toContain(GPT_LIBRARY_DRAWER_TEXT.download);
     expect(html).toContain(GPT_LIBRARY_DRAWER_TEXT.edit);
+  });
+
+  it("shows DB indexing state and action for text library cards", () => {
+    const item: ReferenceLibraryItem = {
+      id: "doc:rag",
+      sourceId: "doc:rag",
+      itemType: "ingested_file",
+      title: "RAG target",
+      subtitle: "Document",
+      summary: "Summary",
+      excerptText: "Body",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const html = renderLibraryDrawer({
+      referenceLibraryItems: [item],
+      libraryRagIndexStates: {
+        [item.id]: {
+          status: "indexed",
+          itemUpdatedAt: item.updatedAt,
+          chunkCount: 3,
+        },
+      },
+    });
+
+    expect(html).toContain("DB登録 3");
+    expect(html).toContain(">DBへ送付</button>");
   });
 
   it("renders library item labels without mojibake", () => {

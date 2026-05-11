@@ -95,6 +95,7 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onMoveLibraryItem: args.onMoveLibraryItem,
     onSelectTaskLibraryItem: args.onSelectTaskLibraryItem,
     onChangeLibraryItemMode: args.onChangeLibraryItemMode,
+    onIndexLibraryItemForRag: args.onIndexLibraryItemForRag,
     onSaveStoredDocument: args.onSaveStoredDocument,
     onShowLibraryItemInChat: args.onShowLibraryItemInChat,
     onSendLibraryItemToKin: args.onSendLibraryItemToKin,
@@ -109,6 +110,11 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onChangeLibraryReferenceMode: args.onChangeLibraryReferenceMode,
     onChangeLibraryIndexResponseCount: args.onChangeLibraryIndexResponseCount,
     onChangeLibraryReferenceCount: args.onChangeLibraryReferenceCount,
+    onChangeLibraryRagReferenceEnabled: args.onChangeLibraryRagReferenceEnabled,
+    onChangeLibraryRagReferenceCount: args.onChangeLibraryRagReferenceCount,
+    onChangeLibraryRagCandidateCount: args.onChangeLibraryRagCandidateCount,
+    onChangeLibraryRagSimilarityThreshold:
+      args.onChangeLibraryRagSimilarityThreshold,
     onChangeImageLibraryReferenceEnabled:
       args.onChangeImageLibraryReferenceEnabled,
     onChangeImageLibraryReferenceCount:

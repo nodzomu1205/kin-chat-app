@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type {
+  LibraryRagIndexState,
   LibraryItemModeOverride,
   LibraryReferenceMode,
 } from "@/components/panels/gpt/gptPanelTypes";
@@ -17,20 +18,32 @@ import {
   buildReferenceLibraryDocumentItem,
   buildReferenceLibrarySearchItem,
 } from "@/lib/app/ingest/ingestDocumentModel";
+import { fetchRagLibraryReferenceContext } from "@/lib/app/reference-library/ragLibrarySearchClient";
+import { indexLibraryItemForRag } from "@/lib/app/reference-library/ragLibraryIndexClient";
+import { appendRagLibraryReferenceLog } from "@/lib/app/reference-library/ragLibraryReferenceLog";
+import { normalizeUsage } from "@/lib/shared/tokenStats";
 
 const LIBRARY_ORDER_KEY = "reference_library_order";
 const LIBRARY_AUTO_REFERENCE_ENABLED_KEY = "library_auto_reference_enabled";
 const LIBRARY_REFERENCE_COUNT_KEY = "library_reference_count";
 const LIBRARY_REFERENCE_MODE_KEY = "library_reference_mode";
+const LIBRARY_RAG_REFERENCE_ENABLED_KEY = "library_rag_reference_enabled";
+const LIBRARY_RAG_REFERENCE_COUNT_KEY = "library_rag_reference_count";
+const LIBRARY_RAG_CANDIDATE_COUNT_KEY = "library_rag_candidate_count";
+const LIBRARY_RAG_SIMILARITY_THRESHOLD_KEY = "library_rag_similarity_threshold";
 const LIBRARY_INDEX_RESPONSE_COUNT_KEY = "library_index_response_count";
 const IMAGE_LIBRARY_REFERENCE_ENABLED_KEY = "image_library_reference_enabled";
 const IMAGE_LIBRARY_REFERENCE_COUNT_KEY = "image_library_reference_count";
 const IMAGE_LIBRARY_CARD_LIMIT_KEY = "image_library_card_limit";
 const LIBRARY_ITEM_MODE_OVERRIDES_KEY = "library_item_mode_overrides";
+const LIBRARY_RAG_INDEX_STATES_KEY = "library_rag_index_states";
 const SELECTED_TASK_LIBRARY_ITEM_ID_KEY = "selected_task_library_item_id";
 
 export const DEFAULT_LIBRARY_REFERENCE_COUNT = 4;
 export const DEFAULT_LIBRARY_REFERENCE_MODE: LibraryReferenceMode = "summary_only";
+export const DEFAULT_LIBRARY_RAG_REFERENCE_COUNT = 10;
+export const DEFAULT_LIBRARY_RAG_CANDIDATE_COUNT = 100;
+export const DEFAULT_LIBRARY_RAG_SIMILARITY_THRESHOLD = 0.3;
 export const DEFAULT_LIBRARY_INDEX_RESPONSE_COUNT = 12;
 export const DEFAULT_IMAGE_LIBRARY_REFERENCE_COUNT = 6;
 export const DEFAULT_IMAGE_LIBRARY_CARD_LIMIT = 50;
@@ -41,11 +54,16 @@ function loadInitialReferenceLibraryState() {
     autoLibraryReferenceEnabled: true,
     libraryReferenceCount: DEFAULT_LIBRARY_REFERENCE_COUNT,
     libraryReferenceMode: DEFAULT_LIBRARY_REFERENCE_MODE,
+    libraryRagReferenceEnabled: false,
+    libraryRagReferenceCount: DEFAULT_LIBRARY_RAG_REFERENCE_COUNT,
+    libraryRagCandidateCount: DEFAULT_LIBRARY_RAG_CANDIDATE_COUNT,
+    libraryRagSimilarityThreshold: DEFAULT_LIBRARY_RAG_SIMILARITY_THRESHOLD,
     libraryIndexResponseCount: DEFAULT_LIBRARY_INDEX_RESPONSE_COUNT,
     imageLibraryReferenceEnabled: true,
     imageLibraryReferenceCount: DEFAULT_IMAGE_LIBRARY_REFERENCE_COUNT,
     imageLibraryCardLimit: DEFAULT_IMAGE_LIBRARY_CARD_LIMIT,
     libraryItemModeOverrides: {} as Record<string, LibraryItemModeOverride>,
+    libraryRagIndexStates: {} as Record<string, LibraryRagIndexState>,
     selectedTaskLibraryItemId: "",
   };
 
@@ -59,6 +77,18 @@ function loadInitialReferenceLibraryState() {
   );
   const savedCount = window.localStorage.getItem(LIBRARY_REFERENCE_COUNT_KEY);
   const savedMode = window.localStorage.getItem(LIBRARY_REFERENCE_MODE_KEY);
+  const savedRagEnabled = window.localStorage.getItem(
+    LIBRARY_RAG_REFERENCE_ENABLED_KEY
+  );
+  const savedRagCount = window.localStorage.getItem(
+    LIBRARY_RAG_REFERENCE_COUNT_KEY
+  );
+  const savedRagCandidateCount = window.localStorage.getItem(
+    LIBRARY_RAG_CANDIDATE_COUNT_KEY
+  );
+  const savedRagSimilarityThreshold = window.localStorage.getItem(
+    LIBRARY_RAG_SIMILARITY_THRESHOLD_KEY
+  );
   const savedIndexCount = window.localStorage.getItem(
     LIBRARY_INDEX_RESPONSE_COUNT_KEY
   );
@@ -73,6 +103,9 @@ function loadInitialReferenceLibraryState() {
   );
   const savedOverrides = window.localStorage.getItem(
     LIBRARY_ITEM_MODE_OVERRIDES_KEY
+  );
+  const savedRagIndexStates = window.localStorage.getItem(
+    LIBRARY_RAG_INDEX_STATES_KEY
   );
   const savedSelectedTaskLibraryItemId = window.localStorage.getItem(
     SELECTED_TASK_LIBRARY_ITEM_ID_KEY
@@ -114,6 +147,31 @@ function loadInitialReferenceLibraryState() {
       savedImageLibraryReferenceEnabled === "true";
   }
 
+  if (savedRagEnabled) {
+    initialState.libraryRagReferenceEnabled = savedRagEnabled === "true";
+  }
+
+  if (savedRagCount) {
+    const parsed = Number(savedRagCount);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      initialState.libraryRagReferenceCount = parsed;
+    }
+  }
+
+  if (savedRagCandidateCount) {
+    const parsed = Number(savedRagCandidateCount);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      initialState.libraryRagCandidateCount = parsed;
+    }
+  }
+
+  if (savedRagSimilarityThreshold) {
+    const parsed = Number(savedRagSimilarityThreshold);
+    if (Number.isFinite(parsed) && parsed >= -1 && parsed <= 1) {
+      initialState.libraryRagSimilarityThreshold = parsed;
+    }
+  }
+
   if (savedImageLibraryReferenceCount) {
     const parsed = Number(savedImageLibraryReferenceCount);
     if (Number.isFinite(parsed) && parsed >= 0) {
@@ -136,6 +194,18 @@ function loadInitialReferenceLibraryState() {
       >;
       if (parsed && typeof parsed === "object") {
         initialState.libraryItemModeOverrides = parsed;
+      }
+    } catch {}
+  }
+
+  if (savedRagIndexStates) {
+    try {
+      const parsed = JSON.parse(savedRagIndexStates) as Record<
+        string,
+        LibraryRagIndexState
+      >;
+      if (parsed && typeof parsed === "object") {
+        initialState.libraryRagIndexStates = parsed;
       }
     } catch {}
   }
@@ -178,6 +248,11 @@ export function useReferenceLibrary(params: {
   documentStorageMB: number;
   multipartStorageMB: number;
   sourceDisplayCount?: number;
+  applyRagIndexUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyRagReferenceUsage?: (usage: Parameters<typeof normalizeUsage>[0]) => void;
+  applyRagTaskReferenceUsage?: (
+    usage: Parameters<typeof normalizeUsage>[0]
+  ) => void;
 }) {
   const {
     storedDocuments,
@@ -186,6 +261,9 @@ export function useReferenceLibrary(params: {
     documentStorageMB,
     multipartStorageMB,
     sourceDisplayCount = 3,
+    applyRagIndexUsage,
+    applyRagReferenceUsage,
+    applyRagTaskReferenceUsage,
   } = params;
 
   const [initialState] = useState(loadInitialReferenceLibraryState);
@@ -200,6 +278,17 @@ export function useReferenceLibrary(params: {
   );
   const [libraryReferenceMode, setLibraryReferenceMode] =
     useState<LibraryReferenceMode>(initialState.libraryReferenceMode);
+  const [libraryRagReferenceEnabled, setLibraryRagReferenceEnabled] = useState(
+    initialState.libraryRagReferenceEnabled
+  );
+  const [libraryRagReferenceCount, setLibraryRagReferenceCount] = useState(
+    initialState.libraryRagReferenceCount
+  );
+  const [libraryRagCandidateCount, setLibraryRagCandidateCount] = useState(
+    initialState.libraryRagCandidateCount
+  );
+  const [libraryRagSimilarityThreshold, setLibraryRagSimilarityThreshold] =
+    useState(initialState.libraryRagSimilarityThreshold);
   const [libraryIndexResponseCount, setLibraryIndexResponseCount] = useState(
     initialState.libraryIndexResponseCount
   );
@@ -214,6 +303,9 @@ export function useReferenceLibrary(params: {
   const [libraryItemModeOverrides, setLibraryItemModeOverrides] = useState<
     Record<string, LibraryItemModeOverride>
   >(initialState.libraryItemModeOverrides);
+  const [libraryRagIndexStates, setLibraryRagIndexStates] = useState<
+    Record<string, LibraryRagIndexState>
+  >(initialState.libraryRagIndexStates);
   const [selectedTaskLibraryItemId, setSelectedTaskLibraryItemId] = useState(
     initialState.selectedTaskLibraryItemId
   );
@@ -250,6 +342,38 @@ export function useReferenceLibrary(params: {
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
+      LIBRARY_RAG_REFERENCE_ENABLED_KEY,
+      String(libraryRagReferenceEnabled)
+    );
+  }, [libraryRagReferenceEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      LIBRARY_RAG_REFERENCE_COUNT_KEY,
+      String(libraryRagReferenceCount)
+    );
+  }, [libraryRagReferenceCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      LIBRARY_RAG_CANDIDATE_COUNT_KEY,
+      String(libraryRagCandidateCount)
+    );
+  }, [libraryRagCandidateCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      LIBRARY_RAG_SIMILARITY_THRESHOLD_KEY,
+      String(libraryRagSimilarityThreshold)
+    );
+  }, [libraryRagSimilarityThreshold]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
       IMAGE_LIBRARY_REFERENCE_ENABLED_KEY,
       String(imageLibraryReferenceEnabled)
     );
@@ -278,6 +402,14 @@ export function useReferenceLibrary(params: {
       JSON.stringify(libraryItemModeOverrides)
     );
   }, [libraryItemModeOverrides]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      LIBRARY_RAG_INDEX_STATES_KEY,
+      JSON.stringify(libraryRagIndexStates)
+    );
+  }, [libraryRagIndexStates]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -367,6 +499,43 @@ export function useReferenceLibrary(params: {
   const getLibraryItemById = (itemId: string) =>
     libraryItemsWithOverrides.find((item) => item.id === itemId) || null;
 
+  const resolvedLibraryRagIndexStates = useMemo(() => {
+    const next: Record<string, LibraryRagIndexState> = {};
+    libraryItemsWithOverrides.forEach((item) => {
+      const state = libraryRagIndexStates[item.id];
+      if (!state) {
+        next[item.id] = { status: "idle" };
+        return;
+      }
+      next[item.id] =
+        state.status === "indexed" && state.itemUpdatedAt !== item.updatedAt
+          ? { ...state, status: "stale" }
+          : state;
+    });
+    return next;
+  }, [libraryItemsWithOverrides, libraryRagIndexStates]);
+
+  const indexLibraryItemForRagById = async (itemId: string) => {
+    const item = getLibraryItemById(itemId);
+    if (!item || item.artifactType === "generated_image") return;
+    setLibraryRagIndexStates((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        status: "indexing",
+        itemUpdatedAt: item.updatedAt,
+      },
+    }));
+    const result = await indexLibraryItemForRag(item);
+    if (result.usage) {
+      applyRagIndexUsage?.(result.usage);
+    }
+    setLibraryRagIndexStates((prev) => ({
+      ...prev,
+      [itemId]: result,
+    }));
+  };
+
   const setLibraryItemModeOverride = (
     itemId: string,
     mode: LibraryItemModeOverride
@@ -385,14 +554,50 @@ export function useReferenceLibrary(params: {
     });
   };
 
-  const buildLibraryReferenceContext = () => {
+  const buildLibraryReferenceContext = (options?: { ragReferenceContext?: string }) => {
     return buildReferenceLibraryContext({
       autoLibraryReferenceEnabled,
       libraryReferenceCount,
+      libraryRagReferenceEnabled,
+      libraryRagReferenceCount,
       libraryItems: libraryItemsWithOverrides,
       libraryReferenceMode,
       libraryItemModeOverrides,
       sourceDisplayCount,
+      ragReferenceContext: options?.ragReferenceContext,
+    });
+  };
+
+  const buildLibraryReferenceContextForQuery = async (
+    query: string,
+    options?: { usageBucket?: "chat" | "task" }
+  ) => {
+    const ragReferenceResult =
+      libraryRagReferenceEnabled && libraryRagReferenceCount > 0
+        ? await fetchRagLibraryReferenceContext({
+            query,
+            matchCount: libraryRagReferenceCount,
+            candidateCount: libraryRagCandidateCount,
+            matchThreshold: libraryRagSimilarityThreshold,
+          })
+        : { context: "", matches: [], usage: undefined };
+    if (ragReferenceResult.usage) {
+      if (options?.usageBucket === "task") {
+        applyRagTaskReferenceUsage?.(ragReferenceResult.usage);
+      } else {
+        applyRagReferenceUsage?.(ragReferenceResult.usage);
+      }
+    }
+    appendRagLibraryReferenceLog({
+      usageBucket: options?.usageBucket === "task" ? "task" : "chat",
+      query,
+      context: ragReferenceResult.context,
+      matches: ragReferenceResult.matches,
+      skippedReason: ragReferenceResult.skippedReason,
+    });
+
+    return buildLibraryReferenceContext({
+      ragReferenceContext: ragReferenceResult.context,
     });
   };
 
@@ -400,6 +605,8 @@ export function useReferenceLibrary(params: {
     return estimateReferenceLibraryTokens({
       autoLibraryReferenceEnabled,
       libraryReferenceCount,
+      libraryRagReferenceEnabled,
+      libraryRagReferenceCount,
       libraryItems: libraryItemsWithOverrides,
       libraryReferenceMode,
       libraryItemModeOverrides,
@@ -412,12 +619,21 @@ export function useReferenceLibrary(params: {
 
   return {
     libraryItems: libraryItemsWithOverrides,
+    libraryRagIndexStates: resolvedLibraryRagIndexStates,
     selectedTaskLibraryItemId: resolvedSelectedTaskLibraryItemId,
     setSelectedTaskLibraryItemId,
     autoLibraryReferenceEnabled,
     setAutoLibraryReferenceEnabled,
     libraryReferenceMode,
     setLibraryReferenceMode,
+    libraryRagReferenceEnabled,
+    setLibraryRagReferenceEnabled,
+    libraryRagReferenceCount,
+    libraryRagCandidateCount,
+    setLibraryRagCandidateCount,
+    libraryRagSimilarityThreshold,
+    setLibraryRagSimilarityThreshold,
+    setLibraryRagReferenceCount,
     libraryIndexResponseCount,
     setLibraryIndexResponseCount,
     imageLibraryReferenceEnabled,
@@ -431,10 +647,12 @@ export function useReferenceLibrary(params: {
     libraryStorageMB,
     libraryItemModeOverrides,
     setLibraryItemModeOverride,
+    indexLibraryItemForRag: indexLibraryItemForRagById,
     moveLibraryItem,
     getTaskLibraryItem,
     getLibraryItemById,
     buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery,
     estimateLibraryReferenceTokens,
   };
 }

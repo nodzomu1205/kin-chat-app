@@ -38,6 +38,10 @@ export type CommonTaskDraftFlowArgs = {
   chatRecentLimit: number;
   referenceLibraryItems: ReferenceLibraryItem[];
   buildLibraryReferenceContext: () => string;
+  buildLibraryReferenceContextForQuery?: (
+    query: string,
+    options?: { usageBucket?: "chat" | "task" }
+  ) => Promise<string>;
   imageLibraryReferenceEnabled: boolean;
   imageLibraryReferenceCount: number;
   applyChatUsage: (

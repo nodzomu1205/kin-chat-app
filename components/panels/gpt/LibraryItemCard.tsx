@@ -28,12 +28,14 @@ type Props = Pick<
   | "referenceLibraryItems"
   | "multipartAssemblies"
   | "libraryReferenceCount"
+  | "libraryRagIndexStates"
   | "imageLibraryReferenceCount"
   | "sourceDisplayCount"
   | "selectedTaskLibraryItemId"
   | "onSelectTaskLibraryItem"
   | "onMoveLibraryItem"
   | "onChangeLibraryItemMode"
+  | "onIndexLibraryItemForRag"
   | "onStartAskAiModeSearch"
   | "onImportYouTubeTranscript"
   | "onSendYouTubeTranscriptToKin"
@@ -71,12 +73,14 @@ export default function LibraryItemCard({
   referenceLibraryItems,
   multipartAssemblies,
   libraryReferenceCount,
+  libraryRagIndexStates,
   imageLibraryReferenceCount,
   sourceDisplayCount,
   selectedTaskLibraryItemId,
   onSelectTaskLibraryItem,
   onMoveLibraryItem,
   onChangeLibraryItemMode,
+  onIndexLibraryItemForRag,
   onStartAskAiModeSearch,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
@@ -127,6 +131,7 @@ export default function LibraryItemCard({
   const imagePayload = isGeneratedImageLibraryPayload(item.structuredPayload)
     ? item.structuredPayload
     : null;
+  const ragIndexState = libraryRagIndexStates[item.id] || { status: "idle" };
 
   return (
     <div
@@ -144,6 +149,7 @@ export default function LibraryItemCard({
         priorityIndex={priorityIndex}
         libraryReferenceCount={libraryReferenceCount}
         imageLibraryReferenceCount={imageLibraryReferenceCount}
+        ragIndexState={ragIndexState}
         selectedTaskLibraryItemId={selectedTaskLibraryItemId}
         multipartSource={multipartSource}
         isMobile={isMobile}
@@ -164,6 +170,7 @@ export default function LibraryItemCard({
         selectedTaskLibraryItemId={selectedTaskLibraryItemId}
         onSelectTaskLibraryItem={onSelectTaskLibraryItem}
         onChangeLibraryItemMode={onChangeLibraryItemMode}
+        onIndexLibraryItemForRag={onIndexLibraryItemForRag}
         onDownloadMultipartAssembly={onDownloadMultipartAssembly}
         onDownloadStoredDocument={onDownloadStoredDocument}
         onShowLibraryItemInChat={onShowLibraryItemInChat}

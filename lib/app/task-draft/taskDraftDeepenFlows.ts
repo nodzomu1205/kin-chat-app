@@ -45,6 +45,18 @@ function getTaskDraftImageLibraryCandidates(args: DeepenTaskFromLastFlowArgs) {
   });
 }
 
+async function buildTaskDraftLibraryReferenceContext(
+  args: DeepenTaskFromLastFlowArgs,
+  query: string
+) {
+  if (args.buildLibraryReferenceContextForQuery) {
+    return args.buildLibraryReferenceContextForQuery(query, {
+      usageBucket: "task",
+    });
+  }
+  return args.buildLibraryReferenceContext();
+}
+
 export async function runDeepenTaskFromLastFlow(
   args: DeepenTaskFromLastFlowArgs
 ) {
@@ -66,6 +78,30 @@ export async function runDeepenTaskFromLastFlow(
     ? stripPresentationTaskMarker(args.gptInput.trim())
     : args.gptInput.trim();
   const parsedInput = args.applyPrefixedTaskFieldsFromText(normalizedInput);
+  const displayUserMsg: Message = {
+    id: generateId(),
+    role: "user",
+    text: presentationMode
+      ? `[PPT design deepen]\n${parsedInput.freeText || "PPT design deepen"}`
+      : `[Deepen]\n${parsedInput.freeText || "Deeper analysis requested."}`,
+    meta: {
+      kind: "task_info",
+    },
+  };
+
+  buildTaskFlowRecentContext({
+    gptStateRef: args.gptStateRef,
+    chatRecentLimit: args.chatRecentLimit,
+    userMessage: displayUserMsg,
+  });
+
+  startTaskFlowRequest({
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+    userMessage: displayUserMsg,
+  });
+
   const fallbackTitle = args.getResolvedTaskTitle({
     explicitTitle: parsedInput.title,
     freeText: parsedInput.freeText || normalizedInput,
@@ -99,6 +135,10 @@ export async function runDeepenTaskFromLastFlow(
     parsedInput.freeText,
     args.currentTaskDraft.userInstruction
   );
+  const libraryReferenceContext = await buildTaskDraftLibraryReferenceContext(
+    args,
+    [parsedInput.freeText || normalizedInput, text].filter(Boolean).join("\n\n")
+  );
 
   const taskInput = presentationMode
     ? buildPresentationTaskStructuredInput({
@@ -107,7 +147,7 @@ export async function runDeepenTaskFromLastFlow(
         currentPlanText: text,
         body: parsedInput.freeText || normalizedInput || "PPT設計書を深掘り",
         material: text,
-        libraryReferenceContext: args.buildLibraryReferenceContext(),
+        libraryReferenceContext,
         imageLibraryContext: buildPresentationImageLibraryContext(
           getTaskDraftImageLibraryCandidates(args)
         ),
@@ -118,7 +158,7 @@ export async function runDeepenTaskFromLastFlow(
         actionInstruction: parsedInput.freeText || normalizedInput,
         body: text,
         material: text,
-        libraryReferenceContext: args.buildLibraryReferenceContext(),
+        libraryReferenceContext,
       });
 
   const userMsg: Message = {
@@ -142,7 +182,6 @@ export async function runDeepenTaskFromLastFlow(
     setGptMessages: args.setGptMessages,
     setGptInput: args.setGptInput,
     setGptLoading: args.setGptLoading,
-    userMessage: userMsg,
   });
 
   try {

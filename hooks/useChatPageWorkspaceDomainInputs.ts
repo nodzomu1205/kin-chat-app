@@ -160,11 +160,17 @@ export function useChatPageWorkspaceDomainInputs(
       multipartAssemblies: referenceDomain.multipartAssemblies,
       storedDocuments: referenceDomain.allDocuments,
       referenceLibraryItems: referenceDomain.libraryItems,
+      libraryRagIndexStates: referenceDomain.libraryRagIndexStates,
       selectedTaskLibraryItemId: referenceDomain.selectedTaskLibraryItemId,
       autoLibraryReferenceEnabled: referenceDomain.autoLibraryReferenceEnabled,
       libraryReferenceMode: referenceDomain.libraryReferenceMode,
       libraryIndexResponseCount: referenceDomain.libraryIndexResponseCount,
       libraryReferenceCount: referenceDomain.libraryReferenceCount,
+      libraryRagReferenceEnabled: referenceDomain.libraryRagReferenceEnabled,
+      libraryRagReferenceCount: referenceDomain.libraryRagReferenceCount,
+      libraryRagCandidateCount: referenceDomain.libraryRagCandidateCount,
+      libraryRagSimilarityThreshold:
+        referenceDomain.libraryRagSimilarityThreshold,
       imageLibraryReferenceEnabled:
         referenceDomain.imageLibraryReferenceEnabled,
       imageLibraryReferenceCount: referenceDomain.imageLibraryReferenceCount,
@@ -189,6 +195,7 @@ export function useChatPageWorkspaceDomainInputs(
       onMoveLibraryItem: referenceDomain.moveLibraryItem,
       onSelectTaskLibraryItem: referenceDomain.setSelectedTaskLibraryItemId,
       onChangeLibraryItemMode: referenceDomain.setLibraryItemModeOverride,
+      onIndexLibraryItemForRag: referenceDomain.indexLibraryItemForRag,
       onSaveStoredDocument: referenceDomain.updateStoredDocument,
         onShowLibraryItemInChat: referenceDomain.showLibraryItemInChat,
         onSendLibraryItemToKin: referenceDomain.sendLibraryItemToKin,
@@ -207,6 +214,14 @@ export function useChatPageWorkspaceDomainInputs(
       onChangeLibraryIndexResponseCount:
         referenceDomain.setLibraryIndexResponseCount,
       onChangeLibraryReferenceCount: referenceDomain.setLibraryReferenceCount,
+      onChangeLibraryRagReferenceEnabled:
+        referenceDomain.setLibraryRagReferenceEnabled,
+      onChangeLibraryRagReferenceCount:
+        referenceDomain.setLibraryRagReferenceCount,
+      onChangeLibraryRagCandidateCount:
+        referenceDomain.setLibraryRagCandidateCount,
+      onChangeLibraryRagSimilarityThreshold:
+        referenceDomain.setLibraryRagSimilarityThreshold,
       onChangeImageLibraryReferenceEnabled:
         referenceDomain.setImageLibraryReferenceEnabled,
       onChangeImageLibraryReferenceCount:
@@ -218,6 +233,8 @@ export function useChatPageWorkspaceDomainInputs(
       onIndexGoogleDriveFolder: referenceDomain.indexGoogleDriveFolder,
       onImportGoogleDriveFolder: referenceDomain.importGoogleDriveFolder,
       buildLibraryReferenceContext: referenceDomain.buildLibraryReferenceContext,
+      buildLibraryReferenceContextForQuery:
+        referenceDomain.buildLibraryReferenceContextForQuery,
       applyRegisteredTaskRuntimeSettings:
         args.applyRegisteredTaskRuntimeSettings,
       getTaskLibraryItem: referenceDomain.getTaskLibraryItem,

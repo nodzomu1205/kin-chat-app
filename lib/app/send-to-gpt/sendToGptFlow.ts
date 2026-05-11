@@ -15,13 +15,16 @@ import { finalizeSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlowFinali
 import { resolveSendToGptFlowStart } from "@/lib/app/send-to-gpt/sendToGptFlowDecisionState";
 import { runImageGptCommandFlow } from "@/lib/app/image/imageGptFlow";
 import { runPresentationGptCommandFlow } from "@/lib/app/presentation/presentationGptFlow";
+import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
 import { runSavedDocumentEditFlow } from "@/lib/app/reference-library/savedDocumentEditFlow";
 import {
   appendSendToGptFailureMessage,
   applySendToGptRequestStart,
 } from "@/lib/app/send-to-gpt/sendToGptFlowState";
+import { generateId } from "@/lib/shared/uuid";
 import {
   buildSendToGptFlowPreparedPhase,
+  buildSendToGptPrePreparationGateArgs,
   buildSendToGptFlowStepArgs,
   buildSendToGptFinalizeArgs,
 } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
@@ -40,54 +43,87 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
     shouldRespondToTaskDirectiveOnlyInput,
     taskDirectiveOnlyResponseText: getTaskDirectiveOnlyResponseText(),
   });
-  const preparedFlowPhase = buildSendToGptFlowPreparedPhase({
-    flowArgs,
-    rawText,
-  });
-
-  if (await runPrePreparationGates(preparedFlowPhase.prePreparationGateArgs)) {
-    return;
-  }
-
-  if (await runPreparedRequestGates(preparedFlowPhase.preparedRequestGateArgs)) {
-    return;
-  }
-  const {
-    preparedRequestBundle: { preparedRequestContexts },
-    executionBundle,
-  } = preparedFlowPhase;
 
   if (
-    await runImageGptCommandFlow({
-      rawText,
-      flowArgs,
-    })
+    await runPrePreparationGates(
+      buildSendToGptPrePreparationGateArgs({
+        flowArgs,
+        rawText,
+      })
+    )
   ) {
     return;
   }
 
-  if (
-    await runPresentationGptCommandFlow({
-      rawText,
-      flowArgs,
-      assistantRequestArgs: executionBundle.assistantRequestArgs,
-    })
-  ) {
-    return;
+  args.setGptInput("");
+  args.setGptLoading(true);
+  const shouldAppendUserMessageBeforeContext = shouldShowUserMessageBeforeContext(rawText);
+  if (shouldAppendUserMessageBeforeContext) {
+    args.setGptMessages((prev) => [
+      ...prev,
+      {
+        id: generateId(),
+        role: "user",
+        text: rawText,
+      },
+    ]);
   }
-
-  if (
-    await runSavedDocumentEditFlow({
-      rawText,
-      flowArgs,
-    })
-  ) {
-    return;
-  }
-
-  applySendToGptRequestStart(executionBundle.requestStartArgs);
 
   try {
+    const shouldUseDbReference = shouldUseDbReferenceForInput(rawText);
+    const libraryReferenceContext =
+      shouldUseDbReference && flowArgs.buildLibraryReferenceContextForQuery
+        ? await flowArgs.buildLibraryReferenceContextForQuery(rawText)
+        : flowArgs.buildLibraryReferenceContext();
+    const flowArgsWithResolvedLibraryContext = {
+      ...flowArgs,
+      buildLibraryReferenceContext: () => libraryReferenceContext,
+    };
+    const preparedFlowPhase = buildSendToGptFlowPreparedPhase({
+      flowArgs: flowArgsWithResolvedLibraryContext,
+      rawText,
+    });
+
+    if (await runPreparedRequestGates(preparedFlowPhase.preparedRequestGateArgs)) {
+      return;
+    }
+    const {
+      preparedRequestBundle: { preparedRequestContexts },
+      executionBundle,
+    } = preparedFlowPhase;
+
+    if (
+      await runImageGptCommandFlow({
+        rawText,
+        flowArgs: flowArgsWithResolvedLibraryContext,
+      })
+    ) {
+      return;
+    }
+
+    if (
+      await runPresentationGptCommandFlow({
+        rawText,
+        flowArgs: flowArgsWithResolvedLibraryContext,
+        assistantRequestArgs: executionBundle.assistantRequestArgs,
+      })
+    ) {
+      return;
+    }
+
+    if (
+      await runSavedDocumentEditFlow({
+        rawText,
+        flowArgs: flowArgsWithResolvedLibraryContext,
+      })
+    ) {
+      return;
+    }
+
+    if (!shouldAppendUserMessageBeforeContext) {
+      applySendToGptRequestStart(executionBundle.requestStartArgs);
+    }
+
     const { data, assistantText, normalizedSources } =
       await requestGptAssistantArtifacts(executionBundle.assistantRequestArgs);
 
@@ -109,4 +145,40 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
   } finally {
     args.setGptLoading(false);
   }
+}
+
+function shouldShowUserMessageBeforeContext(rawText: string) {
+  const trimmed = rawText.trim();
+  return !trimmed.startsWith("/") && !trimmed.startsWith("<<SYS_");
+}
+
+const DB_REFERENCE_ELIGIBLE_SYS_BLOCKS = new Set([
+  "SYS_ASK_GPT",
+  "SYS_PPT_DESIGN_REQUEST",
+  "SYS_DRAFT_PREPARATION_REQUEST",
+  "SYS_DRAFT_MODIFICATION_REQUEST",
+]);
+
+function extractLeadingSysBlockName(text: string) {
+  return text.match(/^<<((?:SYS_)[A-Z_]+)>>/)?.[1] || "";
+}
+
+export function shouldUseDbReferenceForInput(rawText: string) {
+  const trimmed = rawText.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith("<<SYS_")) {
+    return DB_REFERENCE_ELIGIBLE_SYS_BLOCKS.has(
+      extractLeadingSysBlockName(trimmed)
+    );
+  }
+  const pptCommand = parsePptCommand(trimmed);
+  if (
+    pptCommand.isPptCommand &&
+    (pptCommand.intent === "renderPptx" ||
+      pptCommand.intent === "savePlan" ||
+      pptCommand.intent === "resolveVisuals")
+  ) {
+    return false;
+  }
+  return true;
 }

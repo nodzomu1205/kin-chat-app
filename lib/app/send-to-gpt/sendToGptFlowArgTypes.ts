@@ -65,6 +65,10 @@ export type SendToGptFlowProtocolArgs = {
   imageLibraryReferenceEnabled?: boolean;
   imageLibraryReferenceCount?: number;
   buildLibraryReferenceContext: () => string;
+  buildLibraryReferenceContextForQuery?: (
+    query: string,
+    options?: { usageBucket?: "chat" | "task" }
+  ) => Promise<string>;
   taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
   ingestProtocolMessage: (
     text: string,

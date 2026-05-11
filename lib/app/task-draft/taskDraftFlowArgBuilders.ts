@@ -44,6 +44,7 @@ export function buildCommonTaskDraftFlowArgs(
     chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
     referenceLibraryItems: args.referenceLibraryItems,
     buildLibraryReferenceContext: args.buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery: args.buildLibraryReferenceContextForQuery,
     imageLibraryReferenceEnabled: args.imageLibraryReferenceEnabled,
     imageLibraryReferenceCount: args.imageLibraryReferenceCount,
     applyChatUsage: args.applyChatUsage,

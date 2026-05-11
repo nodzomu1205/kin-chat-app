@@ -32,6 +32,9 @@ type MemorySectionText = {
   save: string;
 };
 
+const compactNumberFieldWidth = 220;
+const compactStatFieldWidth = 240;
+
 export function MemorySettingsSection(props: {
   isMobile?: boolean;
   localSettings: LocalMemorySettingsInput;
@@ -60,18 +63,21 @@ export function MemorySettingsSection(props: {
           value={props.localSettings.maxFacts}
           onChange={(value) => props.onFieldChange("maxFacts", value)}
           help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxFacts}
+          maxWidth={compactNumberFieldWidth}
         />
         <NumberField
           label="MAX_PREFERENCES"
           value={props.localSettings.maxPreferences}
           onChange={(value) => props.onFieldChange("maxPreferences", value)}
           help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.maxPreferences}
+          maxWidth={compactNumberFieldWidth}
         />
         <NumberField
           label="CHAT_RECENT_LIMIT"
           value={props.localSettings.chatRecentLimit}
           onChange={(value) => props.onFieldChange("chatRecentLimit", value)}
           help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.chatRecentLimit}
+          maxWidth={compactNumberFieldWidth}
         />
         <NumberField
           label="SUMMARIZE_THRESHOLD"
@@ -80,17 +86,20 @@ export function MemorySettingsSection(props: {
             props.onFieldChange("summarizeThreshold", value)
           }
           help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.summarizeThreshold}
+          maxWidth={compactNumberFieldWidth}
         />
         <NumberField
           label="RECENT_KEEP"
           value={props.localSettings.recentKeep}
           onChange={(value) => props.onFieldChange("recentKeep", value)}
           help={GPT_SETTINGS_DRAWER_TEXT.memoryFieldHelp.recentKeep}
+          maxWidth={compactNumberFieldWidth}
         />
         <ReadonlyStatField
           label={text.memoryCapacityPreviewLabel}
           value={`${text.memoryCapacityPreviewPrefix}${props.memoryCapacityPreview}`}
           help={text.memoryCapacityPreviewHelp}
+          maxWidth={compactStatFieldWidth}
         />
       </div>
       <div
@@ -177,6 +186,7 @@ export function IngestSettingsSection(props: {
                 label={GPT_SETTINGS_DRAWER_TEXT.charLimit}
                 value={String(props.compactCharLimit)}
                 onChange={(value) => applyUnifiedLimit(Number(value || 0))}
+                maxWidth={compactNumberFieldWidth}
               />
             </div>
           </div>

@@ -34,6 +34,7 @@ import type {
   TaskRegistrationRecurrence,
 } from "@/lib/app/task-registration/taskRegistration";
 import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
+import type { TokenUsage as CoreTokenUsage } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 
 export type GptInstructionMode =
   | "normal"
@@ -48,6 +49,23 @@ export type LibraryReferenceMode = "summary_only" | "summary_with_excerpt";
 export type LibraryItemModeOverride = "default" | LibraryReferenceMode;
 export type FileReadPolicy = "text_first" | "visual_first" | "text_and_layout";
 export type ImageLibraryImportMode = "image_only" | "image_with_description";
+export type LibraryRagIndexStatus =
+  | "idle"
+  | "indexing"
+  | "indexed"
+  | "stale"
+  | "error"
+  | "skipped";
+
+export type LibraryRagIndexState = {
+  status: LibraryRagIndexStatus;
+  itemUpdatedAt?: string;
+  indexedAt?: string;
+  chunkCount?: number;
+  usage?: CoreTokenUsage;
+  error?: string;
+  skippedReason?: string;
+};
 
 export type TokenTriplet = {
   input?: number;
@@ -234,6 +252,7 @@ export type GptPanelReferenceProps = {
   multipartAssemblies: MultipartAssembly[];
   storedDocuments: StoredDocument[];
   referenceLibraryItems: ReferenceLibraryItem[];
+  libraryRagIndexStates: Record<string, LibraryRagIndexState>;
   selectedTaskLibraryItemId: string;
   onSelectTaskSearchResult: (rawResultId: string) => void;
   onMoveSearchHistoryItem: (
@@ -279,7 +298,8 @@ export type GptPanelReferenceProps = {
     ) => void | Promise<void>;
     onDownloadLibraryItem: (itemId: string) => void | Promise<void>;
     onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
-    onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
+  onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
+  onIndexLibraryItemForRag: (itemId: string) => void | Promise<void>;
     onImportDeviceImageFile: (
       file: File,
       sidecarText?: ImageImportSidecarText
@@ -311,6 +331,10 @@ export type GptPanelSettingsProps = {
   libraryReferenceMode: LibraryReferenceMode;
   libraryIndexResponseCount: number;
   libraryReferenceCount: number;
+  libraryRagReferenceEnabled: boolean;
+  libraryRagReferenceCount: number;
+  libraryRagCandidateCount: number;
+  libraryRagSimilarityThreshold: number;
   imageLibraryReferenceEnabled: boolean;
   imageLibraryReferenceCount: number;
   imageLibraryCardLimit: number;
@@ -346,6 +370,10 @@ export type GptPanelSettingsProps = {
   onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (value: number) => void;
   onChangeLibraryReferenceCount: (value: number) => void;
+  onChangeLibraryRagReferenceEnabled: (value: boolean) => void;
+  onChangeLibraryRagReferenceCount: (value: number) => void;
+  onChangeLibraryRagCandidateCount: (value: number) => void;
+  onChangeLibraryRagSimilarityThreshold: (value: number) => void;
   onChangeImageLibraryReferenceEnabled: (value: boolean) => void;
   onChangeImageLibraryReferenceCount: (value: number) => void;
   onChangeImageLibraryCardLimit: (value: number) => void;

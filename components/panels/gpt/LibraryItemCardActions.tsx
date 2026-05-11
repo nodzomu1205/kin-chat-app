@@ -18,6 +18,7 @@ export default function LibraryItemCardActions({
   selectedTaskLibraryItemId,
   onSelectTaskLibraryItem,
   onChangeLibraryItemMode,
+  onIndexLibraryItemForRag,
   onDownloadMultipartAssembly,
   onDownloadStoredDocument,
   onShowLibraryItemInChat,
@@ -38,6 +39,7 @@ export default function LibraryItemCardActions({
   selectedTaskLibraryItemId: string;
   onSelectTaskLibraryItem: LibraryDrawerProps["onSelectTaskLibraryItem"];
   onChangeLibraryItemMode: LibraryDrawerProps["onChangeLibraryItemMode"];
+  onIndexLibraryItemForRag: LibraryDrawerProps["onIndexLibraryItemForRag"];
   onDownloadMultipartAssembly: LibraryDrawerProps["onDownloadMultipartAssembly"];
   onDownloadStoredDocument: LibraryDrawerProps["onDownloadStoredDocument"];
   onShowLibraryItemInChat: LibraryDrawerProps["onShowLibraryItemInChat"];
@@ -139,6 +141,21 @@ export default function LibraryItemCardActions({
             <option value="summary_only">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.summary_only}</option>
             <option value="summary_with_excerpt">{GPT_LIBRARY_DRAWER_TEXT.modeOptions.summary_with_excerpt}</option>
           </select>
+        ) : null}
+
+        {!isGeneratedImage ? (
+          <button
+            type="button"
+            onClick={() => void onIndexLibraryItemForRag(item.id)}
+            style={{
+              ...pillButton,
+              background: "#ffffff",
+              color: "#0369a1",
+              border: "1px solid #bae6fd",
+            }}
+          >
+            DBへ送付
+          </button>
         ) : null}
 
         <button

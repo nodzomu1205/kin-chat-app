@@ -77,6 +77,10 @@ type Props = {
   libraryReferenceMode: LibraryReferenceMode;
   libraryIndexResponseCount: number;
   libraryReferenceCount: number;
+  libraryRagReferenceEnabled: boolean;
+  libraryRagReferenceCount: number;
+  libraryRagCandidateCount: number;
+  libraryRagSimilarityThreshold: number;
   imageLibraryReferenceEnabled: boolean;
   imageLibraryReferenceCount: number;
   imageLibraryCardLimit: number;
@@ -98,6 +102,10 @@ type Props = {
   onChangeLibraryReferenceMode: (v: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (v: number) => void;
   onChangeLibraryReferenceCount: (v: number) => void;
+  onChangeLibraryRagReferenceEnabled: (v: boolean) => void;
+  onChangeLibraryRagReferenceCount: (v: number) => void;
+  onChangeLibraryRagCandidateCount: (v: number) => void;
+  onChangeLibraryRagSimilarityThreshold: (v: number) => void;
   onChangeImageLibraryReferenceEnabled: (v: boolean) => void;
   onChangeImageLibraryReferenceCount: (v: number) => void;
   onChangeImageLibraryCardLimit: (v: number) => void;
@@ -266,12 +274,20 @@ export default function GptSettingsDrawer(props: Props) {
             libraryReferenceMode={props.libraryReferenceMode}
             libraryIndexResponseCount={props.libraryIndexResponseCount}
             libraryReferenceCount={props.libraryReferenceCount}
+            libraryRagReferenceEnabled={props.libraryRagReferenceEnabled}
+            libraryRagReferenceCount={props.libraryRagReferenceCount}
+            libraryRagCandidateCount={props.libraryRagCandidateCount}
+            libraryRagSimilarityThreshold={props.libraryRagSimilarityThreshold}
             libraryStorageMB={props.libraryStorageMB}
             libraryReferenceEstimatedTokens={props.libraryReferenceEstimatedTokens}
             onChangeAutoLibraryReferenceEnabled={props.onChangeAutoLibraryReferenceEnabled}
             onChangeLibraryReferenceMode={props.onChangeLibraryReferenceMode}
             onChangeLibraryIndexResponseCount={props.onChangeLibraryIndexResponseCount}
             onChangeLibraryReferenceCount={props.onChangeLibraryReferenceCount}
+            onChangeLibraryRagReferenceEnabled={props.onChangeLibraryRagReferenceEnabled}
+            onChangeLibraryRagReferenceCount={props.onChangeLibraryRagReferenceCount}
+            onChangeLibraryRagCandidateCount={props.onChangeLibraryRagCandidateCount}
+            onChangeLibraryRagSimilarityThreshold={props.onChangeLibraryRagSimilarityThreshold}
           />
           <ImageLibraryReferenceSettingsSection
             isMobile={props.isMobile}

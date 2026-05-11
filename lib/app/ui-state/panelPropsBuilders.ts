@@ -98,6 +98,14 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps 
     settings.onChangeLibraryIndexResponseCount(clampPanelCount(value, 1, 50));
   const onChangeLibraryReferenceCount = (value: number) =>
     settings.onChangeLibraryReferenceCount(clampPanelCount(value, 0, 20));
+  const onChangeLibraryRagReferenceCount = (value: number) =>
+    settings.onChangeLibraryRagReferenceCount(clampPanelCount(value, 0, 50));
+  const onChangeLibraryRagCandidateCount = (value: number) =>
+    settings.onChangeLibraryRagCandidateCount(clampPanelCount(value, 1, 500));
+  const onChangeLibraryRagSimilarityThreshold = (value: number) =>
+    settings.onChangeLibraryRagSimilarityThreshold(
+      Math.max(0, Math.min(1, Number(value) || 0))
+    );
   const onChangeImageLibraryReferenceCount = (value: number) =>
     settings.onChangeImageLibraryReferenceCount(clampPanelCount(value, 0, 50));
   const onChangeImageLibraryCardLimit = (value: number) =>
@@ -126,6 +134,9 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps 
       onChangeSourceDisplayCount,
       onChangeLibraryIndexResponseCount,
       onChangeLibraryReferenceCount,
+      onChangeLibraryRagReferenceCount,
+      onChangeLibraryRagCandidateCount,
+      onChangeLibraryRagSimilarityThreshold,
       onChangeImageLibraryReferenceCount,
       onChangeImageLibraryCardLimit,
     },

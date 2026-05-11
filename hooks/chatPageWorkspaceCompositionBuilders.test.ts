@@ -52,6 +52,7 @@ describe("chatPageWorkspaceCompositionBuilders", () => {
             multipartAssemblies: [],
             storedDocuments: [],
             referenceLibraryItems: [],
+            libraryRagIndexStates: {},
             selectedTaskLibraryItemId: "",
             autoLibraryReferenceEnabled: false,
             libraryReferenceMode: "off",

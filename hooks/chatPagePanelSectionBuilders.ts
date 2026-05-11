@@ -32,6 +32,7 @@ export function buildChatPageWorkspaceGptReferences(
     multipartAssemblies: args.references.multipartAssemblies,
     storedDocuments: args.references.storedDocuments,
     referenceLibraryItems: args.references.referenceLibraryItems,
+    libraryRagIndexStates: args.references.libraryRagIndexStates,
     selectedTaskLibraryItemId: args.references.selectedTaskLibraryItemId,
     onSelectTaskSearchResult: args.search.onSelectTaskSearchResult,
     onMoveSearchHistoryItem: args.search.onMoveSearchHistoryItem,
@@ -49,6 +50,7 @@ export function buildChatPageWorkspaceGptReferences(
     onMoveLibraryItem: args.references.onMoveLibraryItem,
     onSelectTaskLibraryItem: args.references.onSelectTaskLibraryItem,
     onChangeLibraryItemMode: args.references.onChangeLibraryItemMode,
+    onIndexLibraryItemForRag: args.references.onIndexLibraryItemForRag,
     onSaveStoredDocument: args.references.onSaveStoredDocument,
     onShowLibraryItemInChat: args.references.onShowLibraryItemInChat,
     onSendLibraryItemToKin: args.references.onSendLibraryItemToKin,
@@ -159,6 +161,10 @@ export function buildChatPageWorkspaceGptSettings(
     libraryReferenceMode: args.references.libraryReferenceMode,
     libraryIndexResponseCount: args.references.libraryIndexResponseCount,
     libraryReferenceCount: args.references.libraryReferenceCount,
+    libraryRagReferenceEnabled: args.references.libraryRagReferenceEnabled,
+    libraryRagReferenceCount: args.references.libraryRagReferenceCount,
+    libraryRagCandidateCount: args.references.libraryRagCandidateCount,
+    libraryRagSimilarityThreshold: args.references.libraryRagSimilarityThreshold,
     imageLibraryReferenceEnabled: args.references.imageLibraryReferenceEnabled,
     imageLibraryReferenceCount: args.references.imageLibraryReferenceCount,
     imageLibraryCardLimit: args.references.imageLibraryCardLimit,
@@ -198,6 +204,14 @@ export function buildChatPageWorkspaceGptSettings(
       args.references.onChangeLibraryIndexResponseCount,
     onChangeLibraryReferenceCount:
       args.references.onChangeLibraryReferenceCount,
+    onChangeLibraryRagReferenceEnabled:
+      args.references.onChangeLibraryRagReferenceEnabled,
+    onChangeLibraryRagReferenceCount:
+      args.references.onChangeLibraryRagReferenceCount,
+    onChangeLibraryRagCandidateCount:
+      args.references.onChangeLibraryRagCandidateCount,
+    onChangeLibraryRagSimilarityThreshold:
+      args.references.onChangeLibraryRagSimilarityThreshold,
     onChangeImageLibraryReferenceEnabled:
       args.references.onChangeImageLibraryReferenceEnabled,
     onChangeImageLibraryReferenceCount:

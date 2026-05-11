@@ -47,6 +47,8 @@ function buildWorkspaceServicesReferences(
 ) {
   return {
     buildLibraryReferenceContext: args.buildLibraryReferenceContext,
+    buildLibraryReferenceContextForQuery:
+      args.buildLibraryReferenceContextForQuery,
     applyRegisteredTaskRuntimeSettings:
       args.applyRegisteredTaskRuntimeSettings,
     onSaveStoredDocument: args.onSaveStoredDocument,

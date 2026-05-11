@@ -6,7 +6,7 @@ import type { ImageImportSidecarText } from "@/lib/app/image/imageImportFlow";
 import type { SetStateAction } from "react";
 
 export type LibraryViewRequest = {
-  view: "library" | "images";
+  view: "library" | "images" | "db" | "dbLog";
   key: number;
 };
 
@@ -16,10 +16,12 @@ export type LibraryDrawerProps = Pick<
   GptPanelReferenceProps,
   | "multipartAssemblies"
   | "referenceLibraryItems"
+  | "libraryRagIndexStates"
   | "selectedTaskLibraryItemId"
   | "onSelectTaskLibraryItem"
   | "onMoveLibraryItem"
   | "onChangeLibraryItemMode"
+  | "onIndexLibraryItemForRag"
   | "onStartAskAiModeSearch"
   | "onImportYouTubeTranscript"
   | "onSendYouTubeTranscriptToKin"
