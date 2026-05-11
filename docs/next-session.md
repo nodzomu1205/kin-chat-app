@@ -1,11 +1,16 @@
 # Next Session Handover
 
-Updated: 2026-05-10
+Updated: 2026-05-12
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-10 PPT / library maintenance closeout.
-Start there for PPT or library work:
+The newest active record is the 2026-05-12 Library DB / RAG closeout. Start
+there for DB, RAG, deduplication, compaction, or DB organization work:
+
+- [`HANDOFF-2026-05-12.md`](./HANDOFF-2026-05-12.md)
+- [`library-rag-mvp.md`](./library-rag-mvp.md)
+
+For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 
 - [`HANDOFF-2026-05-10.md`](./HANDOFF-2026-05-10.md)
 - [`presentation-renderer/development-session-checklist.md`](./presentation-renderer/development-session-checklist.md)
@@ -16,6 +21,33 @@ Start there for PPT or library work:
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
 ## Current Next Start
+
+Current default next work is DB organization, not PPT maintenance.
+
+The 2026-05-12 closeout ended with:
+
+- DB deletion working
+- exact duplicate detection working
+- semantic similar-chunk RPC implemented
+- non-destructive DB compaction implemented
+- pure SerpAPI inline search skipping DB reference
+- live observation that automatic semantic near-duplicate detection still did
+  not surface useful candidates from the current data
+
+Recommended next action:
+
+1. Add DB category/theme/entity extraction for current DB documents.
+2. Display extracted labels in the DB tab.
+3. Add sorting/grouping by category/theme.
+4. Add user multi-select for DB documents.
+5. Reuse the current non-destructive compaction flow on user-selected document
+   sets.
+
+Do not start by tuning the semantic-similarity threshold alone. The user has
+identified that manual, category-assisted grouping is likely more useful than
+hidden pairwise similarity for this dataset.
+
+## PPT / Library Prior Context
 
 The 2026-05-10 closeout ended with a clean worktree after:
 

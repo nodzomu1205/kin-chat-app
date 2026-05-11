@@ -316,6 +316,15 @@ describe("sendToGptFlowHelpers", () => {
     ).toBe(false);
   });
 
+  it("skips DB reference for pure inline SerpAPI search inputs", () => {
+    expect(shouldUseDbReferenceForInput("検索: AI これから")).toBe(false);
+    expect(shouldUseDbReferenceForInput("検索：AI　これから")).toBe(false);
+    expect(shouldUseDbReferenceForInput("search: Tokyo weather")).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput("検索: 帰国子女 高校\nDB情報も踏まえて比較して")
+    ).toBe(true);
+  });
+
   it("builds normalized request text from the effective search query", () => {
     const params = {
       rawText: "元の入力",

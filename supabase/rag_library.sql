@@ -110,3 +110,46 @@ as $$
   order by chunks.embedding <=> query_embedding
   limit greatest(match_count, 1);
 $$;
+
+create or replace function public.find_similar_rag_library_chunks(
+  min_similarity double precision default 0.68,
+  max_pairs integer default 30
+)
+returns table (
+  left_chunk_id uuid,
+  left_document_id uuid,
+  left_title text,
+  left_chunk_index integer,
+  left_token_estimate integer,
+  right_chunk_id uuid,
+  right_document_id uuid,
+  right_title text,
+  right_chunk_index integer,
+  right_token_estimate integer,
+  similarity double precision
+)
+language sql stable
+as $$
+  select
+    c1.id as left_chunk_id,
+    d1.id as left_document_id,
+    d1.title as left_title,
+    c1.chunk_index as left_chunk_index,
+    c1.token_estimate as left_token_estimate,
+    c2.id as right_chunk_id,
+    d2.id as right_document_id,
+    d2.title as right_title,
+    c2.chunk_index as right_chunk_index,
+    c2.token_estimate as right_token_estimate,
+    1 - (c1.embedding <=> c2.embedding) as similarity
+  from public.rag_document_chunks c1
+  join public.rag_documents d1 on d1.id = c1.document_id
+  join public.rag_document_chunks c2 on c1.id < c2.id
+  join public.rag_documents d2 on d2.id = c2.document_id
+  where c1.embedding is not null
+    and c2.embedding is not null
+    and c1.document_id <> c2.document_id
+    and 1 - (c1.embedding <=> c2.embedding) >= min_similarity
+  order by c1.embedding <=> c2.embedding
+  limit greatest(max_pairs, 1);
+$$;

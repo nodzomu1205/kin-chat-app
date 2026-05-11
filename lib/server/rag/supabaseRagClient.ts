@@ -1,4 +1,7 @@
 import type {
+  RagLibraryDuplicateGroup,
+} from "@/lib/app/reference-library/ragLibraryDuplicateDetection";
+import type {
   RagLibraryChunk,
   RagLibraryDocument,
   RagLibrarySearchMatch,
@@ -44,6 +47,20 @@ type SupabaseRagChunkRow = {
   metadata?: Record<string, unknown> | null;
   created_at?: string;
   updated_at?: string;
+};
+
+type SupabaseRagSimilarChunkRow = {
+  left_chunk_id?: string;
+  left_document_id?: string;
+  left_title?: string;
+  left_chunk_index?: number;
+  left_token_estimate?: number;
+  right_chunk_id?: string;
+  right_document_id?: string;
+  right_title?: string;
+  right_chunk_index?: number;
+  right_token_estimate?: number;
+  similarity?: number;
 };
 
 function getSupabaseRagConfig() {
@@ -105,6 +122,50 @@ export async function listSupabaseRagLibraryDocuments(params: {
   }));
 }
 
+export async function listSupabaseRagLibraryDocumentsByIds(
+  documentIds: string[]
+): Promise<RagLibraryStoredDocument[]> {
+  const config = getSupabaseRagConfig();
+  const ids = documentIds.map((id) => id.trim()).filter(Boolean);
+  if (ids.length === 0) return [];
+  const documentEndpoint = [
+    `${config.url}/rest/v1/rag_documents`,
+    "?select=id,library_item_id,source_id,item_type,artifact_type,title,summary,metadata,content_hash,created_at,updated_at",
+    `&id=in.(${ids.map(encodeURIComponent).join(",")})`,
+  ].join("");
+  const documentResponse = await fetch(documentEndpoint, {
+    method: "GET",
+    headers: buildSupabaseHeaders(config),
+  });
+  const documentRawText = await documentResponse.text();
+  const documentData = parseSupabaseResponse(documentRawText);
+  if (!documentResponse.ok) {
+    throw new Error(resolveSupabaseErrorMessage(documentData, documentResponse));
+  }
+  if (!Array.isArray(documentData) || documentData.length === 0) {
+    return [];
+  }
+
+  const documents = documentData
+    .map(toRagLibraryStoredDocument)
+    .filter((document): document is RagLibraryStoredDocument => Boolean(document));
+  const chunksByDocumentId = await listSupabaseRagLibraryChunksByDocumentIds(
+    config,
+    documents.map((document) => document.id)
+  );
+  const orderIndex = new Map(ids.map((id, index) => [id, index]));
+  return documents
+    .map((document) => ({
+      ...document,
+      chunks: chunksByDocumentId.get(document.id) || [],
+    }))
+    .sort(
+      (left, right) =>
+        (orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+        (orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+    );
+}
+
 export async function matchSupabaseRagLibraryChunks(params: {
   embedding: number[];
   matchCount: number;
@@ -156,10 +217,48 @@ export async function matchSupabaseRagLibraryChunks(params: {
     .filter((match): match is RagLibrarySearchMatch => Boolean(match));
 }
 
+export async function listSupabaseRagSemanticDuplicateGroups(params: {
+  minSimilarity?: number;
+  maxPairs?: number;
+} = {}): Promise<RagLibraryDuplicateGroup[]> {
+  const config = getSupabaseRagConfig();
+  const endpoint = `${config.url}/rest/v1/rpc/find_similar_rag_library_chunks`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      ...buildSupabaseHeaders(config),
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      min_similarity: params.minSimilarity ?? 0.68,
+      max_pairs: Math.min(100, Math.max(1, Math.floor(params.maxPairs || 30))),
+    }),
+  });
+
+  const rawText = await response.text();
+  const data = parseSupabaseResponse(rawText);
+  if (!response.ok && isMissingSimilarChunksRpc(data)) {
+    return [];
+  }
+  if (!response.ok) {
+    throw new Error(resolveSupabaseErrorMessage(data, response));
+  }
+  if (!Array.isArray(data)) return [];
+  return data
+    .map(toSemanticDuplicateGroup)
+    .filter((group): group is RagLibraryDuplicateGroup => Boolean(group));
+}
+
 function isMissingDocumentIdsRpc(data: unknown) {
   if (!data || typeof data !== "object") return false;
   const text = JSON.stringify(data);
   return text.includes("PGRST202") || text.includes("document_ids");
+}
+
+function isMissingSimilarChunksRpc(data: unknown) {
+  if (!data || typeof data !== "object") return false;
+  const text = JSON.stringify(data);
+  return text.includes("PGRST202") || text.includes("find_similar_rag_library_chunks");
 }
 
 export async function upsertSupabaseRagLibraryDocument(
@@ -225,6 +324,26 @@ export async function replaceSupabaseRagLibraryChunks(params: {
         embedding: chunk.embedding,
       }))
     ),
+  });
+
+  const rawText = await response.text();
+  const data = parseSupabaseResponse(rawText);
+  if (!response.ok) {
+    throw new Error(resolveSupabaseErrorMessage(data, response));
+  }
+}
+
+export async function deleteSupabaseRagLibraryDocument(documentId: string) {
+  const config = getSupabaseRagConfig();
+  const endpoint = `${config.url}/rest/v1/rag_documents?id=eq.${encodeURIComponent(
+    documentId
+  )}`;
+  const response = await fetch(endpoint, {
+    method: "DELETE",
+    headers: {
+      ...buildSupabaseHeaders(config),
+      Prefer: "return=minimal",
+    },
   });
 
   const rawText = await response.text();
@@ -317,6 +436,36 @@ function toRagLibrarySearchMatch(
       ...(row.document_metadata || {}),
       ...(row.chunk_metadata || {}),
     },
+  };
+}
+
+function toSemanticDuplicateGroup(
+  row: SupabaseRagSimilarChunkRow
+): RagLibraryDuplicateGroup | null {
+  if (
+    !row.left_chunk_id ||
+    !row.left_document_id ||
+    !row.right_chunk_id ||
+    !row.right_document_id
+  ) {
+    return null;
+  }
+  const similarity =
+    typeof row.similarity === "number" && Number.isFinite(row.similarity)
+      ? row.similarity
+      : undefined;
+  return {
+    id: `semantic-chunk:${row.left_chunk_id}:${row.right_chunk_id}`,
+    reason: "similar_chunk",
+    documentIds: [row.left_document_id, row.right_document_id],
+    chunkIds: [row.left_chunk_id, row.right_chunk_id],
+    titles: [row.left_title || "Untitled", row.right_title || "Untitled"],
+    documentCount: row.left_document_id === row.right_document_id ? 1 : 2,
+    chunkCount: 2,
+    totalTokenEstimate:
+      (typeof row.left_token_estimate === "number" ? row.left_token_estimate : 0) +
+      (typeof row.right_token_estimate === "number" ? row.right_token_estimate : 0),
+    similarity,
   };
 }
 

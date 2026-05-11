@@ -17,6 +17,7 @@ import { runImageGptCommandFlow } from "@/lib/app/image/imageGptFlow";
 import { runPresentationGptCommandFlow } from "@/lib/app/presentation/presentationGptFlow";
 import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
 import { runSavedDocumentEditFlow } from "@/lib/app/reference-library/savedDocumentEditFlow";
+import { parseTaskInput } from "@/lib/task/taskInputParser";
 import {
   appendSendToGptFailureMessage,
   applySendToGptRequestStart,
@@ -166,6 +167,7 @@ function extractLeadingSysBlockName(text: string) {
 export function shouldUseDbReferenceForInput(rawText: string) {
   const trimmed = rawText.trim();
   if (!trimmed) return false;
+  if (isPureInlineSearchInput(trimmed)) return false;
   if (trimmed.startsWith("<<SYS_")) {
     return DB_REFERENCE_ELIGIBLE_SYS_BLOCKS.has(
       extractLeadingSysBlockName(trimmed)
@@ -181,4 +183,14 @@ export function shouldUseDbReferenceForInput(rawText: string) {
     return false;
   }
   return true;
+}
+
+function isPureInlineSearchInput(rawText: string) {
+  const parsed = parseTaskInput(rawText);
+  return Boolean(
+    parsed.searchQuery &&
+      !parsed.freeText &&
+      !parsed.title &&
+      !parsed.userInstruction
+  );
 }

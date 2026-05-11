@@ -1,6 +1,6 @@
 # Library, DB, And DB Reference Log
 
-Updated: 2026-05-11
+Updated: 2026-05-12
 
 ## Direction
 
@@ -206,6 +206,25 @@ Start conservative:
 4. Avoid automatic destructive merges.
 5. Keep provenance visible.
 
+Current implementation status:
+
+- exact duplicate document detection by `content_hash` is implemented
+- exact duplicate chunk detection by normalized text is implemented
+- semantic similar-chunk detection by stored embedding similarity is
+  implemented through `find_similar_rag_library_chunks`
+- semantic candidate detection is non-breaking when the Supabase RPC has not
+  yet been applied; the app treats that as zero semantic candidates
+- non-destructive compaction can create a new integrated DB document while
+  keeping source documents
+
+Current product lesson from live testing:
+
+- automatic semantic pair detection still did not surface useful candidates for
+  the current DB contents
+- the next organization step should be category/theme/entity extraction,
+  sorting, and user-selected multi-document compaction
+- threshold tuning alone is unlikely to be enough
+
 Later:
 
 - user-approved merge into existing knowledge chunks
@@ -247,6 +266,20 @@ Later:
 - Add category/tag filters.
 - Add image metadata search.
 - Add user-approved merge/supersede flows.
+
+Next recommended Phase 4 slice:
+
+1. Extract lightweight labels from DB documents/chunks:
+   - category
+   - theme/topic
+   - entities
+   - document type
+2. Display those labels in the DB tab.
+3. Sort and group DB documents by those labels.
+4. Let the user select multiple DB documents manually.
+5. Run the existing non-destructive compaction flow on the selected set.
+6. Add explicit delete/supersede only after the integrated result has been
+   reviewed.
 
 ## Stop Rules
 

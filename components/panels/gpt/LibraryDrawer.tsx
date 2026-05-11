@@ -18,7 +18,15 @@ import {
   writeRagLibraryCandidateDocumentIds,
   writeRagLibraryDbDocumentOrder,
 } from "@/lib/app/reference-library/ragLibraryDbCandidateStorage";
-import { fetchRagLibraryDocuments } from "@/lib/app/reference-library/ragLibraryDocumentsClient";
+import {
+  compactRagLibraryDocuments,
+  deleteRagLibraryDocument,
+  fetchRagLibraryDocuments,
+} from "@/lib/app/reference-library/ragLibraryDocumentsClient";
+import {
+  buildRagLibraryDuplicateGroups,
+  type RagLibraryDuplicateGroup,
+} from "@/lib/app/reference-library/ragLibraryDuplicateDetection";
 import {
   readRagLibraryReferenceLogs,
   type RagLibraryReferenceLogEntry,
@@ -86,10 +94,15 @@ export default function LibraryDrawer({
   const [draftSummary, setDraftSummary] = useState("");
   const [draftText, setDraftText] = useState("");
   const [dbDocuments, setDbDocuments] = useState<RagLibraryStoredDocument[]>([]);
+  const [dbSemanticDuplicateGroups, setDbSemanticDuplicateGroups] = useState<
+    RagLibraryDuplicateGroup[]
+  >([]);
   const [dbConfigured, setDbConfigured] = useState(true);
   const [dbLoading, setDbLoading] = useState(false);
   const [dbError, setDbError] = useState("");
   const [dbLoaded, setDbLoaded] = useState(false);
+  const [deletingDbDocumentId, setDeletingDbDocumentId] = useState("");
+  const [compactingDbGroupId, setCompactingDbGroupId] = useState("");
   const [dbReferenceLogs, setDbReferenceLogs] = useState<
     RagLibraryReferenceLogEntry[]
   >([]);
@@ -125,9 +138,14 @@ export default function LibraryDrawer({
     setDbLoading(true);
     setDbError("");
     try {
-      const result = await fetchRagLibraryDocuments({ limit: 50 });
+      const result = await fetchRagLibraryDocuments({
+        limit: 50,
+        duplicateLimit: 30,
+        duplicateThreshold: 0.68,
+      });
       setDbConfigured(result.configured);
       setDbDocuments(result.documents);
+      setDbSemanticDuplicateGroups(result.semanticDuplicateGroups);
       setDbLoaded(true);
     } catch (error) {
       setDbError(error instanceof Error ? error.message : "DB items failed to load.");
@@ -135,6 +153,60 @@ export default function LibraryDrawer({
       setDbLoading(false);
     }
   }, []);
+
+  const handleDeleteDbDocument = React.useCallback(
+    async (documentId: string, title: string) => {
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm(
+          `DBから「${title || "Untitled"}」を削除します。配下のチャンクも削除されます。よろしいですか？`
+        );
+        if (!confirmed) return;
+      }
+      setDeletingDbDocumentId(documentId);
+      setDbError("");
+      try {
+        await deleteRagLibraryDocument(documentId);
+        setDbDocuments((current) =>
+          current.filter((document) => document.id !== documentId)
+        );
+        setDbSemanticDuplicateGroups((current) =>
+          current.filter((group) => !group.documentIds.includes(documentId))
+        );
+      } catch (error) {
+        setDbError(error instanceof Error ? error.message : "DB item delete failed.");
+      } finally {
+        setDeletingDbDocumentId("");
+      }
+    },
+    []
+  );
+
+  const handleCompactDbDocuments = React.useCallback(
+    async (group: RagLibraryDuplicateGroup) => {
+      if (group.documentIds.length < 2) return;
+      const title = `統合: ${group.titles.slice(0, 2).join(" / ")}`;
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm(
+          `近似候補 ${group.documentIds.length}文書から、重複を圧縮した統合DB文書を新規作成します。元文書は残します。よろしいですか？`
+        );
+        if (!confirmed) return;
+      }
+      setCompactingDbGroupId(group.id);
+      setDbError("");
+      try {
+        await compactRagLibraryDocuments({
+          documentIds: group.documentIds,
+          title,
+        });
+        await loadDbDocuments();
+      } catch (error) {
+        setDbError(error instanceof Error ? error.message : "DB compaction failed.");
+      } finally {
+        setCompactingDbGroupId("");
+      }
+    },
+    [loadDbDocuments]
+  );
 
   React.useEffect(() => {
     if (activeLibraryView !== "db" || dbLoaded || dbLoading) return;
@@ -256,9 +328,14 @@ export default function LibraryDrawer({
         <LibraryDbPanel
           configured={dbConfigured}
           documents={dbDocuments}
+          semanticDuplicateGroups={dbSemanticDuplicateGroups}
           referenceLogs={dbReferenceLogs}
           candidateChunkLimit={libraryRagCandidateCount}
           onCollapseDbDocumentDetails={collapseDbDocumentDetails}
+          deletingDocumentId={deletingDbDocumentId}
+          onDeleteDocument={handleDeleteDbDocument}
+          compactingGroupId={compactingDbGroupId}
+          onCompactDocuments={handleCompactDbDocuments}
           loading={dbLoading}
           error={dbError}
           onRefresh={loadDbDocuments}
@@ -327,18 +404,28 @@ export default function LibraryDrawer({
 function LibraryDbPanel({
   configured,
   documents,
+  semanticDuplicateGroups,
   referenceLogs,
   candidateChunkLimit,
   onCollapseDbDocumentDetails,
+  deletingDocumentId,
+  onDeleteDocument,
+  compactingGroupId,
+  onCompactDocuments,
   loading,
   error,
   onRefresh,
 }: {
   configured: boolean;
   documents: RagLibraryStoredDocument[];
+  semanticDuplicateGroups: RagLibraryDuplicateGroup[];
   referenceLogs: RagLibraryReferenceLogEntry[];
   candidateChunkLimit: number;
   onCollapseDbDocumentDetails: () => void;
+  deletingDocumentId: string;
+  onDeleteDocument: (documentId: string, title: string) => void | Promise<void>;
+  compactingGroupId: string;
+  onCompactDocuments: (group: RagLibraryDuplicateGroup) => void | Promise<void>;
   loading: boolean;
   error: string;
   onRefresh: () => void | Promise<void>;
@@ -360,6 +447,14 @@ function LibraryDbPanel({
   const stats = React.useMemo(
     () => buildDbDocumentStats(orderedDocuments, referenceLogs),
     [orderedDocuments, referenceLogs]
+  );
+  const duplicateGroups = React.useMemo(
+    () =>
+      mergeDuplicateGroups(
+        buildRagLibraryDuplicateGroups(orderedDocuments),
+        semanticDuplicateGroups
+      ),
+    [orderedDocuments, semanticDuplicateGroups]
   );
   const candidateState = React.useMemo(
     () => buildDbCandidateState(orderedDocuments, candidateChunkLimit),
@@ -429,6 +524,7 @@ function LibraryDbPanel({
             value={`${candidateState.includedChunkCount} / 上限${candidateChunkLimit}`}
           />
           <DbStatPill label="総チャンク" value={stats.chunkCount} />
+          <DbStatPill label="重複候補" value={duplicateGroups.length} />
           <DbStatPill
             label="直近参照"
             value={`${stats.referencedDocumentCount}文書 / ${stats.referencedChunkCount}チャンク`}
@@ -438,6 +534,14 @@ function LibraryDbPanel({
           </button>
         </div>
       </div>
+
+      {duplicateGroups.length > 0 ? (
+        <DbDuplicateGroupsPanel
+          groups={duplicateGroups}
+          compactingGroupId={compactingGroupId}
+          onCompactDocuments={onCompactDocuments}
+        />
+      ) : null}
 
       <label style={dbFilterLabelStyle}>
         <span style={dbFilterTextStyle}>DB内検索</span>
@@ -520,6 +624,19 @@ function LibraryDbPanel({
               >
                 候補内の最下段へ
               </button>
+              <button
+                type="button"
+                disabled={deletingDocumentId === document.id}
+                onClick={() => void onDeleteDocument(document.id, document.title)}
+                style={{
+                  ...smallDbButtonStyle,
+                  borderColor: "#fecaca",
+                  color: "#b91c1c",
+                  opacity: deletingDocumentId === document.id ? 0.6 : 1,
+                }}
+              >
+                {deletingDocumentId === document.id ? "削除中" : "DB削除"}
+              </button>
             </div>
             {document.summary ? (
               <div style={dbSummaryTextStyle}>{document.summary}</div>
@@ -545,6 +662,73 @@ function LibraryDbPanel({
       )}
     </div>
   );
+}
+
+function DbDuplicateGroupsPanel({
+  groups,
+  compactingGroupId,
+  onCompactDocuments,
+}: {
+  groups: RagLibraryDuplicateGroup[];
+  compactingGroupId: string;
+  onCompactDocuments: (group: RagLibraryDuplicateGroup) => void | Promise<void>;
+}) {
+  const visibleGroups = groups.slice(0, 6);
+  const hiddenCount = Math.max(0, groups.length - visibleGroups.length);
+  return (
+    <details style={duplicatePanelStyle}>
+      <summary style={duplicateSummaryStyle}>
+        <span>重複・圧縮候補</span>
+        <span style={dbOutsidePillStyle}>{groups.length}件</span>
+      </summary>
+      <div style={duplicateBodyStyle}>
+        {visibleGroups.map((group) => (
+          <div key={group.id} style={duplicateGroupStyle}>
+            <div style={chunkHeaderStyle}>
+              <span>{formatDuplicateReason(group.reason)}</span>
+              <span>
+                {group.documentCount}文書 / {group.chunkCount}チャンク / 約
+                {group.totalTokenEstimate.toLocaleString("ja-JP")}トークン
+                {typeof group.similarity === "number"
+                  ? ` / 類似度${group.similarity.toFixed(2)}`
+                  : ""}
+              </span>
+            </div>
+            <div style={dbSummaryTextStyle}>
+              {group.titles.join(" / ")}
+            </div>
+            <div style={dbCandidateActionsStyle}>
+              <button
+                type="button"
+                disabled={compactingGroupId === group.id}
+                onClick={() => void onCompactDocuments(group)}
+                style={{
+                  ...smallDbButtonStyle,
+                  borderColor: "#fde68a",
+                  color: "#92400e",
+                  opacity: compactingGroupId === group.id ? 0.6 : 1,
+                }}
+              >
+                {compactingGroupId === group.id ? "統合中" : "統合DB文書を作成"}
+              </button>
+            </div>
+          </div>
+        ))}
+        {hiddenCount > 0 ? (
+          <div style={placeholderBodyStyle}>
+            他 {hiddenCount.toLocaleString("ja-JP")} 件の候補があります。
+          </div>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+function formatDuplicateReason(reason: RagLibraryDuplicateGroup["reason"]) {
+  if (reason === "same_content_hash") return "同一文書候補";
+  if (reason === "same_chunk_text") return "同一チャンク候補";
+  if (reason === "similar_document") return "近似文書候補";
+  return "近似チャンク候補";
 }
 
 function LibraryDbLogPanel({
@@ -660,6 +844,29 @@ function normalizeDbDocumentOrder(
       .map((document) => document.id)
       .filter((id) => !existingSet.has(id)),
   ];
+}
+
+function mergeDuplicateGroups(
+  exactGroups: RagLibraryDuplicateGroup[],
+  semanticGroups: RagLibraryDuplicateGroup[]
+) {
+  const seen = new Set<string>();
+  return [...exactGroups, ...semanticGroups]
+    .filter((group) => {
+      const key = [
+        group.reason,
+        [...group.documentIds].sort().join(","),
+        [...group.chunkIds].sort().join(","),
+      ].join(":");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => {
+      const similarityDelta = (right.similarity ?? 1) - (left.similarity ?? 1);
+      if (similarityDelta !== 0) return similarityDelta;
+      return right.totalTokenEstimate - left.totalTokenEstimate;
+    });
 }
 
 export function applyDbDocumentOrder(
@@ -909,6 +1116,46 @@ const dbFilterInputStyle: React.CSSProperties = {
   fontSize: 13,
   outline: "none",
   minWidth: 0,
+  boxSizing: "border-box",
+};
+
+const duplicatePanelStyle: React.CSSProperties = {
+  border: "1px solid #fde68a",
+  background: "#fffbeb",
+  borderRadius: 8,
+  padding: 10,
+  minWidth: 0,
+  maxWidth: "100%",
+  boxSizing: "border-box",
+};
+
+const duplicateSummaryStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#92400e",
+  flexWrap: "wrap",
+};
+
+const duplicateBodyStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 8,
+  marginTop: 8,
+  minWidth: 0,
+  maxWidth: "100%",
+};
+
+const duplicateGroupStyle: React.CSSProperties = {
+  border: "1px solid #fde68a",
+  background: "#ffffff",
+  borderRadius: 8,
+  padding: 8,
+  minWidth: 0,
+  maxWidth: "100%",
   boxSizing: "border-box",
 };
 
