@@ -404,9 +404,9 @@ function LibraryDbPanel({
   }
 
   return (
-    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+    <div style={{ display: "grid", gap: 10, marginTop: 12, minWidth: 0, maxWidth: "100%" }}>
       <div style={panelHeaderStyle}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={placeholderTitleStyle}>DB</div>
           <div style={placeholderBodyStyle}>
             登録済みDBドキュメントと、その配下のチャンクを表示します。
@@ -470,11 +470,11 @@ function LibraryDbPanel({
               <div style={{ minWidth: 0 }}>
                 <div style={dbTitleStyle}>{document.title}</div>
                 <div style={dbMetaStyle}>
-                  {document.itemType} / chunks {document.chunks.length}
+                  {document.itemType} / チャンク {document.chunks.length}
                   {document.updatedAt ? ` / ${formatDateTime(document.updatedAt)}` : ""}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <div style={dbSummaryPillsStyle}>
                 {candidate?.included ? (
                   <span style={dbCandidatePillStyle}>
                     候補内 {candidate.start + 1}-{candidate.end}
@@ -485,7 +485,7 @@ function LibraryDbPanel({
                 {referencedDocumentIds.has(document.id) ? (
                   <span style={dbReferencedPillStyle}>直近参照</span>
                 ) : null}
-                <span style={dbPillStyle}>{document.chunks.length} chunks</span>
+                <span style={dbPillStyle}>{document.chunks.length}チャンク</span>
               </div>
             </summary>
             <div style={dbCandidateActionsStyle}>
@@ -522,7 +522,7 @@ function LibraryDbPanel({
                   <div key={chunk.id} style={chunkCardStyle}>
                     <div style={chunkHeaderStyle}>
                       <span>Chunk {chunk.chunkIndex}</span>
-                      <span>{chunk.tokenEstimate} tokens</span>
+                      <span>{chunk.tokenEstimate}トークン</span>
                     </div>
                     <div style={chunkContentStyle}>{chunk.content}</div>
                   </div>
@@ -545,9 +545,9 @@ function LibraryDbLogPanel({
   onRefresh: () => void;
 }) {
   return (
-    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+    <div style={{ display: "grid", gap: 10, marginTop: 12, minWidth: 0, maxWidth: "100%" }}>
       <div style={panelHeaderStyle}>
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={placeholderTitleStyle}>DB参照ログ</div>
           <div style={placeholderBodyStyle}>
             会話やタスクで実際に参照されたDB項目、チャンク、類似度、使用区分を記録します。
@@ -572,14 +572,14 @@ function LibraryDbLogPanel({
               <div style={{ minWidth: 0 }}>
                 <div style={dbTitleStyle}>
                   {log.usageBucket === "task" ? "タスク" : "会話"} /{" "}
-                  {log.matches.length} matches / {log.contextChars} chars
+                  {log.matches.length}件 / {log.contextChars}文字
                 </div>
                 <div style={dbMetaStyle}>
                   {formatDateTime(log.createdAt)}
                   {log.skippedReason ? ` / skipped: ${log.skippedReason}` : ""}
                 </div>
               </div>
-              <span style={dbPillStyle}>{log.matches.length} hits</span>
+              <span style={dbPillStyle}>{log.matches.length}件</span>
             </summary>
             <div style={dbSummaryTextStyle}>Query: {log.query}</div>
             <div style={chunkListStyle}>
@@ -849,12 +849,15 @@ const panelHeaderStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   gap: 10,
-  alignItems: "center",
+  alignItems: "flex-start",
   border: "1px solid #dbeafe",
   background: "#f8fafc",
   borderRadius: 8,
   padding: 10,
   flexWrap: "wrap",
+  minWidth: 0,
+  maxWidth: "100%",
+  boxSizing: "border-box",
 };
 
 const refreshButtonStyle: React.CSSProperties = {
@@ -866,14 +869,17 @@ const refreshButtonStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
   cursor: "pointer",
+  flexShrink: 0,
 };
 
 const dbHeaderActionsStyle: React.CSSProperties = {
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   justifyContent: "flex-end",
   gap: 8,
   flexWrap: "wrap",
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 const dbStatPillStyle: React.CSSProperties = {
@@ -884,12 +890,15 @@ const dbStatPillStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 800,
   color: "#334155",
-  whiteSpace: "nowrap",
+  maxWidth: "100%",
+  overflowWrap: "anywhere",
 };
 
 const dbFilterLabelStyle: React.CSSProperties = {
   display: "grid",
   gap: 5,
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 const dbFilterTextStyle: React.CSSProperties = {
@@ -906,6 +915,8 @@ const dbFilterInputStyle: React.CSSProperties = {
   padding: "8px 10px",
   fontSize: 13,
   outline: "none",
+  minWidth: 0,
+  boxSizing: "border-box",
 };
 
 const dbCardStyle: React.CSSProperties = {
@@ -913,29 +924,44 @@ const dbCardStyle: React.CSSProperties = {
   background: "#ffffff",
   borderRadius: 8,
   padding: 10,
+  minWidth: 0,
+  maxWidth: "100%",
+  boxSizing: "border-box",
 };
 
 const dbSummaryStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
+  alignItems: "flex-start",
   gap: 10,
   cursor: "pointer",
+  flexWrap: "wrap",
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 const dbTitleStyle: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
   color: "#0f172a",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
 };
 
 const dbMetaStyle: React.CSSProperties = {
   marginTop: 4,
   fontSize: 11,
   color: "#64748b",
+  overflowWrap: "anywhere",
+};
+
+const dbSummaryPillsStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "wrap",
+  justifyContent: "flex-end",
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 const dbPillStyle: React.CSSProperties = {
@@ -946,7 +972,8 @@ const dbPillStyle: React.CSSProperties = {
   border: "1px solid #a7f3d0",
   borderRadius: 999,
   padding: "2px 8px",
-  whiteSpace: "nowrap",
+  maxWidth: "100%",
+  overflowWrap: "anywhere",
 };
 
 const dbCandidatePillStyle: React.CSSProperties = {
@@ -975,6 +1002,8 @@ const dbCandidateActionsStyle: React.CSSProperties = {
   gap: 6,
   flexWrap: "wrap",
   marginTop: 8,
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 const smallDbButtonStyle: React.CSSProperties = {
@@ -986,6 +1015,8 @@ const smallDbButtonStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 800,
   cursor: "pointer",
+  maxWidth: "100%",
+  overflowWrap: "anywhere",
 };
 
 const dbSummaryTextStyle: React.CSSProperties = {
@@ -993,12 +1024,15 @@ const dbSummaryTextStyle: React.CSSProperties = {
   fontSize: 12,
   color: "#334155",
   lineHeight: 1.5,
+  overflowWrap: "anywhere",
 };
 
 const chunkListStyle: React.CSSProperties = {
   display: "grid",
   gap: 8,
   marginTop: 10,
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 const chunkCardStyle: React.CSSProperties = {
@@ -1006,6 +1040,9 @@ const chunkCardStyle: React.CSSProperties = {
   background: "#f8fafc",
   borderRadius: 8,
   padding: 10,
+  minWidth: 0,
+  maxWidth: "100%",
+  boxSizing: "border-box",
 };
 
 const chunkHeaderStyle: React.CSSProperties = {
@@ -1015,6 +1052,9 @@ const chunkHeaderStyle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 800,
   color: "#475569",
+  flexWrap: "wrap",
+  minWidth: 0,
+  maxWidth: "100%",
 };
 
 const chunkContentStyle: React.CSSProperties = {

@@ -485,4 +485,17 @@ describe("LibraryDrawer", () => {
       })
     ).toEqual(["doc-b", "doc-a"]);
   });
+
+  it("keeps DB tab text and pills mobile-safe", () => {
+    const html = renderLibraryDrawer({
+      activeLibraryView: "db",
+      libraryRagCandidateCount: 20,
+    });
+
+    expect(html).toContain("総チャンク");
+    expect(html).toContain("直近参照");
+    expect(html).toContain("min-width:0");
+    expect(html).toContain("overflow-wrap:anywhere");
+    expect(html).not.toContain("総chunk");
+  });
 });
