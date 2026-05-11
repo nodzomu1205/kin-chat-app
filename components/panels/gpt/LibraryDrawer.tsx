@@ -13,14 +13,17 @@ import {
   buildLibraryItemEditDraftCommand,
   insertImageIdIntoGptDraft,
 } from "@/lib/app/reference-library/libraryDraftCommands";
+import {
+  readRagLibraryDbDocumentOrder,
+  writeRagLibraryCandidateDocumentIds,
+  writeRagLibraryDbDocumentOrder,
+} from "@/lib/app/reference-library/ragLibraryDbCandidateStorage";
 import { fetchRagLibraryDocuments } from "@/lib/app/reference-library/ragLibraryDocumentsClient";
 import {
   readRagLibraryReferenceLogs,
   type RagLibraryReferenceLogEntry,
 } from "@/lib/app/reference-library/ragLibraryReferenceLog";
 import type { RagLibraryStoredDocument } from "@/lib/app/reference-library/ragLibraryTypes";
-
-const DB_DOCUMENT_ORDER_KEY = "rag_library_db_document_order";
 
 const tabs: Array<{ id: LibraryDrawerView; label: string }> = [
   { id: "library", label: "ライブラリ" },
@@ -342,13 +345,13 @@ function LibraryDbPanel({
 }) {
   const [filterText, setFilterText] = React.useState("");
   const [documentOrder, setDocumentOrder] = React.useState<string[]>(() =>
-    readDbDocumentOrder()
+    readRagLibraryDbDocumentOrder()
   );
   React.useEffect(() => {
     setDocumentOrder((current) => normalizeDbDocumentOrder(current, documents));
   }, [documents]);
   React.useEffect(() => {
-    writeDbDocumentOrder(documentOrder);
+    writeRagLibraryDbDocumentOrder(documentOrder);
   }, [documentOrder]);
   const orderedDocuments = React.useMemo(
     () => applyDbDocumentOrder(documents, documentOrder),
@@ -362,6 +365,13 @@ function LibraryDbPanel({
     () => buildDbCandidateState(orderedDocuments, candidateChunkLimit),
     [orderedDocuments, candidateChunkLimit]
   );
+  React.useEffect(() => {
+    writeRagLibraryCandidateDocumentIds(
+      orderedDocuments
+        .filter((document) => candidateState.documents.get(document.id)?.included)
+        .map((document) => document.id)
+    );
+  }, [candidateState, orderedDocuments]);
   const filteredDocuments = React.useMemo(
     () => filterDbDocuments(orderedDocuments, filterText),
     [orderedDocuments, filterText]
@@ -635,23 +645,6 @@ function mergeAcceptValues(...values: string[]) {
         .filter(Boolean)
     )
   ).join(",");
-}
-
-function readDbDocumentOrder() {
-  if (typeof window === "undefined") return [];
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(DB_DOCUMENT_ORDER_KEY) || "[]");
-    return Array.isArray(parsed)
-      ? parsed.filter((value): value is string => typeof value === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeDbDocumentOrder(order: string[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(DB_DOCUMENT_ORDER_KEY, JSON.stringify(order));
 }
 
 function normalizeDbDocumentOrder(

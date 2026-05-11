@@ -7,6 +7,7 @@ const requestSchema = z.object({
   matchCount: z.number().int().min(1).optional(),
   candidateCount: z.number().int().min(1).optional(),
   matchThreshold: z.number().min(-1).max(1).optional(),
+  documentIds: z.array(z.string()).optional(),
   filterMetadata: z.record(z.unknown()).optional(),
 });
 
@@ -18,6 +19,7 @@ export async function POST(req: Request) {
       matchCount: body.matchCount,
       candidateCount: body.candidateCount,
       matchThreshold: body.matchThreshold,
+      documentIds: body.documentIds,
       filterMetadata: body.filterMetadata,
     });
 

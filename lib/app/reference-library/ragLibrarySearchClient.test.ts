@@ -49,6 +49,7 @@ describe("fetchRagLibraryReferenceContext", () => {
       matchCount: 10,
       candidateCount: 100,
       matchThreshold: 0.3,
+      documentIds: ["doc-1", "doc-2"],
     });
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
@@ -57,6 +58,7 @@ describe("fetchRagLibraryReferenceContext", () => {
       matchCount: 10,
       candidateCount: 100,
       matchThreshold: 0.3,
+      documentIds: ["doc-1", "doc-2"],
     });
   });
 });

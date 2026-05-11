@@ -83,6 +83,7 @@ describe("searchLibraryRagContext", () => {
       embedding: [0.1, 0.2, 0.3],
       matchCount: 100,
       matchThreshold: 0.3,
+      documentIds: undefined,
       filterMetadata: undefined,
     });
     expect(result.context).toContain("<<RAG_LIBRARY_CONTEXT>>");
@@ -134,6 +135,7 @@ describe("searchLibraryRagContext", () => {
       embedding: [0.1, 0.2, 0.3],
       matchCount: 100,
       matchThreshold: 0.3,
+      documentIds: undefined,
       filterMetadata: undefined,
     });
   });
@@ -161,9 +163,34 @@ describe("searchLibraryRagContext", () => {
       embedding: [0.1, 0.2, 0.3],
       matchCount: 100,
       matchThreshold: 0.42,
+      documentIds: undefined,
       filterMetadata: undefined,
     });
     expect(result.matches).toHaveLength(3);
+  });
+
+  it("passes candidate document ids through to Supabase search", async () => {
+    hasSupabaseRagConfig.mockReturnValue(true);
+    createOpenAIEmbeddingWithUsage.mockResolvedValue({
+      embedding: [0.1, 0.2, 0.3],
+      usage: { inputTokens: 3, outputTokens: 0, totalTokens: 3 },
+    });
+    matchSupabaseRagLibraryChunks.mockResolvedValue([]);
+
+    await searchLibraryRagContext({
+      query: "school recommendation",
+      candidateCount: 100,
+      matchCount: 10,
+      documentIds: ["doc-1", "doc-2"],
+    });
+
+    expect(matchSupabaseRagLibraryChunks).toHaveBeenCalledWith({
+      embedding: [0.1, 0.2, 0.3],
+      matchCount: 100,
+      matchThreshold: 0.3,
+      documentIds: ["doc-1", "doc-2"],
+      filterMetadata: undefined,
+    });
   });
 });
 

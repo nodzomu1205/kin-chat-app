@@ -21,6 +21,7 @@ import {
 import { fetchRagLibraryReferenceContext } from "@/lib/app/reference-library/ragLibrarySearchClient";
 import { indexLibraryItemForRag } from "@/lib/app/reference-library/ragLibraryIndexClient";
 import { appendRagLibraryReferenceLog } from "@/lib/app/reference-library/ragLibraryReferenceLog";
+import { readRagLibraryCandidateDocumentIds } from "@/lib/app/reference-library/ragLibraryDbCandidateStorage";
 import { normalizeUsage } from "@/lib/shared/tokenStats";
 
 const LIBRARY_ORDER_KEY = "reference_library_order";
@@ -579,6 +580,7 @@ export function useReferenceLibrary(params: {
             matchCount: libraryRagReferenceCount,
             candidateCount: libraryRagCandidateCount,
             matchThreshold: libraryRagSimilarityThreshold,
+            documentIds: readRagLibraryCandidateDocumentIds(),
           })
         : { context: "", matches: [], usage: undefined };
     if (ragReferenceResult.usage) {

@@ -19,6 +19,7 @@ export async function searchLibraryRagContext(params: {
   matchCount?: number;
   candidateCount?: number;
   matchThreshold?: number;
+  documentIds?: string[];
   filterMetadata?: Record<string, unknown>;
 }): Promise<LibraryRagSearchResult> {
   const query = params.query.trim();
@@ -49,6 +50,7 @@ export async function searchLibraryRagContext(params: {
     embedding: embeddingResult.embedding,
     matchCount: candidateCount,
     matchThreshold: params.matchThreshold ?? 0.3,
+    documentIds: params.documentIds,
     filterMetadata: params.filterMetadata,
   });
   const contextMatches = matches.slice(0, contextChunkLimit);

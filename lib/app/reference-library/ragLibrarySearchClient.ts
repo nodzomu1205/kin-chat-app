@@ -23,6 +23,7 @@ export async function fetchRagLibraryReferenceContext(params: {
   matchCount: number;
   candidateCount?: number;
   matchThreshold?: number;
+  documentIds?: string[];
 }): Promise<RagLibraryReferenceContextResult> {
   const query = params.query.trim();
   const rawMatchCount = Number.isFinite(params.matchCount) ? params.matchCount : 10;
@@ -46,6 +47,7 @@ export async function fetchRagLibraryReferenceContext(params: {
         matchCount,
         candidateCount,
         matchThreshold: params.matchThreshold,
+        documentIds: params.documentIds?.filter(Boolean),
       }),
     });
 

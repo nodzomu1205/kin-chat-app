@@ -109,10 +109,18 @@ export async function matchSupabaseRagLibraryChunks(params: {
   embedding: number[];
   matchCount: number;
   matchThreshold?: number;
+  documentIds?: string[];
   filterMetadata?: Record<string, unknown>;
 }): Promise<RagLibrarySearchMatch[]> {
   const config = getSupabaseRagConfig();
   const endpoint = `${config.url}/rest/v1/rpc/match_rag_library_chunks`;
+  const body = {
+    query_embedding: params.embedding,
+    match_count: Math.max(1, Math.floor(params.matchCount)),
+    match_threshold: params.matchThreshold ?? 0,
+    filter_metadata: params.filterMetadata ?? {},
+    document_ids: params.documentIds?.length ? params.documentIds : null,
+  };
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -123,16 +131,20 @@ export async function matchSupabaseRagLibraryChunks(params: {
       "Accept-Profile": config.schema,
       "Content-Profile": config.schema,
     },
-    body: JSON.stringify({
-      query_embedding: params.embedding,
-      match_count: Math.max(1, Math.floor(params.matchCount)),
-      match_threshold: params.matchThreshold ?? 0,
-      filter_metadata: params.filterMetadata ?? {},
-    }),
+    body: JSON.stringify(body),
   });
 
   const rawText = await response.text();
   const data = parseSupabaseResponse(rawText);
+
+  if (!response.ok && body.document_ids?.length && isMissingDocumentIdsRpc(data)) {
+    return matchSupabaseRagLibraryChunks({
+      embedding: params.embedding,
+      matchCount: params.matchCount,
+      matchThreshold: params.matchThreshold,
+      filterMetadata: params.filterMetadata,
+    });
+  }
 
   if (!response.ok) {
     throw new Error(resolveSupabaseErrorMessage(data, response));
@@ -142,6 +154,12 @@ export async function matchSupabaseRagLibraryChunks(params: {
   return data
     .map(toRagLibrarySearchMatch)
     .filter((match): match is RagLibrarySearchMatch => Boolean(match));
+}
+
+function isMissingDocumentIdsRpc(data: unknown) {
+  if (!data || typeof data !== "object") return false;
+  const text = JSON.stringify(data);
+  return text.includes("PGRST202") || text.includes("document_ids");
 }
 
 export async function upsertSupabaseRagLibraryDocument(

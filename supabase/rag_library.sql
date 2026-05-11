@@ -67,9 +67,10 @@ for each row execute function public.set_rag_updated_at();
 
 create or replace function public.match_rag_library_chunks(
   query_embedding vector(1536),
-  match_count integer default 8,
+  match_count integer default 10,
   match_threshold double precision default 0,
-  filter_metadata jsonb default '{}'::jsonb
+  filter_metadata jsonb default '{}'::jsonb,
+  document_ids uuid[] default null
 )
 returns table (
   chunk_id uuid,
@@ -103,6 +104,7 @@ as $$
   from public.rag_document_chunks chunks
   join public.rag_documents documents on documents.id = chunks.document_id
   where chunks.embedding is not null
+    and (document_ids is null or documents.id = any(document_ids))
     and documents.metadata @> filter_metadata
     and 1 - (chunks.embedding <=> query_embedding) >= match_threshold
   order by chunks.embedding <=> query_embedding
