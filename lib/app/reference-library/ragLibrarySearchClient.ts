@@ -25,7 +25,7 @@ export async function fetchRagLibraryReferenceContext(params: {
   matchThreshold?: number;
 }): Promise<RagLibraryReferenceContextResult> {
   const query = params.query.trim();
-  const rawMatchCount = Number.isFinite(params.matchCount) ? params.matchCount : 8;
+  const rawMatchCount = Number.isFinite(params.matchCount) ? params.matchCount : 10;
   const matchCount = Math.min(50, Math.max(1, Math.floor(rawMatchCount)));
   const rawCandidateCount =
     typeof params.candidateCount === "number" &&
@@ -76,9 +76,6 @@ export async function fetchRagLibraryReferenceContext(params: {
       };
     }
 
-    if (data.skippedReason) {
-      console.info("Library RAG search skipped:", data.skippedReason);
-    }
     return {
       context: "",
       usage: data.usage,

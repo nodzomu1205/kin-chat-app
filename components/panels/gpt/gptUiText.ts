@@ -229,7 +229,6 @@ export const GPT_LIBRARY_DRAWER_TEXT = {
     expand: "開く",
     showAll: "画面に一括表示",
     sendAllToKin: "Kinに一括送信",
-    pending: "次の実装で有効化します",
     modeLabel: "mode",
     modes: {
       index: "Index",

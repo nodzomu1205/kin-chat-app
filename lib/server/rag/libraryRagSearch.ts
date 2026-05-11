@@ -25,8 +25,8 @@ export async function searchLibraryRagContext(params: {
   const rawCardLimit =
     typeof params.matchCount === "number" && Number.isFinite(params.matchCount)
       ? params.matchCount
-      : 8;
-  const contextChunkLimit = Math.min(50, Math.max(1, Math.floor(rawCardLimit || 8)));
+      : 10;
+  const contextChunkLimit = Math.min(50, Math.max(1, Math.floor(rawCardLimit || 10)));
   const rawCandidateCount =
     typeof params.candidateCount === "number" &&
     Number.isFinite(params.candidateCount)
