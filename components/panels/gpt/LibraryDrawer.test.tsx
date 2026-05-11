@@ -1,7 +1,12 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import LibraryDrawer from "@/components/panels/gpt/LibraryDrawer";
+import LibraryDrawer, {
+  buildDbCandidateState,
+  buildDbDocumentStats,
+  filterDbDocuments,
+  moveDbDocumentInOrder,
+} from "@/components/panels/gpt/LibraryDrawer";
 import { LibraryImportControls } from "@/components/panels/gpt/LibraryDrawerControls";
 import LibraryItemMetadata from "@/components/panels/gpt/LibraryItemMetadata";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
@@ -16,6 +21,7 @@ function renderLibraryDrawer(
       referenceLibraryItems={[]}
       libraryRagIndexStates={{}}
       libraryReferenceCount={0}
+      libraryRagCandidateCount={100}
       imageLibraryReferenceCount={0}
       sourceDisplayCount={1}
       selectedTaskLibraryItemId=""
@@ -341,5 +347,142 @@ describe("LibraryDrawer", () => {
     expect(html).toContain(">画像<");
     expect(html).not.toContain("Image ID: img_test");
     expect(html).not.toContain("data:image/png;base64");
+  });
+
+  it("summarizes and filters DB documents for scan-friendly DB tab views", () => {
+    const documents = [
+      {
+        id: "doc-1",
+        libraryItemId: "library-1",
+        sourceId: "source-1",
+        itemType: "ingested_file" as const,
+        title: "Cotton traceability",
+        summary: "Supply chain visibility",
+        contentHash: "hash-1",
+        chunks: [
+          {
+            id: "chunk-1",
+            documentId: "doc-1",
+            chunkIndex: 0,
+            content: "farmers 360 link",
+            tokenEstimate: 10,
+          },
+          {
+            id: "chunk-2",
+            documentId: "doc-1",
+            chunkIndex: 1,
+            content: "DPP evidence",
+            tokenEstimate: 12,
+          },
+        ],
+      },
+      {
+        id: "doc-2",
+        libraryItemId: "library-2",
+        sourceId: "source-2",
+        itemType: "kin_created" as const,
+        title: "School strategy",
+        summary: "Returnee student options",
+        contentHash: "hash-2",
+        chunks: [],
+      },
+    ];
+
+    expect(
+      buildDbDocumentStats(documents, [
+        {
+          id: "log-1",
+          createdAt: new Date().toISOString(),
+          query: "cotton",
+          usageBucket: "chat",
+          contextChars: 10,
+          matches: [
+            {
+              documentId: "doc-1",
+              chunkId: "chunk-1",
+              libraryItemId: "library-1",
+              title: "Cotton traceability",
+              chunkIndex: 0,
+              contentPreview: "farmers 360 link",
+            },
+          ],
+        },
+      ])
+    ).toMatchObject({
+      documentCount: 2,
+      chunkCount: 2,
+      referencedDocumentCount: 1,
+      referencedChunkCount: 1,
+    });
+    expect(filterDbDocuments(documents, "farmers")).toHaveLength(1);
+    expect(filterDbDocuments(documents, "returnee")[0]?.id).toBe("doc-2");
+  });
+
+  it("marks DB candidate boundaries by cumulative chunk count and moves documents", () => {
+    const documents = [
+      {
+        id: "doc-a",
+        libraryItemId: "library-a",
+        sourceId: "source-a",
+        itemType: "ingested_file" as const,
+        title: "A",
+        summary: "",
+        contentHash: "hash-a",
+        chunks: Array.from({ length: 7 }, (_, index) => ({
+          id: `a-${index}`,
+          documentId: "doc-a",
+          chunkIndex: index,
+          content: "a",
+          tokenEstimate: 1,
+        })),
+      },
+      {
+        id: "doc-b",
+        libraryItemId: "library-b",
+        sourceId: "source-b",
+        itemType: "ingested_file" as const,
+        title: "B",
+        summary: "",
+        contentHash: "hash-b",
+        chunks: Array.from({ length: 4 }, (_, index) => ({
+          id: `b-${index}`,
+          documentId: "doc-b",
+          chunkIndex: index,
+          content: "b",
+          tokenEstimate: 1,
+        })),
+      },
+    ];
+
+    const candidateState = buildDbCandidateState(documents, 10);
+    expect(candidateState.documents.get("doc-a")).toMatchObject({
+      included: true,
+      start: 0,
+      end: 7,
+    });
+    expect(candidateState.documents.get("doc-b")).toMatchObject({
+      included: true,
+      start: 7,
+      end: 11,
+    });
+    expect(candidateState.includedChunkCount).toBe(11);
+    expect(
+      moveDbDocumentInOrder({
+        order: ["doc-a", "doc-b"],
+        documents,
+        documentId: "doc-b",
+        candidateChunkLimit: 10,
+        action: "top",
+      })
+    ).toEqual(["doc-b", "doc-a"]);
+    expect(
+      moveDbDocumentInOrder({
+        order: ["doc-a", "doc-b"],
+        documents,
+        documentId: "doc-a",
+        candidateChunkLimit: 10,
+        action: "candidateBottom",
+      })
+    ).toEqual(["doc-b", "doc-a"]);
   });
 });

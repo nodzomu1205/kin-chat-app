@@ -61,6 +61,7 @@ type LibraryDrawerRouteInput = {
   settings: Pick<
     GptPanelSettingsProps,
     | "libraryReferenceCount"
+    | "libraryRagCandidateCount"
     | "imageLibraryReferenceCount"
     | "sourceDisplayCount"
     | "onOpenGoogleDriveFolder"
@@ -253,6 +254,7 @@ export function buildLibraryDrawerProps({
     referenceLibraryItems: references.referenceLibraryItems,
     libraryRagIndexStates: references.libraryRagIndexStates,
     libraryReferenceCount: settings.libraryReferenceCount,
+    libraryRagCandidateCount: settings.libraryRagCandidateCount,
     imageLibraryReferenceCount: settings.imageLibraryReferenceCount,
     sourceDisplayCount: settings.sourceDisplayCount,
     selectedTaskLibraryItemId: references.selectedTaskLibraryItemId,

@@ -20,6 +20,8 @@ import {
 } from "@/lib/app/reference-library/ragLibraryReferenceLog";
 import type { RagLibraryStoredDocument } from "@/lib/app/reference-library/ragLibraryTypes";
 
+const DB_DOCUMENT_ORDER_KEY = "rag_library_db_document_order";
+
 const tabs: Array<{ id: LibraryDrawerView; label: string }> = [
   { id: "library", label: "ライブラリ" },
   { id: "images", label: "画像" },
@@ -32,6 +34,7 @@ export default function LibraryDrawer({
   referenceLibraryItems,
   libraryRagIndexStates,
   libraryReferenceCount,
+  libraryRagCandidateCount,
   imageLibraryReferenceCount,
   sourceDisplayCount,
   selectedTaskLibraryItemId,
@@ -87,6 +90,14 @@ export default function LibraryDrawer({
   const [dbReferenceLogs, setDbReferenceLogs] = useState<
     RagLibraryReferenceLogEntry[]
   >([]);
+  const collapseDbDocumentDetails = React.useCallback(() => {
+    if (typeof document === "undefined") return;
+    document
+      .querySelectorAll<HTMLDetailsElement>("[data-db-document-card='true']")
+      .forEach((details) => {
+        details.open = false;
+      });
+  }, []);
   const deviceInputId = React.useId();
   const activeLibraryView =
     controlledActiveLibraryView ?? uncontrolledActiveLibraryView;
@@ -242,6 +253,9 @@ export default function LibraryDrawer({
         <LibraryDbPanel
           configured={dbConfigured}
           documents={dbDocuments}
+          referenceLogs={dbReferenceLogs}
+          candidateChunkLimit={libraryRagCandidateCount}
+          onCollapseDbDocumentDetails={collapseDbDocumentDetails}
           loading={dbLoading}
           error={dbError}
           onRefresh={loadDbDocuments}
@@ -310,16 +324,73 @@ export default function LibraryDrawer({
 function LibraryDbPanel({
   configured,
   documents,
+  referenceLogs,
+  candidateChunkLimit,
+  onCollapseDbDocumentDetails,
   loading,
   error,
   onRefresh,
 }: {
   configured: boolean;
   documents: RagLibraryStoredDocument[];
+  referenceLogs: RagLibraryReferenceLogEntry[];
+  candidateChunkLimit: number;
+  onCollapseDbDocumentDetails: () => void;
   loading: boolean;
   error: string;
   onRefresh: () => void | Promise<void>;
 }) {
+  const [filterText, setFilterText] = React.useState("");
+  const [documentOrder, setDocumentOrder] = React.useState<string[]>(() =>
+    readDbDocumentOrder()
+  );
+  React.useEffect(() => {
+    setDocumentOrder((current) => normalizeDbDocumentOrder(current, documents));
+  }, [documents]);
+  React.useEffect(() => {
+    writeDbDocumentOrder(documentOrder);
+  }, [documentOrder]);
+  const orderedDocuments = React.useMemo(
+    () => applyDbDocumentOrder(documents, documentOrder),
+    [documents, documentOrder]
+  );
+  const stats = React.useMemo(
+    () => buildDbDocumentStats(orderedDocuments, referenceLogs),
+    [orderedDocuments, referenceLogs]
+  );
+  const candidateState = React.useMemo(
+    () => buildDbCandidateState(orderedDocuments, candidateChunkLimit),
+    [orderedDocuments, candidateChunkLimit]
+  );
+  const filteredDocuments = React.useMemo(
+    () => filterDbDocuments(orderedDocuments, filterText),
+    [orderedDocuments, filterText]
+  );
+  const referencedDocumentIds = React.useMemo(
+    () =>
+      new Set(
+        referenceLogs.flatMap((log) =>
+          log.matches.flatMap((match) => (match.documentId ? [match.documentId] : []))
+        )
+      ),
+    [referenceLogs]
+  );
+  const moveDocument = React.useCallback(
+    (documentId: string, action: "top" | "candidateBottom" | "outside") => {
+      setDocumentOrder((current) =>
+        moveDbDocumentInOrder({
+          order: normalizeDbDocumentOrder(current, documents),
+          documents,
+          documentId,
+          candidateChunkLimit,
+          action,
+        })
+      );
+      onCollapseDbDocumentDetails();
+    },
+    [candidateChunkLimit, documents, onCollapseDbDocumentDetails]
+  );
+
   if (!configured) {
     return (
       <div style={placeholderStyle}>
@@ -341,10 +412,33 @@ function LibraryDbPanel({
             登録済みDBドキュメントと、その配下のチャンクを表示します。
           </div>
         </div>
-        <button type="button" onClick={() => void onRefresh()} style={refreshButtonStyle}>
-          更新
-        </button>
+        <div style={dbHeaderActionsStyle}>
+          <DbStatPill label="文書" value={stats.documentCount} />
+          <DbStatPill
+            label="候補"
+            value={`${candidateState.includedChunkCount} / 上限${candidateChunkLimit}`}
+          />
+          <DbStatPill label="総チャンク" value={stats.chunkCount} />
+          <DbStatPill
+            label="直近参照"
+            value={`${stats.referencedDocumentCount}文書 / ${stats.referencedChunkCount}チャンク`}
+          />
+          <button type="button" onClick={() => void onRefresh()} style={refreshButtonStyle}>
+            更新
+          </button>
+        </div>
       </div>
+
+      <label style={dbFilterLabelStyle}>
+        <span style={dbFilterTextStyle}>DB内検索</span>
+        <input
+          type="search"
+          value={filterText}
+          onChange={(event) => setFilterText(event.currentTarget.value)}
+          placeholder="タイトル、要約、チャンク本文、メタデータ"
+          style={dbFilterInputStyle}
+        />
+      </label>
 
       {loading ? (
         <div style={placeholderStyle}>DBを読み込み中です。</div>
@@ -360,9 +454,18 @@ function LibraryDbPanel({
             ライブラリカードの「DBへ送付」を実行すると、ここに表示されます。
           </div>
         </div>
+      ) : filteredDocuments.length === 0 ? (
+        <div style={placeholderStyle}>
+          <div style={placeholderTitleStyle}>一致するDB項目はありません</div>
+          <div style={placeholderBodyStyle}>
+            検索語を減らすか、別のキーワードで絞り込んでください。
+          </div>
+        </div>
       ) : (
-        documents.map((document) => (
-          <details key={document.id} style={dbCardStyle}>
+        filteredDocuments.map((document) => {
+          const candidate = candidateState.documents.get(document.id);
+          return (
+          <details key={document.id} data-db-document-card="true" style={dbCardStyle}>
             <summary style={dbSummaryStyle}>
               <div style={{ minWidth: 0 }}>
                 <div style={dbTitleStyle}>{document.title}</div>
@@ -371,8 +474,43 @@ function LibraryDbPanel({
                   {document.updatedAt ? ` / ${formatDateTime(document.updatedAt)}` : ""}
                 </div>
               </div>
-              <span style={dbPillStyle}>{document.chunks.length} chunks</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                {candidate?.included ? (
+                  <span style={dbCandidatePillStyle}>
+                    候補内 {candidate.start + 1}-{candidate.end}
+                  </span>
+                ) : (
+                  <span style={dbOutsidePillStyle}>候補外</span>
+                )}
+                {referencedDocumentIds.has(document.id) ? (
+                  <span style={dbReferencedPillStyle}>直近参照</span>
+                ) : null}
+                <span style={dbPillStyle}>{document.chunks.length} chunks</span>
+              </div>
             </summary>
+            <div style={dbCandidateActionsStyle}>
+              <button
+                type="button"
+                onClick={() => moveDocument(document.id, "top")}
+                style={smallDbButtonStyle}
+              >
+                候補に入れる
+              </button>
+              <button
+                type="button"
+                onClick={() => moveDocument(document.id, "outside")}
+                style={smallDbButtonStyle}
+              >
+                候補外へ
+              </button>
+              <button
+                type="button"
+                onClick={() => moveDocument(document.id, "candidateBottom")}
+                style={smallDbButtonStyle}
+              >
+                候補内の最下段へ
+              </button>
+            </div>
             {document.summary ? (
               <div style={dbSummaryTextStyle}>{document.summary}</div>
             ) : null}
@@ -392,7 +530,8 @@ function LibraryDbPanel({
               )}
             </div>
           </details>
-        ))
+          );
+        })
       )}
     </div>
   );
@@ -498,6 +637,193 @@ function mergeAcceptValues(...values: string[]) {
   ).join(",");
 }
 
+function readDbDocumentOrder() {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DB_DOCUMENT_ORDER_KEY) || "[]");
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDbDocumentOrder(order: string[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DB_DOCUMENT_ORDER_KEY, JSON.stringify(order));
+}
+
+function normalizeDbDocumentOrder(
+  order: string[],
+  documents: RagLibraryStoredDocument[]
+) {
+  const documentIds = new Set(documents.map((document) => document.id));
+  const existing = order.filter((id) => documentIds.has(id));
+  const existingSet = new Set(existing);
+  return [
+    ...existing,
+    ...documents
+      .map((document) => document.id)
+      .filter((id) => !existingSet.has(id)),
+  ];
+}
+
+export function applyDbDocumentOrder(
+  documents: RagLibraryStoredDocument[],
+  order: string[]
+) {
+  const orderIndex = new Map(order.map((id, index) => [id, index]));
+  return [...documents].sort((left, right) => {
+    const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+    const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+    return leftIndex - rightIndex;
+  });
+}
+
+export function buildDbCandidateState(
+  documents: RagLibraryStoredDocument[],
+  candidateChunkLimit: number
+) {
+  const limit = Math.max(0, Math.floor(candidateChunkLimit || 0));
+  let cursor = 0;
+  let includedChunkCount = 0;
+  const state = new Map<
+    string,
+    { included: boolean; start: number; end: number }
+  >();
+
+  documents.forEach((document) => {
+    const chunkCount = document.chunks.length;
+    const start = cursor;
+    const end = cursor + chunkCount;
+    const included = chunkCount > 0 && start < limit;
+    state.set(document.id, {
+      included,
+      start,
+      end,
+    });
+    if (included) {
+      includedChunkCount += chunkCount;
+    }
+    cursor = end;
+  });
+
+  return {
+    documents: state,
+    includedChunkCount,
+    totalChunkCount: cursor,
+  };
+}
+
+export function moveDbDocumentInOrder(params: {
+  order: string[];
+  documents: RagLibraryStoredDocument[];
+  documentId: string;
+  candidateChunkLimit: number;
+  action: "top" | "candidateBottom" | "outside";
+}) {
+  const remaining = params.order.filter((id) => id !== params.documentId);
+  if (params.action === "top") {
+    return [params.documentId, ...remaining];
+  }
+  if (params.action === "candidateBottom") {
+    const orderedRemaining = applyDbDocumentOrder(
+      params.documents.filter((document) => document.id !== params.documentId),
+      remaining
+    );
+    const candidateState = buildDbCandidateState(
+      orderedRemaining,
+      params.candidateChunkLimit
+    );
+    const firstOutsideIndex = orderedRemaining.findIndex(
+      (document) => !candidateState.documents.get(document.id)?.included
+    );
+    if (firstOutsideIndex < 0) {
+      return [...remaining, params.documentId];
+    }
+    const before = orderedRemaining.slice(0, firstOutsideIndex).map((document) => document.id);
+    const after = orderedRemaining.slice(firstOutsideIndex).map((document) => document.id);
+    return [...before, params.documentId, ...after];
+  }
+
+  const orderedRemaining = applyDbDocumentOrder(
+    params.documents.filter((document) => document.id !== params.documentId),
+    remaining
+  );
+  const candidateState = buildDbCandidateState(
+    orderedRemaining,
+    params.candidateChunkLimit
+  );
+  const firstOutsideIndex = orderedRemaining.findIndex(
+    (document) => !candidateState.documents.get(document.id)?.included
+  );
+  if (firstOutsideIndex < 0) {
+    return [...remaining, params.documentId];
+  }
+  const before = orderedRemaining.slice(0, firstOutsideIndex).map((document) => document.id);
+  const after = orderedRemaining.slice(firstOutsideIndex).map((document) => document.id);
+  return [...before, ...after, params.documentId];
+}
+
+export function buildDbDocumentStats(
+  documents: RagLibraryStoredDocument[],
+  referenceLogs: RagLibraryReferenceLogEntry[]
+) {
+  const referencedDocumentIds = new Set<string>();
+  const referencedChunkIds = new Set<string>();
+  referenceLogs.forEach((log) => {
+    log.matches.forEach((match) => {
+      if (match.documentId) referencedDocumentIds.add(match.documentId);
+      if (match.chunkId) referencedChunkIds.add(match.chunkId);
+    });
+  });
+
+  return {
+    documentCount: documents.length,
+    chunkCount: documents.reduce((sum, document) => sum + document.chunks.length, 0),
+    referencedDocumentCount: referencedDocumentIds.size,
+    referencedChunkCount: referencedChunkIds.size,
+  };
+}
+
+export function filterDbDocuments(
+  documents: RagLibraryStoredDocument[],
+  filterText: string
+) {
+  const normalizedFilter = filterText.trim().toLowerCase();
+  if (!normalizedFilter) return documents;
+  return documents.filter((document) =>
+    buildDbDocumentSearchText(document).includes(normalizedFilter)
+  );
+}
+
+function buildDbDocumentSearchText(document: RagLibraryStoredDocument) {
+  return [
+    document.title,
+    document.summary,
+    document.itemType,
+    document.artifactType,
+    document.sourceId,
+    JSON.stringify(document.metadata || {}),
+    ...document.chunks.flatMap((chunk) => [
+      chunk.content,
+      JSON.stringify(chunk.metadata || {}),
+    ]),
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .toLowerCase();
+}
+
+function DbStatPill({ label, value }: { label: string; value: number | string }) {
+  return (
+    <span style={dbStatPillStyle}>
+      {label}: {typeof value === "number" ? value.toLocaleString("ja-JP") : value}
+    </span>
+  );
+}
+
 const placeholderStyle: React.CSSProperties = {
   marginTop: 12,
   border: "1px solid #dbeafe",
@@ -527,7 +853,8 @@ const panelHeaderStyle: React.CSSProperties = {
   border: "1px solid #dbeafe",
   background: "#f8fafc",
   borderRadius: 8,
-  padding: 12,
+  padding: 10,
+  flexWrap: "wrap",
 };
 
 const refreshButtonStyle: React.CSSProperties = {
@@ -539,6 +866,46 @@ const refreshButtonStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
   cursor: "pointer",
+};
+
+const dbHeaderActionsStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  gap: 8,
+  flexWrap: "wrap",
+};
+
+const dbStatPillStyle: React.CSSProperties = {
+  border: "1px solid #dbeafe",
+  background: "#ffffff",
+  borderRadius: 999,
+  padding: "4px 8px",
+  fontSize: 11,
+  fontWeight: 800,
+  color: "#334155",
+  whiteSpace: "nowrap",
+};
+
+const dbFilterLabelStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 5,
+};
+
+const dbFilterTextStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#334155",
+};
+
+const dbFilterInputStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 420,
+  border: "1px solid #cbd5e1",
+  borderRadius: 8,
+  padding: "8px 10px",
+  fontSize: 13,
+  outline: "none",
 };
 
 const dbCardStyle: React.CSSProperties = {
@@ -580,6 +947,45 @@ const dbPillStyle: React.CSSProperties = {
   borderRadius: 999,
   padding: "2px 8px",
   whiteSpace: "nowrap",
+};
+
+const dbCandidatePillStyle: React.CSSProperties = {
+  ...dbPillStyle,
+  color: "#6d28d9",
+  background: "#f5f3ff",
+  borderColor: "#ddd6fe",
+};
+
+const dbOutsidePillStyle: React.CSSProperties = {
+  ...dbPillStyle,
+  color: "#64748b",
+  background: "#f8fafc",
+  borderColor: "#cbd5e1",
+};
+
+const dbReferencedPillStyle: React.CSSProperties = {
+  ...dbPillStyle,
+  color: "#0369a1",
+  background: "#f0f9ff",
+  borderColor: "#bae6fd",
+};
+
+const dbCandidateActionsStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "wrap",
+  marginTop: 8,
+};
+
+const smallDbButtonStyle: React.CSSProperties = {
+  border: "1px solid #bfdbfe",
+  background: "#ffffff",
+  color: "#1d4ed8",
+  borderRadius: 999,
+  padding: "4px 8px",
+  fontSize: 11,
+  fontWeight: 800,
+  cursor: "pointer",
 };
 
 const dbSummaryTextStyle: React.CSSProperties = {

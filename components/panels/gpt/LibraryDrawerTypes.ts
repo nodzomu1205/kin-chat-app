@@ -43,6 +43,7 @@ export type LibraryDrawerProps = Pick<
   Pick<
     GptPanelSettingsProps,
     | "libraryReferenceCount"
+    | "libraryRagCandidateCount"
     | "imageLibraryReferenceCount"
     | "sourceDisplayCount"
     | "onOpenGoogleDriveFolder"
