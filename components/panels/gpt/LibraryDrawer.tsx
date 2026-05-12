@@ -999,7 +999,10 @@ function LibraryDbLogPanel({
               </div>
               <span style={dbPillStyle}>{log.matches.length}件</span>
             </summary>
-            <div style={dbSummaryTextStyle}>Query: {log.query}</div>
+            {log.originalQuery && log.originalQuery !== log.query ? (
+              <div style={dbSummaryTextStyle}>User: {log.originalQuery}</div>
+            ) : null}
+            <div style={dbSummaryTextStyle}>DB Query: {log.query}</div>
             <div style={chunkListStyle}>
               {log.matches.length === 0 ? (
                 <div style={placeholderBodyStyle}>

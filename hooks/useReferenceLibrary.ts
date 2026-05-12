@@ -571,7 +571,7 @@ export function useReferenceLibrary(params: {
 
   const buildLibraryReferenceContextForQuery = async (
     query: string,
-    options?: { usageBucket?: "chat" | "task" }
+    options?: { usageBucket?: "chat" | "task"; originalQuery?: string }
   ) => {
     const ragReferenceResult =
       libraryRagReferenceEnabled && libraryRagReferenceCount > 0
@@ -592,6 +592,7 @@ export function useReferenceLibrary(params: {
     }
     appendRagLibraryReferenceLog({
       usageBucket: options?.usageBucket === "task" ? "task" : "chat",
+      originalQuery: options?.originalQuery,
       query,
       context: ragReferenceResult.context,
       matches: ragReferenceResult.matches,

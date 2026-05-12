@@ -122,7 +122,7 @@ export type ChatPageControllerCompositionArgs = {
     buildLibraryReferenceContext: () => string;
     buildLibraryReferenceContextForQuery?: (
       query: string,
-      options?: { usageBucket?: "chat" | "task" }
+      options?: { usageBucket?: "chat" | "task"; originalQuery?: string }
     ) => Promise<string>;
     referenceLibraryItems: ReferenceLibraryItem[];
     libraryIndexResponseCount: number;

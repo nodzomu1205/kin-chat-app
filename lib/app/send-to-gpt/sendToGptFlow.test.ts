@@ -1,5 +1,6 @@
 ﻿import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildDbReferenceQuery,
   runSendToGptFlow,
   shouldUseDbReferenceForInput,
 } from "@/lib/app/send-to-gpt/sendToGptFlow";
@@ -159,6 +160,129 @@ describe("runSendToGptFlow", () => {
     expect(applyChatUsage).not.toHaveBeenCalled();
   });
 
+  it("uses visible chat history, not only memory recent, for DB reference queries", async () => {
+    let messages: Message[] = [];
+    let inputValue = "道田氏との関係は？";
+    const buildLibraryReferenceContextForQuery = vi.fn(async () => "DB ctx");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          reply: "道田氏との関係です。",
+        }),
+      })
+    );
+
+    await runSendToGptFlow({
+      gptInput: inputValue,
+      gptLoading: false,
+      autoGenerateLibrarySummary: true,
+      processMultipartTaskDoneText: () => null,
+      taskProtocolRuntime: {
+        currentTaskId: null,
+        currentTaskTitle: "",
+        currentTaskIntent: null,
+        originalInstruction: "",
+        compiledTaskPrompt: "",
+        taskStatus: "idle",
+        latestSummary: "",
+        requirementProgress: [],
+        pendingRequests: [],
+        userFacingRequests: [],
+        completedSearches: [],
+        protocolLog: [],
+      },
+      currentTaskId: null,
+      findPendingRequest: () => null,
+      applyPrefixedTaskFieldsFromText: () => ({
+        searchQuery: "",
+        freeText: inputValue,
+        title: "",
+        userInstruction: "",
+      }),
+      getProtocolLimitViolation: () => null,
+      shouldInjectTaskContextWithSettings: () => false,
+      referenceLibraryItems: [],
+      libraryIndexResponseCount: 10,
+      buildLibraryReferenceContext: () => "",
+      buildLibraryReferenceContextForQuery,
+      taskProtocolAnswerPendingRequest: () => {},
+      ingestProtocolMessage: () => {},
+      searchMode: "normal",
+      searchEngines: ["google_search"],
+      searchLocation: "Japan",
+      parseWrappedSearchResponse: () => null,
+      recordSearchContext: () => ({ rawResultId: "RAW-1" }),
+      getContinuationTokenForSeries: () => "",
+      getAskAiModeLinkForQuery: () => "",
+      applySearchUsage: () => {},
+      applyChatUsage: () => {},
+      applyTaskUsage: () => {},
+      handleGptMemory: async () => ({ compressionUsage: null }),
+      applyCompressionUsage: () => {},
+      chatRecentLimit: 8,
+      gptStateRef: {
+        current: {
+          recentMessages: [],
+          memory: {
+            facts: [],
+            preferences: [],
+            lists: {},
+            context: {
+              currentTopic: "",
+              currentTask: "",
+              followUpRule: "",
+              lastUserIntent: "",
+            },
+          },
+        },
+      },
+      recentChatMessages: [
+        {
+          id: "u1",
+          role: "user",
+          text: "farmers 360° linkについて知っている？",
+        },
+        {
+          id: "g1",
+          role: "gpt",
+          text: "farmers 360° linkは小規模なアフリカの綿農家と日本の消費者を結ぶプロジェクトです。",
+        },
+      ],
+      setGptMessages: (next) => {
+        messages = typeof next === "function" ? next(messages) : next;
+      },
+      setGptInput: (next) => {
+        inputValue = typeof next === "function" ? next(inputValue) : next;
+      },
+      setGptLoading: () => {},
+      setKinInput: () => {},
+      setPendingKinInjectionBlocks: () => {},
+      setPendingKinInjectionIndex: () => {},
+      instructionMode: "normal",
+      reasoningMode: "strict",
+      recordIngestedDocument: (document) => ({
+        id: "DOC-1",
+        sourceType: "ingested_file",
+        ...document,
+      }),
+      updateStoredDocument: () => undefined,
+    });
+
+    expect(buildLibraryReferenceContextForQuery).toHaveBeenCalledWith(
+      expect.stringContaining("farmers 360° linkについて知っている？"),
+      { originalQuery: "道田氏との関係は？" }
+    );
+    const dbQuery = (
+      buildLibraryReferenceContextForQuery.mock.calls as unknown as Array<
+        [string, unknown]
+      >
+    )[0]?.[0];
+    expect(dbQuery).toContain("道田氏との関係は？");
+  });
+
   it("short-circuits task-directive-only input without calling GPT", async () => {
     let messages: Message[] = [];
     let inputValue = "TITLE: 新しい計画";
@@ -269,6 +393,46 @@ describe("runSendToGptFlow", () => {
 });
 
 describe("sendToGptFlowHelpers", () => {
+  it("builds a DB reference query with recent conversation context", () => {
+    const query = buildDbReferenceQuery({
+      currentInput: "それの課題は？",
+      recentMessages: [
+        {
+          id: "u1",
+          role: "user",
+          text: "farmers 360 link の逢田さんについて教えて",
+        },
+        {
+          id: "g1",
+          role: "gpt",
+          text: "farmers 360 link は小規模農家支援の構想です。",
+        },
+      ],
+    });
+
+    expect(query).toContain("Current user message:");
+    expect(query).toContain("それの課題は？");
+    expect(query).toContain("Recent conversation context:");
+    expect(query).toContain("User: farmers 360 link の逢田さんについて教えて");
+    expect(query).toContain("Assistant: farmers 360 link は小規模農家支援の構想です。");
+  });
+
+  it("keeps DB reference queries bounded", () => {
+    const query = buildDbReferenceQuery({
+      currentInput: "この件を整理して",
+      recentMessages: Array.from({ length: 10 }, (_, index) => ({
+        id: `m${index}`,
+        role: index % 2 === 0 ? "user" : "gpt",
+        text: `message-${index} ${"long text ".repeat(100)}`,
+      })) as Message[],
+    });
+
+    expect(query.length).toBeLessThanOrEqual(2200);
+    expect(query).toContain("message-4");
+    expect(query).toContain("message-9");
+    expect(query).not.toContain("message-3");
+  });
+
   it("skips DB reference for PPT output operations, not PPT design edits", () => {
     expect(
       shouldUseDbReferenceForInput(

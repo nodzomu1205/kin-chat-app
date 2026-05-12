@@ -67,7 +67,7 @@ export type SendToGptFlowProtocolArgs = {
   buildLibraryReferenceContext: () => string;
   buildLibraryReferenceContextForQuery?: (
     query: string,
-    options?: { usageBucket?: "chat" | "task" }
+    options?: { usageBucket?: "chat" | "task"; originalQuery?: string }
   ) => Promise<string>;
   taskProtocolAnswerPendingRequest: (requestId: string, answerText: string) => void;
   ingestProtocolMessage: (
@@ -93,6 +93,7 @@ export type SendToGptFlowMemoryArgs = {
   ) => void;
   chatRecentLimit: number;
   gptStateRef: MutableRefObject<{ recentMessages?: Message[]; memory?: Memory }>;
+  recentChatMessages?: Message[];
 };
 
 export type SendToGptFlowUiArgs = {

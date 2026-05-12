@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { runSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlow";
 import {
   appendLastGptToKinInfoMessage,
@@ -26,6 +26,11 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
       outputMode: string;
       items: Array<{ url: string; actionId: string }>;
     } | null>(null);
+  const latestGptMessagesRef = useRef(args.gptMessages);
+
+  useEffect(() => {
+    latestGptMessagesRef.current = args.gptMessages;
+  }, [args.gptMessages]);
 
   const fetchAndPrepareYoutubeTranscript = async (params: {
     transcriptUrl: string;
@@ -124,6 +129,7 @@ export function useGptMessageActions(args: UseGptMessageActionsArgs) {
   ) => {
     await runSendToGptFlow({
       ...buildCommonFlowArgs(),
+      recentChatMessages: latestGptMessagesRef.current,
       gptInput: inputOverride ?? args.gptInput,
       searchMode: args.searchMode,
       searchEngines: args.searchEngines,

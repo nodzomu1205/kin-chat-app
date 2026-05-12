@@ -6,6 +6,7 @@ export type RagLibraryReferenceLogEntry = {
   id: string;
   createdAt: string;
   usageBucket: "chat" | "task";
+  originalQuery?: string;
   query: string;
   contextChars: number;
   skippedReason?: string;
@@ -22,6 +23,7 @@ export type RagLibraryReferenceLogEntry = {
 
 export function appendRagLibraryReferenceLog(entry: {
   usageBucket: "chat" | "task";
+  originalQuery?: string;
   query: string;
   context: string;
   matches: RagLibrarySearchMatch[];
@@ -32,6 +34,7 @@ export function appendRagLibraryReferenceLog(entry: {
     id: `db-ref-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date().toISOString(),
     usageBucket: entry.usageBucket,
+    originalQuery: entry.originalQuery?.trim() || undefined,
     query: entry.query,
     contextChars: entry.context.trim().length,
     skippedReason: entry.skippedReason,

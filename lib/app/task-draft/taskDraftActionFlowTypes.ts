@@ -40,7 +40,7 @@ export type CommonTaskDraftFlowArgs = {
   buildLibraryReferenceContext: () => string;
   buildLibraryReferenceContextForQuery?: (
     query: string,
-    options?: { usageBucket?: "chat" | "task" }
+    options?: { usageBucket?: "chat" | "task"; originalQuery?: string }
   ) => Promise<string>;
   imageLibraryReferenceEnabled: boolean;
   imageLibraryReferenceCount: number;

@@ -196,7 +196,7 @@ export type ChatPageServicesArgs = {
   buildLibraryReferenceContext: () => string;
   buildLibraryReferenceContextForQuery?: (
     query: string,
-    options?: { usageBucket?: "chat" | "task" }
+    options?: { usageBucket?: "chat" | "task"; originalQuery?: string }
   ) => Promise<string>;
   referenceLibraryItems: ReferenceLibraryItem[];
   libraryIndexResponseCount: number;
@@ -253,12 +253,13 @@ export type UseGptMessageActionsArgs = Pick<
   | "getContinuationTokenForSeries"
   | "getCurrentTaskCharConstraint"
   | "gptInput"
-    | "gptLoading"
-    | "gptMemoryRuntime"
-    | "focusGptPanel"
-    | "focusKinPanel"
-    | "ingestProtocolMessage"
-    | "kinMessages"
+  | "gptMessages"
+  | "gptLoading"
+  | "gptMemoryRuntime"
+  | "focusGptPanel"
+  | "focusKinPanel"
+  | "ingestProtocolMessage"
+  | "kinMessages"
   | "lastSearchContext"
   | "libraryIndexResponseCount"
   | "imageLibraryReferenceEnabled"
@@ -269,11 +270,11 @@ export type UseGptMessageActionsArgs = Pick<
   | "recordSearchContext"
   | "referenceLibraryItems"
   | "reasoningMode"
-    | "searchEngines"
-    | "searchLocation"
-    | "searchMode"
-    | "setGptInput"
-    | "setGptLoading"
+  | "searchEngines"
+  | "searchLocation"
+  | "searchMode"
+  | "setGptInput"
+  | "setGptLoading"
   | "setGptMessages"
   | "setKinInput"
   | "setPendingKinInjectionBlocks"

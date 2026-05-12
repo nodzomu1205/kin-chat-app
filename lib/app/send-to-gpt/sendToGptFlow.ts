@@ -29,6 +29,11 @@ import {
   buildSendToGptFlowStepArgs,
   buildSendToGptFinalizeArgs,
 } from "@/lib/app/send-to-gpt/sendToGptFlowStepBuilders";
+import type { Message } from "@/types/chat";
+
+const DB_REFERENCE_RECENT_MESSAGE_LIMIT = 6;
+const DB_REFERENCE_MAX_QUERY_CHARS = 2200;
+const DB_REFERENCE_MAX_MESSAGE_CHARS = 280;
 
 export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
   const startDecision = resolveSendToGptFlowStart({
@@ -72,9 +77,20 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
 
   try {
     const shouldUseDbReference = shouldUseDbReferenceForInput(rawText);
+    const dbReferenceQuery = shouldUseDbReference
+      ? buildDbReferenceQuery({
+          currentInput: rawText,
+          recentMessages:
+            flowArgs.recentChatMessages ||
+            flowArgs.gptStateRef.current.recentMessages ||
+            [],
+        })
+      : rawText;
     const libraryReferenceContext =
       shouldUseDbReference && flowArgs.buildLibraryReferenceContextForQuery
-        ? await flowArgs.buildLibraryReferenceContextForQuery(rawText)
+        ? await flowArgs.buildLibraryReferenceContextForQuery(dbReferenceQuery, {
+            originalQuery: rawText,
+          })
         : flowArgs.buildLibraryReferenceContext();
     const flowArgsWithResolvedLibraryContext = {
       ...flowArgs,
@@ -151,6 +167,48 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
 function shouldShowUserMessageBeforeContext(rawText: string) {
   const trimmed = rawText.trim();
   return !trimmed.startsWith("/") && !trimmed.startsWith("<<SYS_");
+}
+
+export function buildDbReferenceQuery(params: {
+  currentInput: string;
+  recentMessages?: Message[];
+}) {
+  const currentInput = params.currentInput.trim();
+  const recentMessages = (params.recentMessages || [])
+    .filter((message) => message.text.trim())
+    .slice(-DB_REFERENCE_RECENT_MESSAGE_LIMIT);
+
+  if (!currentInput || recentMessages.length === 0) {
+    return currentInput;
+  }
+
+  const contextLines = recentMessages.map((message) => {
+    const role =
+      message.role === "user"
+        ? "User"
+        : message.role === "gpt"
+          ? "Assistant"
+          : "Kin";
+    return `${role}: ${truncateForDbReferenceQuery(message.text)}`;
+  });
+  const query = [
+    "Current user message:",
+    currentInput,
+    "",
+    "Recent conversation context:",
+    ...contextLines,
+  ].join("\n");
+
+  return truncateForDbReferenceQuery(query, DB_REFERENCE_MAX_QUERY_CHARS);
+}
+
+function truncateForDbReferenceQuery(
+  text: string,
+  maxChars = DB_REFERENCE_MAX_MESSAGE_CHARS
+) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxChars - 1)).trim()}…`;
 }
 
 const DB_REFERENCE_ELIGIBLE_SYS_BLOCKS = new Set([

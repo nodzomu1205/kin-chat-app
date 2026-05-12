@@ -142,6 +142,7 @@ export function buildCommonSendToGptFlowArgs(args: UseGptMessageActionsArgs): {
       applyTaskUsage: args.applyTaskUsage,
       chatRecentLimit: args.gptMemoryRuntime.chatRecentLimit,
       gptStateRef: args.gptMemoryRuntime.gptStateRef,
+      recentChatMessages: args.gptMessages,
     },
     uiArgs: {
       setGptMessages: args.setGptMessages,

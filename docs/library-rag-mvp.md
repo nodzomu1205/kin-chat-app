@@ -170,6 +170,21 @@ The user-facing RAG count should be treated as a result/card limit, not as a
 token estimate. Token estimates should use concrete context only. Do not add
 speculative estimates such as `count * average chunk tokens`.
 
+Current chat retrieval behavior:
+
+- normal chat DB search uses a bounded DB-specific query, not only the latest
+  input string
+- the query combines the current user message with recent visible GPT-panel
+  chat history so short follow-up questions such as "その関係は?" can still
+  retrieve topic-specific DB chunks
+- the visible chat history is preferred over memory-runtime recent messages,
+  because memory recent can be compacted or unavailable while the panel still
+  contains the conversation context the user sees
+- each history message and the total DB query are capped before embedding so
+  retrieval does not balloon token use
+- the DB Reference Log stores the original user query separately from the
+  expanded DB query for debugging retrieval misses
+
 ## Data Model Direction
 
 The current MVP SQL uses:

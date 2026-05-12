@@ -218,6 +218,7 @@ export function buildGptMessageActionArgs(
     getContinuationTokenForSeries: groups.search.getContinuationTokenForSeries,
     getCurrentTaskCharConstraint: groups.task.getCurrentTaskCharConstraint,
     gptInput: groups.uiState.gptInput,
+    gptMessages: groups.uiState.gptMessages,
     gptLoading: groups.uiState.gptLoading,
     gptMemoryRuntime: groups.services.gptMemoryRuntime,
     focusGptPanel: groups.identity.focusGptPanel,
