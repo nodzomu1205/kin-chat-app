@@ -68,6 +68,7 @@ type LibraryDrawerRouteInput = {
     | "onImportGoogleDriveFile"
     | "onIndexGoogleDriveFolder"
     | "onImportGoogleDriveFolder"
+    | "applyDbOrganizationUsage"
     | "uploadKind"
     | "ingestLoading"
     | "canInjectFile"
@@ -283,6 +284,7 @@ export function buildLibraryDrawerProps({
     onImportGoogleDriveFile: settings.onImportGoogleDriveFile,
     onIndexGoogleDriveFolder: settings.onIndexGoogleDriveFolder,
     onImportGoogleDriveFolder: settings.onImportGoogleDriveFolder,
+    applyDbOrganizationUsage: settings.applyDbOrganizationUsage,
     onImportGoogleDriveImageFile: references.onImportGoogleDriveImageFile,
     onImportDeviceFile,
     onImportDeviceImageFile: references.onImportDeviceImageFile,

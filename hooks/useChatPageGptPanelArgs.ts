@@ -164,6 +164,7 @@ export function useChatPageGptPanelArgs(
       onUpdateMemoryRuleCandidate: args.memoryState.onUpdateMemoryRuleCandidate,
       onDeleteApprovedMemoryRule: args.memoryState.onDeleteApprovedMemoryRule,
       applyImageUsage: args.usage.applyImageUsage,
+      applyDbOrganizationUsage: args.usage.applyDbOrganizationUsage,
     },
   };
 }

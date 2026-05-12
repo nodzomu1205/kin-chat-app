@@ -34,6 +34,9 @@ export type TokenStats = {
   lastImageUsage: TokenUsage | null;
   threadImageTotal: TokenUsage;
   imageRunCount: number;
+  lastDbOrganizationUsage: TokenUsage | null;
+  threadDbOrganizationTotal: TokenUsage;
+  dbOrganizationRunCount: number;
 };
 
 export type DisplayTokenStats = TokenStats & {
@@ -123,6 +126,9 @@ export const emptyTokenStats = (): TokenStats => ({
   lastImageUsage: null,
   threadImageTotal: emptyUsage(),
   imageRunCount: 0,
+  lastDbOrganizationUsage: null,
+  threadDbOrganizationTotal: emptyUsage(),
+  dbOrganizationRunCount: 0,
 });
 
 export const normalizeUsage = (
@@ -147,7 +153,13 @@ export const computeTotalTrackedUsage = (tokenStats: TokenStats): TokenUsage =>
       tokenStats.threadSearchTotal,
       addUsage(
         tokenStats.threadTaskTotal,
-        addUsage(tokenStats.threadIngestTotal, tokenStats.threadImageTotal)
+        addUsage(
+          tokenStats.threadIngestTotal,
+          addUsage(
+            tokenStats.threadImageTotal,
+            tokenStats.threadDbOrganizationTotal
+          )
+        )
       )
     )
   );
@@ -207,6 +219,9 @@ export function buildDisplayTokenStats(tokenStats: TokenStats): DisplayTokenStat
     lastImageUsage: tokenStats.lastImageUsage,
     threadImageTotal: tokenStats.threadImageTotal,
     imageRunCount: tokenStats.imageRunCount,
+    lastDbOrganizationUsage: tokenStats.lastDbOrganizationUsage,
+    threadDbOrganizationTotal: tokenStats.threadDbOrganizationTotal,
+    dbOrganizationRunCount: tokenStats.dbOrganizationRunCount,
     latestInput: latestUsage.inputTokens,
     latestOutput: latestUsage.outputTokens,
     latestTotal: latestUsage.totalTokens,

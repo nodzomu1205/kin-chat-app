@@ -158,6 +158,24 @@ export function useTokenTracking() {
     }));
   }, []);
 
+  const applyDbOrganizationUsage = useCallback((usage: Parameters<typeof normalizeUsage>[0]) => {
+    if (!usage) return;
+    const safeUsage = normalizeUsage(usage);
+    if (isZeroUsage(safeUsage)) {
+      return;
+    }
+
+    setTokenStats((prev) => ({
+      ...prev,
+      lastDbOrganizationUsage: safeUsage,
+      threadDbOrganizationTotal: addUsage(
+        prev.threadDbOrganizationTotal,
+        safeUsage
+      ),
+      dbOrganizationRunCount: prev.dbOrganizationRunCount + 1,
+    }));
+  }, []);
+
   const resetTokenStats = useCallback(() => {
     setTokenStats(emptyTokenStats());
   }, []);
@@ -175,6 +193,7 @@ export function useTokenTracking() {
     applyTaskUsage,
     applyIngestUsage,
     applyImageUsage,
+    applyDbOrganizationUsage,
     resetTokenStats,
     totalTrackedUsage: displayTokenStats.cumulative,
   };

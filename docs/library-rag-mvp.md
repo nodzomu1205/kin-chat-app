@@ -225,6 +225,19 @@ Current product lesson from live testing:
   sorting, and user-selected multi-document compaction
 - threshold tuning alone is unlikely to be enough
 
+Current DB organization implementation:
+
+- the DB tab can analyze stored DB documents and surface organization groups by
+  category, theme, entity, and document type
+- the organization flow can create a new RAG-optimized DB document from selected
+  source documents
+- the generated document is split into LLM-authored retrieval chunks rather than
+  simply reusing or reducing the source chunks
+- output chunk count is not treated as a compression metric; it may increase
+  when narrower, self-contained chunks improve retrieval precision
+- source documents can be deleted only through the explicit post-generation
+  action in the DB organization UI
+
 Later:
 
 - user-approved merge into existing knowledge chunks

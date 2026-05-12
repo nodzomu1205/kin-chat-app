@@ -51,6 +51,7 @@ export function buildChatPageWorkspaceGptPanelArgs(
     settings: buildChatPageWorkspaceGptSettings(args),
     usage: {
       applyImageUsage: args.usage.applyImageUsage,
+      applyDbOrganizationUsage: args.usage.applyDbOrganizationUsage,
     },
     protocolState: buildChatPageWorkspaceProtocolState(args),
     memoryState: buildChatPageWorkspaceMemoryState(args),

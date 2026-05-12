@@ -155,6 +155,7 @@ export type ChatPageGptPanelCompositionArgs = ChatPagePanelBaseArgs & {
   >;
   usage: {
     applyImageUsage: BuildGptPanelArgs["settings"]["applyImageUsage"];
+    applyDbOrganizationUsage: BuildGptPanelArgs["settings"]["applyDbOrganizationUsage"];
   };
   protocolState: {
     protocolPrompt: string;

@@ -136,6 +136,7 @@ export function buildChatPageControllerServicesArgs(
     applyTaskUsage: args.usage.applyTaskUsage,
     applyIngestUsage: args.usage.applyIngestUsage,
     applyImageUsage: args.usage.applyImageUsage,
+    applyDbOrganizationUsage: args.usage.applyDbOrganizationUsage,
     imageLibraryImportEnabled: args.usage.imageLibraryImportEnabled,
     imageLibraryImportMode: args.usage.imageLibraryImportMode,
     imageDescriptionIngestOptions: args.usage.imageDescriptionIngestOptions,

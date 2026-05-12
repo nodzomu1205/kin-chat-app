@@ -115,6 +115,7 @@ export type ChatPageControllerCompositionArgs = {
     applyTaskUsage: UseChatPageActionsArgs["applyTaskUsage"];
     applyIngestUsage: UseChatPageActionsArgs["applyIngestUsage"];
     applyImageUsage: UseChatPageActionsArgs["applyImageUsage"];
+    applyDbOrganizationUsage: UseChatPageActionsArgs["applyDbOrganizationUsage"];
     imageLibraryImportEnabled: UseChatPageActionsArgs["imageLibraryImportEnabled"];
     imageLibraryImportMode: UseChatPageActionsArgs["imageLibraryImportMode"];
     imageDescriptionIngestOptions: UseChatPageActionsArgs["imageDescriptionIngestOptions"];

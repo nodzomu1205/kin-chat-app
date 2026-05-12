@@ -189,6 +189,7 @@ export type ChatPageServicesArgs = {
   ) => void;
   applyIngestUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
   applyImageUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
+  applyDbOrganizationUsage: (stats: Parameters<typeof normalizeUsage>[0]) => void;
   imageLibraryImportEnabled: boolean;
   imageLibraryImportMode: import("@/components/panels/gpt/gptPanelTypes").ImageLibraryImportMode;
   imageDescriptionIngestOptions: import("@/lib/app/ingest/ingestClient").SharedIngestOptions;

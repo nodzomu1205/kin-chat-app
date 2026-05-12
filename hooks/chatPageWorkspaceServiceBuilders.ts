@@ -70,6 +70,7 @@ function buildWorkspaceServicesUsage(args: ChatPageWorkspaceServicesUsage) {
     applyTaskUsage: args.applyTaskUsage,
     applyIngestUsage: args.applyIngestUsage,
     applyImageUsage: args.applyImageUsage,
+    applyDbOrganizationUsage: args.applyDbOrganizationUsage,
     imageLibraryImportEnabled: args.imageLibraryImportEnabled,
     imageLibraryImportMode: args.imageLibraryImportMode,
     imageDescriptionIngestOptions: args.imageDescriptionIngestOptions,

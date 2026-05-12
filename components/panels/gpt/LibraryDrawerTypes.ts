@@ -68,4 +68,5 @@ export type LibraryDrawerProps = Pick<
     activeLibraryView?: LibraryDrawerView;
     onChangeLibraryView?: (view: LibraryDrawerView) => void;
     setGptInputDraft?: (value: SetStateAction<string>) => void;
+    applyDbOrganizationUsage?: GptPanelSettingsProps["applyDbOrganizationUsage"];
   };

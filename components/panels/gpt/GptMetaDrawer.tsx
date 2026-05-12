@@ -207,11 +207,15 @@ export default function GptMetaDrawer({
   const compressionTotal = toTokenUsage(tokenStats.threadCompressionTotal);
   const ingestTotal = toTokenUsage(tokenStats.threadIngestTotal);
   const imageTotal = toTokenUsage(tokenStats.threadImageTotal);
+  const dbOrganizationTotal = toTokenUsage(tokenStats.threadDbOrganizationTotal);
   const threadChatTotal = toTokenUsage(tokenStats.threadChatTotal);
   const conversationTrackedTotal = mergeUsage(threadChatTotal, compressionTotal);
   const otherTrackedTotal = mergeUsage(
     searchTotal,
-    mergeUsage(taskTotal, mergeUsage(ingestTotal, imageTotal))
+    mergeUsage(
+      taskTotal,
+      mergeUsage(ingestTotal, mergeUsage(imageTotal, dbOrganizationTotal))
+    )
   );
 
   const facts = Array.isArray(gptState.memory?.facts) ? gptState.memory.facts : [];
@@ -463,6 +467,10 @@ export default function GptMetaDrawer({
           <br />
           {GPT_META_DRAWER_TEXT.image} <RunCount count={toNumber(tokenStats.imageRunCount)} />{" "}
           <UsageTriple usage={imageTotal} />
+          <br />
+          {GPT_META_DRAWER_TEXT.dbOrganization}{" "}
+          <RunCount count={toNumber(tokenStats.dbOrganizationRunCount)} />{" "}
+          <UsageTriple usage={dbOrganizationTotal} />
         </div>
       </div>
 

@@ -291,6 +291,7 @@ export function useChatPageWorkspaceDomainInputs(
       applyTaskUsage: tokenUsage.applyTaskUsage,
       applyIngestUsage: tokenUsage.applyIngestUsage,
       applyImageUsage: tokenUsage.applyImageUsage,
+      applyDbOrganizationUsage: tokenUsage.applyDbOrganizationUsage,
       imageLibraryImportEnabled: gptOptions.imageLibraryImportEnabled,
       imageLibraryImportMode: gptOptions.imageLibraryImportMode,
       imageDescriptionIngestOptions: {

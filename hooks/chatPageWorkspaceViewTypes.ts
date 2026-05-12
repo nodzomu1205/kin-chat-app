@@ -169,6 +169,7 @@ export type ChatPageWorkspaceViewUsageArgs = Pick<
   | "applyTaskUsage"
   | "applyIngestUsage"
   | "applyImageUsage"
+  | "applyDbOrganizationUsage"
   | "imageLibraryImportEnabled"
   | "imageLibraryImportMode"
   | "imageDescriptionIngestOptions"

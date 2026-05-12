@@ -398,6 +398,7 @@ export type GptPanelSettingsProps = {
   ) => void;
   onDeleteApprovedMemoryRule: (ruleId: string) => void;
   applyImageUsage?: SendToGptFlowStepArgs["applyImageUsage"];
+  applyDbOrganizationUsage?: SendToGptFlowStepArgs["applyImageUsage"];
 };
 
 export type GptPanelProps = {

@@ -24,6 +24,15 @@ import {
   fetchRagLibraryDocuments,
 } from "@/lib/app/reference-library/ragLibraryDocumentsClient";
 import {
+  analyzeRagLibraryOrganization,
+  createOrganizedRagLibraryDocument,
+} from "@/lib/app/reference-library/ragLibraryOrganizationClient";
+import type {
+  RagLibraryOrganizationAnalysisResult,
+  RagLibraryOrganizationGroup,
+  RagLibraryOrganizedDocumentResult,
+} from "@/lib/app/reference-library/ragLibraryOrganizationTypes";
+import {
   buildRagLibraryDuplicateGroups,
   type RagLibraryDuplicateGroup,
 } from "@/lib/app/reference-library/ragLibraryDuplicateDetection";
@@ -84,6 +93,7 @@ export default function LibraryDrawer({
   activeLibraryView: controlledActiveLibraryView,
   onChangeLibraryView,
   setGptInputDraft,
+  applyDbOrganizationUsage,
 }: LibraryDrawerProps) {
   const [driveImportMenuOpen, setDriveImportMenuOpen] = useState(false);
   const [uncontrolledActiveLibraryView, setUncontrolledActiveLibraryView] =
@@ -103,6 +113,12 @@ export default function LibraryDrawer({
   const [dbLoaded, setDbLoaded] = useState(false);
   const [deletingDbDocumentId, setDeletingDbDocumentId] = useState("");
   const [compactingDbGroupId, setCompactingDbGroupId] = useState("");
+  const [dbOrganizationAnalysis, setDbOrganizationAnalysis] =
+    useState<RagLibraryOrganizationAnalysisResult | null>(null);
+  const [dbOrganizationLoading, setDbOrganizationLoading] = useState(false);
+  const [organizingDbGroupId, setOrganizingDbGroupId] = useState("");
+  const [dbOrganizationResult, setDbOrganizationResult] =
+    useState<RagLibraryOrganizedDocumentResult | null>(null);
   const [dbReferenceLogs, setDbReferenceLogs] = useState<
     RagLibraryReferenceLogEntry[]
   >([]);
@@ -206,6 +222,61 @@ export default function LibraryDrawer({
       }
     },
     [loadDbDocuments]
+  );
+
+  const handleAnalyzeDbOrganization = React.useCallback(async () => {
+    setDbOrganizationLoading(true);
+    setDbOrganizationResult(null);
+    setDbError("");
+    try {
+      const result = await analyzeRagLibraryOrganization();
+      if (result.usage) {
+        applyDbOrganizationUsage?.(result.usage);
+      }
+      setDbOrganizationAnalysis(result);
+    } catch (error) {
+      setDbError(
+        error instanceof Error ? error.message : "DB organization analysis failed."
+      );
+    } finally {
+      setDbOrganizationLoading(false);
+    }
+  }, [applyDbOrganizationUsage]);
+
+  const handleCreateOrganizedDbDocument = React.useCallback(
+    async (group: RagLibraryOrganizationGroup, deleteSourceDocuments: boolean) => {
+      if (group.documentIds.length < 2) return;
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm(
+          deleteSourceDocuments
+            ? `「${group.targetTitle}」を新しい整理済みDB文書として作成し、作成後に素材の旧DB文書 ${group.documentIds.length}件を削除します。よろしいですか？`
+            : `「${group.targetTitle}」を新しい整理済みDB文書として作成します。素材の旧DB文書は残します。よろしいですか？`
+        );
+        if (!confirmed) return;
+      }
+      setOrganizingDbGroupId(group.id);
+      setDbOrganizationResult(null);
+      setDbError("");
+      try {
+        const result = await createOrganizedRagLibraryDocument({
+          documentIds: group.documentIds,
+          targetTitle: group.targetTitle,
+          groupLabel: group.label,
+          deleteSourceDocuments,
+        });
+        if (result.usage) {
+          applyDbOrganizationUsage?.(result.usage);
+        }
+        setDbOrganizationResult(result);
+        await loadDbDocuments();
+        await handleAnalyzeDbOrganization();
+      } catch (error) {
+        setDbError(error instanceof Error ? error.message : "DB organization failed.");
+      } finally {
+        setOrganizingDbGroupId("");
+      }
+    },
+    [applyDbOrganizationUsage, handleAnalyzeDbOrganization, loadDbDocuments]
   );
 
   React.useEffect(() => {
@@ -336,6 +407,12 @@ export default function LibraryDrawer({
           onDeleteDocument={handleDeleteDbDocument}
           compactingGroupId={compactingDbGroupId}
           onCompactDocuments={handleCompactDbDocuments}
+          organizationAnalysis={dbOrganizationAnalysis}
+          organizationLoading={dbOrganizationLoading}
+          organizationResult={dbOrganizationResult}
+          organizingGroupId={organizingDbGroupId}
+          onAnalyzeOrganization={handleAnalyzeDbOrganization}
+          onCreateOrganizedDocument={handleCreateOrganizedDbDocument}
           loading={dbLoading}
           error={dbError}
           onRefresh={loadDbDocuments}
@@ -412,6 +489,12 @@ function LibraryDbPanel({
   onDeleteDocument,
   compactingGroupId,
   onCompactDocuments,
+  organizationAnalysis,
+  organizationLoading,
+  organizationResult,
+  organizingGroupId,
+  onAnalyzeOrganization,
+  onCreateOrganizedDocument,
   loading,
   error,
   onRefresh,
@@ -426,6 +509,15 @@ function LibraryDbPanel({
   onDeleteDocument: (documentId: string, title: string) => void | Promise<void>;
   compactingGroupId: string;
   onCompactDocuments: (group: RagLibraryDuplicateGroup) => void | Promise<void>;
+  organizationAnalysis: RagLibraryOrganizationAnalysisResult | null;
+  organizationLoading: boolean;
+  organizationResult: RagLibraryOrganizedDocumentResult | null;
+  organizingGroupId: string;
+  onAnalyzeOrganization: () => void | Promise<void>;
+  onCreateOrganizedDocument: (
+    group: RagLibraryOrganizationGroup,
+    deleteSourceDocuments: boolean
+  ) => void | Promise<void>;
   loading: boolean;
   error: string;
   onRefresh: () => void | Promise<void>;
@@ -542,6 +634,15 @@ function LibraryDbPanel({
           onCompactDocuments={onCompactDocuments}
         />
       ) : null}
+
+      <DbOrganizationPanel
+        analysis={organizationAnalysis}
+        loading={organizationLoading}
+        result={organizationResult}
+        organizingGroupId={organizingGroupId}
+        onAnalyze={onAnalyzeOrganization}
+        onCreateOrganizedDocument={onCreateOrganizedDocument}
+      />
 
       <label style={dbFilterLabelStyle}>
         <span style={dbFilterTextStyle}>DB内検索</span>
@@ -719,6 +820,129 @@ function DbDuplicateGroupsPanel({
             他 {hiddenCount.toLocaleString("ja-JP")} 件の候補があります。
           </div>
         ) : null}
+      </div>
+    </details>
+  );
+}
+
+function DbOrganizationPanel({
+  analysis,
+  loading,
+  result,
+  organizingGroupId,
+  onAnalyze,
+  onCreateOrganizedDocument,
+}: {
+  analysis: RagLibraryOrganizationAnalysisResult | null;
+  loading: boolean;
+  result: RagLibraryOrganizedDocumentResult | null;
+  organizingGroupId: string;
+  onAnalyze: () => void | Promise<void>;
+  onCreateOrganizedDocument: (
+    group: RagLibraryOrganizationGroup,
+    deleteSourceDocuments: boolean
+  ) => void | Promise<void>;
+}) {
+  const groups = analysis?.groups || [];
+  return (
+    <details style={organizationPanelStyle}>
+      <summary style={organizationSummaryStyle}>
+        <span>DB整理</span>
+        <span style={dbOutsidePillStyle}>
+          {loading ? "分析中" : `${groups.length}候補`}
+        </span>
+      </summary>
+      <div style={duplicateBodyStyle}>
+        <div style={placeholderBodyStyle}>
+          DB内の文書からカテゴリーやテーマを抽出し、RAGで必要部分だけ拾いやすい
+          知識単位へ再構成します。再編後のチャンク数は、検索精度を優先するため
+          元より増える場合があります。
+        </div>
+        <div style={dbCandidateActionsStyle}>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void onAnalyze()}
+            style={{
+              ...smallDbButtonStyle,
+              borderColor: "#99f6e4",
+              color: "#0f766e",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "分析中" : "DBを分析"}
+          </button>
+        </div>
+        {analysis ? (
+          <div style={dbMetaStyle}>
+            分析対象: {analysis.documentsScanned.toLocaleString("ja-JP")}文書 /{" "}
+            {analysis.chunksScanned.toLocaleString("ja-JP")}チャンク / 約
+            {analysis.sourceTokenEstimate.toLocaleString("ja-JP")}トークン
+          </div>
+        ) : null}
+        {result ? (
+          <div style={organizationResultStyle}>
+            作成済み: {result.title} / 出力 {result.outputChunkCount}チャンク / 約
+            {result.outputTokenEstimate.toLocaleString("ja-JP")}トークン
+            {result.deletedSourceDocumentCount > 0
+              ? ` / 旧文書${result.deletedSourceDocumentCount}件を削除`
+              : ""}
+          </div>
+        ) : null}
+        {groups.length === 0 && analysis && !loading ? (
+          <div style={placeholderBodyStyle}>
+            まとまった再編候補は見つかりませんでした。
+          </div>
+        ) : null}
+        {groups.slice(0, 8).map((group) => {
+          const busy = organizingGroupId === group.id;
+          return (
+            <div key={group.id} style={organizationGroupStyle}>
+              <div style={chunkHeaderStyle}>
+                <span>{group.targetTitle}</span>
+                <span>
+                  素材 {group.sourceDocumentCount}文書 / {group.sourceChunkCount}
+                  チャンク / 推奨 {group.suggestedChunkCount}チャンク前後
+                </span>
+              </div>
+              <div style={dbSummaryTextStyle}>
+                {group.category} / {group.theme}
+                {group.entities.length ? ` / ${group.entities.join(", ")}` : ""}
+              </div>
+              {group.rationale ? (
+                <div style={placeholderBodyStyle}>{group.rationale}</div>
+              ) : null}
+              <div style={dbCandidateActionsStyle}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onCreateOrganizedDocument(group, false)}
+                  style={{
+                    ...smallDbButtonStyle,
+                    borderColor: "#bfdbfe",
+                    color: "#1d4ed8",
+                    opacity: busy ? 0.6 : 1,
+                  }}
+                >
+                  {busy ? "作成中" : "整理済みDB文書を作成"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onCreateOrganizedDocument(group, true)}
+                  style={{
+                    ...smallDbButtonStyle,
+                    borderColor: "#fecaca",
+                    color: "#b91c1c",
+                    opacity: busy ? 0.6 : 1,
+                  }}
+                >
+                  作成後に旧文書を削除
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </details>
   );
@@ -1157,6 +1381,49 @@ const duplicateGroupStyle: React.CSSProperties = {
   minWidth: 0,
   maxWidth: "100%",
   boxSizing: "border-box",
+};
+
+const organizationPanelStyle: React.CSSProperties = {
+  border: "1px solid #99f6e4",
+  background: "#f0fdfa",
+  borderRadius: 8,
+  padding: 10,
+  minWidth: 0,
+  maxWidth: "100%",
+  boxSizing: "border-box",
+};
+
+const organizationSummaryStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#0f766e",
+  flexWrap: "wrap",
+};
+
+const organizationGroupStyle: React.CSSProperties = {
+  border: "1px solid #99f6e4",
+  background: "#ffffff",
+  borderRadius: 8,
+  padding: 8,
+  minWidth: 0,
+  maxWidth: "100%",
+  boxSizing: "border-box",
+};
+
+const organizationResultStyle: React.CSSProperties = {
+  border: "1px solid #a7f3d0",
+  background: "#ecfdf5",
+  borderRadius: 8,
+  padding: 8,
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#047857",
+  overflowWrap: "anywhere",
 };
 
 const dbCardStyle: React.CSSProperties = {
