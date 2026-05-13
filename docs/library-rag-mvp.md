@@ -185,6 +185,17 @@ Current chat retrieval behavior:
 - the DB Reference Log stores the original user query separately from the
   expanded DB query for debugging retrieval misses
 
+Current DB reference limits:
+
+- `DB参照 参照チャンク数` remains the injected context/result limit and is
+  capped separately from search breadth
+- `DB参照 検索候補チャンク上限` controls how many candidate chunks Supabase can
+  inspect before the app trims the final injected context
+- the candidate chunk upper bound is currently capped at `100000`, not `500`,
+  so broad DB scans can be requested when the user wants recall over speed
+- values above `100000` are normalized down to that safety cap at the UI,
+  browser client, and server search layers
+
 ## Data Model Direction
 
 The current MVP SQL uses:
