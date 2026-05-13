@@ -20,6 +20,10 @@ import { resolveLibraryCardLimitDeletionIds } from "@/lib/app/reference-library/
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 import type { Message } from "@/types/chat";
 import type { SearchContext } from "@/types/task";
+import {
+  buildWebsiteMapDocument,
+  fetchWebsiteMap,
+} from "@/lib/app/website-map/websiteMapClient";
 
 type UseChatPageReferenceDomainArgs = {
   searchHistory: SearchContext[];
@@ -230,6 +234,66 @@ export function useChatPageReferenceDomain(
     }
   };
 
+  const importWebsiteMap = async (url: string) => {
+    const targetUrl = url.trim();
+    if (!targetUrl) return;
+    args.setIngestLoading(true);
+    try {
+      const result = await fetchWebsiteMap({
+        url: targetUrl,
+        maxDepth: 2,
+        maxPages: 50,
+        maxFiles: 20,
+      });
+      const document = buildWebsiteMapDocument(result);
+      const storedDocument = recordIngestedDocument({
+        artifactType: "reference_note",
+        title: document.title,
+        filename: document.filename,
+        text: document.text,
+        summary: document.summary,
+        structuredPayload: document.structuredPayload,
+        charCount: document.text.length,
+        createdAt: document.timestamp,
+        updatedAt: document.timestamp,
+      });
+      args.setGptMessages((prev) => [
+        ...prev,
+        {
+          id: `website-map-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "gpt",
+          text: [
+            "Website map saved to the library.",
+            "",
+            `Title: ${storedDocument.title}`,
+            `Pages: ${result.pages.length}`,
+            `Linked files: ${result.files.length}`,
+            `Skipped: ${result.skipped.length}`,
+          ].join("\n"),
+          meta: { sourceType: "file_ingest" },
+        },
+      ]);
+      args.focusGptPanel();
+    } catch (error) {
+      args.setGptMessages((prev) => [
+        ...prev,
+        {
+          id: `website-map-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: "gpt",
+          text: [
+            "Website map could not be created.",
+            "",
+            error instanceof Error ? error.message : "Website map failed.",
+          ].join("\n"),
+          meta: { sourceType: "file_ingest" },
+        },
+      ]);
+      args.focusGptPanel();
+    } finally {
+      args.setIngestLoading(false);
+    }
+  };
+
   const {
     processMultipartTaskDoneText,
     loadMultipartAssemblyToGptInput,
@@ -351,6 +415,7 @@ export function useChatPageReferenceDomain(
     downloadLibraryItem,
     uploadLibraryItemToGoogleDrive,
     renderPresentationPlanToPpt,
+    importWebsiteMap,
     importDeviceImageFile,
     importGoogleDriveFile,
     importGoogleDriveImageFile: openImageFileImportPicker,

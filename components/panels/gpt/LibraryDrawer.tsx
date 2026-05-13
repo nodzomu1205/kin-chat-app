@@ -141,6 +141,7 @@ export default function LibraryDrawer({
   onDownloadLibraryItem,
   onUploadLibraryItemToGoogleDrive,
   onRenderPresentationPlanToPpt,
+  onImportWebsiteMap,
   onOpenGoogleDriveFolder,
   onImportGoogleDriveFile,
   onIndexGoogleDriveFolder,
@@ -540,6 +541,7 @@ export default function LibraryDrawer({
         deviceInputId={deviceInputId}
         onImportDeviceFile={onImportDeviceFile}
         onImportDeviceImageFile={onImportDeviceImageFile}
+        onImportWebsiteMap={onImportWebsiteMap}
         deviceImportAccept={mergeAcceptValues(deviceImportAccept, imageImportAccept)}
         deviceImportDisabled={deviceImportDisabled}
         onShowAllLibraryItemsInChat={onShowAllLibraryItemsInChat}

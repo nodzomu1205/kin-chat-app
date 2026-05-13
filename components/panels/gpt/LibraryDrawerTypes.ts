@@ -39,6 +39,7 @@ export type LibraryDrawerProps = Pick<
   | "onDownloadLibraryItem"
   | "onUploadLibraryItemToGoogleDrive"
   | "onRenderPresentationPlanToPpt"
+  | "onImportWebsiteMap"
 > &
   Pick<
     GptPanelSettingsProps,

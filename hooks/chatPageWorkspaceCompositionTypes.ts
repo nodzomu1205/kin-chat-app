@@ -190,6 +190,7 @@ export type ChatPageWorkspaceCompositionActions = {
       | "onDownloadLibraryItem"
       | "onUploadLibraryItemToGoogleDrive"
       | "onRenderPresentationPlanToPpt"
+      | "onImportWebsiteMap"
       | "onImportDeviceImageFile"
       | "onImportGoogleDriveImageFile"
     | "onChangeAutoLibraryReferenceEnabled"

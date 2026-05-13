@@ -117,6 +117,8 @@ export type ChatPageWorkspaceViewReferencesArgs = {
     ChatPageGptPanelCompositionArgs["references"]["onUploadLibraryItemToGoogleDrive"];
   onRenderPresentationPlanToPpt:
     ChatPageGptPanelCompositionArgs["references"]["onRenderPresentationPlanToPpt"];
+  onImportWebsiteMap:
+    ChatPageGptPanelCompositionArgs["references"]["onImportWebsiteMap"];
   onImportDeviceImageFile:
     ChatPageGptPanelCompositionArgs["references"]["onImportDeviceImageFile"];
   onImportGoogleDriveImageFile:

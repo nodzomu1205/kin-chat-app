@@ -206,6 +206,7 @@ export function useChatPageWorkspaceDomainInputs(
           referenceDomain.uploadLibraryItemToGoogleDrive,
         onRenderPresentationPlanToPpt:
           referenceDomain.renderPresentationPlanToPpt,
+        onImportWebsiteMap: referenceDomain.importWebsiteMap,
         onImportDeviceImageFile: referenceDomain.importDeviceImageFile,
         onImportGoogleDriveImageFile: referenceDomain.importGoogleDriveImageFile,
       onChangeAutoLibraryReferenceEnabled:

@@ -104,6 +104,7 @@ function buildWorkspaceActionsReferences(args: ChatPageWorkspaceActionsReference
     onDownloadLibraryItem: args.onDownloadLibraryItem,
     onUploadLibraryItemToGoogleDrive: args.onUploadLibraryItemToGoogleDrive,
     onRenderPresentationPlanToPpt: args.onRenderPresentationPlanToPpt,
+    onImportWebsiteMap: args.onImportWebsiteMap,
     onImportDeviceImageFile: args.onImportDeviceImageFile,
     onImportGoogleDriveImageFile: args.onImportGoogleDriveImageFile,
     onChangeAutoLibraryReferenceEnabled: args.onChangeAutoLibraryReferenceEnabled,

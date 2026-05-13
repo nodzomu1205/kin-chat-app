@@ -256,6 +256,7 @@ describe("GptDrawerRouterHelpers", () => {
           onDownloadLibraryItem: noop,
           onUploadLibraryItemToGoogleDrive: noop,
           onRenderPresentationPlanToPpt: noop,
+          onImportWebsiteMap: noop,
           onImportDeviceImageFile: noop,
           onImportGoogleDriveImageFile: noop,
         },

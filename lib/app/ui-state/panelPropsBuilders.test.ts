@@ -166,6 +166,7 @@ describe("panelPropsBuilders", () => {
           onDownloadLibraryItem: vi.fn(),
           onUploadLibraryItemToGoogleDrive: vi.fn(),
           onRenderPresentationPlanToPpt: vi.fn(),
+          onImportWebsiteMap: vi.fn(),
           onImportDeviceImageFile: vi.fn(),
           onImportGoogleDriveImageFile: vi.fn(),
         },

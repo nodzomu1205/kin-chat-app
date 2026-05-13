@@ -280,6 +280,7 @@ export function buildLibraryDrawerProps({
     onDownloadLibraryItem: references.onDownloadLibraryItem,
     onUploadLibraryItemToGoogleDrive: references.onUploadLibraryItemToGoogleDrive,
     onRenderPresentationPlanToPpt: references.onRenderPresentationPlanToPpt,
+    onImportWebsiteMap: references.onImportWebsiteMap,
     onOpenGoogleDriveFolder: settings.onOpenGoogleDriveFolder,
     onImportGoogleDriveFile: settings.onImportGoogleDriveFile,
     onIndexGoogleDriveFolder: settings.onIndexGoogleDriveFolder,
