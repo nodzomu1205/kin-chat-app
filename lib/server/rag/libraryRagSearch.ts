@@ -7,6 +7,8 @@ import {
   matchSupabaseRagLibraryChunks,
 } from "@/lib/server/rag/supabaseRagClient";
 
+export const MAX_RAG_LIBRARY_CANDIDATE_COUNT = 100000;
+
 export type LibraryRagSearchResult = {
   context: string;
   matches: RagLibrarySearchMatch[];
@@ -34,7 +36,7 @@ export async function searchLibraryRagContext(params: {
     ? params.candidateCount
     : 100;
   const candidateCount = Math.min(
-    500,
+    MAX_RAG_LIBRARY_CANDIDATE_COUNT,
     Math.max(contextChunkLimit, Math.floor(rawCandidateCount || 100))
   );
   if (!query) {

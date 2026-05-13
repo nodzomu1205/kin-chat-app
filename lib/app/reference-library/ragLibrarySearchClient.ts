@@ -2,6 +2,8 @@ import { buildRagLibraryReferenceContext } from "@/lib/app/reference-library/rag
 import type { TokenUsage } from "@/lib/app/gpt-memory/gptMemoryStateHelpers";
 import type { RagLibrarySearchMatch } from "@/lib/app/reference-library/ragLibraryTypes";
 
+export const MAX_RAG_LIBRARY_CANDIDATE_COUNT = 100000;
+
 type LibraryRagSearchApiResponse = {
   ok?: boolean;
   context?: string;
@@ -33,7 +35,10 @@ export async function fetchRagLibraryReferenceContext(params: {
     Number.isFinite(params.candidateCount)
     ? params.candidateCount
     : 100;
-  const candidateCount = Math.min(500, Math.max(matchCount, Math.floor(rawCandidateCount)));
+  const candidateCount = Math.min(
+    MAX_RAG_LIBRARY_CANDIDATE_COUNT,
+    Math.max(matchCount, Math.floor(rawCandidateCount))
+  );
   if (!query) return { context: "", matches: [], skippedReason: "empty_query" };
 
   try {

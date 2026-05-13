@@ -169,6 +169,29 @@ describe("searchLibraryRagContext", () => {
     expect(result.matches).toHaveLength(3);
   });
 
+  it("caps candidate count at the expanded safety limit", async () => {
+    hasSupabaseRagConfig.mockReturnValue(true);
+    createOpenAIEmbeddingWithUsage.mockResolvedValue({
+      embedding: [0.1, 0.2, 0.3],
+      usage: { inputTokens: 3, outputTokens: 0, totalTokens: 3 },
+    });
+    matchSupabaseRagLibraryChunks.mockResolvedValue([]);
+
+    await searchLibraryRagContext({
+      query: "broad project lookup",
+      candidateCount: 999999,
+      matchCount: 10,
+    });
+
+    expect(matchSupabaseRagLibraryChunks).toHaveBeenCalledWith({
+      embedding: [0.1, 0.2, 0.3],
+      matchCount: 100000,
+      matchThreshold: 0.3,
+      documentIds: undefined,
+      filterMetadata: undefined,
+    });
+  });
+
   it("passes candidate document ids through to Supabase search", async () => {
     hasSupabaseRagConfig.mockReturnValue(true);
     createOpenAIEmbeddingWithUsage.mockResolvedValue({

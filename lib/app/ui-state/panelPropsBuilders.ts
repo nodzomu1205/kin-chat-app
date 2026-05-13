@@ -68,6 +68,8 @@ export function clampPanelCount(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, Number(value) || min));
 }
 
+export const MAX_LIBRARY_RAG_CANDIDATE_COUNT = 100000;
+
 export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps {
   const { header, chat, task, protocol, references, settings } = args;
   const pendingInjection = resolvePendingInjectionProgress(task.pendingInjection);
@@ -101,7 +103,9 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps 
   const onChangeLibraryRagReferenceCount = (value: number) =>
     settings.onChangeLibraryRagReferenceCount(clampPanelCount(value, 0, 50));
   const onChangeLibraryRagCandidateCount = (value: number) =>
-    settings.onChangeLibraryRagCandidateCount(clampPanelCount(value, 1, 500));
+    settings.onChangeLibraryRagCandidateCount(
+      clampPanelCount(value, 1, MAX_LIBRARY_RAG_CANDIDATE_COUNT)
+    );
   const onChangeLibraryRagSimilarityThreshold = (value: number) =>
     settings.onChangeLibraryRagSimilarityThreshold(
       Math.max(0, Math.min(1, Number(value) || 0))
