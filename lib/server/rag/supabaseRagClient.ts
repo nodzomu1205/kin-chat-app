@@ -85,14 +85,17 @@ export function hasSupabaseRagConfig() {
 
 export async function listSupabaseRagLibraryDocuments(params: {
   limit?: number;
+  offset?: number;
 } = {}): Promise<RagLibraryStoredDocument[]> {
   const config = getSupabaseRagConfig();
   const limit = Math.min(100, Math.max(1, Math.floor(params.limit || 50)));
+  const offset = Math.max(0, Math.floor(params.offset || 0));
   const documentEndpoint = [
     `${config.url}/rest/v1/rag_documents`,
     "?select=id,library_item_id,source_id,item_type,artifact_type,title,summary,metadata,content_hash,created_at,updated_at",
     "&order=updated_at.desc",
     `&limit=${limit}`,
+    offset ? `&offset=${offset}` : "",
   ].join("");
   const documentResponse = await fetch(documentEndpoint, {
     method: "GET",
@@ -120,6 +123,22 @@ export async function listSupabaseRagLibraryDocuments(params: {
     ...document,
     chunks: chunksByDocumentId.get(document.id) || [],
   }));
+}
+
+export async function listAllSupabaseRagLibraryDocuments(): Promise<
+  RagLibraryStoredDocument[]
+> {
+  const pageSize = 100;
+  const documents: RagLibraryStoredDocument[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await listSupabaseRagLibraryDocuments({
+      limit: pageSize,
+      offset,
+    });
+    documents.push(...page);
+    if (page.length < pageSize) break;
+  }
+  return documents;
 }
 
 export async function listSupabaseRagLibraryDocumentsByIds(

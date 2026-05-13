@@ -416,6 +416,8 @@ describe("LibraryDrawer", () => {
     });
     expect(filterDbDocuments(documents, "farmers")).toHaveLength(1);
     expect(filterDbDocuments(documents, "returnee")[0]?.id).toBe("doc-2");
+    expect(filterDbDocuments(documents, "cotton farmers")[0]?.id).toBe("doc-1");
+    expect(filterDbDocuments(documents, "cotton returnee")).toHaveLength(0);
   });
 
   it("marks DB candidate boundaries by cumulative chunk count and moves documents", () => {

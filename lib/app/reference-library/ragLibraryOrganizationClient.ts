@@ -10,13 +10,18 @@ type LibraryRagOrganizationApiResponse = Partial<
   error?: string;
 };
 
-export async function analyzeRagLibraryOrganization(): Promise<RagLibraryOrganizationAnalysisResult> {
+export async function analyzeRagLibraryOrganization(params: {
+  documentIds?: string[];
+} = {}): Promise<RagLibraryOrganizationAnalysisResult> {
   const response = await fetch("/api/library-rag/organize", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ action: "analyze" }),
+    body: JSON.stringify({
+      action: "analyze",
+      documentIds: params.documentIds?.filter(Boolean),
+    }),
   });
   const data = (await response.json().catch(() => ({}))) as LibraryRagOrganizationApiResponse;
   if (!response.ok || data.ok === false) {

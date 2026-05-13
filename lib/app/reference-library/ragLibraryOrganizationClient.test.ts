@@ -53,6 +53,34 @@ describe("ragLibraryOrganizationClient", () => {
     });
   });
 
+  it("can restrict DB organization analysis to selected documents", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          configured: true,
+          documentsScanned: 2,
+          chunksScanned: 8,
+          sourceTokenEstimate: 600,
+          groups: [],
+        })
+      )
+    );
+
+    await analyzeRagLibraryOrganization({ documentIds: ["doc-1", "doc-2"] });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/library-rag/organize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "analyze",
+        documentIds: ["doc-1", "doc-2"],
+      }),
+    });
+  });
+
   it("creates an optimized DB document and may delete source documents", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

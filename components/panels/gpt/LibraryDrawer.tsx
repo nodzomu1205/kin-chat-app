@@ -42,6 +42,68 @@ import {
 } from "@/lib/app/reference-library/ragLibraryReferenceLog";
 import type { RagLibraryStoredDocument } from "@/lib/app/reference-library/ragLibraryTypes";
 
+type DbOrganizationSessionState = {
+  analysis: RagLibraryOrganizationAnalysisResult | null;
+  analysisDocumentIds: string[];
+  result: RagLibraryOrganizedDocumentResult | null;
+  analysisLoading: boolean;
+  organizingGroupId: string;
+};
+
+const DB_ORGANIZATION_SESSION_KEY = "rag_library_db_organization_session";
+
+const dbOrganizationSession: DbOrganizationSessionState = {
+  analysis: null,
+  analysisDocumentIds: [],
+  result: null,
+  analysisLoading: false,
+  organizingGroupId: "",
+};
+
+let dbOrganizationAnalysisPromise:
+  | Promise<RagLibraryOrganizationAnalysisResult>
+  | null = null;
+let dbOrganizationCreatePromise:
+  | Promise<RagLibraryOrganizedDocumentResult>
+  | null = null;
+
+function readDbOrganizationSession(): Pick<
+  DbOrganizationSessionState,
+  "analysis" | "analysisDocumentIds" | "result"
+> {
+  if (typeof window === "undefined") {
+    return { analysis: null, analysisDocumentIds: [], result: null };
+  }
+  try {
+    const parsed = JSON.parse(
+      window.sessionStorage.getItem(DB_ORGANIZATION_SESSION_KEY) || "{}"
+    ) as Partial<DbOrganizationSessionState>;
+    return {
+      analysis: parsed.analysis || null,
+      analysisDocumentIds: Array.isArray(parsed.analysisDocumentIds)
+        ? parsed.analysisDocumentIds.filter(
+            (value): value is string => typeof value === "string"
+          )
+        : [],
+      result: parsed.result || null,
+    };
+  } catch {
+    return { analysis: null, analysisDocumentIds: [], result: null };
+  }
+}
+
+function writeDbOrganizationSession() {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(
+    DB_ORGANIZATION_SESSION_KEY,
+    JSON.stringify({
+      analysis: dbOrganizationSession.analysis,
+      analysisDocumentIds: dbOrganizationSession.analysisDocumentIds,
+      result: dbOrganizationSession.result,
+    })
+  );
+}
+
 const tabs: Array<{ id: LibraryDrawerView; label: string }> = [
   { id: "library", label: "ライブラリ" },
   { id: "images", label: "画像" },
@@ -114,11 +176,19 @@ export default function LibraryDrawer({
   const [deletingDbDocumentId, setDeletingDbDocumentId] = useState("");
   const [compactingDbGroupId, setCompactingDbGroupId] = useState("");
   const [dbOrganizationAnalysis, setDbOrganizationAnalysis] =
-    useState<RagLibraryOrganizationAnalysisResult | null>(null);
-  const [dbOrganizationLoading, setDbOrganizationLoading] = useState(false);
-  const [organizingDbGroupId, setOrganizingDbGroupId] = useState("");
+    useState<RagLibraryOrganizationAnalysisResult | null>(
+      () => dbOrganizationSession.analysis || readDbOrganizationSession().analysis
+    );
+  const [dbOrganizationLoading, setDbOrganizationLoading] = useState(
+    () => dbOrganizationSession.analysisLoading
+  );
+  const [organizingDbGroupId, setOrganizingDbGroupId] = useState(
+    () => dbOrganizationSession.organizingGroupId
+  );
   const [dbOrganizationResult, setDbOrganizationResult] =
-    useState<RagLibraryOrganizedDocumentResult | null>(null);
+    useState<RagLibraryOrganizedDocumentResult | null>(
+      () => dbOrganizationSession.result || readDbOrganizationSession().result
+    );
   const [dbReferenceLogs, setDbReferenceLogs] = useState<
     RagLibraryReferenceLogEntry[]
   >([]);
@@ -143,6 +213,61 @@ export default function LibraryDrawer({
     },
     [onChangeLibraryView]
   );
+
+  React.useEffect(() => {
+    const restored = readDbOrganizationSession();
+    if (restored.analysis && !dbOrganizationSession.analysis) {
+      dbOrganizationSession.analysis = restored.analysis;
+      dbOrganizationSession.analysisDocumentIds = restored.analysisDocumentIds;
+      setDbOrganizationAnalysis(restored.analysis);
+    }
+    if (restored.result && !dbOrganizationSession.result) {
+      dbOrganizationSession.result = restored.result;
+      setDbOrganizationResult(restored.result);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!dbOrganizationAnalysisPromise) return;
+    let cancelled = false;
+    setDbOrganizationLoading(true);
+    dbOrganizationAnalysisPromise
+      .then((result) => {
+        if (cancelled) return;
+        setDbOrganizationAnalysis(result);
+      })
+      .catch(() => {
+        // The request owner surfaces the error; remounted drawers just follow state.
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setDbOrganizationLoading(dbOrganizationSession.analysisLoading);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!dbOrganizationCreatePromise) return;
+    let cancelled = false;
+    setOrganizingDbGroupId(dbOrganizationSession.organizingGroupId);
+    dbOrganizationCreatePromise
+      .then((result) => {
+        if (cancelled) return;
+        setDbOrganizationResult(result);
+      })
+      .catch(() => {
+        // The request owner surfaces the error; remounted drawers just follow state.
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setOrganizingDbGroupId(dbOrganizationSession.organizingGroupId);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   React.useEffect(() => {
     if (controlledActiveLibraryView !== undefined) return;
@@ -224,24 +349,65 @@ export default function LibraryDrawer({
     [loadDbDocuments]
   );
 
-  const handleAnalyzeDbOrganization = React.useCallback(async () => {
+  const handleAnalyzeDbOrganization = React.useCallback(async (documentIds?: string[]) => {
+    const selectedDocumentIds = normalizeSelectedDbDocumentIds(documentIds || []);
+    if (
+      dbOrganizationSession.analysis &&
+      sameStringSet(dbOrganizationSession.analysisDocumentIds, selectedDocumentIds)
+    ) {
+      setDbOrganizationAnalysis(dbOrganizationSession.analysis);
+      return;
+    }
+    if (dbOrganizationAnalysisPromise) {
+      setDbOrganizationLoading(true);
+      try {
+        const result = await dbOrganizationAnalysisPromise;
+        setDbOrganizationAnalysis(result);
+      } finally {
+        setDbOrganizationLoading(dbOrganizationSession.analysisLoading);
+      }
+      return;
+    }
+
+    dbOrganizationSession.analysisLoading = true;
     setDbOrganizationLoading(true);
+    dbOrganizationSession.result = null;
     setDbOrganizationResult(null);
     setDbError("");
+    dbOrganizationAnalysisPromise = analyzeRagLibraryOrganization({
+      documentIds: selectedDocumentIds,
+    });
     try {
-      const result = await analyzeRagLibraryOrganization();
+      const result = await dbOrganizationAnalysisPromise;
       if (result.usage) {
         applyDbOrganizationUsage?.(result.usage);
       }
+      dbOrganizationSession.analysis = result;
+      dbOrganizationSession.analysisDocumentIds = selectedDocumentIds;
+      writeDbOrganizationSession();
       setDbOrganizationAnalysis(result);
     } catch (error) {
       setDbError(
         error instanceof Error ? error.message : "DB organization analysis failed."
       );
     } finally {
+      dbOrganizationAnalysisPromise = null;
+      dbOrganizationSession.analysisLoading = false;
       setDbOrganizationLoading(false);
     }
   }, [applyDbOrganizationUsage]);
+
+  const removeDbOrganizationGroup = React.useCallback((groupId: string) => {
+    setDbOrganizationAnalysis((current) => {
+      if (!current) return current;
+      const groups = current.groups.filter((group) => group.id !== groupId);
+      if (groups.length === current.groups.length) return current;
+      const next = { ...current, groups };
+      dbOrganizationSession.analysis = next;
+      writeDbOrganizationSession();
+      return next;
+    });
+  }, []);
 
   const handleCreateOrganizedDbDocument = React.useCallback(
     async (group: RagLibraryOrganizationGroup, deleteSourceDocuments: boolean) => {
@@ -254,30 +420,53 @@ export default function LibraryDrawer({
         );
         if (!confirmed) return;
       }
+      dbOrganizationSession.organizingGroupId = group.id;
       setOrganizingDbGroupId(group.id);
+      dbOrganizationSession.result = null;
       setDbOrganizationResult(null);
       setDbError("");
       try {
-        const result = await createOrganizedRagLibraryDocument({
+        dbOrganizationCreatePromise = createOrganizedRagLibraryDocument({
           documentIds: group.documentIds,
           targetTitle: group.targetTitle,
           groupLabel: group.label,
           deleteSourceDocuments,
         });
+        const result = await dbOrganizationCreatePromise;
         if (result.usage) {
           applyDbOrganizationUsage?.(result.usage);
         }
+        dbOrganizationSession.result = result;
+        writeDbOrganizationSession();
         setDbOrganizationResult(result);
+        removeDbOrganizationGroup(group.id);
         await loadDbDocuments();
-        await handleAnalyzeDbOrganization();
       } catch (error) {
         setDbError(error instanceof Error ? error.message : "DB organization failed.");
       } finally {
+        dbOrganizationCreatePromise = null;
+        dbOrganizationSession.organizingGroupId = "";
         setOrganizingDbGroupId("");
       }
     },
-    [applyDbOrganizationUsage, handleAnalyzeDbOrganization, loadDbDocuments]
+    [applyDbOrganizationUsage, loadDbDocuments, removeDbOrganizationGroup]
   );
+
+  React.useEffect(() => {
+    if (!dbLoaded) return;
+    const existingDocumentIds = new Set(dbDocuments.map((document) => document.id));
+    setDbOrganizationAnalysis((current) => {
+      if (!current) return current;
+      const groups = current.groups.filter((group) =>
+        group.documentIds.every((documentId) => existingDocumentIds.has(documentId))
+      );
+      if (groups.length === current.groups.length) return current;
+      const next = { ...current, groups };
+      dbOrganizationSession.analysis = next;
+      writeDbOrganizationSession();
+      return next;
+    });
+  }, [dbDocuments, dbLoaded]);
 
   React.useEffect(() => {
     if (activeLibraryView !== "db" || dbLoaded || dbLoading) return;
@@ -513,7 +702,7 @@ function LibraryDbPanel({
   organizationLoading: boolean;
   organizationResult: RagLibraryOrganizedDocumentResult | null;
   organizingGroupId: string;
-  onAnalyzeOrganization: () => void | Promise<void>;
+  onAnalyzeOrganization: (documentIds: string[]) => void | Promise<void>;
   onCreateOrganizedDocument: (
     group: RagLibraryOrganizationGroup,
     deleteSourceDocuments: boolean
@@ -525,6 +714,10 @@ function LibraryDbPanel({
   const [filterText, setFilterText] = React.useState("");
   const [documentOrder, setDocumentOrder] = React.useState<string[]>(() =>
     readRagLibraryDbDocumentOrder()
+  );
+  const [selectionMode, setSelectionMode] = React.useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = React.useState<string[]>(
+    []
   );
   React.useEffect(() => {
     setDocumentOrder((current) => normalizeDbDocumentOrder(current, documents));
@@ -563,6 +756,39 @@ function LibraryDbPanel({
     () => filterDbDocuments(orderedDocuments, filterText),
     [orderedDocuments, filterText]
   );
+  React.useEffect(() => {
+    const documentIds = new Set(documents.map((document) => document.id));
+    setSelectedDocumentIds((current) =>
+      current.filter((documentId) => documentIds.has(documentId))
+    );
+  }, [documents]);
+  const selectedDocumentIdSet = React.useMemo(
+    () => new Set(selectedDocumentIds),
+    [selectedDocumentIds]
+  );
+  const allVisibleDocumentsSelected =
+    filteredDocuments.length > 0 &&
+    filteredDocuments.every((document) => selectedDocumentIdSet.has(document.id));
+  const selectVisibleDocuments = React.useCallback(() => {
+    setSelectionMode(true);
+    setSelectedDocumentIds((current) => {
+      const visibleIds = filteredDocuments.map((document) => document.id);
+      const visibleIdSet = new Set(visibleIds);
+      const allSelected =
+        visibleIds.length > 0 && visibleIds.every((id) => current.includes(id));
+      if (allSelected) {
+        return current.filter((id) => !visibleIdSet.has(id));
+      }
+      return Array.from(new Set([...current, ...visibleIds]));
+    });
+  }, [filteredDocuments]);
+  const toggleSelectedDocument = React.useCallback((documentId: string) => {
+    setSelectedDocumentIds((current) =>
+      current.includes(documentId)
+        ? current.filter((id) => id !== documentId)
+        : [...current, documentId]
+    );
+  }, []);
   const referencedDocumentIds = React.useMemo(
     () =>
       new Set(
@@ -640,7 +866,13 @@ function LibraryDbPanel({
         loading={organizationLoading}
         result={organizationResult}
         organizingGroupId={organizingGroupId}
-        onAnalyze={onAnalyzeOrganization}
+        selectionMode={selectionMode}
+        selectedDocumentCount={selectedDocumentIds.length}
+        visibleDocumentCount={filteredDocuments.length}
+        allVisibleDocumentsSelected={allVisibleDocumentsSelected}
+        onToggleSelectionMode={() => setSelectionMode((current) => !current)}
+        onSelectVisibleDocuments={selectVisibleDocuments}
+        onAnalyze={() => onAnalyzeOrganization(selectedDocumentIds)}
         onCreateOrganizedDocument={onCreateOrganizedDocument}
       />
 
@@ -679,8 +911,22 @@ function LibraryDbPanel({
       ) : (
         filteredDocuments.map((document) => {
           const candidate = candidateState.documents.get(document.id);
+          const selected = selectedDocumentIdSet.has(document.id);
           return (
-          <details key={document.id} data-db-document-card="true" style={dbCardStyle}>
+          <div key={document.id} style={selected ? selectedDbCardStyle : dbCardStyle}>
+            {selectionMode ? (
+              <label style={dbSelectionRowStyle}>
+                <input
+                  type="checkbox"
+                  checked={selected}
+                  onChange={() => toggleSelectedDocument(document.id)}
+                  style={dbSelectionCheckboxStyle}
+                  aria-label={`DB analysis target: ${document.title}`}
+                />
+                <span>{selected ? "選択済み" : "分析対象に選択"}</span>
+              </label>
+            ) : null}
+          <details data-db-document-card="true">
             <summary style={dbSummaryStyle}>
               <div style={{ minWidth: 0 }}>
                 <div style={dbTitleStyle}>{document.title}</div>
@@ -758,6 +1004,7 @@ function LibraryDbPanel({
               )}
             </div>
           </details>
+          </div>
           );
         })
       )}
@@ -830,6 +1077,12 @@ function DbOrganizationPanel({
   loading,
   result,
   organizingGroupId,
+  selectionMode,
+  selectedDocumentCount,
+  visibleDocumentCount,
+  allVisibleDocumentsSelected,
+  onToggleSelectionMode,
+  onSelectVisibleDocuments,
   onAnalyze,
   onCreateOrganizedDocument,
 }: {
@@ -837,6 +1090,12 @@ function DbOrganizationPanel({
   loading: boolean;
   result: RagLibraryOrganizedDocumentResult | null;
   organizingGroupId: string;
+  selectionMode: boolean;
+  selectedDocumentCount: number;
+  visibleDocumentCount: number;
+  allVisibleDocumentsSelected: boolean;
+  onToggleSelectionMode: () => void;
+  onSelectVisibleDocuments: () => void;
   onAnalyze: () => void | Promise<void>;
   onCreateOrganizedDocument: (
     group: RagLibraryOrganizationGroup,
@@ -861,21 +1120,51 @@ function DbOrganizationPanel({
         <div style={dbCandidateActionsStyle}>
           <button
             type="button"
-            disabled={loading}
+            onClick={onToggleSelectionMode}
+            style={{
+              ...smallDbButtonStyle,
+              borderColor: selectionMode ? "#99f6e4" : "#cbd5e1",
+              color: selectionMode ? "#0f766e" : "#475569",
+            }}
+          >
+            対象選択
+          </button>
+          <button
+            type="button"
+            disabled={visibleDocumentCount === 0}
+            onClick={onSelectVisibleDocuments}
+            style={{
+              ...smallDbButtonStyle,
+              borderColor: "#bae6fd",
+              color: "#0369a1",
+              opacity: visibleDocumentCount === 0 ? 0.6 : 1,
+            }}
+          >
+            {allVisibleDocumentsSelected ? "一括解除" : "一括選択"}
+          </button>
+          <button
+            type="button"
+            disabled={loading || selectedDocumentCount === 0}
             onClick={() => void onAnalyze()}
             style={{
               ...smallDbButtonStyle,
               borderColor: "#99f6e4",
               color: "#0f766e",
-              opacity: loading ? 0.6 : 1,
+              opacity: loading || selectedDocumentCount === 0 ? 0.6 : 1,
             }}
           >
-            {loading ? "分析中" : "DBを分析"}
+            {loading ? "分析中" : "分析"}
           </button>
+        </div>
+        <div style={dbMetaStyle}>
+          分析対象: {selectedDocumentCount.toLocaleString("ja-JP")}文書
+          {selectionMode
+            ? ` / 表示中 ${visibleDocumentCount.toLocaleString("ja-JP")}文書`
+            : " / 対象選択で文書を選択してください"}
         </div>
         {analysis ? (
           <div style={dbMetaStyle}>
-            分析対象: {analysis.documentsScanned.toLocaleString("ja-JP")}文書 /{" "}
+            前回分析対象: {analysis.documentsScanned.toLocaleString("ja-JP")}文書 /{" "}
             {analysis.chunksScanned.toLocaleString("ja-JP")}チャンク / 約
             {analysis.sourceTokenEstimate.toLocaleString("ja-JP")}トークン
           </div>
@@ -1058,6 +1347,18 @@ function mergeAcceptValues(...values: string[]) {
   ).join(",");
 }
 
+function normalizeSelectedDbDocumentIds(documentIds: string[]) {
+  return Array.from(new Set(documentIds.map((id) => id.trim()).filter(Boolean)))
+    .sort();
+}
+
+function sameStringSet(left: string[], right: string[]) {
+  if (left.length !== right.length) return false;
+  const normalizedLeft = normalizeSelectedDbDocumentIds(left);
+  const normalizedRight = normalizeSelectedDbDocumentIds(right);
+  return normalizedLeft.every((value, index) => value === normalizedRight[index]);
+}
+
 function normalizeDbDocumentOrder(
   order: string[],
   documents: RagLibraryStoredDocument[]
@@ -1220,9 +1521,11 @@ export function filterDbDocuments(
 ) {
   const normalizedFilter = filterText.trim().toLowerCase();
   if (!normalizedFilter) return documents;
-  return documents.filter((document) =>
-    buildDbDocumentSearchText(document).includes(normalizedFilter)
-  );
+  const keywords = normalizedFilter.split(/\s+/).filter(Boolean);
+  return documents.filter((document) => {
+    const searchText = buildDbDocumentSearchText(document);
+    return keywords.every((keyword) => searchText.includes(keyword));
+  });
 }
 
 function buildDbDocumentSearchText(document: RagLibraryStoredDocument) {
@@ -1430,13 +1733,21 @@ const organizationResultStyle: React.CSSProperties = {
 };
 
 const dbCardStyle: React.CSSProperties = {
-  border: "1px solid #dbeafe",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#dbeafe",
   background: "#ffffff",
   borderRadius: 8,
   padding: 10,
   minWidth: 0,
   maxWidth: "100%",
   boxSizing: "border-box",
+};
+
+const selectedDbCardStyle: React.CSSProperties = {
+  ...dbCardStyle,
+  borderColor: "#5eead4",
+  background: "#f0fdfa",
 };
 
 const dbSummaryStyle: React.CSSProperties = {
@@ -1448,6 +1759,23 @@ const dbSummaryStyle: React.CSSProperties = {
   flexWrap: "wrap",
   minWidth: 0,
   maxWidth: "100%",
+};
+
+const dbSelectionRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  marginBottom: 8,
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#0f766e",
+  cursor: "pointer",
+};
+
+const dbSelectionCheckboxStyle: React.CSSProperties = {
+  width: 16,
+  height: 16,
+  accentColor: "#0f766e",
 };
 
 const dbTitleStyle: React.CSSProperties = {

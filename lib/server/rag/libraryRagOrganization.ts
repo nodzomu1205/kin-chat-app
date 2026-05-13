@@ -20,7 +20,7 @@ import { createOpenAIEmbeddingWithUsage } from "@/lib/server/rag/openaiEmbedding
 import {
   deleteSupabaseRagLibraryDocument,
   hasSupabaseRagConfig,
-  listSupabaseRagLibraryDocuments,
+  listAllSupabaseRagLibraryDocuments,
   listSupabaseRagLibraryDocumentsByIds,
   replaceSupabaseRagLibraryChunks,
   upsertSupabaseRagLibraryDocument,
@@ -28,8 +28,6 @@ import {
 import { z } from "zod";
 
 const ORGANIZATION_MODEL = "gpt-4.1-mini";
-const ANALYSIS_DOCUMENT_LIMIT = 80;
-const DOCUMENT_PREVIEW_CHARS = 2600;
 const GROUP_DOCUMENT_LIMIT = 12;
 
 const organizationAnalysisSchema = z.object({
@@ -65,7 +63,9 @@ const organizedDocumentSchema = z.object({
   ).default([]),
 });
 
-export async function analyzeSupabaseRagLibraryOrganization(): Promise<RagLibraryOrganizationAnalysisResult> {
+export async function analyzeSupabaseRagLibraryOrganization(params: {
+  documentIds?: string[];
+} = {}): Promise<RagLibraryOrganizationAnalysisResult> {
   if (!hasSupabaseRagConfig()) {
     return {
       configured: false,
@@ -76,9 +76,10 @@ export async function analyzeSupabaseRagLibraryOrganization(): Promise<RagLibrar
     };
   }
 
-  const documents = await listSupabaseRagLibraryDocuments({
-    limit: ANALYSIS_DOCUMENT_LIMIT,
-  });
+  const documentIds = uniqueStrings(params.documentIds || []);
+  const documents = documentIds.length
+    ? await listSupabaseRagLibraryDocumentsByIds(documentIds)
+    : await listAllSupabaseRagLibraryDocuments();
   const stats = summarizeDocuments(documents);
   if (documents.length < 2) {
     return {
@@ -218,6 +219,7 @@ function buildOrganizationAnalysisPrompt(documents: RagLibraryStoredDocument[]) 
     "Find practical groups that should be rebuilt into cleaner DB documents.",
     "Do not optimize for fewer chunks. A rebuilt group may need more chunks if that creates narrower, more retrievable knowledge units.",
     "Prefer groups that share category, theme, entities, or operational purpose.",
+    "Read all provided chunks before proposing groups so late-document information is not ignored.",
     "Return only JSON.",
     "",
     "DB documents:",
@@ -252,10 +254,7 @@ function formatDocumentForPrompt(document: RagLibraryStoredDocument) {
   const chunkText = document.chunks
     .map(
       (chunk) =>
-        `Chunk ${chunk.chunkIndex} (${chunk.tokenEstimate} tokens):\n${truncateText(
-          chunk.content,
-          900
-        )}`
+        `Chunk ${chunk.chunkIndex} (${chunk.tokenEstimate} tokens):\n${chunk.content}`
     )
     .join("\n\n");
   return [
@@ -263,7 +262,7 @@ function formatDocumentForPrompt(document: RagLibraryStoredDocument) {
     `Title: ${document.title}`,
     document.summary ? `Summary: ${document.summary}` : "",
     `Metadata: ${JSON.stringify(document.metadata || {})}`,
-    truncateText(chunkText, DOCUMENT_PREVIEW_CHARS),
+    chunkText,
   ].filter(Boolean).join("\n");
 }
 
@@ -504,12 +503,6 @@ function parseJsonWithSchema<T extends z.ZodTypeAny>(
   } catch {
     return fallback;
   }
-}
-
-function truncateText(value: string, maxChars: number) {
-  const text = value.trim();
-  if (text.length <= maxChars) return text;
-  return `${text.slice(0, maxChars).trimEnd()}\n[truncated]`;
 }
 
 function trimText(value: string | undefined, maxChars: number) {

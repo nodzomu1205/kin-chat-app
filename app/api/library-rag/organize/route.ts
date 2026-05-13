@@ -9,6 +9,7 @@ import { hasSupabaseRagConfig } from "@/lib/server/rag/supabaseRagClient";
 const requestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("analyze"),
+    documentIds: z.array(z.string().min(1)).max(1000).optional(),
   }),
   z.object({
     action: z.literal("create_organized_document"),
@@ -23,7 +24,9 @@ export async function POST(req: Request) {
   try {
     const body = requestSchema.parse(await req.json().catch(() => ({})));
     if (body.action === "analyze") {
-      const result = await analyzeSupabaseRagLibraryOrganization();
+      const result = await analyzeSupabaseRagLibraryOrganization({
+        documentIds: body.documentIds,
+      });
       return NextResponse.json({
         ok: true,
         ...result,
