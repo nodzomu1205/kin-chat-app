@@ -63,6 +63,34 @@ describe("ragLibraryDocumentsClient", () => {
     );
   });
 
+  it("does not send a document limit when loading the full DB list", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          configured: true,
+          documents: [],
+          semanticDuplicateGroups: [],
+        })
+      )
+    );
+
+    await expect(
+      fetchRagLibraryDocuments({
+        duplicateLimit: 30,
+        duplicateThreshold: 0.68,
+      })
+    ).resolves.toEqual({
+      configured: true,
+      documents: [],
+      semanticDuplicateGroups: [],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/library-rag/documents?duplicateLimit=30&duplicateThreshold=0.68",
+      { method: "GET" }
+    );
+  });
+
   it("deletes a DB document", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(

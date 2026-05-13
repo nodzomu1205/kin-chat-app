@@ -22,9 +22,11 @@ For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 
 ## Current Next Start
 
-Current default next work is DB organization, not PPT maintenance.
+Current default next work is no longer DB organization. The DB/RAG slice is in
+maintenance-watch after the organization workflow, full DB-card listing, and DB
+reference log cleanup.
 
-The 2026-05-12 closeout ended with:
+The 2026-05-12 DB/RAG closeout started from:
 
 - DB deletion working
 - exact duplicate detection working
@@ -34,18 +36,20 @@ The 2026-05-12 closeout ended with:
 - live observation that automatic semantic near-duplicate detection still did
   not surface useful candidates from the current data
 
-Recommended next action:
+Completed since that closeout:
 
-1. Add DB category/theme/entity extraction for current DB documents.
-2. Display extracted labels in the DB tab.
-3. Add sorting/grouping by category/theme.
-4. Add user multi-select for DB documents.
-5. Reuse the current non-destructive compaction flow on user-selected document
-   sets.
+1. DB category/theme/entity extraction is available through the DB organization
+   workflow.
+2. DB organization groups can be reviewed from the DB tab.
+3. User-selected DB documents can be rebuilt into a RAG-optimized DB document.
+4. DB cards now load without the old 50-document display cap, so organization
+   targets are not accidentally limited by the first page of results.
+5. DB duplicate and organization candidate displays no longer hide actionable
+   candidates behind local display caps.
 
-Do not start by tuning the semantic-similarity threshold alone. The user has
-identified that manual, category-assisted grouping is likely more useful than
-hidden pairwise similarity for this dataset.
+DB follow-up should now be narrow regression work only unless the user
+explicitly reopens the DB/RAG product slice. Do not start by tuning the
+semantic-similarity threshold alone.
 
 ## PPT / Library Prior Context
 

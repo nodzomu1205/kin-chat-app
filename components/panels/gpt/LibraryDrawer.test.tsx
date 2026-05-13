@@ -2,6 +2,8 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import LibraryDrawer, {
+  DbDuplicateGroupsPanel,
+  DbOrganizationPanel,
   buildDbCandidateState,
   buildDbDocumentStats,
   filterDbDocuments,
@@ -499,5 +501,68 @@ describe("LibraryDrawer", () => {
     expect(html).toContain("min-width:0");
     expect(html).toContain("overflow-wrap:anywhere");
     expect(html).not.toContain("総chunk");
+  });
+
+  it("does not hide DB duplicate or organization candidates behind local display caps", () => {
+    const duplicateGroups = Array.from({ length: 12 }, (_, index) => ({
+      id: `duplicate-${index}`,
+      reason: "similar_chunk" as const,
+      documentIds: [`doc-${index}`, `doc-${index + 1}`],
+      chunkIds: [`chunk-${index}`],
+      titles: [`Document ${index}`],
+      documentCount: 2,
+      chunkCount: 1,
+      totalTokenEstimate: 100,
+      similarity: 0.8,
+    }));
+    const organizationGroups = Array.from({ length: 14 }, (_, index) => ({
+      id: `organization-${index}`,
+      label: `Group ${index}`,
+      category: "category",
+      theme: "theme",
+      documentType: "note",
+      entities: [],
+      documentIds: [`doc-${index}`, `doc-${index + 1}`],
+      sourceDocumentCount: 2,
+      sourceChunkCount: 4,
+      sourceTokenEstimate: 200,
+      targetTitle: `Organized ${index}`,
+      suggestedChunkCount: 3,
+      rationale: "",
+    }));
+
+    const duplicateHtml = renderToStaticMarkup(
+      <DbDuplicateGroupsPanel
+        groups={duplicateGroups}
+        compactingGroupId=""
+        onCompactDocuments={() => {}}
+      />
+    );
+    const organizationHtml = renderToStaticMarkup(
+      <DbOrganizationPanel
+        analysis={{
+          configured: true,
+          documentsScanned: 14,
+          chunksScanned: 56,
+          sourceTokenEstimate: 2800,
+          groups: organizationGroups,
+        }}
+        loading={false}
+        result={null}
+        organizingGroupId=""
+        selectionMode
+        selectedDocumentCount={14}
+        visibleDocumentCount={14}
+        allVisibleDocumentsSelected={false}
+        onToggleSelectionMode={() => {}}
+        onSelectVisibleDocuments={() => {}}
+        onAnalyze={() => {}}
+        onCreateOrganizedDocument={() => {}}
+      />
+    );
+
+    expect(duplicateHtml).toContain("Document 11");
+    expect(duplicateHtml).not.toContain("他 6 件の候補があります");
+    expect(organizationHtml).toContain("Organized 13");
   });
 });

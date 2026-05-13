@@ -4,6 +4,7 @@ import { compactSupabaseRagLibraryDocuments } from "@/lib/server/rag/libraryRagC
 import {
   deleteSupabaseRagLibraryDocument,
   hasSupabaseRagConfig,
+  listAllSupabaseRagLibraryDocuments,
   listSupabaseRagLibraryDocuments,
   listSupabaseRagSemanticDuplicateGroups,
 } from "@/lib/server/rag/supabaseRagClient";
@@ -36,9 +37,11 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const query = querySchema.parse(Object.fromEntries(url.searchParams));
-    const documents = await listSupabaseRagLibraryDocuments({
-      limit: query.limit,
-    });
+    const documents = query.limit
+      ? await listSupabaseRagLibraryDocuments({
+          limit: query.limit,
+        })
+      : await listAllSupabaseRagLibraryDocuments();
     const semanticDuplicateGroups = await listSupabaseRagSemanticDuplicateGroups({
       maxPairs: query.duplicateLimit,
       minSimilarity: query.duplicateThreshold,

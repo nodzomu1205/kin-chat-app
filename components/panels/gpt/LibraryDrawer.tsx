@@ -280,7 +280,6 @@ export default function LibraryDrawer({
     setDbError("");
     try {
       const result = await fetchRagLibraryDocuments({
-        limit: 50,
         duplicateLimit: 30,
         duplicateThreshold: 0.68,
       });
@@ -1012,7 +1011,7 @@ function LibraryDbPanel({
   );
 }
 
-function DbDuplicateGroupsPanel({
+export function DbDuplicateGroupsPanel({
   groups,
   compactingGroupId,
   onCompactDocuments,
@@ -1021,8 +1020,6 @@ function DbDuplicateGroupsPanel({
   compactingGroupId: string;
   onCompactDocuments: (group: RagLibraryDuplicateGroup) => void | Promise<void>;
 }) {
-  const visibleGroups = groups.slice(0, 6);
-  const hiddenCount = Math.max(0, groups.length - visibleGroups.length);
   return (
     <details style={duplicatePanelStyle}>
       <summary style={duplicateSummaryStyle}>
@@ -1030,7 +1027,7 @@ function DbDuplicateGroupsPanel({
         <span style={dbOutsidePillStyle}>{groups.length}件</span>
       </summary>
       <div style={duplicateBodyStyle}>
-        {visibleGroups.map((group) => (
+        {groups.map((group) => (
           <div key={group.id} style={duplicateGroupStyle}>
             <div style={chunkHeaderStyle}>
               <span>{formatDuplicateReason(group.reason)}</span>
@@ -1062,17 +1059,12 @@ function DbDuplicateGroupsPanel({
             </div>
           </div>
         ))}
-        {hiddenCount > 0 ? (
-          <div style={placeholderBodyStyle}>
-            他 {hiddenCount.toLocaleString("ja-JP")} 件の候補があります。
-          </div>
-        ) : null}
       </div>
     </details>
   );
 }
 
-function DbOrganizationPanel({
+export function DbOrganizationPanel({
   analysis,
   loading,
   result,
@@ -1183,7 +1175,7 @@ function DbOrganizationPanel({
             まとまった再編候補は見つかりませんでした。
           </div>
         ) : null}
-        {groups.slice(0, 8).map((group) => {
+        {groups.map((group) => {
           const busy = organizingGroupId === group.id;
           return (
             <div key={group.id} style={organizationGroupStyle}>
