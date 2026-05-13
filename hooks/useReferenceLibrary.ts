@@ -573,16 +573,18 @@ export function useReferenceLibrary(params: {
     query: string,
     options?: { usageBucket?: "chat" | "task"; originalQuery?: string }
   ) => {
+    if (!libraryRagReferenceEnabled || libraryRagReferenceCount <= 0) {
+      return buildLibraryReferenceContext({ ragReferenceContext: "" });
+    }
+
     const ragReferenceResult =
-      libraryRagReferenceEnabled && libraryRagReferenceCount > 0
-        ? await fetchRagLibraryReferenceContext({
-            query,
-            matchCount: libraryRagReferenceCount,
-            candidateCount: libraryRagCandidateCount,
-            matchThreshold: libraryRagSimilarityThreshold,
-            documentIds: readRagLibraryCandidateDocumentIds(),
-          })
-        : { context: "", matches: [], usage: undefined };
+      await fetchRagLibraryReferenceContext({
+        query,
+        matchCount: libraryRagReferenceCount,
+        candidateCount: libraryRagCandidateCount,
+        matchThreshold: libraryRagSimilarityThreshold,
+        documentIds: readRagLibraryCandidateDocumentIds(),
+      });
     if (ragReferenceResult.usage) {
       if (options?.usageBucket === "task") {
         applyRagTaskReferenceUsage?.(ragReferenceResult.usage);
