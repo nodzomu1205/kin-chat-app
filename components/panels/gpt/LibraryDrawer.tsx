@@ -141,7 +141,6 @@ export default function LibraryDrawer({
   onDownloadLibraryItem,
   onUploadLibraryItemToGoogleDrive,
   onRenderPresentationPlanToPpt,
-  onImportWebsiteMap,
   onOpenGoogleDriveFolder,
   onImportGoogleDriveFile,
   onIndexGoogleDriveFolder,
@@ -156,6 +155,7 @@ export default function LibraryDrawer({
   activeLibraryView: controlledActiveLibraryView,
   onChangeLibraryView,
   setGptInputDraft,
+  onRunCommand,
   applyDbOrganizationUsage,
 }: LibraryDrawerProps) {
   const [driveImportMenuOpen, setDriveImportMenuOpen] = useState(false);
@@ -541,7 +541,6 @@ export default function LibraryDrawer({
         deviceInputId={deviceInputId}
         onImportDeviceFile={onImportDeviceFile}
         onImportDeviceImageFile={onImportDeviceImageFile}
-        onImportWebsiteMap={onImportWebsiteMap}
         deviceImportAccept={mergeAcceptValues(deviceImportAccept, imageImportAccept)}
         deviceImportDisabled={deviceImportDisabled}
         onShowAllLibraryItemsInChat={onShowAllLibraryItemsInChat}
@@ -647,6 +646,7 @@ export default function LibraryDrawer({
               onDownloadLibraryItem={onDownloadLibraryItem}
               onUploadLibraryItemToGoogleDrive={onUploadLibraryItemToGoogleDrive}
               onRenderPresentationPlanToPpt={onRenderPresentationPlanToPpt}
+              onRunCommand={onRunCommand}
               isMobile={isMobile}
               isExpanded={item.id === expandedId}
               isEditing={item.id === editingId}

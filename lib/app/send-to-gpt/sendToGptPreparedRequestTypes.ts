@@ -102,3 +102,7 @@ export type MultipartImportGateContext = {
 export type InlineUrlGateContext = {
   inlineUrlTarget: string | null;
 };
+
+export type WebsiteMapGateContext = {
+  websiteMapTarget: string | null;
+};

@@ -8,6 +8,11 @@ export type WebsiteMapFile = {
   status?: number;
 };
 
+export type WebsiteMapLink = {
+  url: string;
+  label: string;
+};
+
 export type WebsiteMapPage = {
   url: string;
   finalUrl: string;
@@ -19,6 +24,8 @@ export type WebsiteMapPage = {
   linkCount: number;
   sameHostLinkCount: number;
   fileLinkCount: number;
+  sameHostLinks?: WebsiteMapLink[];
+  fileLinks?: WebsiteMapLink[];
   summary: string;
 };
 
@@ -34,16 +41,37 @@ export type WebsiteMapResult = {
   host: string;
   crawledAt: string;
   maxDepth: number;
-  maxPages: number;
-  maxFiles: number;
+  maxPages: number | null;
+  maxFiles: number | null;
+  timedOut?: boolean;
+  timeBudgetMs?: number;
   pages: WebsiteMapPage[];
   files: WebsiteMapFile[];
   skipped: WebsiteMapSkippedUrl[];
 };
 
+export type WebsiteMapPageTextResult = {
+  url: string;
+  finalUrl: string;
+  title: string;
+  contentType: string;
+  status: number;
+  text: string;
+  textCharEstimate: number;
+  images: WebsiteMapPageImage[];
+  fetchedAt: string;
+};
+
+export type WebsiteMapPageImage = {
+  url: string;
+  alt: string;
+  width?: number;
+  height?: number;
+};
+
 export type WebsiteMapRequest = {
   url: string;
   maxDepth?: number;
-  maxPages?: number;
-  maxFiles?: number;
+  maxPages?: number | null;
+  maxFiles?: number | null;
 };

@@ -40,6 +40,13 @@ The current product direction is:
   - see `docs/library-rag-mvp.md`
 - File ingest
 - YouTube transcript fetch and Kin delivery
+- Website map / site contents support
+  - `Website Map: <url>` displays a one-page map in chat
+  - `Save Site Map: <url>` saves the map to the library
+  - `Get Site Contents: <url>` extracts page main text and images
+  - `Download File: <url>` lists linked files
+  - `Download and Read File: <url>` imports a linked PDF/file through file ingest
+  - manual URL, normal search, and Google News cards expose website actions
 - Kin task protocol
   - `SYS_TASK`
   - `SYS_TASK_PROGRESS`
@@ -119,7 +126,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `183 files / 891 tests`
+- current test count: `229 files / 1065 tests`
 
 Current maintenance status:
 
@@ -136,6 +143,17 @@ Current maintenance status:
 
 Recent regression fixes and maintainability wins include:
 
+- Website Map / Site Contents MVP now works as a one-page-at-a-time,
+  inspectable crawler-lite flow with explicit library save and explicit linked
+  file import. Source cards expose `サイトマップ表示` and `内容表示`, while YouTube
+  cards remain transcript-only.
+- Website content extraction now strips common navigation/header/footer
+  boilerplate and falls back to cleaned full-page text when a selected main
+  container is too small, improving extraction on corporate pages with visible
+  body text.
+- active-code mojibake cleanup was rerun for source-card labels and PPT text
+  parsing helpers; remaining mojibake-looking strings are regression-test
+  patterns.
 - rejected memory-rule candidates now trigger memory reapplication, so an incorrect tentative topic can be cleared immediately after rejection
 - GPT chat scroll position now stays stable when moving into and back out of the settings workspace on both desktop and mobile
 - chat topic adjudication / approval flow has been structurally rebuilt and is now stable in live review

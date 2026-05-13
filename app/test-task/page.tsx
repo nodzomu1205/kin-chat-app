@@ -175,7 +175,6 @@ export default function TestTaskPage() {
         onDownloadLibraryItem: noopAsync,
         onUploadLibraryItemToGoogleDrive: noopAsync,
         onRenderPresentationPlanToPpt: noopAsync,
-        onImportWebsiteMap: noopAsync,
         onImportDeviceImageFile: noopAsync,
         onImportGoogleDriveImageFile: noopAsync,
       },

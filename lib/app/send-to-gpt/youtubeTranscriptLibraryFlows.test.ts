@@ -63,6 +63,32 @@ describe("youtubeTranscriptLibraryFlows", () => {
     expect(setGptMessages).toHaveBeenCalled();
   });
 
+  it("does not log expected missing transcript responses as console errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: "transcript not found" }), {
+          status: 404,
+        })
+      )
+    );
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    await runImportYouTubeTranscriptFlow({
+      source,
+      autoGenerateSummary: true,
+      currentTaskId: "task-1",
+      setGptLoading: vi.fn(),
+      setGptMessages: vi.fn(),
+      applyIngestUsage: vi.fn(),
+      recordIngestedDocument: vi.fn(),
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
   it("prepares transcript blocks for Kin", async () => {
     vi.stubGlobal(
       "fetch",

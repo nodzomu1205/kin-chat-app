@@ -1,6 +1,6 @@
 # Refactor Roadmap
 
-Updated: 2026-05-03
+Updated: 2026-05-14
 
 ## Purpose
 This roadmap tracks the maintainability work for the repository.
@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `183 files / 891 tests`
+- test status: `229 files / 1065 tests`
 
 This roadmap should now be read together with:
 
@@ -37,19 +37,22 @@ Primary review points:
 - `lib/app/kin-protocol/kinMultipart.ts`
 
 Current cleanup priority:
-1. manually retest the new draft/file-saving protocol chain after Kin/browser
+1. keep the new Website Map / Site Contents path in crawler-lite watch: one
+   page per command, explicit file import, and source-card actions without
+   YouTube leakage
+2. manually retest the new draft/file-saving protocol chain after Kin/browser
    state is fresh
-2. boundary-specific maintenance only where the next product request touches a
+3. boundary-specific maintenance only where the next product request touches a
    watch area
-3. Drive/device ingest authority and token accounting watch as new
+4. Drive/device ingest authority and token accounting watch as new
    ingest-adjacent flows are added
-4. large hook/UI-surface decomposition follow-up only where live behavior is
+5. large hook/UI-surface decomposition follow-up only where live behavior is
    actively growing again
-5. repo-wide `strict` / `creative` / `responseMode` maintenance-watch, now
+6. repo-wide `strict` / `creative` / `responseMode` maintenance-watch, now
    mostly limited to protocol/task payload naming
-6. page/controller/panel composition regrow prevention
-7. mojibake cleanup in still-active owner files
-8. user-facing text drift outside owner files
+7. page/controller/panel composition regrow prevention
+8. mojibake cleanup in still-active owner files
+9. user-facing text drift outside owner files
 
 ## Maintenance Checkpoint
 
@@ -87,6 +90,9 @@ high-signal review points before and after changes.
   UI/settings reasoning-mode path
 - draft/file-saving protocol runtime sequencing until the next manual Kin test
   confirms the full `DRAFT_MODIFICATION -> FILE_SAVING -> TASK_DONE` loop
+- Website Map / Site Contents as an ingest-adjacent boundary: keep map display,
+  library save, page-text display, linked-file listing, and file ingest as
+  separate explicit actions unless the user requests a broader crawler design
 
 ### Deletion Principle
 

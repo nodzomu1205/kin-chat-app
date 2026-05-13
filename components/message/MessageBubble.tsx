@@ -78,6 +78,7 @@ export default function MessageBubble({
         sourceDisplayCount={sourceDisplayCount}
         onImportYouTubeTranscript={onImportYouTubeTranscript}
         onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
+        onRunCommand={onRunCommand}
       />
     </div>
   );

@@ -3,7 +3,10 @@
 import React from "react";
 import { MESSAGE_SOURCES_TEXT } from "@/components/message/messageText";
 import type { SourceItem } from "@/types/chat";
-import { YoutubeActions } from "./MessageSourcePreviewActions";
+import {
+  WebsiteSourceActions,
+  YoutubeActions,
+} from "./MessageSourcePreviewActions";
 import {
   GenericPreviewBanner,
   MapPreviewBanner,
@@ -31,6 +34,7 @@ export function MessageSourcePreviewCard({
   onImageError,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
+  onRunCommand,
 }: {
   source: SourceItem;
   preview?: LinkPreview;
@@ -38,6 +42,7 @@ export function MessageSourcePreviewCard({
   onImageError: () => void;
   onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
   onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
+  onRunCommand?: (command: string) => void | Promise<void>;
 }) {
   const isMap = isGoogleMapsLink(source.link);
   const isYoutube = isYoutubeLink(source);
@@ -108,12 +113,7 @@ export function MessageSourcePreviewCard({
   }
 
   return (
-    <a
-      href={source.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={previewCardStyle()}
-    >
+    <div style={previewCardStyle()}>
       {isMap ? (
         <MapPreviewBanner source={source} />
       ) : isNews ? (
@@ -144,16 +144,20 @@ export function MessageSourcePreviewCard({
         >
           {isMap ? "maps.google.com" : preview?.siteName || getHostname(source.link)}
         </div>
-        <div
+        <a
+          href={source.link}
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
             fontSize: 13,
             fontWeight: 700,
             color: "#0f172a",
             lineHeight: 1.4,
+            textDecoration: "none",
           }}
         >
           {source.title || preview?.title || source.link}
-        </div>
+        </a>
         {isMap ? (
           <div
             style={{
@@ -185,7 +189,10 @@ export function MessageSourcePreviewCard({
             {source.snippet}
           </div>
         ) : null}
-        <div
+        <a
+          href={source.link}
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
             fontSize: 11,
             color: "#2563eb",
@@ -194,8 +201,9 @@ export function MessageSourcePreviewCard({
           }}
         >
           {source.link}
-        </div>
+        </a>
+        <WebsiteSourceActions source={source} onRunCommand={onRunCommand} />
       </div>
-    </a>
+    </div>
   );
 }

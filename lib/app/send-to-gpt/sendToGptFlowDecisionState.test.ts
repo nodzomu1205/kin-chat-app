@@ -38,10 +38,24 @@ describe("sendToGptFlowDecisionState", () => {
     expect(
       resolvePrePreparationGateDecision({
         multipartHandled: true,
+        websiteMapTarget: "https://example.com",
         inlineUrlTarget: "https://example.com",
       })
     ).toEqual({
       type: "multipart_import",
+    });
+  });
+
+  it("uses website map handling before inline url handling", () => {
+    expect(
+      resolvePrePreparationGateDecision({
+        multipartHandled: false,
+        websiteMapTarget: "https://example.com",
+        inlineUrlTarget: "https://example.com/card",
+      })
+    ).toEqual({
+      type: "website_map",
+      websiteMapTarget: "https://example.com",
     });
   });
 

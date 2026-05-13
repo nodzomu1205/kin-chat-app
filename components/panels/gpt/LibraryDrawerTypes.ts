@@ -39,7 +39,6 @@ export type LibraryDrawerProps = Pick<
   | "onDownloadLibraryItem"
   | "onUploadLibraryItemToGoogleDrive"
   | "onRenderPresentationPlanToPpt"
-  | "onImportWebsiteMap"
 > &
   Pick<
     GptPanelSettingsProps,
@@ -69,5 +68,6 @@ export type LibraryDrawerProps = Pick<
     activeLibraryView?: LibraryDrawerView;
     onChangeLibraryView?: (view: LibraryDrawerView) => void;
     setGptInputDraft?: (value: SetStateAction<string>) => void;
+    onRunCommand?: (command: string) => void | Promise<void>;
     applyDbOrganizationUsage?: GptPanelSettingsProps["applyDbOrganizationUsage"];
   };

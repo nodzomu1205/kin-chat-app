@@ -31,15 +31,27 @@ export type PrePreparationGateDecision =
       inlineUrlTarget: string;
     }
   | {
+      type: "website_map";
+      websiteMapTarget: string;
+    }
+  | {
       type: "none";
     };
 
 export function resolvePrePreparationGateDecision(params: {
   multipartHandled: boolean;
+  websiteMapTarget?: string | null;
   inlineUrlTarget: string | null;
 }): PrePreparationGateDecision {
   if (params.multipartHandled) {
     return { type: "multipart_import" };
+  }
+
+  if (params.websiteMapTarget) {
+    return {
+      type: "website_map",
+      websiteMapTarget: params.websiteMapTarget,
+    };
   }
 
   if (params.inlineUrlTarget) {

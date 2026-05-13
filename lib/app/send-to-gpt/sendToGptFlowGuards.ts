@@ -1,13 +1,18 @@
 import { generateId } from "@/lib/shared/uuid";
-import { runInlineUrlShortcut } from "@/lib/app/send-to-gpt/sendToGptShortcutFlows";
+import {
+  runInlineUrlShortcut,
+  runWebsiteMapShortcut,
+} from "@/lib/app/send-to-gpt/sendToGptShortcutFlows";
 import { resolvePrePreparationGateDecision } from "@/lib/app/send-to-gpt/sendToGptFlowDecisionState";
 import {
   buildInlineUrlGateContext,
   buildMultipartImportGateContext,
   buildProtocolLimitViolationGateContext,
   buildTaskDirectiveOnlyGateContext,
+  buildWebsiteMapGateContext,
   buildYoutubeTranscriptGateContext,
 } from "@/lib/app/send-to-gpt/sendToGptFlowGateContextBuilders";
+import type { RunSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import type { Dispatch, SetStateAction } from "react";
 import type { Message } from "@/types/chat";
 
@@ -42,6 +47,8 @@ export async function runPrePreparationGates(args: {
     options?: { setGptTab?: boolean }
   ) => { handled: boolean; accepted: boolean } | null;
   extractInlineUrlTarget: (text: string) => string | null;
+  extractWebsiteMapTarget: (text: string) => string | null;
+  recordIngestedDocument: RunSendToGptFlowArgs["recordIngestedDocument"];
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
@@ -61,16 +68,33 @@ export async function runPrePreparationGates(args: {
   ) {
     return true;
   }
+  const websiteMapGateContext = buildWebsiteMapGateContext({
+    rawText: args.rawText,
+    extractWebsiteMapTarget: args.extractWebsiteMapTarget,
+  });
   const inlineUrlGateContext = buildInlineUrlGateContext({
     rawText: args.rawText,
     extractInlineUrlTarget: args.extractInlineUrlTarget,
   });
   const gateDecision = resolvePrePreparationGateDecision({
     multipartHandled: multipartImportGateContext.multipartHandled,
+    websiteMapTarget: websiteMapGateContext.websiteMapTarget,
     inlineUrlTarget: inlineUrlGateContext.inlineUrlTarget,
   });
 
   if (gateDecision.type === "multipart_import") {
+    return true;
+  }
+
+  if (gateDecision.type === "website_map") {
+    await handleWebsiteMapGate({
+      rawText: args.rawText,
+      websiteMapTarget: websiteMapGateContext.websiteMapTarget as string,
+      recordIngestedDocument: args.recordIngestedDocument,
+      setGptMessages: args.setGptMessages,
+      setGptInput: args.setGptInput,
+      setGptLoading: args.setGptLoading,
+    });
     return true;
   }
 
@@ -104,11 +128,30 @@ export async function handleInlineUrlGate(args: {
   });
 }
 
+export async function handleWebsiteMapGate(args: {
+  rawText: string;
+  websiteMapTarget: string;
+  recordIngestedDocument: RunSendToGptFlowArgs["recordIngestedDocument"];
+  setGptMessages: Dispatch<SetStateAction<Message[]>>;
+  setGptInput: Dispatch<SetStateAction<string>>;
+  setGptLoading: Dispatch<SetStateAction<boolean>>;
+}) {
+  await runWebsiteMapShortcut({
+    rawText: args.rawText,
+    websiteMapTarget: args.websiteMapTarget,
+    recordIngestedDocument: args.recordIngestedDocument,
+    setGptMessages: args.setGptMessages,
+    setGptInput: args.setGptInput,
+    setGptLoading: args.setGptLoading,
+  });
+}
+
 export {
   buildInlineUrlGateContext,
   buildMultipartImportGateContext,
   buildProtocolLimitViolationGateContext,
   buildTaskDirectiveOnlyGateContext,
+  buildWebsiteMapGateContext,
   buildYoutubeTranscriptGateContext,
 };
 export {

@@ -65,3 +65,54 @@ export function YoutubeActions({
     </div>
   );
 }
+
+export function WebsiteSourceActions({
+  source,
+  onRunCommand,
+}: {
+  source: SourceItem;
+  onRunCommand?: (command: string) => void | Promise<void>;
+}) {
+  if (!onRunCommand || !source.link?.startsWith("http")) return null;
+
+  return (
+    <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <WebsiteActionButton
+        label="サイトマップ表示"
+        onClick={() => void onRunCommand(`Website Map: ${source.link}`)}
+      />
+      <WebsiteActionButton
+        label="内容表示"
+        onClick={() => void onRunCommand(`Get Site Contents: ${source.link}`)}
+      />
+    </div>
+  );
+}
+
+function WebsiteActionButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        height: 30,
+        borderRadius: 999,
+        border: "1px solid #bae6fd",
+        background: "#f0f9ff",
+        color: "#0369a1",
+        padding: "0 12px",
+        fontSize: 12,
+        fontWeight: 800,
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+}

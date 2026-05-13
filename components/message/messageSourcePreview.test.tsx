@@ -50,11 +50,34 @@ describe("MessageSourcePreviewCard", () => {
         onImageError={() => {}}
         onImportYouTubeTranscript={() => {}}
         onSendYouTubeTranscriptToKin={() => {}}
+        onRunCommand={() => {}}
       />
     );
 
     expect(html).toContain("YouTube");
     expect(html).toContain("文字起こし取込");
     expect(html).toContain("文字起こしをKinへ転送");
+    expect(html).not.toContain("サイトマップ表示");
+    expect(html).not.toContain("内容表示");
+  });
+
+  it("renders website map and contents actions for source cards", () => {
+    const source: SourceItem = {
+      title: "Example result",
+      link: "https://example.com/page",
+      snippet: "Snippet",
+    };
+
+    const html = renderToStaticMarkup(
+      <MessageSourcePreviewCard
+        source={source}
+        failedImage={false}
+        onImageError={() => {}}
+        onRunCommand={() => {}}
+      />
+    );
+
+    expect(html).toContain("サイトマップ表示");
+    expect(html).toContain("内容表示");
   });
 });

@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-05-07
+Updated: 2026-05-14
 
 ## Purpose
 
@@ -47,6 +47,13 @@ Working estimate:
 
 Latest status update:
 
+- Website Map / Site Contents MVP is implemented as a manual, one-page
+  crawler-lite flow. Search/news/URL cards expose website actions; YouTube cards
+  do not. Linked PDF/file bodies are imported only through explicit
+  `Download and Read File`.
+- Active-code mojibake cleanup was rerun after the Website Map slice. Remaining
+  mojibake-looking patterns are regression-test patterns rather than
+  user-facing owner files.
 - PPT direct edit and its approval queue were retired from the active command
   path in the two-stage visual workflow closeout. The stable PPT path is Stage 1
   editable design, Stage 2 image-library visual resolution, and render-time
@@ -91,9 +98,9 @@ Latest status update:
   force-summary exception.
 - UTF-8 source validation is available as `npm run check:utf8` after a
   PowerShell bulk-edit encoding regression was found and repaired.
-- Full verification on 2026-05-03 passed:
+- Full verification on 2026-05-14 passed:
   `npm run check:utf8`, `npx tsc --noEmit`, `npm run lint`,
-  `npm test` (`183 files / 891 tests`), and `npm run build`.
+  `npm test` (`229 files / 1065 tests`), and `npm run build`.
 
 ## Exit Checklist
 

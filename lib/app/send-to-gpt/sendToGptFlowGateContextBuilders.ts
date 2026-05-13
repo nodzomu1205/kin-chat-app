@@ -4,6 +4,7 @@ import type {
   PreparedRequestGateContext,
   ProtocolLimitViolationGateContext,
   TaskDirectiveOnlyGateContext,
+  WebsiteMapGateContext,
   YoutubeTranscriptGateContext,
 } from "@/lib/app/send-to-gpt/sendToGptPreparedRequestTypes";
 import type { ParsedInputLike } from "@/lib/app/send-to-gpt/sendToGptFlowBaseTypes";
@@ -28,6 +29,15 @@ export function buildInlineUrlGateContext(args: {
 }): InlineUrlGateContext {
   return {
     inlineUrlTarget: args.extractInlineUrlTarget(args.rawText),
+  };
+}
+
+export function buildWebsiteMapGateContext(args: {
+  rawText: string;
+  extractWebsiteMapTarget: (text: string) => string | null;
+}): WebsiteMapGateContext {
+  return {
+    websiteMapTarget: args.extractWebsiteMapTarget(args.rawText),
   };
 }
 

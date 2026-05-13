@@ -112,4 +112,23 @@ describe("sendToGptYoutubeFlow", () => {
     expect(args.handleGptMemory).not.toHaveBeenCalled();
     expect(args.setGptLoading).toHaveBeenLastCalledWith(false);
   });
+
+  it("does not log expected missing transcript responses as console errors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ error: "transcript not found" }), {
+          status: 404,
+        })
+      )
+    );
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const args = createFlowArgs({ appendUserMessage: null });
+
+    await runYoutubeTranscriptRequestItemFlow(args);
+
+    expect(consoleError).not.toHaveBeenCalled();
+  });
 });

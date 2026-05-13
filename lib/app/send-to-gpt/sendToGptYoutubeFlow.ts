@@ -21,6 +21,20 @@ import type { Message } from "@/types/chat";
 import type { TaskProtocolEvent } from "@/types/taskProtocol";
 import { normalizeUsage, type ConversationUsageOptions } from "@/lib/shared/tokenStats";
 
+class TranscriptRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "TranscriptRequestError";
+  }
+}
+
+function shouldLogTranscriptError(error: unknown) {
+  return !(error instanceof TranscriptRequestError && error.status === 404);
+}
+
 export async function handleYoutubeTranscriptFlow(args: {
   userMsg: Message;
   youtubeTranscriptRequestEvent: TaskProtocolEvent & {
@@ -113,7 +127,10 @@ export async function handleYoutubeTranscriptFlow(args: {
     const data = (await response.json()) as YouTubeTranscriptApiResponse;
 
     if (!response.ok || !data.text) {
-      throw new Error(data.error || "YouTube transcript fetch failed");
+      throw new TranscriptRequestError(
+        data.error || "YouTube transcript fetch failed",
+        response.status
+      );
     }
     args.applyIngestUsage(normalizeUsage(data.usage));
 
@@ -183,7 +200,9 @@ export async function handleYoutubeTranscriptFlow(args: {
       args.applyCompressionUsage(memoryResult.compressionUsage);
     }
   } catch (error) {
-    console.error(error);
+    if (shouldLogTranscriptError(error)) {
+      console.error(error);
+    }
     const failureState = buildYoutubeTranscriptFailureState({
       taskId: flowContext.resolvedTaskId,
       actionId: flowContext.resolvedActionId,
@@ -281,7 +300,10 @@ export async function runYoutubeTranscriptRequestItemFlow(args: {
     const data = (await response.json()) as YouTubeTranscriptApiResponse;
 
     if (!response.ok || !data.text) {
-      throw new Error(data.error || "YouTube transcript fetch failed");
+      throw new TranscriptRequestError(
+        data.error || "YouTube transcript fetch failed",
+        response.status
+      );
     }
     args.applyIngestUsage(normalizeUsage(data.usage));
 
@@ -344,7 +366,9 @@ export async function runYoutubeTranscriptRequestItemFlow(args: {
       args.applyCompressionUsage(memoryResult.compressionUsage);
     }
   } catch (error) {
-    console.error(error);
+    if (shouldLogTranscriptError(error)) {
+      console.error(error);
+    }
     const failureState = buildYoutubeTranscriptFailureState({
       taskId: flowContext.resolvedTaskId,
       actionId: flowContext.resolvedActionId,

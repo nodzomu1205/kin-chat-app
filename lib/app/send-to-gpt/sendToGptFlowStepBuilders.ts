@@ -12,6 +12,7 @@ import type { Message, SourceItem } from "@/types/chat";
 
 export type SendToGptFlowStepArgs = RunSendToGptFlowArgs & {
   extractInlineUrlTarget: (text: string) => string | null;
+  extractWebsiteMapTarget: (text: string) => string | null;
   shouldRespondToTaskDirectiveOnlyInput: (params: {
     parsedInput: ParsedInputLike;
     effectiveParsedSearchQuery: string;
@@ -22,6 +23,7 @@ export type SendToGptFlowStepArgs = RunSendToGptFlowArgs & {
 export function buildSendToGptFlowStepArgs(
   args: RunSendToGptFlowArgs & {
     extractInlineUrlTarget: SendToGptFlowStepArgs["extractInlineUrlTarget"];
+    extractWebsiteMapTarget: SendToGptFlowStepArgs["extractWebsiteMapTarget"];
     shouldRespondToTaskDirectiveOnlyInput: SendToGptFlowStepArgs["shouldRespondToTaskDirectiveOnlyInput"];
     taskDirectiveOnlyResponseText: string;
   }
@@ -39,6 +41,8 @@ export function buildSendToGptPrePreparationGateArgs(args: {
     rawText: args.rawText,
     processMultipartTaskDoneText: args.flowArgs.processMultipartTaskDoneText,
     extractInlineUrlTarget: args.flowArgs.extractInlineUrlTarget,
+    extractWebsiteMapTarget: args.flowArgs.extractWebsiteMapTarget,
+    recordIngestedDocument: args.flowArgs.recordIngestedDocument,
     setGptMessages: args.flowArgs.setGptMessages,
     setGptInput: args.flowArgs.setGptInput,
     setGptLoading: args.flowArgs.setGptLoading,

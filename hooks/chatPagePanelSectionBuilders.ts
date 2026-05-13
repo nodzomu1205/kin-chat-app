@@ -61,7 +61,6 @@ export function buildChatPageWorkspaceGptReferences(
       args.references.onUploadLibraryItemToGoogleDrive,
     onRenderPresentationPlanToPpt:
       args.references.onRenderPresentationPlanToPpt,
-    onImportWebsiteMap: args.references.onImportWebsiteMap,
     onImportDeviceImageFile: args.references.onImportDeviceImageFile,
     onImportGoogleDriveImageFile: args.references.onImportGoogleDriveImageFile,
   };

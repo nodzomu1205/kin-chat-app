@@ -72,6 +72,7 @@ describe("sendToGptFlow step builders", () => {
         recordIngestedDocument: () => ({ id: "DOC-1" }),
         updateStoredDocument: () => undefined,
         extractInlineUrlTarget: () => null,
+        extractWebsiteMapTarget: () => null,
         shouldRespondToTaskDirectiveOnlyInput: () => false,
         taskDirectiveOnlyResponseText: "task-only",
       },
@@ -154,11 +155,13 @@ describe("sendToGptFlow step builders", () => {
       recordIngestedDocument: () => ({ id: "DOC-1" }),
       updateStoredDocument: () => undefined,
       extractInlineUrlTarget: () => null,
+      extractWebsiteMapTarget: () => null,
       shouldRespondToTaskDirectiveOnlyInput: () => false,
       taskDirectiveOnlyResponseText,
     });
 
     expect(result.extractInlineUrlTarget("hello")).toBeNull();
+    expect(result.extractWebsiteMapTarget("hello")).toBeNull();
     expect(
       result.shouldRespondToTaskDirectiveOnlyInput({
         parsedInput: {},
@@ -228,6 +231,7 @@ describe("sendToGptFlow step builders", () => {
         recordIngestedDocument: () => ({ id: "DOC-1" }),
         updateStoredDocument: () => undefined,
         extractInlineUrlTarget: () => null,
+        extractWebsiteMapTarget: () => null,
         shouldRespondToTaskDirectiveOnlyInput: () => false,
         taskDirectiveOnlyResponseText: "task-only",
       },
@@ -325,6 +329,7 @@ describe("sendToGptFlow step builders", () => {
       recordIngestedDocument: () => ({ id: "DOC-1" }),
       updateStoredDocument: () => undefined,
       extractInlineUrlTarget: () => null,
+      extractWebsiteMapTarget: () => null,
       shouldRespondToTaskDirectiveOnlyInput: () => false,
       taskDirectiveOnlyResponseText: "task-only",
     });

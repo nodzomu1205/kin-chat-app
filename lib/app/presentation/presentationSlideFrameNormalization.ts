@@ -99,7 +99,7 @@ function normalizeLayoutIntent(
 export function sanitizeReadableSlideFrameTitle(value: string) {
   return value
     .replace(/\s*[（(]\s*見出しなし\s*[）)]\s*/g, "")
-    .replace(/\s*[・・]\s*隕句・縺予s*縺ｪ縺予s*[・・]\s*/g, "")
+    .replace(/\s*[・・]\s*見出しなし\s*[・・]\s*/g, "")
     .replace(/\s*[・・]\s*heading\s*none\s*[・・]\s*/gi, "")
     .trim();
 }
@@ -107,7 +107,7 @@ export function sanitizeReadableSlideFrameTitle(value: string) {
 export function sanitizeSlideFrameTitle(value: string) {
   return value
     .replace(/\s*[（(]\s*見出しなし\s*[）)]\s*/g, "")
-    .replace(/\s*[・・]\s*隕句・縺予s*縺ｪ縺予s*[・・]\s*/g, "")
-    .replace(/\s*[繝ｻ繝ｻ]\s*heading\s*none\s*[繝ｻ繝ｻ]\s*/gi, "")
+    .replace(/\s*[・・]\s*見出しなし\s*[・・]\s*/g, "")
+    .replace(/\s*[・・]\s*heading\s*none\s*[・・]\s*/gi, "")
     .trim();
 }

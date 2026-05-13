@@ -4,6 +4,7 @@ import {
   buildMultipartImportGateContext,
   buildProtocolLimitViolationGateContext,
   buildTaskDirectiveOnlyGateContext,
+  buildWebsiteMapGateContext,
   buildYoutubeTranscriptGateContext,
 } from "@/lib/app/send-to-gpt/sendToGptFlowGuards";
 
@@ -43,6 +44,17 @@ describe("sendToGptFlow guard builders", () => {
       })
     ).toEqual({
       inlineUrlTarget: "https://example.com",
+    });
+  });
+
+  it("builds the website-map gate context", () => {
+    expect(
+      buildWebsiteMapGateContext({
+        rawText: "サイトマップ: https://example.com",
+        extractWebsiteMapTarget: () => "https://example.com",
+      })
+    ).toEqual({
+      websiteMapTarget: "https://example.com",
     });
   });
 

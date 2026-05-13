@@ -159,6 +159,10 @@ export default function GptDrawerRouter({
         activeLibraryView={activeLibraryView}
         onChangeLibraryView={onChangeLibraryView}
         setGptInputDraft={setGptInputDraft}
+        onRunCommand={(command) => {
+          chat.setGptInput(command);
+          return chat.sendToGpt("normal", command);
+        }}
       />
     );
   }

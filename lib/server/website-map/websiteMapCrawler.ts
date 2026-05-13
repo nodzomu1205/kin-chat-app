@@ -1,6 +1,7 @@
 import type {
   WebsiteMapFile,
   WebsiteMapPage,
+  WebsiteMapPageTextResult,
   WebsiteMapResult,
   WebsiteMapSkippedUrl,
 } from "@/lib/app/website-map/websiteMapTypes";
@@ -8,11 +9,12 @@ import type {
 const USER_AGENT =
   "Mozilla/5.0 (compatible; KinChatWebsiteMap/0.1; +https://example.invalid)";
 const DEFAULT_TIMEOUT_MS = 12000;
+const DEFAULT_CRAWL_TIME_BUDGET_MS = 45000;
 
 type CrawlOptions = {
   maxDepth?: number;
-  maxPages?: number;
-  maxFiles?: number;
+  maxPages?: number | null;
+  maxFiles?: number | null;
 };
 
 type LinkInfo = {
@@ -30,8 +32,10 @@ export async function crawlWebsiteMap(
 ): Promise<WebsiteMapResult> {
   const root = resolveHttpUrl(rawUrl);
   const maxDepth = clampInteger(options.maxDepth, 2, 0, 4);
-  const maxPages = clampInteger(options.maxPages, 50, 1, 200);
-  const maxFiles = clampInteger(options.maxFiles, 20, 0, 100);
+  const maxPages = resolveOptionalLimit(options.maxPages);
+  const maxFiles = resolveOptionalLimit(options.maxFiles);
+  const startedAt = Date.now();
+  const deadline = startedAt + DEFAULT_CRAWL_TIME_BUDGET_MS;
   const robots = await fetchRobotsRules(root).catch(() => ({ disallow: [] }));
   const queue: Array<{ url: string; depth: number }> = [
     { url: root.toString(), depth: 0 },
@@ -43,8 +47,17 @@ export async function crawlWebsiteMap(
   const fileUrls = new Set<string>();
   const skipped: WebsiteMapSkippedUrl[] = [];
   let finalRootUrl = root.toString();
+  let timedOut = false;
 
-  while (queue.length > 0 && pages.length < maxPages) {
+  while (queue.length > 0 && (maxPages === null || pages.length < maxPages)) {
+    if (Date.now() >= deadline) {
+      timedOut = true;
+      skipped.push({
+        url: queue[0]?.url || root.toString(),
+        reason: "crawl_time_budget_exceeded",
+      });
+      break;
+    }
     const current = queue.shift();
     if (!current) break;
     const currentUrl = normalizeUrl(current.url);
@@ -81,7 +94,7 @@ export async function crawlWebsiteMap(
         }
       });
       for (const file of fileLinks) {
-        if (files.length >= maxFiles) break;
+        if (maxFiles !== null && files.length >= maxFiles) break;
         const normalizedFileUrl = normalizeUrl(file.url);
         if (!normalizedFileUrl || fileUrls.has(normalizedFileUrl)) continue;
         fileUrls.add(normalizedFileUrl);
@@ -96,7 +109,7 @@ export async function crawlWebsiteMap(
         }
       });
 
-      const text = extractVisibleText(html);
+      const pageContent = extractPageContent(html, finalUrl);
       pages.push({
         url: currentUrl,
         finalUrl,
@@ -104,11 +117,13 @@ export async function crawlWebsiteMap(
         depth: current.depth,
         status: response.status,
         contentType,
-        textCharEstimate: text.length,
+        textCharEstimate: pageContent.text.length,
         linkCount: links.length,
         sameHostLinkCount: sameHostLinks.length,
         fileLinkCount: fileLinks.length,
-        summary: clipText(text, 260),
+        sameHostLinks,
+        fileLinks,
+        summary: clipText(pageContent.text, 260),
       });
 
       if (current.depth >= maxDepth) continue;
@@ -135,9 +150,36 @@ export async function crawlWebsiteMap(
     maxDepth,
     maxPages,
     maxFiles,
+    timedOut,
+    timeBudgetMs: DEFAULT_CRAWL_TIME_BUDGET_MS,
     pages,
     files,
     skipped,
+  };
+}
+
+export async function fetchWebsiteMapPageText(
+  rawUrl: string
+): Promise<WebsiteMapPageTextResult> {
+  const url = resolveHttpUrl(rawUrl);
+  const response = await fetchWithTimeout(url.toString());
+  const finalUrl = response.url || url.toString();
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("text/html")) {
+    throw new Error(`This URL is not an HTML page: ${contentType || "unknown"}`);
+  }
+  const html = await response.text();
+  const pageContent = extractPageContent(html, finalUrl);
+  return {
+    url: url.toString(),
+    finalUrl,
+    title: extractTitle(html) || finalUrl,
+    contentType,
+    status: response.status,
+    text: pageContent.text,
+    textCharEstimate: pageContent.text.length,
+    images: pageContent.images,
+    fetchedAt: new Date().toISOString(),
   };
 }
 
@@ -156,6 +198,13 @@ function clampInteger(value: unknown, fallback: number, min: number, max: number
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.max(min, Math.min(max, Math.floor(number)));
+}
+
+function resolveOptionalLimit(value: unknown) {
+  if (value === null || typeof value === "undefined") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(0, Math.floor(number));
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}) {
@@ -274,6 +323,222 @@ export function extractVisibleText(html: string) {
       .replace(/<[^>]+>/gu, " ")
       .replace(/\s+/g, " ")
       .trim()
+  );
+}
+
+export function extractPageContent(html: string, baseUrl: string) {
+  const candidates = collectContentCandidates(html);
+  const bestHtml = selectBestContentHtml(candidates);
+  const cleanedHtml = chooseReadableContentHtml(bestHtml, html);
+  const scopedImages = extractContentImages(cleanedHtml, baseUrl);
+  return {
+    text: extractVisibleText(cleanedHtml),
+    images: scopedImages.length ? scopedImages : extractContentImages(html, baseUrl),
+  };
+}
+
+function chooseReadableContentHtml(bestHtml: string, fullHtml: string) {
+  const cleanedBest = stripBoilerplateBlocks(bestHtml);
+  const cleanedFull = stripBoilerplateBlocks(fullHtml);
+  const bestText = extractVisibleText(cleanedBest);
+  const fullText = extractVisibleText(cleanedFull);
+
+  if (
+    bestText.length < 500 &&
+    fullText.length > Math.max(900, bestText.length * 3)
+  ) {
+    return cleanedFull;
+  }
+
+  if (
+    bestText.length < 1200 &&
+    fullText.length > bestText.length * 5 &&
+    containsMainContentSignals(fullText)
+  ) {
+    return cleanedFull;
+  }
+
+  return cleanedBest;
+}
+
+function containsMainContentSignals(text: string) {
+  return /(?:事業概要|主なプロジェクト|ビジネス分野|関連リリース|財務指標|業績|会社概要|サステナビリティ)/u.test(
+    text
+  );
+}
+
+function collectContentCandidates(html: string) {
+  const candidates = [html];
+  const patterns = [
+    /<main\b[^>]*>[\s\S]*?<\/main>/giu,
+    /<article\b[^>]*>[\s\S]*?<\/article>/giu,
+    /<(?:div|section)\b[^>]*(?:id|class)\s*=\s*(?:"[^"]*(?:main|content|contents|article|body|primary)[^"]*"|'[^']*(?:main|content|contents|article|body|primary)[^']*')[^>]*>[\s\S]*?<\/(?:div|section)>/giu,
+  ];
+  for (const pattern of patterns) {
+    for (const match of html.matchAll(pattern)) {
+      if (match[0]) candidates.push(match[0]);
+    }
+  }
+  return candidates;
+}
+
+function selectBestContentHtml(candidates: string[]) {
+  const fullDocument = candidates[0] || "";
+  let best = stripBoilerplateBlocks(fullDocument);
+  let bestScore = scoreContentCandidate(best);
+  for (const candidate of candidates.slice(1)) {
+    const text = extractVisibleText(stripBoilerplateBlocks(candidate));
+    if (!isUsefulContentText(text)) continue;
+    const score = scoreContentCandidate(candidate);
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function isUsefulContentText(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length < 80) return false;
+  if (/^(?:main|menu|search|close|skip)$/iu.test(normalized)) return false;
+  return true;
+}
+
+function scoreContentCandidate(html: string) {
+  const cleaned = stripBoilerplateBlocks(html);
+  const text = extractVisibleText(cleaned);
+  const punctuationScore = (text.match(/[。、，,.。]/gu) || []).length * 20;
+  const paragraphScore =
+    (cleaned.match(/<(?:p|li|td|th|h[1-6])\b/giu) || []).length * 35;
+  const boilerplatePenalty =
+    (cleaned.match(/(?:nav|menu|footer|header|breadcrumb|search|social)/giu) || [])
+      .length * 80;
+  return text.length + punctuationScore + paragraphScore - boilerplatePenalty;
+}
+
+function stripBoilerplateBlocks(html: string) {
+  let current = html
+    .replace(/<script\b[\s\S]*?<\/script>/giu, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/giu, " ")
+    .replace(/<noscript\b[\s\S]*?<\/noscript>/giu, " ")
+    .replace(/<svg\b[\s\S]*?<\/svg>/giu, " ");
+  const blockTags = ["header", "nav", "footer", "aside", "form"];
+  for (const tag of blockTags) {
+    current = current.replace(
+      new RegExp(`<${tag}\\b[\\s\\S]*?<\\/${tag}>`, "giu"),
+      " "
+    );
+  }
+  current = current.replace(
+    /<(?:div|section|ul|ol)\b[^>]*(?:id|class|role)\s*=\s*(?:"[^"]*(?:nav|menu|footer|header|breadcrumb|search|social|sns|modal|drawer|localnav|side)[^"]*"|'[^']*(?:nav|menu|footer|header|breadcrumb|search|social|sns|modal|drawer|localnav|side)[^']*')[^>]*>[\s\S]*?<\/(?:div|section|ul|ol)>/giu,
+    " "
+  );
+  return current;
+}
+
+function extractContentImages(html: string, baseUrl: string) {
+  const images: Array<{ url: string; alt: string; width?: number; height?: number }> = [];
+  const seen = new Set<string>();
+  const imagePattern = /<img\b([^>]*)>/giu;
+  for (const match of html.matchAll(imagePattern)) {
+    const attrs = parseHtmlAttributes(match[1] || "");
+    const rawSrc =
+      attrs.src ||
+      attrs["data-src"] ||
+      attrs["data-original"] ||
+      attrs["data-lazy-src"] ||
+      pickFirstSrcsetUrl(attrs.srcset || attrs["data-srcset"] || "") ||
+      "";
+    addImageCandidate({
+      images,
+      seen,
+      rawUrl: rawSrc,
+      baseUrl,
+      alt: attrs.alt || "",
+      width: attrs.width,
+      height: attrs.height,
+    });
+  }
+
+  const sourcePattern = /<source\b([^>]*)>/giu;
+  for (const match of html.matchAll(sourcePattern)) {
+    const attrs = parseHtmlAttributes(match[1] || "");
+    addImageCandidate({
+      images,
+      seen,
+      rawUrl: pickFirstSrcsetUrl(attrs.srcset || attrs["data-srcset"] || ""),
+      baseUrl,
+      alt: attrs.alt || "",
+    });
+  }
+
+  const backgroundPattern = /(?:background-image\s*:\s*url\(|data-bg\s*=\s*|data-background\s*=\s*)(?:"([^"]+)"|'([^']+)'|([^)"'\s]+))/giu;
+  for (const match of html.matchAll(backgroundPattern)) {
+    addImageCandidate({
+      images,
+      seen,
+      rawUrl: match[1] || match[2] || match[3] || "",
+      baseUrl,
+      alt: "",
+    });
+  }
+  return images.slice(0, 30);
+}
+
+function addImageCandidate(args: {
+  images: Array<{ url: string; alt: string; width?: number; height?: number }>;
+  seen: Set<string>;
+  rawUrl: string;
+  baseUrl: string;
+  alt: string;
+  width?: string;
+  height?: string;
+}) {
+  const rawUrl = args.rawUrl.trim();
+  if (!rawUrl || rawUrl.startsWith("data:")) return;
+  try {
+    const url = new URL(decodeHtmlEntities(rawUrl), args.baseUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return;
+    const key = url.toString();
+    if (args.seen.has(key) || isLikelyDecorativeImage(key, args.alt)) return;
+    args.seen.add(key);
+    const width = parseOptionalDimension(args.width);
+    const height = parseOptionalDimension(args.height);
+    args.images.push({
+      url: key,
+      alt: decodeHtmlEntities(args.alt || "").replace(/\s+/g, " ").trim(),
+      ...(typeof width === "number" ? { width } : {}),
+      ...(typeof height === "number" ? { height } : {}),
+    });
+  } catch {}
+}
+
+function pickFirstSrcsetUrl(value: string) {
+  const first = value.split(",")[0]?.trim() || "";
+  return first.split(/\s+/)[0] || "";
+}
+
+function parseHtmlAttributes(value: string) {
+  const attrs: Record<string, string> = {};
+  const attrPattern = /([A-Za-z_:][-A-Za-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gu;
+  for (const match of value.matchAll(attrPattern)) {
+    attrs[match[1].toLowerCase()] = match[2] || match[3] || match[4] || "";
+  }
+  return attrs;
+}
+
+function parseOptionalDimension(value?: string) {
+  if (!value) return undefined;
+  const number = Number(value.replace(/px$/iu, ""));
+  return Number.isFinite(number) && number > 0 ? Math.round(number) : undefined;
+}
+
+function isLikelyDecorativeImage(url: string, alt: string) {
+  const lower = `${url} ${alt}`.toLowerCase();
+  return (
+    /\.(?:svg|ico)(?:$|\?)/iu.test(url) ||
+    /(?:logo|icon|sprite|blank|spacer|arrow|btn_|button|sns|social)/iu.test(lower)
   );
 }
 

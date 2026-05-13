@@ -1,11 +1,19 @@
 # Next Session Handover
 
-Updated: 2026-05-12
+Updated: 2026-05-14
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-12 Library DB / RAG closeout. Start
-there for DB, RAG, deduplication, compaction, or DB organization work:
+The newest active record is the 2026-05-14 Website Map / Site Contents MVP
+closeout. Start there for website crawling, source-card website actions,
+linked PDF/file discovery, page-text extraction, or saved website-map library
+display work:
+
+- [`HANDOFF-2026-05-14.md`](./HANDOFF-2026-05-14.md)
+
+The 2026-05-12 Library DB / RAG closeout remains the entry point only if the
+user explicitly reopens DB, RAG, deduplication, compaction, or DB organization
+work:
 
 - [`HANDOFF-2026-05-12.md`](./HANDOFF-2026-05-12.md)
 - [`library-rag-mvp.md`](./library-rag-mvp.md)
@@ -25,6 +33,20 @@ For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 Current default next work is no longer DB organization. The DB/RAG slice is in
 maintenance-watch after the organization workflow, full DB-card listing, and DB
 reference log cleanup.
+
+The latest product slice is Website Map / Site Contents. It is now a one-page
+at-a-time, inspectable MVP:
+
+1. `Website Map: <url>` displays a readable map in chat.
+2. `Save Site Map: <url>` saves that map to the library.
+3. `Get Site Contents: <url>` displays extracted main text and page images.
+4. `Download File: <url>` lists linked files.
+5. `Download and Read File: <url>` imports a linked file through file ingest.
+6. Manual URL/search/news cards expose `サイトマップ表示` and `内容表示`.
+7. YouTube cards intentionally do not expose website actions.
+
+Do not broaden this into automatic deep crawling by default. The current UX is
+manual, one page per command, and safe against never-ending loading.
 
 The 2026-05-12 DB/RAG closeout started from:
 
@@ -285,7 +307,7 @@ Closeout verification passed:
 - `npx tsc --noEmit`
 - `npm run check:utf8`
 - `npm run lint`
-- `npm test` (`183 files / 891 tests`)
+- `npm test` (`229 files / 1065 tests`)
 - `npm run build`
 
 The repository is in `late-stage maintenance-watch`, not active rescue.

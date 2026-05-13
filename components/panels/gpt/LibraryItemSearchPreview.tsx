@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import MessageContent from "@/components/message/MessageContent";
 import { pillButton } from "@/components/panels/gpt/gptPanelStyles";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import { sectionTitle } from "@/components/panels/gpt/LibraryDrawerControls";
@@ -139,10 +140,37 @@ export default function LibraryItemSearchPreview({
 export function LibraryItemPreviewTextArea({
   value,
   isMobile,
+  renderCommandLinks = false,
+  onRunCommand,
 }: {
   value: string;
   isMobile: boolean;
+  renderCommandLinks?: boolean;
+  onRunCommand?: (command: string) => void | Promise<void>;
 }) {
+  if (renderCommandLinks) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          minHeight: isMobile ? 180 : 220,
+          maxHeight: isMobile ? 360 : 520,
+          overflow: "auto",
+          border: "1px solid #dbe4e8",
+          borderRadius: 12,
+          padding: 12,
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: "#334155",
+          background: "#fff",
+          boxSizing: "border-box",
+        }}
+      >
+        <MessageContent text={value} onRunCommand={onRunCommand} />
+      </div>
+    );
+  }
+
   return (
     <textarea
       readOnly

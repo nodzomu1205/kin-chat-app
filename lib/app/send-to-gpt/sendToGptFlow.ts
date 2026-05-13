@@ -9,7 +9,10 @@ import {
 import type {
   RunSendToGptFlowArgs,
 } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
-import { extractInlineUrlTarget } from "@/lib/app/send-to-gpt/sendToGptShortcutFlows";
+import {
+  extractInlineUrlTarget,
+  extractWebsiteMapTarget,
+} from "@/lib/app/send-to-gpt/sendToGptShortcutFlows";
 import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlowRequest";
 import { finalizeSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlowFinalize";
 import { resolveSendToGptFlowStart } from "@/lib/app/send-to-gpt/sendToGptFlowDecisionState";
@@ -46,6 +49,7 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
   const flowArgs = buildSendToGptFlowStepArgs({
     ...args,
     extractInlineUrlTarget,
+    extractWebsiteMapTarget,
     shouldRespondToTaskDirectiveOnlyInput,
     taskDirectiveOnlyResponseText: getTaskDirectiveOnlyResponseText(),
   });

@@ -18,6 +18,16 @@ type TranscriptResponseData = {
   error?: string;
 };
 
+class TranscriptRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "TranscriptRequestError";
+  }
+}
+
 type SharedTranscriptFlowArgs = {
   source: SourceItem;
   autoGenerateSummary: boolean;
@@ -54,6 +64,10 @@ async function requestTranscript(args: {
   });
   const data = (await response.json()) as TranscriptResponseData;
   return { response, data };
+}
+
+function shouldLogTranscriptError(error: unknown) {
+  return !(error instanceof TranscriptRequestError && error.status === 404);
 }
 
 function appendTranscriptStatusMessage(args: {
@@ -95,7 +109,10 @@ export async function runImportYouTubeTranscriptFlow(
     });
 
     if (!response.ok || !data.text) {
-      throw new Error(data.error || "transcript import failed");
+      throw new TranscriptRequestError(
+        data.error || "transcript import failed",
+        response.status
+      );
     }
     args.applyIngestUsage(normalizeUsage(data.usage));
 
@@ -117,7 +134,9 @@ export async function runImportYouTubeTranscriptFlow(
       sourceType: "file_ingest",
     });
   } catch (error) {
-    console.error(error);
+    if (shouldLogTranscriptError(error)) {
+      console.error(error);
+    }
     appendTranscriptStatusMessage({
       setGptMessages: args.setGptMessages,
       text: "YouTube transcript import failed.",
@@ -151,7 +170,10 @@ export async function runSendYouTubeTranscriptToKinFlow(
     });
 
     if (!response.ok || !(data.cleanText || data.text)) {
-      throw new Error(data.error || "transcript kin transfer failed");
+      throw new TranscriptRequestError(
+        data.error || "transcript kin transfer failed",
+        response.status
+      );
     }
     args.applyIngestUsage(normalizeUsage(data.usage));
 
@@ -173,7 +195,9 @@ export async function runSendYouTubeTranscriptToKinFlow(
     );
     args.focusKinPanel();
   } catch (error) {
-    console.error(error);
+    if (shouldLogTranscriptError(error)) {
+      console.error(error);
+    }
     appendTranscriptStatusMessage({
       setGptMessages: args.setGptMessages,
       text: "YouTube transcript could not be prepared for Kin.",

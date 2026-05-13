@@ -225,25 +225,25 @@ function splitDisplayField(line: string) {
 }
 
 function isHeadingField(label: string) {
-  return /heading|display heading|表示見出し|見出し|陦ｨ遉ｺ隕句・縺慾隕句・縺・/i.test(label);
+  return /heading|display heading|表示見出し|見出し/i.test(label);
 }
 
 function isBodyField(label: string) {
-  return /body|text|display body|表示本文|本文|陦ｨ遉ｺ譛ｬ譁・譛ｬ譁・/i.test(label);
+  return /body|text|display body|表示本文|本文/i.test(label);
 }
 
 function isItemsField(label: string) {
-  return /items?|bullet|display items|表示項目|項目|陦ｨ遉ｺ鬆・岼|鬆・岼/i.test(label);
+  return /items?|bullet|display items|表示項目|項目/i.test(label);
 }
 
 function isSelectedImageField(label: string) {
-  return /selected|image|選択済み画像|驕ｸ謚樊ｸ医∩逕ｻ蜒・/i.test(label);
+  return /selected|image|選択済み画像|画像/i.test(label);
 }
 
 function isVisualPromptField(label: string) {
-  return /visual\s*prompt|prompt|ビジュアルプロンプト|繝励Ο繝ｳ繝励ヨ/i.test(label);
+  return /visual\s*prompt|prompt|ビジュアルプロンプト|プロンプト/i.test(label);
 }
 
 function isVisualLabelField(label: string) {
-  return /visual\s*label|label|ビジュアル内表示ラベル|繝ｩ繝吶Ν/i.test(label);
+  return /visual\s*label|label|ビジュアルラベル|ラベル/i.test(label);
 }

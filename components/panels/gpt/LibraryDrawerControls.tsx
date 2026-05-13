@@ -48,7 +48,6 @@ type ImportControlsProps = {
     file: File,
     sidecarText?: ImageImportSidecarText
   ) => void | Promise<void>;
-  onImportWebsiteMap: (url: string) => void | Promise<void>;
   deviceImportAccept: string;
   deviceImportDisabled: boolean;
   onShowAllLibraryItemsInChat: (
@@ -72,7 +71,6 @@ export function LibraryImportControls({
   deviceInputId,
   onImportDeviceFile,
   onImportDeviceImageFile,
-  onImportWebsiteMap,
   deviceImportAccept,
   deviceImportDisabled,
   onShowAllLibraryItemsInChat,
@@ -84,8 +82,6 @@ export function LibraryImportControls({
     React.useState<LibraryBulkActionMode>("summary");
   const [kinSendMode, setKinSendMode] =
     React.useState<LibraryBulkActionMode>("summary");
-  const [websiteUrl, setWebsiteUrl] = React.useState("");
-  const [websiteImporting, setWebsiteImporting] = React.useState(false);
 
   const actionButtonStyle: React.CSSProperties = {
     ...pillButton,
@@ -180,18 +176,6 @@ export function LibraryImportControls({
   const setLibraryBulkMode = (mode: LibraryBulkActionMode) => {
     setDisplayMode(mode);
     setKinSendMode(mode);
-  };
-
-  const handleWebsiteMapImport = async () => {
-    const target = websiteUrl.trim();
-    if (!target || websiteImporting) return;
-    setWebsiteImporting(true);
-    try {
-      await onImportWebsiteMap(target);
-      setWebsiteUrl("");
-    } finally {
-      setWebsiteImporting(false);
-    }
   };
 
   return (
@@ -302,38 +286,6 @@ export function LibraryImportControls({
                   aria-expanded={driveImportMenuOpen}
                 >
                   <span style={driveClusterStyle}>取込</span>
-                </button>
-              </div>
-            </div>
-            <div style={tileStyle}>
-              <div style={driveLabelStyle}>Website Map</div>
-              <div style={bulkRowStyle}>
-                <input
-                  type="url"
-                  value={websiteUrl}
-                  onChange={(event) => setWebsiteUrl(event.currentTarget.value)}
-                  placeholder="https://example.com"
-                  aria-label="Website Map URL"
-                  style={{
-                    minWidth: 180,
-                    flex: "1 1 220px",
-                    height: 38,
-                    borderRadius: 8,
-                    border: "1px solid #cbd5e1",
-                    padding: "0 10px",
-                    fontSize: 13,
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={!websiteUrl.trim() || websiteImporting}
-                  onClick={() => void handleWebsiteMapImport()}
-                  style={{
-                    ...actionButtonStyle,
-                    opacity: !websiteUrl.trim() || websiteImporting ? 0.6 : 1,
-                  }}
-                >
-                  {websiteImporting ? "作成中" : "Map作成"}
                 </button>
               </div>
             </div>

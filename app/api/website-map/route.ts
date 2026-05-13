@@ -7,8 +7,8 @@ export const runtime = "nodejs";
 const requestSchema = z.object({
   url: z.string().min(1),
   maxDepth: z.number().int().min(0).max(4).optional(),
-  maxPages: z.number().int().min(1).max(200).optional(),
-  maxFiles: z.number().int().min(0).max(100).optional(),
+  maxPages: z.number().int().min(1).nullable().optional(),
+  maxFiles: z.number().int().min(0).nullable().optional(),
 });
 
 export async function POST(req: Request) {

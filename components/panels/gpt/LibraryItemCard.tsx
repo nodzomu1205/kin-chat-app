@@ -51,6 +51,7 @@ type Props = Pick<
   | "onDownloadLibraryItem"
   | "onUploadLibraryItemToGoogleDrive"
   | "onRenderPresentationPlanToPpt"
+  | "onRunCommand"
 > & {
   item: ReferenceLibraryItem;
   isMobile: boolean;
@@ -96,6 +97,7 @@ export default function LibraryItemCard({
   onDownloadLibraryItem,
   onUploadLibraryItemToGoogleDrive,
   onRenderPresentationPlanToPpt,
+  onRunCommand,
   isMobile,
   isExpanded,
   isEditing,
@@ -207,6 +209,7 @@ export default function LibraryItemCard({
           onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
           onSaveSearchHistoryItem={onSaveSearchHistoryItem}
           onSaveStoredDocument={onSaveStoredDocument}
+          onRunCommand={onRunCommand}
         />
       ) : null}
     </div>
@@ -234,6 +237,7 @@ function LibraryItemCardBody({
   onSendYouTubeTranscriptToKin,
   onSaveSearchHistoryItem,
   onSaveStoredDocument,
+  onRunCommand,
 }: {
   item: ReferenceLibraryItem;
   multipartSource: MultipartAssembly | null;
@@ -255,7 +259,13 @@ function LibraryItemCardBody({
   onSendYouTubeTranscriptToKin: LibraryDrawerProps["onSendYouTubeTranscriptToKin"];
   onSaveSearchHistoryItem: LibraryDrawerProps["onSaveSearchHistoryItem"];
   onSaveStoredDocument: LibraryDrawerProps["onSaveStoredDocument"];
+  onRunCommand: LibraryDrawerProps["onRunCommand"];
 }) {
+  const displayText = imagePayload
+    ? buildGeneratedImageDisplayText({ payload: imagePayload })
+    : item.excerptText;
+  const shouldRenderCommandLinks = isWebsiteMapLibraryItem(item);
+
   return (
     <div
       style={{
@@ -302,15 +312,23 @@ function LibraryItemCardBody({
         />
       ) : (
         <LibraryItemPreviewTextArea
-          value={
-            imagePayload
-              ? buildGeneratedImageDisplayText({ payload: imagePayload })
-              : item.excerptText
-          }
+          value={displayText}
           isMobile={isMobile}
+          renderCommandLinks={shouldRenderCommandLinks}
+          onRunCommand={onRunCommand}
         />
       )}
     </div>
+  );
+}
+
+function isWebsiteMapLibraryItem(item: ReferenceLibraryItem) {
+  const payload = item.structuredPayload;
+  return (
+    !!payload &&
+    typeof payload === "object" &&
+    "version" in payload &&
+    payload.version === "0.1-website-map"
   );
 }
 

@@ -48,7 +48,6 @@ function renderLibraryDrawer(
       onDownloadLibraryItem={() => Promise.resolve()}
       onUploadLibraryItemToGoogleDrive={() => Promise.resolve()}
       onRenderPresentationPlanToPpt={() => Promise.resolve()}
-      onImportWebsiteMap={() => Promise.resolve()}
       onOpenGoogleDriveFolder={() => {}}
       onImportGoogleDriveFile={() => Promise.resolve()}
       onIndexGoogleDriveFolder={() => Promise.resolve()}
@@ -132,7 +131,6 @@ describe("LibraryDrawer", () => {
         deviceInputId="device-import-test"
         onImportDeviceFile={() => Promise.resolve()}
         onImportDeviceImageFile={() => Promise.resolve()}
-        onImportWebsiteMap={() => Promise.resolve()}
         deviceImportAccept=".txt,.md,.pdf,image/*"
         deviceImportDisabled={false}
         onShowAllLibraryItemsInChat={() => Promise.resolve()}
@@ -142,8 +140,6 @@ describe("LibraryDrawer", () => {
     );
 
     expect(html).toContain("Google Drive");
-    expect(html).toContain("Website Map");
-    expect(html).toContain("Map作成");
     expect(html).toContain('aria-label="デバイスから取り込む"');
     expect(html).toContain(">デバイス<");
     expect(html).toContain("画面に表示");

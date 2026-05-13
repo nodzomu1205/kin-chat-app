@@ -300,7 +300,6 @@ export type GptPanelReferenceProps = {
     onUploadLibraryItemToGoogleDrive: (itemId: string) => void | Promise<void>;
   onRenderPresentationPlanToPpt: (itemId: string) => void | Promise<void>;
   onIndexLibraryItemForRag: (itemId: string) => void | Promise<void>;
-  onImportWebsiteMap: (url: string) => void | Promise<void>;
     onImportDeviceImageFile: (
       file: File,
       sidecarText?: ImageImportSidecarText

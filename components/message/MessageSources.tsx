@@ -15,11 +15,13 @@ export default function MessageSources({
   sourceDisplayCount = 3,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
+  onRunCommand,
 }: {
   sources: SourceItem[];
   sourceDisplayCount?: number;
   onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
   onSendYouTubeTranscriptToKin?: (source: SourceItem) => void | Promise<void>;
+  onRunCommand?: (command: string) => void | Promise<void>;
 }) {
   const visibleCount = Math.max(1, sourceDisplayCount || 1);
   const visibleSources = React.useMemo(
@@ -114,6 +116,7 @@ export default function MessageSources({
             }
             onImportYouTubeTranscript={onImportYouTubeTranscript}
             onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
+            onRunCommand={onRunCommand}
           />
         ))}
       </div>

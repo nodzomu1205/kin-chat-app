@@ -17,8 +17,8 @@ describe("website-map route", () => {
       host: "example.com",
       crawledAt: "2026-05-13T00:00:00.000Z",
       maxDepth: 2,
-      maxPages: 50,
-      maxFiles: 20,
+      maxPages: null,
+      maxFiles: null,
       pages: [],
       files: [],
       skipped: [],
@@ -30,8 +30,6 @@ describe("website-map route", () => {
         body: JSON.stringify({
           url: "https://example.com",
           maxDepth: 2,
-          maxPages: 50,
-          maxFiles: 20,
         }),
       })
     );
@@ -40,8 +38,8 @@ describe("website-map route", () => {
     expect(data.ok).toBe(true);
     expect(mockedCrawlWebsiteMap).toHaveBeenCalledWith("https://example.com", {
       maxDepth: 2,
-      maxPages: 50,
-      maxFiles: 20,
+      maxPages: undefined,
+      maxFiles: undefined,
     });
   });
 });
