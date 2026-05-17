@@ -309,6 +309,7 @@ function LibraryItemCardBody({
           onStartAskAiModeSearch={onStartAskAiModeSearch}
           onImportYouTubeTranscript={onImportYouTubeTranscript}
           onSendYouTubeTranscriptToKin={onSendYouTubeTranscriptToKin}
+          onRunCommand={onRunCommand}
         />
       ) : (
         <LibraryItemPreviewTextArea

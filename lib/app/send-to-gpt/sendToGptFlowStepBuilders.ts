@@ -43,6 +43,8 @@ export function buildSendToGptPrePreparationGateArgs(args: {
     extractInlineUrlTarget: args.flowArgs.extractInlineUrlTarget,
     extractWebsiteMapTarget: args.flowArgs.extractWebsiteMapTarget,
     recordIngestedDocument: args.flowArgs.recordIngestedDocument,
+    autoGenerateLibrarySummary: args.flowArgs.autoGenerateLibrarySummary,
+    applyIngestUsage: args.flowArgs.applyIngestUsage,
     setGptMessages: args.flowArgs.setGptMessages,
     setGptInput: args.flowArgs.setGptInput,
     setGptLoading: args.flowArgs.setGptLoading,

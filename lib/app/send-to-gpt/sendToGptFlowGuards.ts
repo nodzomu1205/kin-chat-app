@@ -49,6 +49,8 @@ export async function runPrePreparationGates(args: {
   extractInlineUrlTarget: (text: string) => string | null;
   extractWebsiteMapTarget: (text: string) => string | null;
   recordIngestedDocument: RunSendToGptFlowArgs["recordIngestedDocument"];
+  autoGenerateLibrarySummary?: boolean;
+  applyIngestUsage?: RunSendToGptFlowArgs["applyIngestUsage"];
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
@@ -91,6 +93,8 @@ export async function runPrePreparationGates(args: {
       rawText: args.rawText,
       websiteMapTarget: websiteMapGateContext.websiteMapTarget as string,
       recordIngestedDocument: args.recordIngestedDocument,
+      autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
+      applyIngestUsage: args.applyIngestUsage,
       setGptMessages: args.setGptMessages,
       setGptInput: args.setGptInput,
       setGptLoading: args.setGptLoading,
@@ -132,6 +136,8 @@ export async function handleWebsiteMapGate(args: {
   rawText: string;
   websiteMapTarget: string;
   recordIngestedDocument: RunSendToGptFlowArgs["recordIngestedDocument"];
+  autoGenerateLibrarySummary?: boolean;
+  applyIngestUsage?: RunSendToGptFlowArgs["applyIngestUsage"];
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
@@ -140,6 +146,8 @@ export async function handleWebsiteMapGate(args: {
     rawText: args.rawText,
     websiteMapTarget: args.websiteMapTarget,
     recordIngestedDocument: args.recordIngestedDocument,
+    autoGenerateLibrarySummary: args.autoGenerateLibrarySummary,
+    applyIngestUsage: args.applyIngestUsage,
     setGptMessages: args.setGptMessages,
     setGptInput: args.setGptInput,
     setGptLoading: args.setGptLoading,

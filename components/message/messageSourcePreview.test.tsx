@@ -35,7 +35,7 @@ describe("messageSourcePreview helpers", () => {
 });
 
 describe("MessageSourcePreviewCard", () => {
-  it("renders youtube actions with stable labels", () => {
+  it("renders youtube actions without website actions", () => {
     const source: SourceItem = {
       title: "How to test",
       link: "https://www.youtube.com/watch?v=abc123",
@@ -55,13 +55,11 @@ describe("MessageSourcePreviewCard", () => {
     );
 
     expect(html).toContain("YouTube");
-    expect(html).toContain("文字起こし取込");
-    expect(html).toContain("文字起こしをKinへ転送");
     expect(html).not.toContain("サイトマップ表示");
-    expect(html).not.toContain("内容表示");
+    expect(html).not.toContain("Get Site Contents");
   });
 
-  it("renders website map and contents actions for source cards", () => {
+  it("renders one website map action for source cards", () => {
     const source: SourceItem = {
       title: "Example result",
       link: "https://example.com/page",
@@ -78,6 +76,6 @@ describe("MessageSourcePreviewCard", () => {
     );
 
     expect(html).toContain("サイトマップ表示");
-    expect(html).toContain("内容表示");
+    expect(html).not.toContain("Get Site Contents");
   });
 });

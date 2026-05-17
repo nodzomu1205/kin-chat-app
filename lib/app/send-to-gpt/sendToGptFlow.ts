@@ -17,9 +17,13 @@ import { requestGptAssistantArtifacts } from "@/lib/app/send-to-gpt/sendToGptFlo
 import { finalizeSendToGptFlow } from "@/lib/app/send-to-gpt/sendToGptFlowFinalize";
 import { resolveSendToGptFlowStart } from "@/lib/app/send-to-gpt/sendToGptFlowDecisionState";
 import { runImageGptCommandFlow } from "@/lib/app/image/imageGptFlow";
+import { parseImageCommand } from "@/lib/app/image/imageCommandParser";
 import { runPresentationGptCommandFlow } from "@/lib/app/presentation/presentationGptFlow";
 import { parsePptCommand } from "@/lib/app/presentation/presentationCommandParser";
-import { runSavedDocumentEditFlow } from "@/lib/app/reference-library/savedDocumentEditFlow";
+import {
+  parseSavedDocumentEditCommand,
+  runSavedDocumentEditFlow,
+} from "@/lib/app/reference-library/savedDocumentEditFlow";
 import { parseTaskInput } from "@/lib/task/taskInputParser";
 import {
   appendSendToGptFailureMessage,
@@ -229,12 +233,17 @@ function extractLeadingSysBlockName(text: string) {
 export function shouldUseDbReferenceForInput(rawText: string) {
   const trimmed = rawText.trim();
   if (!trimmed) return false;
+  if (extractInlineUrlTarget(trimmed) || extractWebsiteMapTarget(trimmed)) {
+    return false;
+  }
   if (isPureInlineSearchInput(trimmed)) return false;
+  if (isTaskDirectiveOnlyInput(trimmed)) return false;
   if (trimmed.startsWith("<<SYS_")) {
     return DB_REFERENCE_ELIGIBLE_SYS_BLOCKS.has(
       extractLeadingSysBlockName(trimmed)
     );
   }
+  if (parseImageCommand(trimmed).isImageCommand) return false;
   const pptCommand = parsePptCommand(trimmed);
   if (
     pptCommand.isPptCommand &&
@@ -244,6 +253,7 @@ export function shouldUseDbReferenceForInput(rawText: string) {
   ) {
     return false;
   }
+  if (parseSavedDocumentEditCommand(trimmed).isCommand) return false;
   return true;
 }
 
@@ -254,5 +264,14 @@ function isPureInlineSearchInput(rawText: string) {
       !parsed.freeText &&
       !parsed.title &&
       !parsed.userInstruction
+  );
+}
+
+function isTaskDirectiveOnlyInput(rawText: string) {
+  const parsed = parseTaskInput(rawText);
+  return Boolean(
+    (parsed.title || parsed.userInstruction) &&
+      !parsed.searchQuery &&
+      !parsed.freeText
   );
 }

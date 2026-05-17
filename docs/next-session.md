@@ -35,15 +35,30 @@ maintenance-watch after the organization workflow, full DB-card listing, and DB
 reference log cleanup.
 
 The latest product slice is Website Map / Site Contents. It is now a one-page
-at-a-time, inspectable MVP:
+at-a-time, inspectable MVP, with the main `Website Map` command acting as the
+combined site report:
 
-1. `Website Map: <url>` displays a readable map in chat.
-2. `Save Site Map: <url>` saves that map to the library.
-3. `Get Site Contents: <url>` displays extracted main text and page images.
-4. `Download File: <url>` lists linked files.
-5. `Download and Read File: <url>` imports a linked file through file ingest.
-6. Manual URL/search/news cards expose `サイトマップ表示` and `内容表示`.
+1. `Website Map: <url>` displays the readable map, extracted main text/images,
+   and linked files together in chat.
+2. `Save Site Map: <url>` saves that combined site report to the library.
+3. `Get Site Contents: <url>` remains as a direct compatibility command for
+   extracted main text and page images.
+4. `Download File: <url>` remains as a direct compatibility command for linked
+   files.
+5. `Download and Read File: <url>` imports a linked file through file ingest;
+   user-facing links are labeled `Read and save`.
+6. Manual URL/search/news cards expose `サイトマップ表示`.
 7. YouTube cards intentionally do not expose website actions.
+
+Current action-menu note: manual URL/search/news cards now expose one Website
+Map action because the Website Map result includes page contents and linked
+files.
+
+DB reference guard note: local command/system actions should not trigger the
+automatic DB reference lookup unless they are generative requests where library
+context is useful. Covered local actions include Website Map / URL shortcuts,
+pure inline search, task directive-only updates, image commands, `/task` /
+`/edit`, action-only SYS blocks, and PPT save/render/visual-resolution commands.
 
 Do not broaden this into automatic deep crawling by default. The current UX is
 manual, one page per command, and safe against never-ending loading.

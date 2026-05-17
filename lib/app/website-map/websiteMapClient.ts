@@ -97,21 +97,86 @@ function normalizeWebsiteMapResult(data: WebsiteMapApiResponse): WebsiteMapResul
 }
 
 export function buildWebsiteMapDocument(result: WebsiteMapResult) {
-  const title = `Website Map: ${result.host || result.rootUrl}`;
-  const text = formatWebsiteMapText(result);
+  return buildWebsiteMapSiteDocument({ result });
+}
+
+export function buildWebsiteMapSiteDocument({
+  result,
+  pageText,
+  pageTextError,
+}: {
+  result: WebsiteMapResult;
+  pageText?: WebsiteMapPageTextResult | null;
+  pageTextError?: string | null;
+}) {
+  const title = resolveWebsiteMapDocumentTitle({ result, pageText });
+  const text = formatWebsiteMapSiteReport({
+    result,
+    pageText,
+    pageTextError,
+  });
   const stats = buildWebsiteMapStats(result);
+  const textCharCount = pageText ? countTextChars(pageText.text) : stats.totalTextChars;
   return {
     title,
-    filename: `${safeFileBase(result.host || "website-map")}.website-map.md`,
+    filename: `${safeFileBase(title || result.host || "site-report")}.website-map.md`,
     text,
     summary: [
       `${stats.pageCount} pages mapped`,
       `${stats.fileCount} linked files detected`,
-      `${stats.totalTextChars.toLocaleString("ja-JP")} estimated chars`,
+      `${textCharCount.toLocaleString("ja-JP")} chars`,
     ].join(" / "),
     structuredPayload: result,
     timestamp: result.crawledAt,
   };
+}
+
+export function formatWebsiteMapSiteReport({
+  result,
+  pageText,
+  pageTextError,
+}: {
+  result: WebsiteMapResult;
+  pageText?: WebsiteMapPageTextResult | null;
+  pageTextError?: string | null;
+}) {
+  const stats = buildWebsiteMapStats(result);
+  const warnings = buildWebsiteMapWarnings(result, stats);
+  const mainTextCharCount = pageText ? countTextChars(pageText.text) : null;
+
+  return [
+    `# Website Map: ${result.host || result.rootUrl}`,
+    "",
+    ...formatWebsiteMapActionLinks(result.rootUrl, "top"),
+    "",
+    "## Summary",
+    "",
+    `- 対象サイト: ${result.rootUrl}`,
+    result.finalRootUrl !== result.rootUrl ? `- 最終URL: ${result.finalRootUrl}` : "",
+    `- 取得日時: ${formatDateTime(pageText?.fetchedAt || result.crawledAt)}`,
+    mainTextCharCount !== null
+      ? `- 本文量: ${mainTextCharCount.toLocaleString("ja-JP")}文字`
+      : "",
+    `- ページ上で検知したファイルリンク: ${stats.totalFileLinks.toLocaleString("ja-JP")}件`,
+    `- スキップ: ${result.skipped.length.toLocaleString("ja-JP")}件`,
+    "",
+    ...(warnings.length
+      ? ["## Notes", "", ...warnings.map((warning) => `- ${warning}`), ""]
+      : []),
+    pageText
+      ? formatWebsiteMapMainText(pageText)
+      : formatWebsiteMapPageTextUnavailable(result.rootUrl, pageTextError),
+    "",
+    formatWebsiteMapDownloadFiles(result),
+    "",
+    pageText ? formatWebsiteMapImages(pageText) : "",
+    "",
+    formatWebsiteMapDetailSections(result),
+    "",
+    ...formatWebsiteMapActionLinks(result.rootUrl, "bottom"),
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
 }
 
 export function formatWebsiteMapText(result: WebsiteMapResult) {
@@ -142,7 +207,7 @@ export function formatWebsiteMapText(result: WebsiteMapResult) {
       : "",
     `- 取得日時: ${formatDateTime(result.crawledAt)}`,
     `- ページ上で検知したファイルリンク: ${stats.totalFileLinks.toLocaleString("ja-JP")}件`,
-    `- 推定本文量: ${stats.totalTextChars.toLocaleString("ja-JP")}文字`,
+    `- 本文量: ${stats.totalTextChars.toLocaleString("ja-JP")}文字`,
     `- スキップ: ${result.skipped.length.toLocaleString("ja-JP")}件`,
     "",
     ...(warnings.length
@@ -150,11 +215,11 @@ export function formatWebsiteMapText(result: WebsiteMapResult) {
       : []),
     "## Areas",
     "",
-    ...formatSectionTable(sectionCounts),
+    ...formatSiteReportSectionTable(sectionCounts),
     "",
     "## Priority Pages",
     "",
-    ...formatPriorityPageTable(topTextPages),
+    ...formatSiteReportPriorityPageTable(topTextPages),
     "",
     "## File Hubs",
     "",
@@ -189,7 +254,7 @@ export function formatWebsiteMapText(result: WebsiteMapResult) {
     "",
     "## Pages",
     "",
-    ...formatPageTable(result.pages),
+    ...formatSiteReportPageTable(result.pages),
     "",
     "## Skipped",
     "",
@@ -203,12 +268,13 @@ export function formatWebsiteMapText(result: WebsiteMapResult) {
 }
 
 export function formatWebsiteMapPageText(result: WebsiteMapPageTextResult) {
+  const textCharCount = countTextChars(result.text);
   return [
     `# Site Contents: ${result.title || result.finalUrl}`,
     "",
     `- URL: ${result.finalUrl}`,
     `- 取得日時: ${formatDateTime(result.fetchedAt)}`,
-    `- 推定本文量: ${result.textCharEstimate.toLocaleString("ja-JP")}文字`,
+    `- 本文量: ${textCharCount.toLocaleString("ja-JP")}文字`,
     "",
     "## Main Text",
     "",
@@ -217,6 +283,87 @@ export function formatWebsiteMapPageText(result: WebsiteMapPageTextResult) {
     "## Images",
     "",
     ...formatPageImageTable(result.images),
+  ].join("\n");
+}
+
+function formatWebsiteMapMainText(result: WebsiteMapPageTextResult) {
+  return [
+    `## Main Text: ${result.title || result.finalUrl}`,
+    "",
+    result.text || "本文テキストを取得できませんでした。",
+  ].join("\n");
+}
+
+function formatWebsiteMapImages(result: WebsiteMapPageTextResult) {
+  return ["## Images", "", ...formatPageImageTable(result.images)].join("\n");
+}
+
+function formatWebsiteMapDownloadFiles(result: WebsiteMapResult) {
+  return [
+    "## Download Files",
+    "",
+    ...formatDownloadFileTable(result.files),
+  ].join("\n");
+}
+
+function formatWebsiteMapDetailSections(result: WebsiteMapResult) {
+  const sectionCounts = getSectionCounts(result.pages);
+  const topTextPages = [...result.pages]
+    .sort((a, b) => b.textCharEstimate - a.textCharEstimate)
+    .slice(0, 8);
+  const filePages = result.pages
+    .filter((page) => page.fileLinkCount > 0)
+    .sort((a, b) => b.fileLinkCount - a.fileLinkCount)
+    .slice(0, 8);
+  const discoveredLinks = getDiscoveredSameHostLinks(result.pages);
+  const possibleDuplicates = findPossibleDuplicatePages(result.pages);
+  const zeroTextPages = result.pages.filter((page) => page.textCharEstimate === 0);
+
+  return [
+    "## Areas",
+    "",
+    ...formatSiteReportSectionTable(sectionCounts),
+    "",
+    "## Priority Pages",
+    "",
+    ...formatSiteReportPriorityPageTable(topTextPages),
+    "",
+    "## File Hubs",
+    "",
+    ...formatFileHubTable(filePages),
+    "",
+    "## Next Links",
+    "",
+    ...formatDiscoveredLinkTable(discoveredLinks),
+    "",
+    "## Review Targets",
+    "",
+    ...(zeroTextPages.length
+      ? [
+          "本文文字数が0のページ:",
+          ...zeroTextPages.map((page) => `- ${page.finalUrl}`),
+          "",
+        ]
+      : []),
+    ...(possibleDuplicates.length
+      ? [
+          "重複候補:",
+          ...possibleDuplicates.map(
+            (pair) =>
+              `- ${pair.primary.title || pair.primary.finalUrl}: ${pair.primary.finalUrl} / ${pair.duplicate.finalUrl}`
+          ),
+        ]
+      : ["- 明確な重複候補はありません。"]),
+    "",
+    "## Pages",
+    "",
+    ...formatSiteReportPageTable(result.pages),
+    "",
+    "## Skipped",
+    "",
+    ...(result.skipped.length
+      ? result.skipped.map((item) => `- ${item.url}: ${item.reason}`)
+      : ["スキップされたURLはありません。"]),
   ].join("\n");
 }
 
@@ -393,12 +540,50 @@ function canonicalPageKey(url: string) {
   }
 }
 
+function formatSiteReportSectionTable(
+  sections: Array<{ name: string; count: number; textChars: number }>
+) {
+  if (!sections.length) return ["領域分類に使えるパスは見つかりませんでした。"];
+  return [
+    "| 領域 | ページ | 本文量 |",
+    "| --- | ---: | ---: |",
+    ...sections.map(
+      (item) =>
+        `| ${escapeTableCell(item.name)} | ${item.count.toLocaleString("ja-JP")} | ${item.textChars.toLocaleString("ja-JP")}文字 |`
+    ),
+  ];
+}
+
+function formatSiteReportPriorityPageTable(pages: WebsiteMapPage[]) {
+  if (!pages.length) return ["取得ページはありません。"];
+  return [
+    "| # | 領域 | ページ | 本文量 |",
+    "| ---: | --- | --- | ---: |",
+    ...pages.map(
+      (page, index) =>
+        `| ${index + 1} | ${escapeTableCell(getPrimaryPathSection(page.finalUrl))} | ${formatTableLink(page.title || page.finalUrl, page.finalUrl, 46)} | ${page.textCharEstimate.toLocaleString("ja-JP")}文字 |`
+    ),
+  ];
+}
+
+function formatSiteReportPageTable(pages: WebsiteMapPage[]) {
+  if (!pages.length) return ["取得ページはありません。"];
+  return [
+    "| # | 領域 | 本文量 | Files | ページ |",
+    "| ---: | --- | ---: | ---: | --- |",
+    ...pages.map(
+      (page, index) =>
+        `| ${index + 1} | ${escapeTableCell(getPrimaryPathSection(page.finalUrl))} | ${page.textCharEstimate.toLocaleString("ja-JP")}文字 | ${page.fileLinkCount.toLocaleString("ja-JP")} | ${formatTableLink(page.title || page.finalUrl, page.finalUrl, 42)} |`
+    ),
+  ];
+}
+
 function formatSectionTable(
   sections: Array<{ name: string; count: number; textChars: number }>
 ) {
   if (!sections.length) return ["領域分類に使えるパスが見つかりませんでした。"];
   return [
-    "| 領域 | ページ | 推定本文量 |",
+    "| 領域 | ページ | 本文量 |",
     "| --- | ---: | ---: |",
     ...sections.map(
       (item) =>
@@ -410,7 +595,7 @@ function formatSectionTable(
 function formatPriorityPageTable(pages: WebsiteMapPage[]) {
   if (!pages.length) return ["取得ページはありません。"];
   return [
-    "| # | 領域 | ページ | 推定本文量 |",
+    "| # | 領域 | ページ | 本文量 |",
     "| ---: | --- | --- | ---: |",
     ...pages.map(
       (page, index) =>
@@ -453,12 +638,24 @@ function formatDiscoveredLinkTable(
 function formatWebsiteMapActionLinks(url: string, position: "top" | "bottom") {
   const separator = position === "top" ? " | " : "\n";
   return [
-    [
-      buildCommandLink("Get Site Contents", `Get Site Contents: ${url}`),
-      buildCommandLink("Save Site Map", `Save Site Map: ${url}`),
-      buildCommandLink("Download File", `Download File: ${url}`),
-    ].join(separator),
+    [buildCommandLink("Save Site", `Save Site Map: ${url}`)].join(separator),
   ];
+}
+
+function formatWebsiteMapPageTextUnavailable(url: string, error?: string | null) {
+  return [
+    `# Site Contents: ${url}`,
+    "",
+    "## Main Text",
+    "",
+    error
+      ? `Site contents could not be fetched: ${error}`
+      : "Site contents could not be fetched.",
+    "",
+    "## Images",
+    "",
+    "No page images were detected.",
+  ].join("\n");
 }
 
 function formatDownloadFileTable(files: WebsiteMapFile[]) {
@@ -473,7 +670,7 @@ function formatDownloadFileTable(files: WebsiteMapFile[]) {
         typeof file.contentLength === "number" ? formatBytes(file.contentLength) : "-",
         [
           formatTableLink("Download File", file.url, 24),
-          buildCommandLink("Download and Read", `Download and Read File: ${file.url}`),
+          buildCommandLink("Read and save", `Download and Read File: ${file.url}`),
         ].join(" / "),
       ].join(" | ") + " |"
     ),
@@ -563,6 +760,54 @@ function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+}
+
+function countTextChars(value: string) {
+  return Array.from(value || "").length;
+}
+
+function resolveWebsiteMapDocumentTitle({
+  result,
+  pageText,
+}: {
+  result: WebsiteMapResult;
+  pageText?: WebsiteMapPageTextResult | null;
+}) {
+  const candidates = [
+    pageText?.title,
+    result.pages[0]?.title,
+    result.pages[0]?.summary,
+    result.host,
+    result.rootUrl,
+  ];
+
+  for (const candidate of candidates) {
+    const title = cleanWebsiteMapDocumentTitle(candidate || "");
+    if (title) return title;
+  }
+
+  return "Site report";
+}
+
+function cleanWebsiteMapDocumentTitle(value: string) {
+  const normalized = value
+    .replace(/\s+/g, " ")
+    .replace(/^Website\s*Map\s*:\s*/i, "")
+    .trim();
+  if (!normalized) return "";
+
+  const withoutSiteSuffix = normalized
+    .split(/\s+\|\s+/u)
+    .filter((part) => part.trim())
+    .filter((part) => !/^(NHKニュース|Yahoo!?ニュース|Google News)$/iu.test(part.trim()))
+    .join(" | ")
+    .trim();
+  const withoutDashSuffix = withoutSiteSuffix
+    .replace(/\s+-\s+Yahoo!?ニュース$/iu, "")
+    .replace(/\s+-\s+NHKニュース$/iu, "")
+    .trim();
+  const cleaned = withoutDashSuffix || normalized;
+  return cleaned.length > 80 ? `${cleaned.slice(0, 79).trimEnd()}...` : cleaned;
 }
 
 function safeFileBase(value: string) {

@@ -6,14 +6,16 @@ import {
   resolveIngestFileTitle,
 } from "@/lib/app/ingest/ingestClient";
 import { buildIngestedDocumentFilename } from "@/lib/app/ingest/ingestDocumentModel";
+import { resolveGeneratedImportSummary } from "@/lib/app/ingest/importSummaryGeneration";
 import { resolveIngestExtractionArtifacts } from "@/lib/app/ingest/fileIngestFlow";
+import { emptyUsage, isZeroUsage, normalizeUsage } from "@/lib/shared/tokenStats";
 import {
-  buildWebsiteMapDocument,
+  buildWebsiteMapSiteDocument,
   fetchWebsiteMapPageText,
   fetchWebsiteMap,
   formatWebsiteMapFileLinks,
   formatWebsiteMapPageText,
-  formatWebsiteMapText,
+  formatWebsiteMapSiteReport,
 } from "@/lib/app/website-map/websiteMapClient";
 import type { RunSendToGptFlowArgs } from "@/lib/app/send-to-gpt/sendToGptFlowArgTypes";
 import type { Message, SourceItem } from "@/types/chat";
@@ -179,6 +181,8 @@ export async function runWebsiteMapShortcut(params: {
   rawText: string;
   websiteMapTarget: string;
   recordIngestedDocument: RunSendToGptFlowArgs["recordIngestedDocument"];
+  autoGenerateLibrarySummary?: boolean;
+  applyIngestUsage?: RunSendToGptFlowArgs["applyIngestUsage"];
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
   setGptInput: Dispatch<SetStateAction<string>>;
   setGptLoading: Dispatch<SetStateAction<boolean>>;
@@ -199,6 +203,8 @@ export async function runWebsiteMapShortcut(params: {
       await runRemoteWebsiteMapFileIngest({
         url: remoteFileTarget,
         recordIngestedDocument: params.recordIngestedDocument,
+        autoGenerateLibrarySummary: params.autoGenerateLibrarySummary,
+        applyIngestUsage: params.applyIngestUsage,
         setGptMessages: params.setGptMessages,
       });
       return;
@@ -239,6 +245,10 @@ export async function runWebsiteMapShortcut(params: {
       return;
     }
 
+    const pageTextResult = await fetchWebsiteMapPageTextWithFallback(
+      params.websiteMapTarget
+    );
+
     const saveTarget = extractSaveWebsiteMapTarget(params.rawText);
     if (!saveTarget) {
       params.setGptMessages((prev) => [
@@ -246,20 +256,39 @@ export async function runWebsiteMapShortcut(params: {
         {
           id: generateId(),
           role: "gpt",
-          text: formatWebsiteMapText(result),
+          text: formatWebsiteMapSiteReport({
+            result,
+            pageText: pageTextResult.pageText,
+            pageTextError: pageTextResult.error,
+          }),
           meta: { sourceType: "file_ingest" },
         },
       ]);
       return;
     }
 
-    const document = buildWebsiteMapDocument(result);
+    const document = buildWebsiteMapSiteDocument({
+      result,
+      pageText: pageTextResult.pageText,
+      pageTextError: pageTextResult.error,
+    });
+    const summaryResult = await resolveGeneratedImportSummary({
+      enabled: params.autoGenerateLibrarySummary === true,
+      title: document.title,
+      canonicalText: document.text,
+      currentUsage: emptyUsage(),
+      fallbackSummary: document.summary,
+      onError: (error) => console.error(error),
+    });
+    if (!isZeroUsage(summaryResult.totalUsage)) {
+      params.applyIngestUsage?.(summaryResult.totalUsage);
+    }
     params.recordIngestedDocument({
       artifactType: "reference_note",
       title: document.title,
       filename: document.filename,
       text: document.text,
-      summary: document.summary,
+      summary: summaryResult.summary || document.summary,
       structuredPayload: document.structuredPayload,
       charCount: document.text.length,
       createdAt: document.timestamp,
@@ -302,9 +331,29 @@ export async function runWebsiteMapShortcut(params: {
   }
 }
 
+async function fetchWebsiteMapPageTextWithFallback(url: string): Promise<{
+  pageText: Awaited<ReturnType<typeof fetchWebsiteMapPageText>> | null;
+  error: string | null;
+}> {
+  try {
+    return {
+      pageText: await fetchWebsiteMapPageText(url),
+      error: null,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      pageText: null,
+      error: error instanceof Error ? error.message : "Website page text failed.",
+    };
+  }
+}
+
 async function runRemoteWebsiteMapFileIngest(params: {
   url: string;
   recordIngestedDocument: RunSendToGptFlowArgs["recordIngestedDocument"];
+  autoGenerateLibrarySummary?: boolean;
+  applyIngestUsage?: RunSendToGptFlowArgs["applyIngestUsage"];
   setGptMessages: Dispatch<SetStateAction<Message[]>>;
 }) {
   const response = await fetch(
@@ -345,7 +394,20 @@ async function runRemoteWebsiteMapFileIngest(params: {
     fileName: file.name,
     fileTitle,
   });
+  const ingestUsage = normalizeUsage(data?.usage);
   const timestamp = new Date().toISOString();
+  const fallbackSummary = `Downloaded from ${finalUrl}`;
+  const summaryResult = await resolveGeneratedImportSummary({
+    enabled: params.autoGenerateLibrarySummary === true,
+    title: fileTitle,
+    canonicalText: canonicalDocumentText,
+    currentUsage: ingestUsage,
+    fallbackSummary,
+    onError: (error) => console.error(error),
+  });
+  if (!isZeroUsage(summaryResult.totalUsage)) {
+    params.applyIngestUsage?.(summaryResult.totalUsage);
+  }
   const stored = params.recordIngestedDocument({
     artifactType: "reference_note",
     title: fileTitle,
@@ -354,7 +416,7 @@ async function runRemoteWebsiteMapFileIngest(params: {
       fallbackFilename: file.name,
     }),
     text: canonicalDocumentText,
-    summary: `Downloaded from ${finalUrl}`,
+    summary: summaryResult.summary || fallbackSummary,
     structuredPayload: {
       version: "0.1-website-map-file",
       sourceUrl: finalUrl,

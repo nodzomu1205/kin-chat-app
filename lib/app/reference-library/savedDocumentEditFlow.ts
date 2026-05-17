@@ -23,7 +23,7 @@ type SavedDocumentEditCommand = {
   body: string;
 };
 
-function parseSavedDocumentEditCommand(text: string): SavedDocumentEditCommand {
+export function parseSavedDocumentEditCommand(text: string): SavedDocumentEditCommand {
   if (!SAVED_DOCUMENT_EDIT_PREFIX.test(text)) {
     return {
       isCommand: false,

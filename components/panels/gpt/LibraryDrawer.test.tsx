@@ -11,6 +11,7 @@ import LibraryDrawer, {
 } from "@/components/panels/gpt/LibraryDrawer";
 import { LibraryImportControls } from "@/components/panels/gpt/LibraryDrawerControls";
 import LibraryItemMetadata from "@/components/panels/gpt/LibraryItemMetadata";
+import LibraryItemSearchPreview from "@/components/panels/gpt/LibraryItemSearchPreview";
 import { GPT_LIBRARY_DRAWER_TEXT } from "@/components/panels/gpt/gptUiText";
 import type { ReferenceLibraryItem } from "@/types/chat";
 
@@ -48,6 +49,7 @@ function renderLibraryDrawer(
       onDownloadLibraryItem={() => Promise.resolve()}
       onUploadLibraryItemToGoogleDrive={() => Promise.resolve()}
       onRenderPresentationPlanToPpt={() => Promise.resolve()}
+      onRunCommand={() => Promise.resolve()}
       onOpenGoogleDriveFolder={() => {}}
       onImportGoogleDriveFile={() => Promise.resolve()}
       onIndexGoogleDriveFolder={() => Promise.resolve()}
@@ -181,6 +183,42 @@ describe("LibraryDrawer", () => {
     expect(html).toContain("width:100%");
     expect(html).toContain(GPT_LIBRARY_DRAWER_TEXT.download);
     expect(html).toContain(GPT_LIBRARY_DRAWER_TEXT.edit);
+  });
+
+  it("renders search source URLs as links with a website map action", () => {
+    const item: ReferenceLibraryItem = {
+      id: "search:1",
+      sourceId: "1",
+      itemType: "search",
+      title: "Search item",
+      subtitle: "Search",
+      summary: "",
+      excerptText: "Search excerpt",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      sources: [
+        {
+          title: "Source",
+          link: "https://example.com/page",
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      <LibraryItemSearchPreview
+        item={item}
+        askAiModeCandidates={[]}
+        sourceDisplayCount={1}
+        isMobile={false}
+        onStartAskAiModeSearch={() => Promise.resolve()}
+        onImportYouTubeTranscript={() => Promise.resolve()}
+        onSendYouTubeTranscriptToKin={() => Promise.resolve()}
+        onRunCommand={() => Promise.resolve()}
+      />
+    );
+
+    expect(html).toContain('href="https://example.com/page"');
+    expect(html).toContain("サイトマップ表示");
   });
 
   it("shows DB indexing state and action for text library cards", () => {

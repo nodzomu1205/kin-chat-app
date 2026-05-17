@@ -283,6 +283,167 @@ describe("runSendToGptFlow", () => {
     expect(dbQuery).toContain("道田氏との関係は？");
   });
 
+  it("short-circuits website map commands before DB reference lookup", async () => {
+    let messages: Message[] = [];
+    let inputValue = "Website Map: https://example.com";
+    const buildLibraryReferenceContextForQuery = vi.fn(async () => "DB ctx");
+    const fetchSpy = vi.fn(async (url: string) => {
+      if (url === "/api/website-map") {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            version: "0.1-website-map",
+            rootUrl: "https://example.com",
+            finalRootUrl: "https://example.com",
+            host: "example.com",
+            crawledAt: "2026-05-13T00:00:00.000Z",
+            maxDepth: 0,
+            maxPages: 1,
+            maxFiles: null,
+            pages: [
+              {
+                url: "https://example.com",
+                finalUrl: "https://example.com",
+                title: "Example",
+                depth: 0,
+                status: 200,
+                contentType: "text/html",
+                textCharEstimate: 10,
+                linkCount: 0,
+                sameHostLinkCount: 0,
+                fileLinkCount: 0,
+                sameHostLinks: [],
+                fileLinks: [],
+                summary: "Example",
+              },
+            ],
+            files: [],
+            skipped: [],
+          }),
+          { status: 200 }
+        );
+      }
+      if (url === "/api/website-map/page-text") {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            url: "https://example.com",
+            finalUrl: "https://example.com",
+            title: "Example",
+            contentType: "text/html",
+            status: 200,
+            text: "Example body",
+            textCharEstimate: 12,
+            images: [],
+            fetchedAt: "2026-05-13T00:00:00.000Z",
+          }),
+          { status: 200 }
+        );
+      }
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await runSendToGptFlow({
+      gptInput: inputValue,
+      gptLoading: false,
+      autoGenerateLibrarySummary: true,
+      processMultipartTaskDoneText: () => null,
+      taskProtocolRuntime: {
+        currentTaskId: null,
+        currentTaskTitle: "",
+        currentTaskIntent: null,
+        originalInstruction: "",
+        compiledTaskPrompt: "",
+        taskStatus: "idle",
+        latestSummary: "",
+        requirementProgress: [],
+        pendingRequests: [],
+        userFacingRequests: [],
+        completedSearches: [],
+        protocolLog: [],
+      },
+      currentTaskId: null,
+      findPendingRequest: () => null,
+      applyPrefixedTaskFieldsFromText: () => ({
+        searchQuery: "",
+        freeText: inputValue,
+        title: "",
+        userInstruction: "",
+      }),
+      getProtocolLimitViolation: () => null,
+      shouldInjectTaskContextWithSettings: () => false,
+      referenceLibraryItems: [],
+      libraryIndexResponseCount: 10,
+      buildLibraryReferenceContext: () => "",
+      buildLibraryReferenceContextForQuery,
+      taskProtocolAnswerPendingRequest: () => {},
+      ingestProtocolMessage: () => {},
+      searchMode: "normal",
+      searchEngines: ["google_search"],
+      searchLocation: "Japan",
+      parseWrappedSearchResponse: () => null,
+      recordSearchContext: () => ({ rawResultId: "RAW-1" }),
+      getContinuationTokenForSeries: () => "",
+      getAskAiModeLinkForQuery: () => "",
+      applySearchUsage: () => {},
+      applyChatUsage: () => {},
+      applyTaskUsage: () => {},
+      handleGptMemory: async () => ({ compressionUsage: null }),
+      applyCompressionUsage: () => {},
+      chatRecentLimit: 8,
+      gptStateRef: {
+        current: {
+          recentMessages: [],
+          memory: {
+            facts: [],
+            preferences: [],
+            lists: {},
+            context: {
+              currentTopic: "",
+              currentTask: "",
+              followUpRule: "",
+              lastUserIntent: "",
+            },
+          },
+        },
+      },
+      recentChatMessages: [
+        {
+          id: "u1",
+          role: "user",
+          text: "この履歴がDB検索クエリに混ざると困る",
+        },
+      ],
+      setGptMessages: (next) => {
+        messages = typeof next === "function" ? next(messages) : next;
+      },
+      setGptInput: (next) => {
+        inputValue = typeof next === "function" ? next(inputValue) : next;
+      },
+      setGptLoading: () => {},
+      setKinInput: () => {},
+      setPendingKinInjectionBlocks: () => {},
+      setPendingKinInjectionIndex: () => {},
+      instructionMode: "normal",
+      reasoningMode: "strict",
+      recordIngestedDocument: (document) => ({
+        id: "DOC-1",
+        sourceType: "ingested_file",
+        ...document,
+      }),
+      updateStoredDocument: () => undefined,
+    });
+
+    expect(buildLibraryReferenceContextForQuery).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/website-map",
+      expect.objectContaining({ method: "POST" })
+    );
+    expect(messages.at(-1)?.text).toContain("# Website Map: example.com");
+  });
+
   it("short-circuits task-directive-only input without calling GPT", async () => {
     let messages: Message[] = [];
     let inputValue = "TITLE: 新しい計画";
@@ -487,6 +648,57 @@ describe("sendToGptFlowHelpers", () => {
     expect(
       shouldUseDbReferenceForInput("検索: 帰国子女 高校\nDB情報も踏まえて比較して")
     ).toBe(true);
+  });
+
+  it("skips DB reference for task directive-only inputs", () => {
+    expect(shouldUseDbReferenceForInput("TITLE: 新しい計画")).toBe(false);
+    expect(shouldUseDbReferenceForInput("Instruction: 要点だけ整理")).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput("TITLE: 新しい計画\nInstruction: 要点だけ整理")
+    ).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput("TITLE: 新しい計画\n本文もあるので生成して")
+    ).toBe(true);
+  });
+
+  it("skips DB reference for shortcut command prefixes", () => {
+    expect(shouldUseDbReferenceForInput("URL: https://example.com")).toBe(false);
+    expect(shouldUseDbReferenceForInput("Website Map: https://example.com")).toBe(
+      false
+    );
+    expect(shouldUseDbReferenceForInput("Save Site Map: https://example.com")).toBe(
+      false
+    );
+    expect(
+      shouldUseDbReferenceForInput("Get Site Contents: https://example.com")
+    ).toBe(false);
+    expect(shouldUseDbReferenceForInput("Download File: https://example.com")).toBe(
+      false
+    );
+    expect(
+      shouldUseDbReferenceForInput(
+        "Download and Read File: https://example.com/report.pdf"
+      )
+    ).toBe(false);
+  });
+
+  it("skips DB reference for action command families handled by local flows", () => {
+    expect(
+      shouldUseDbReferenceForInput("Create Image: supply chain diagram")
+    ).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput("Image ID: img_abc123\nSave")
+    ).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput(
+        "/task\nDocument ID: task_123\n本文を短くして"
+      )
+    ).toBe(false);
+    expect(
+      shouldUseDbReferenceForInput(
+        "/edit\nDocument ID: task_123\n見出しを整えて"
+      )
+    ).toBe(false);
   });
 
   it("builds normalized request text from the effective search query", () => {

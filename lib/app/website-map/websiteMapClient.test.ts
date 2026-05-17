@@ -1,12 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildWebsiteMapDocument,
+  buildWebsiteMapSiteDocument,
   fetchWebsiteMap,
   fetchWebsiteMapPageText,
   formatWebsiteMapFileLinks,
   formatWebsiteMapPageText,
+  formatWebsiteMapSiteReport,
 } from "@/lib/app/website-map/websiteMapClient";
-import type { WebsiteMapResult } from "@/lib/app/website-map/websiteMapTypes";
+import type {
+  WebsiteMapPageTextResult,
+  WebsiteMapResult,
+} from "@/lib/app/website-map/websiteMapTypes";
 
 describe("websiteMapClient", () => {
   afterEach(() => {
@@ -32,56 +37,56 @@ describe("websiteMapClient", () => {
     });
   });
 
-  it("formats a website map as a stored library document", () => {
-    const document = buildWebsiteMapDocument(buildWebsiteMapResult());
+  it("formats a combined website site report as a stored library document", () => {
+    const document = buildWebsiteMapSiteDocument({
+      result: buildWebsiteMapResult(),
+      pageText: buildPageTextResult(),
+    });
 
-    expect(document.title).toBe("Website Map: example.com");
-    expect(document.filename).toBe("example.com.website-map.md");
-    expect(document.summary).toContain("123 estimated chars");
+    expect(document.title).toBe("Home");
+    expect(document.filename).toBe("Home.website-map.md");
+    expect(document.summary).toContain("14 chars");
+    expect(document.text).toContain("# Website Map: example.com");
     expect(document.text).toContain("## Summary");
-    expect(document.text).toContain("[Get Site Contents]");
-    expect(document.text).toContain("[Save Site Map]");
-    expect(document.text).toContain("[Download File]");
-    expect(document.text).not.toContain("取得設定:");
-    expect(document.text).not.toContain("深さ 0");
-    expect(document.text).not.toContain("取得ページ: 1件");
-    expect(document.text).not.toContain("保存したファイル: 1件");
-    expect(document.text).toContain("PDF等のファイル本文はまだ読んでいません");
+    expect(document.text).toContain("- 本文量: 14文字");
+    expect(document.text).toContain("[Save Site]");
+    expect(document.text).not.toContain("[Get Site Contents]");
+    expect(document.text).not.toContain("[Save Site Map]");
     expect(document.text).toContain("## Areas");
-    expect(document.text).toContain("| 領域 | ページ | 推定本文量 |");
     expect(document.text).toContain("[Home](https://example.com)");
     expect(document.text).toContain("## Next Links");
     expect(document.text).toContain("[About](https://example.com/about)");
-    expect(document.text).toContain("[サイトマップ取得](/__gpt-command?mode=run&text=");
-    expect(document.text).not.toContain("見つけたページ");
-    expect(document.text).not.toContain("| # | 領域 | 深さ | 文字 | Files | ページ | URL |");
-    expect(document.text).toContain("## Pages");
+    expect(document.text).toContain("## Main Text: Home");
+    expect(document.text).toContain("Page body text");
+    expect(document.text).toContain("[Open Image](https://example.com/chart.png)");
+    expect(document.text).toContain("## Download Files");
+    expect(document.text).toContain("[Download File](https://example.com/report.pdf)");
+    expect(document.text).toContain("[Read and save](/__gpt-command?mode=run&text=");
+    expect(document.text).not.toContain("[Download and Read]");
+    expect(document.text).not.toContain("推定本文量");
+    expect(document.text.indexOf("## Main Text: Home")).toBeGreaterThan(
+      document.text.indexOf("## Summary")
+    );
+    expect(document.text.indexOf("## Download Files")).toBeGreaterThan(
+      document.text.indexOf("Page body text")
+    );
+    expect(document.text.indexOf("## Areas")).toBeGreaterThan(
+      document.text.indexOf("## Download Files")
+    );
     expect(document.structuredPayload.version).toBe("0.1-website-map");
+  });
+
+  it("keeps the legacy document builder on the combined site report path", () => {
+    const document = buildWebsiteMapDocument(buildWebsiteMapResult());
+
+    expect(document.text).toContain("# Website Map: example.com");
+    expect(document.text).toContain("# Site Contents: https://example.com");
+    expect(document.text).toContain("## Download Files");
   });
 
   it("requests and formats page text", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          ok: true,
-          url: "https://example.com/about",
-          finalUrl: "https://example.com/about",
-          title: "About",
-          contentType: "text/html",
-          status: 200,
-          text: "About text",
-          textCharEstimate: 10,
-          images: [
-            {
-              url: "https://example.com/chart.png",
-              alt: "Chart",
-              width: 640,
-              height: 360,
-            },
-          ],
-          fetchedAt: "2026-05-13T00:00:00.000Z",
-        })
-      )
+      new Response(JSON.stringify({ ok: true, ...buildPageTextResult() }))
     );
 
     const result = await fetchWebsiteMapPageText("https://example.com/about");
@@ -90,7 +95,9 @@ describe("websiteMapClient", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: "https://example.com/about" }),
     });
-    expect(formatWebsiteMapPageText(result)).toContain("# Site Contents: About");
+    expect(formatWebsiteMapPageText(result)).toContain("# Site Contents: Home");
+    expect(formatWebsiteMapPageText(result)).toContain("- 本文量: 14文字");
+    expect(formatWebsiteMapPageText(result)).not.toContain("推定本文量");
     expect(formatWebsiteMapPageText(result)).toContain("## Images");
     expect(formatWebsiteMapPageText(result)).toContain(
       "[Open Image](https://example.com/chart.png)"
@@ -101,20 +108,60 @@ describe("websiteMapClient", () => {
     const text = formatWebsiteMapFileLinks(buildWebsiteMapResult());
 
     expect(text).toContain("## Files");
+    expect(text).toContain("[Save Site]");
+    expect(text).not.toContain("[Get Site Contents]");
     expect(text).toContain("[Download File](https://example.com/report.pdf)");
-    expect(text).toContain("[Download and Read](/__gpt-command?mode=run&text=");
+    expect(text).toContain("[Read and save](/__gpt-command?mode=run&text=");
+    expect(text).not.toContain("[Download and Read]");
+  });
+
+  it("formats a combined website map report", () => {
+    const text = formatWebsiteMapSiteReport({
+      result: buildWebsiteMapResult(),
+      pageText: buildPageTextResult(),
+    });
+
+    expect(text).toContain("# Website Map: example.com");
+    expect(text).toContain("## Main Text: Home");
+    expect(text).toContain("## Download Files");
+    expect(text).toContain("[Save Site]");
+    expect(text).not.toContain("[Get Site Contents]");
   });
 
   it("shows a warning when the crawl stopped on the time budget", () => {
-    const document = buildWebsiteMapDocument({
-      ...buildWebsiteMapResult(),
-      timedOut: true,
-      timeBudgetMs: 45000,
+    const document = buildWebsiteMapSiteDocument({
+      result: {
+        ...buildWebsiteMapResult(),
+        timedOut: true,
+        timeBudgetMs: 45000,
+      },
+      pageText: buildPageTextResult(),
     });
 
     expect(document.text).toContain("取得時間の安全上限");
   });
 });
+
+function buildPageTextResult(): WebsiteMapPageTextResult {
+  return {
+    url: "https://example.com",
+    finalUrl: "https://example.com",
+    title: "Home",
+    contentType: "text/html",
+    status: 200,
+    text: "Page body text",
+    textCharEstimate: 14,
+    images: [
+      {
+        url: "https://example.com/chart.png",
+        alt: "Chart",
+        width: 640,
+        height: 360,
+      },
+    ],
+    fetchedAt: "2026-05-13T00:00:00.000Z",
+  };
+}
 
 function buildWebsiteMapResult(): WebsiteMapResult {
   return {

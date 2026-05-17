@@ -41,12 +41,20 @@ The current product direction is:
 - File ingest
 - YouTube transcript fetch and Kin delivery
 - Website map / site contents support
-  - `Website Map: <url>` displays a one-page map in chat
-  - `Save Site Map: <url>` saves the map to the library
-  - `Get Site Contents: <url>` extracts page main text and images
-  - `Download File: <url>` lists linked files
-  - `Download and Read File: <url>` imports a linked PDF/file through file ingest
-  - manual URL, normal search, and Google News cards expose website actions
+  - `Website Map: <url>` displays the one-page map, extracted page contents,
+    and linked files together in chat
+  - `Save Site Map: <url>` saves the combined site report to the library with
+    a content-derived title and generated summary when library summary
+    generation is enabled
+  - `Get Site Contents: <url>` still extracts page main text and images as a
+    direct compatibility command
+  - `Download File: <url>` still lists linked files as a direct compatibility
+    command
+  - `Download and Read File: <url>` imports a linked PDF/file through file ingest;
+    user-facing links are labeled `Read and save`
+  - manual URL, normal search, and Google News cards expose a site-map action
+  - local command/system actions skip automatic DB reference lookup unless the
+    command is a generative request where library context is useful
 - Kin task protocol
   - `SYS_TASK`
   - `SYS_TASK_PROGRESS`
@@ -145,8 +153,8 @@ Recent regression fixes and maintainability wins include:
 
 - Website Map / Site Contents MVP now works as a one-page-at-a-time,
   inspectable crawler-lite flow with explicit library save and explicit linked
-  file import. Source cards expose `サイトマップ表示` and `内容表示`, while YouTube
-  cards remain transcript-only.
+  file import. Source cards expose `サイトマップ表示`, while YouTube cards remain
+  transcript-only.
 - Website content extraction now strips common navigation/header/footer
   boilerplate and falls back to cleaned full-page text when a selected main
   container is too small, improving extraction on corporate pages with visible
@@ -277,7 +285,7 @@ Recent regression fixes and maintainability wins include:
   bulk display / Kin send controls; image-library bulk display shows images,
   while image-library Kin sends remain metadata-only
 - Kin PPT design work now uses `SYS_PPT_DESIGN_REQUEST / RESPONSE`, counts as
-  separate `PPT作業`, and saves finalized design documents through the existing
+  separate `PPT菴懈･ｭ`, and saves finalized design documents through the existing
   `SYS_FILE_SAVING_REQUEST` route
 - PPT direct edit and its approval queue were retired from the active command
   path; the supported PPT flow is now Stage 1 editable design, Stage 2 visual

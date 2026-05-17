@@ -81,10 +81,6 @@ export function WebsiteSourceActions({
         label="サイトマップ表示"
         onClick={() => void onRunCommand(`Website Map: ${source.link}`)}
       />
-      <WebsiteActionButton
-        label="内容表示"
-        onClick={() => void onRunCommand(`Get Site Contents: ${source.link}`)}
-      />
     </div>
   );
 }

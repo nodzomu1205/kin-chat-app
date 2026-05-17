@@ -39,6 +39,7 @@ export default function LibraryItemSearchPreview({
   onStartAskAiModeSearch,
   onImportYouTubeTranscript,
   onSendYouTubeTranscriptToKin,
+  onRunCommand,
 }: {
   item: ReferenceLibraryItem;
   askAiModeCandidates: AskAiModeCandidate[];
@@ -47,6 +48,7 @@ export default function LibraryItemSearchPreview({
   onStartAskAiModeSearch: LibraryDrawerProps["onStartAskAiModeSearch"];
   onImportYouTubeTranscript: LibraryDrawerProps["onImportYouTubeTranscript"];
   onSendYouTubeTranscriptToKin: LibraryDrawerProps["onSendYouTubeTranscriptToKin"];
+  onRunCommand?: LibraryDrawerProps["onRunCommand"];
 }) {
   return (
     <>
@@ -98,7 +100,19 @@ export default function LibraryItemSearchPreview({
                   }}
                 >
                   {sourceIndex + 1}. {source.title}
-                  {source.link ? ` | ${source.link}` : ""}
+                  {source.link ? (
+                    <>
+                      {" | "}
+                      <a
+                        href={source.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: "#2563eb", fontWeight: 700 }}
+                      >
+                        {source.link}
+                      </a>
+                    </>
+                  ) : null}
                 </div>
                 {source.sourceType === "youtube_video" ? (
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -125,6 +139,21 @@ export default function LibraryItemSearchPreview({
                       }}
                     >
                       {GPT_LIBRARY_DRAWER_TEXT.sendTranscriptToKin}
+                    </button>
+                  </div>
+                ) : source.link?.startsWith("http") && onRunCommand ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => void onRunCommand(`Website Map: ${source.link}`)}
+                      style={{
+                        ...pillButton,
+                        background: "#f0f9ff",
+                        color: "#0369a1",
+                        border: "1px solid #bae6fd",
+                      }}
+                    >
+                      サイトマップ表示
                     </button>
                   </div>
                 ) : null}
