@@ -578,6 +578,7 @@ function formatSiteReportPageTable(pages: WebsiteMapPage[]) {
   ];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatSectionTable(
   sections: Array<{ name: string; count: number; textChars: number }>
 ) {
@@ -592,6 +593,7 @@ function formatSectionTable(
   ];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatPriorityPageTable(pages: WebsiteMapPage[]) {
   if (!pages.length) return ["取得ページはありません。"];
   return [
@@ -707,6 +709,7 @@ function formatFileTable(files: WebsiteMapFile[]) {
   ];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatPageTable(pages: WebsiteMapPage[]) {
   if (!pages.length) return ["取得ページはありません。"];
   return [

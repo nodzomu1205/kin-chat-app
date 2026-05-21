@@ -7,7 +7,9 @@ describe("fetchRagLibraryReferenceContext", () => {
   });
 
   it("caps matchCount at the search API limit", async () => {
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      void url;
+      void init;
       return new Response(
         JSON.stringify({
           ok: true,
@@ -36,7 +38,9 @@ describe("fetchRagLibraryReferenceContext", () => {
   });
 
   it("passes candidate count and similarity threshold", async () => {
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      void url;
+      void init;
       return new Response(JSON.stringify({ ok: true, matches: [] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -63,7 +67,9 @@ describe("fetchRagLibraryReferenceContext", () => {
   });
 
   it("allows large candidate counts up to the expanded safety limit", async () => {
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      void url;
+      void init;
       return new Response(JSON.stringify({ ok: true, matches: [] }), {
         status: 200,
         headers: { "Content-Type": "application/json" },

@@ -17,7 +17,7 @@ Current verification baseline:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- test status: `229 files / 1065 tests`
+- test status: `229 files / 1074 tests`
 
 This roadmap should now be read together with:
 

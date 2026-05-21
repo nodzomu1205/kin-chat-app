@@ -100,7 +100,7 @@ Latest status update:
   PowerShell bulk-edit encoding regression was found and repaired.
 - Full verification on 2026-05-14 passed:
   `npm run check:utf8`, `npx tsc --noEmit`, `npm run lint`,
-  `npm test` (`229 files / 1065 tests`), and `npm run build`.
+  `npm test` (`229 files / 1074 tests`), and `npm run build`.
 
 ## Exit Checklist
 

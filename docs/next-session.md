@@ -322,7 +322,7 @@ Closeout verification passed:
 - `npx tsc --noEmit`
 - `npm run check:utf8`
 - `npm run lint`
-- `npm test` (`229 files / 1065 tests`)
+- `npm test` (`229 files / 1074 tests`)
 - `npm run build`
 
 The repository is in `late-stage maintenance-watch`, not active rescue.

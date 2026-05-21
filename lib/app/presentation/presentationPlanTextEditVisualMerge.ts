@@ -170,9 +170,11 @@ function clearHiddenLabelSlotIds(
   renderStyle: PresentationTaskVisualRequest["renderStyle"]
 ) {
   if (!renderStyle || !("hiddenLabelSlotIds" in renderStyle)) return renderStyle;
-  const { hiddenLabelSlotIds: _hiddenLabelSlotIds, ...rest } = renderStyle as
-    PresentationTaskVisualRequest["renderStyle"] & {
+  const rest = {
+    ...(renderStyle as PresentationTaskVisualRequest["renderStyle"] & {
       hiddenLabelSlotIds?: string[];
-    };
+    }),
+  };
+  delete rest.hiddenLabelSlotIds;
   return rest;
 }

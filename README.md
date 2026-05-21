@@ -134,7 +134,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `229 files / 1065 tests`
+- current test count: `229 files / 1074 tests`
 
 Current maintenance status:
 
