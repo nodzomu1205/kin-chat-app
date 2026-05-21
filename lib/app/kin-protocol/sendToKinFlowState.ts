@@ -15,15 +15,11 @@ export function extractTaskIdFromOutboundText(text: string): string | undefined 
 }
 
 export function hasKinReceivedAck(text: string) {
-  return /<<(?:SYS_KIN_RESPONSE|KIN_RESPONSE)>>[\s\S]*?Received\.\s*Send the next(?: part)?\.[\s\S]*?<<(?:END_SYS_KIN_RESPONSE|END_SYS_RESPONSE|END_KIN_RESPONSE)>>/i.test(
-    text
-  );
+  return /(?:<<(?:SYS_KIN_RESPONSE|KIN_RESPONSE)>>)?[\s\S]*?Received\.?\s*Send\s+(?:the\s+)?next(?:\s+part)?\.?[\s\S]*?(?:<<(?:END_SYS_KIN_RESPONSE|END_SYS_RESPONSE|END_KIN_RESPONSE)>>)?/i.test(text);
 }
 
 export function hasKinReceipt(text: string) {
-  return /<<(?:SYS_KIN_RESPONSE|KIN_RESPONSE)>>[\s\S]*?Received\.[\s\S]*?<<(?:END_SYS_KIN_RESPONSE|END_SYS_RESPONSE|END_KIN_RESPONSE)>>/i.test(
-    text
-  );
+  return /(?:<<(?:SYS_KIN_RESPONSE|KIN_RESPONSE)>>)?[\s\S]*?Received\.?[\s\S]*?(?:<<(?:END_SYS_KIN_RESPONSE|END_SYS_RESPONSE|END_KIN_RESPONSE)>>)?/i.test(text);
 }
 
 function parsePartPosition(text: string) {
@@ -63,7 +59,7 @@ export function resolvePendingKinInjectionAction(params: {
 
   if (
     !sentCurrentPart ||
-    (!hasAck && !isFinalPart)
+    (!hasAck && !hasReceipt && !isFinalPart)
   ) {
     return {
       type: "none" as const,

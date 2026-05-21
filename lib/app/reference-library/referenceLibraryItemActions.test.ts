@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildLibraryItemChatDisplayText,
   buildLibraryItemDriveExport,
+  buildLibraryItemKinSysInfo,
   buildLibraryItemPresentationPlanSidecarExport,
   buildLibraryItemTextArtifacts,
   normalizeLibraryChatDisplayText,
@@ -36,6 +37,21 @@ describe("buildLibraryItemChatDisplayText", () => {
     expect(text).not.toContain("Library:");
     expect(text).not.toContain("テスト文書");
     expect(text).not.toContain("transcript.txt");
+  });
+});
+
+describe("buildLibraryItemKinSysInfo", () => {
+  it("falls back to the raw excerpt when cleanup removes every detail line", () => {
+    const text = buildLibraryItemKinSysInfo(
+      createLibraryItem({
+        summary: "",
+        excerptText: "[0:00]\n[0:08]\n[0:16]",
+      })
+    );
+
+    expect(text).toContain("Detail:");
+    expect(text).toContain("[0:00]");
+    expect(text).not.toContain("Detail:\n<<END_SYS_INFO>>");
   });
 });
 

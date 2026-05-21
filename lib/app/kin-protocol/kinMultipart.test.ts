@@ -89,4 +89,26 @@ ${longBody}
     expect(finalBlock.match(/<<END_SYS_INFO>>/g)).toHaveLength(1);
     expect(finalBlock).not.toContain("<<END_SYS_TASK>>");
   });
+
+  it("keeps detail labels with the beginning of a long following detail line", () => {
+    const text = [
+      "<<SYS_INFO>>",
+      "TITLE: Library Data",
+      "CONTENT:",
+      "- Detail:",
+      "A".repeat(5000),
+      "<<END_SYS_INFO>>",
+    ].join("\n");
+
+    const blocks = buildPendingKinInjectionBlocks(text, {
+      maxChars: 1200,
+      reserveChars: 200,
+      noticeLines: DEFAULT_KIN_INFO_MULTIPART_NOTICE_LINES,
+      wrapperName: "SYS_INFO",
+    });
+
+    expect(blocks.length).toBeGreaterThan(1);
+    expect(blocks[0]).toContain("- Detail:\nA");
+    expect(blocks[0]).not.toMatch(/- Detail:\s*\n-----/);
+  });
 });

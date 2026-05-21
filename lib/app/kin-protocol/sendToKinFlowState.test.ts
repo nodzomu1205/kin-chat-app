@@ -21,12 +21,14 @@ describe("sendToKinFlowState", () => {
         "<<SYS_KIN_RESPONSE>>\nReceived. Send the next part.\n<<END_SYS_KIN_RESPONSE>>"
       )
     ).toBe(true);
+    expect(hasKinReceivedAck("Received. Send next")).toBe(true);
   });
 
   it("detects plain receipt blocks without requiring next-part guidance", () => {
     expect(
       hasKinReceipt("<<KIN_RESPONSE>>\nReceived.\n<<END_KIN_RESPONSE>>")
     ).toBe(true);
+    expect(hasKinReceipt("Received")).toBe(true);
   });
 
   it("advances pending injections only when the sent block is ACKed", () => {
@@ -43,6 +45,26 @@ describe("sendToKinFlowState", () => {
       type: "advance",
       nextIndex: 1,
       nextInput: "PART 2/2",
+    });
+  });
+
+  it("advances pending injections on receipt-only replies for non-final parts", () => {
+    expect(
+      resolvePendingKinInjectionAction({
+        text: "<<SYS_INFO>>\nPART: 1/2\npayload\n<<END_SYS_INFO>>",
+        currentPendingBlock:
+          "<<SYS_INFO>>\nPART: 1/2\npayload\n<<END_SYS_INFO>>",
+        replyText: "Received.",
+        pendingKinInjectionIndex: 0,
+        pendingKinInjectionBlocks: [
+          "<<SYS_INFO>>\nPART: 1/2\npayload\n<<END_SYS_INFO>>",
+          "<<SYS_INFO>>\nPART: 2/2\npayload\n<<END_SYS_INFO>>",
+        ],
+      })
+    ).toEqual({
+      type: "advance",
+      nextIndex: 1,
+      nextInput: "<<SYS_INFO>>\nPART: 2/2\npayload\n<<END_SYS_INFO>>",
     });
   });
 

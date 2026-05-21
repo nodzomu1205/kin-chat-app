@@ -26,7 +26,9 @@ function buildItemSummaryBlock(item: ReferenceLibraryItem) {
 }
 
 function buildItemDetailBlock(item: ReferenceLibraryItem) {
-  const detail = cleanImportedDocumentText(item.excerptText || "").trim();
+  const rawDetail = item.excerptText?.trim() || "";
+  const cleanedDetail = rawDetail ? cleanImportedDocumentText(rawDetail).trim() : "";
+  const detail = cleanedDetail || rawDetail;
   return detail ? `Detail:\n${detail}` : "Detail: none";
 }
 

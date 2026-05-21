@@ -57,6 +57,18 @@ export function splitTextIntoKinChunks(
 
       if (normalizedLine.length > effectiveMax) {
         if (buffer) {
+          const separator = "\n";
+          const available = effectiveMax - buffer.length - separator.length;
+          if (available > 120) {
+            lineChunks.push(
+              `${buffer}${separator}${normalizedLine.slice(0, available)}`.trim()
+            );
+            for (let i = available; i < normalizedLine.length; i += effectiveMax) {
+              lineChunks.push(normalizedLine.slice(i, i + effectiveMax));
+            }
+            buffer = "";
+            return;
+          }
           lineChunks.push(buffer.trim());
           buffer = "";
         }

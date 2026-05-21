@@ -73,6 +73,21 @@ describe("buildLibraryItemsAggregateText", () => {
     expect(text.match(/Summary:/g)).toHaveLength(1);
     expect(text).toContain("Detail:\nBody text");
   });
+
+  it("keeps raw detail text when import cleanup would otherwise produce an empty detail", () => {
+    const text = buildLibraryItemsAggregateText({
+      items: [
+        createItem({
+          summary: "",
+          excerptText: "[0:00]\n[0:08]\n[0:16]",
+        }),
+      ],
+      mode: "detail",
+    });
+
+    expect(text).toContain("Detail:\n[0:00]\n[0:08]\n[0:16]");
+    expect(text).not.toContain("Detail:\n\n");
+  });
 });
 
 describe("buildLibraryItemsAggregateKinSysInfo", () => {

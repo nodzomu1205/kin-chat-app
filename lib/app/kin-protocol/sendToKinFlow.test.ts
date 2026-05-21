@@ -1,0 +1,81 @@
+import { describe, expect, it, vi } from "vitest";
+import { runSendKinMessageFlow } from "@/lib/app/kin-protocol/sendToKinFlow";
+
+function createArgs(overrides: Partial<Parameters<typeof runSendKinMessageFlow>[0]> = {}) {
+  return {
+    text: "<<SYS_INFO>>\nPART: 2/2\npayload\n<<END_SYS_INFO>>",
+    currentKin: "kin-1",
+    kinLoading: false,
+    setKinConnectionState: vi.fn(),
+    setKinLoading: vi.fn(),
+    pendingKinInjectionBlocks: [
+      "<<SYS_INFO>>\nPART: 1/2\npayload\n<<END_SYS_INFO>>",
+      "<<SYS_INFO>>\nPART: 2/2\npayload\n<<END_SYS_INFO>>",
+    ],
+    pendingKinInjectionIndex: 1,
+    pendingKinInjectionPurpose: "info_share" as const,
+    setKinMessages: vi.fn(),
+    setKinInput: vi.fn(),
+    ingestProtocolMessage: vi.fn(),
+    processMultipartTaskDoneText: vi.fn(),
+    setPendingKinInjectionIndex: vi.fn(),
+    clearPendingKinInjection: vi.fn(),
+    onPendingKinAck: vi.fn(),
+    onSysTaskSent: vi.fn(),
+    onKinReply: vi.fn(),
+    ...overrides,
+  };
+}
+
+describe("runSendKinMessageFlow", () => {
+  it("does not set a continue-task prompt after a plain info-share multipart receipt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            reply: "<<SYS_KIN_RESPONSE>>\nReceived.\n<<END_SYS_KIN_RESPONSE>>",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+    );
+    const args = createArgs();
+
+    await runSendKinMessageFlow(args);
+
+    expect(args.clearPendingKinInjection).toHaveBeenCalled();
+    expect(args.onPendingKinAck).not.toHaveBeenCalled();
+    expect(args.setKinInput).toHaveBeenCalledWith("");
+    expect(args.setKinInput).not.toHaveBeenCalledWith(
+      "<<SYS_GPT_RESPONSE>>\nBODY: Noted. Continue the task.\n<<END_SYS_GPT_RESPONSE>>"
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("sets a continue-task prompt after a task-context multipart receipt", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            reply: "<<SYS_KIN_RESPONSE>>\nReceived.\n<<END_SYS_KIN_RESPONSE>>",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      )
+    );
+    const args = createArgs({
+      pendingKinInjectionPurpose: "task_context",
+    });
+
+    await runSendKinMessageFlow(args);
+
+    expect(args.clearPendingKinInjection).toHaveBeenCalled();
+    expect(args.onPendingKinAck).toHaveBeenCalled();
+    expect(args.setKinInput).toHaveBeenCalledWith(
+      "<<SYS_GPT_RESPONSE>>\nBODY: Noted. Continue the task.\n<<END_SYS_GPT_RESPONSE>>"
+    );
+    vi.unstubAllGlobals();
+  });
+});

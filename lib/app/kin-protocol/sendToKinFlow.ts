@@ -114,9 +114,10 @@ export async function runSendKinMessageFlow({
       setKinInput(pendingAction.nextInput);
     } else if (pendingAction.type === "complete") {
       clearPendingKinInjection();
-      await onPendingKinAck?.();
-      const shouldContinueTask =
-        pendingKinInjectionPurpose === "task_context" || Boolean(onPendingKinAck);
+      const shouldContinueTask = pendingKinInjectionPurpose === "task_context";
+      if (shouldContinueTask) {
+        await onPendingKinAck?.();
+      }
       if (
         shouldContinueTask &&
         pendingAction.finalReplyNeedsTaskContinuation &&

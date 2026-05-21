@@ -59,13 +59,15 @@ export function normalizeLibraryChatDisplayText(text: string): string {
 }
 
 function buildLibraryItemDetailText(item: ReferenceLibraryItem): string {
+  const summary = item.summary?.trim()
+    ? cleanImportSummarySource(item.summary).trim()
+    : "";
+  const rawDetail = item.excerptText?.trim() || "";
+  const cleanedDetail = rawDetail ? cleanImportedDocumentText(rawDetail).trim() : "";
+  const detail = cleanedDetail || rawDetail;
   const blocks = [
-    item.summary?.trim()
-      ? `Summary:\n${cleanImportSummarySource(item.summary).trim()}`
-      : "",
-    item.excerptText?.trim()
-      ? `Detail:\n${cleanImportedDocumentText(item.excerptText).trim()}`
-      : "",
+    summary ? `Summary:\n${summary}` : "",
+    detail ? `Detail:\n${detail}` : "",
   ].filter(Boolean);
 
   return normalizeWhitespace(blocks.join("\n\n"));
