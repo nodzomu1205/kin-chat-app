@@ -6,6 +6,7 @@ type Props = {
   currentKinLabel: string | null;
   kinStatus: "idle" | "connected" | "error";
   onToggleKinList: () => void;
+  onToggleKinToKinChat: () => void;
   onToggleConnectForm: () => void;
   isMobile?: boolean;
 };
@@ -14,6 +15,7 @@ export default function KinHeader({
   currentKinLabel,
   kinStatus,
   onToggleKinList,
+  onToggleKinToKinChat,
   onToggleConnectForm,
   isMobile = false,
 }: Props) {
@@ -67,6 +69,10 @@ export default function KinHeader({
 
         <button type="button" style={pillButton} onClick={onToggleKinList}>
           {KIN_PANEL_TEXT.kinList}
+        </button>
+
+        <button type="button" style={pillButton} onClick={onToggleKinToKinChat}>
+          Kin間チャット
         </button>
 
         <button type="button" style={pillButton} onClick={onToggleConnectForm}>

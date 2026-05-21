@@ -258,6 +258,7 @@ export function buildKinTransferActionArgs(
     applyTaskUsage: groups.services.applyTaskUsage,
     approvedIntentPhrases: groups.protocol.approvedIntentPhrases,
     currentKin: groups.identity.currentKin,
+    kinList: groups.identity.kinList,
     currentTaskDraft: groups.task.currentTaskDraft,
     registeredTasks: groups.task.registeredTasks,
     applyRegisteredTaskRuntimeSettings:

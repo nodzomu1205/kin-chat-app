@@ -1550,7 +1550,9 @@ function DbStatPill({ label, value }: { label: string; value: number | string })
 
 const placeholderStyle: React.CSSProperties = {
   marginTop: 12,
-  border: "1px solid #dbeafe",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#dbeafe",
   background: "#f8fafc",
   borderRadius: 8,
   padding: 14,
@@ -1574,7 +1576,9 @@ const panelHeaderStyle: React.CSSProperties = {
   justifyContent: "space-between",
   gap: 10,
   alignItems: "flex-start",
-  border: "1px solid #dbeafe",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#dbeafe",
   background: "#f8fafc",
   borderRadius: 8,
   padding: 10,
@@ -1585,7 +1589,9 @@ const panelHeaderStyle: React.CSSProperties = {
 };
 
 const refreshButtonStyle: React.CSSProperties = {
-  border: "1px solid #99f6e4",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#99f6e4",
   background: "#ffffff",
   color: "#0f766e",
   borderRadius: 999,
@@ -1607,7 +1613,9 @@ const dbHeaderActionsStyle: React.CSSProperties = {
 };
 
 const dbStatPillStyle: React.CSSProperties = {
-  border: "1px solid #dbeafe",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#dbeafe",
   background: "#ffffff",
   borderRadius: 999,
   padding: "4px 8px",
@@ -1634,7 +1642,9 @@ const dbFilterTextStyle: React.CSSProperties = {
 const dbFilterInputStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: 420,
-  border: "1px solid #cbd5e1",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#cbd5e1",
   borderRadius: 8,
   padding: "8px 10px",
   fontSize: 13,
@@ -1644,7 +1654,9 @@ const dbFilterInputStyle: React.CSSProperties = {
 };
 
 const duplicatePanelStyle: React.CSSProperties = {
-  border: "1px solid #fde68a",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#fde68a",
   background: "#fffbeb",
   borderRadius: 8,
   padding: 10,
@@ -1674,7 +1686,9 @@ const duplicateBodyStyle: React.CSSProperties = {
 };
 
 const duplicateGroupStyle: React.CSSProperties = {
-  border: "1px solid #fde68a",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#fde68a",
   background: "#ffffff",
   borderRadius: 8,
   padding: 8,
@@ -1684,7 +1698,9 @@ const duplicateGroupStyle: React.CSSProperties = {
 };
 
 const organizationPanelStyle: React.CSSProperties = {
-  border: "1px solid #99f6e4",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#99f6e4",
   background: "#f0fdfa",
   borderRadius: 8,
   padding: 10,
@@ -1706,7 +1722,9 @@ const organizationSummaryStyle: React.CSSProperties = {
 };
 
 const organizationGroupStyle: React.CSSProperties = {
-  border: "1px solid #99f6e4",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#99f6e4",
   background: "#ffffff",
   borderRadius: 8,
   padding: 8,
@@ -1716,7 +1734,9 @@ const organizationGroupStyle: React.CSSProperties = {
 };
 
 const organizationResultStyle: React.CSSProperties = {
-  border: "1px solid #a7f3d0",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#a7f3d0",
   background: "#ecfdf5",
   borderRadius: 8,
   padding: 8,
@@ -1801,7 +1821,9 @@ const dbPillStyle: React.CSSProperties = {
   fontWeight: 800,
   color: "#047857",
   background: "#ecfdf5",
-  border: "1px solid #a7f3d0",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#a7f3d0",
   borderRadius: 999,
   padding: "2px 8px",
   maxWidth: "100%",
@@ -1839,7 +1861,9 @@ const dbCandidateActionsStyle: React.CSSProperties = {
 };
 
 const smallDbButtonStyle: React.CSSProperties = {
-  border: "1px solid #bfdbfe",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#bfdbfe",
   background: "#ffffff",
   color: "#1d4ed8",
   borderRadius: 999,
@@ -1868,7 +1892,9 @@ const chunkListStyle: React.CSSProperties = {
 };
 
 const chunkCardStyle: React.CSSProperties = {
-  border: "1px solid #e2e8f0",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#e2e8f0",
   background: "#f8fafc",
   borderRadius: 8,
   padding: 10,

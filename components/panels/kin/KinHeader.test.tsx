@@ -10,11 +10,13 @@ describe("KinHeader", () => {
         currentKinLabel={null}
         kinStatus="connected"
         onToggleKinList={() => {}}
+        onToggleKinToKinChat={() => {}}
         onToggleConnectForm={() => {}}
       />
     );
 
     expect(html).toContain("Kindroid");
+    expect(html).toContain("Kin間チャット");
     expect(html).toContain("Kin一覧");
     expect(html).toContain("接続");
     expect(html).toContain("Kin未選択");

@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { runSendKinMessageFlow } from "@/lib/app/kin-protocol/sendToKinFlow";
 
-function createArgs(overrides: Partial<Parameters<typeof runSendKinMessageFlow>[0]> = {}) {
+function createArgs(
+  overrides: Partial<Parameters<typeof runSendKinMessageFlow>[0]> = {}
+) {
   return {
     text: "<<SYS_INFO>>\nPART: 2/2\npayload\n<<END_SYS_INFO>>",
     currentKin: "kin-1",
@@ -75,6 +77,46 @@ describe("runSendKinMessageFlow", () => {
     expect(args.onPendingKinAck).toHaveBeenCalled();
     expect(args.setKinInput).toHaveBeenCalledWith(
       "<<SYS_GPT_RESPONSE>>\nBODY: Noted. Continue the task.\n<<END_SYS_GPT_RESPONSE>>"
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("stores the active Kin label on Kin reply messages", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ reply: "Hello from Kin One." }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+    const setKinMessages = vi.fn();
+    const args = createArgs({
+      pendingKinInjectionBlocks: [],
+      setKinMessages,
+      kinSpeakerLabel: "Kin One",
+    });
+
+    await runSendKinMessageFlow(args);
+
+    const appendKinReply = setKinMessages.mock.calls.find((call) => {
+      const updater = call[0] as (prev: unknown[]) => unknown[];
+      const next = updater([]);
+      return next.some(
+        (message) =>
+          typeof message === "object" &&
+          message !== null &&
+          "role" in message &&
+          message.role === "kin"
+      );
+    })?.[0] as (prev: unknown[]) => Array<{ role: string; meta?: unknown }>;
+
+    expect(appendKinReply([])).toContainEqual(
+      expect.objectContaining({
+        role: "kin",
+        meta: { speakerLabel: "Kin One" },
+      })
     );
     vi.unstubAllGlobals();
   });

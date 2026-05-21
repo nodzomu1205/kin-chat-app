@@ -288,6 +288,7 @@ export type UseKinTransferActionsArgs = Pick<
   | "applyTaskUsage"
   | "approvedIntentPhrases"
   | "currentKin"
+  | "kinList"
   | "currentTaskDraft"
   | "registeredTasks"
   | "applyRegisteredTaskRuntimeSettings"
@@ -409,6 +410,11 @@ export type ChatPageActionGroups = {
     runStartKinTaskFromInput: () => Promise<void>;
     startRegisteredTask: (task: RegisteredTask) => void;
     sendKinMessage: (text: string) => Promise<void>;
+    sendKinToKinMessage: (
+      kinId: string,
+      text: string,
+      speakerLabel: string
+    ) => Promise<string>;
     sendToKin: () => Promise<void>;
     sendLastKinToGptDraft: () => void | Promise<void>;
     sendLastGptToKinDraft: () => void | Promise<void>;

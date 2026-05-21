@@ -504,32 +504,54 @@ async function listSupabaseRagLibraryChunksByDocumentIds(
   const ids = documentIds.filter(Boolean);
   if (ids.length === 0) return chunksByDocumentId;
 
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const chunkData = await listSupabaseRagLibraryChunkPage({
+      config,
+      documentIds: ids,
+      limit: pageSize,
+      offset,
+    });
+    if (chunkData.length === 0) break;
+
+    chunkData
+      .map(toRagLibraryStoredChunk)
+      .filter((chunk): chunk is RagLibraryStoredChunk => Boolean(chunk))
+      .forEach((chunk) => {
+        const chunks = chunksByDocumentId.get(chunk.documentId) || [];
+        chunks.push(chunk);
+        chunksByDocumentId.set(chunk.documentId, chunks);
+      });
+
+    if (chunkData.length < pageSize) break;
+  }
+  return chunksByDocumentId;
+}
+
+async function listSupabaseRagLibraryChunkPage(args: {
+  config: ReturnType<typeof getSupabaseRagConfig>;
+  documentIds: string[];
+  limit: number;
+  offset: number;
+}) {
   const chunkEndpoint = [
-    `${config.url}/rest/v1/rag_document_chunks`,
+    `${args.config.url}/rest/v1/rag_document_chunks`,
     "?select=id,document_id,chunk_index,content,token_estimate,metadata,created_at,updated_at",
-    `&document_id=in.(${ids.join(",")})`,
-    "&order=chunk_index.asc",
+    `&document_id=in.(${args.documentIds.map(encodeURIComponent).join(",")})`,
+    "&order=document_id.asc,chunk_index.asc",
+    `&limit=${args.limit}`,
+    args.offset ? `&offset=${args.offset}` : "",
   ].join("");
   const chunkResponse = await fetch(chunkEndpoint, {
     method: "GET",
-    headers: buildSupabaseHeaders(config),
+    headers: buildSupabaseHeaders(args.config),
   });
   const chunkRawText = await chunkResponse.text();
   const chunkData = parseSupabaseResponse(chunkRawText);
   if (!chunkResponse.ok) {
     throw new Error(resolveSupabaseErrorMessage(chunkData, chunkResponse));
   }
-  if (!Array.isArray(chunkData)) return chunksByDocumentId;
-
-  chunkData
-    .map(toRagLibraryStoredChunk)
-    .filter((chunk): chunk is RagLibraryStoredChunk => Boolean(chunk))
-    .forEach((chunk) => {
-      const chunks = chunksByDocumentId.get(chunk.documentId) || [];
-      chunks.push(chunk);
-      chunksByDocumentId.set(chunk.documentId, chunks);
-    });
-  return chunksByDocumentId;
+  return Array.isArray(chunkData) ? (chunkData as SupabaseRagChunkRow[]) : [];
 }
 
 function toRagLibraryStoredDocument(

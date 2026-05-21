@@ -7,6 +7,7 @@ import type { SourceItem } from "@/types/chat";
 type Props = {
   role: "user" | "gpt" | "kin";
   text: string;
+  speakerLabel?: string;
   sources?: SourceItem[];
   sourceDisplayCount?: number;
   onImportYouTubeTranscript?: (source: SourceItem) => void | Promise<void>;
@@ -18,6 +19,7 @@ type Props = {
 export default function MessageBubble({
   role,
   text,
+  speakerLabel,
   sources = [],
   sourceDisplayCount = 3,
   onImportYouTubeTranscript,
@@ -64,7 +66,7 @@ export default function MessageBubble({
             letterSpacing: 0.2,
           }}
         >
-          {isKin ? MESSAGE_BUBBLE_TEXT.kin : MESSAGE_BUBBLE_TEXT.gpt}
+          {speakerLabel || (isKin ? MESSAGE_BUBBLE_TEXT.kin : MESSAGE_BUBBLE_TEXT.gpt)}
         </div>
       )}
 

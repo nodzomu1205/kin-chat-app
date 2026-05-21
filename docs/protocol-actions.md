@@ -1,6 +1,6 @@
 # Protocol Actions
 
-Updated: 2026-05-03
+Updated: 2026-05-21
 
 ## Purpose
 This document defines the current authority boundaries for protocol-related user actions.
@@ -210,6 +210,33 @@ Should not do:
 - compile SYS task text directly inside GPT panel components
 - mutate persisted library settings when editing an unstarted registered task
 - auto-start a task proposal received from Kin
+
+## 7. Kin-to-Kin Chat Relay
+
+Current UI boundary:
+
+- `Kin間チャット` lives in the Kin panel, not the GPT panel.
+- v1 relays between exactly two saved Kin profiles.
+- The app sends a starter `SYS_KIN_TO_KIN_CHAT` block to the starter Kin, then
+  relays each parsed `SYS_<FROM>_TO_<TO>_CHAT` body to the other Kin.
+
+Should do:
+
+- keep the app as the authority for chat count, max-count termination,
+  transcript state, stop/reset controls, and final `SYS_INFO` notices
+- use `sendKinToKinMessage(...)` as a direct transport action for a selected
+  Kin id/label instead of mutating the global selected Kin first
+- display Kin reply authors through `Message.meta.speakerLabel`
+- keep completion summary as a GPT request built from the transcript, not as a
+  hidden memory or library write
+
+Should not do:
+
+- require simultaneous Kindroid connections
+- support group routing in v1
+- let Kin-supplied `CHAT_COUNT` override the app-owned count
+- start a Kin-to-Kin session from ordinary Kin replies outside the explicit
+  Kin panel control
 
 ## Source Of Truth Rules
 

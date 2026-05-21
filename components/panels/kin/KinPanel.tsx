@@ -16,6 +16,7 @@ import KinHeader from "./KinHeader";
 import KinManagementDrawer from "./KinManagementDrawer";
 import KinToolbar from "./KinToolbar";
 import KinComposer from "./KinComposer";
+import KinToKinChatDrawer from "./KinToKinChatDrawer";
 import {
   chatBodyStyle,
   drawerWrapStyle,
@@ -42,6 +43,8 @@ export default function KinPanel(props: KinPanelProps) {
     kinInput,
     setKinInput,
     sendToKin,
+    sendKinToKinMessage,
+    requestKinToKinSummary,
     sendLastKinToGptDraft,
     resetKinMessages,
     pendingInjectionCurrentPart,
@@ -57,6 +60,7 @@ export default function KinPanel(props: KinPanelProps) {
       kinCount: kinList.length,
     })
   );
+  const [showKinToKinChat, setShowKinToKinChat] = useState(false);
   const visibility = resolveKinPanelVisibility(visibilityState, {
     isMobile,
     kinCount: kinList.length,
@@ -89,6 +93,7 @@ export default function KinPanel(props: KinPanelProps) {
         onToggleKinList={() =>
           setVisibilityState((prev) => toggleKinPanelListVisibility(prev))
         }
+        onToggleKinToKinChat={() => setShowKinToKinChat((current) => !current)}
         onToggleConnectForm={() =>
           setVisibilityState((prev) =>
             toggleKinPanelConnectVisibility(prev, {
@@ -119,6 +124,14 @@ export default function KinPanel(props: KinPanelProps) {
             isMobile={isMobile}
           />
         </div>
+      )}
+
+      {showKinToKinChat && (
+        <KinToKinChatDrawer
+          kinList={kinList}
+          sendKinToKinMessage={sendKinToKinMessage}
+          requestSummary={requestKinToKinSummary}
+        />
       )}
 
       <div

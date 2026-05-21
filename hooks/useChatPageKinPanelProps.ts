@@ -32,6 +32,9 @@ export function useChatPageKinPanelProps(
     kinInput: args.kinState.kinInput,
     setKinInput: args.kinState.setKinInput,
     sendToKin: args.controller.kin.sendToKin,
+    sendKinToKinMessage: args.controller.kin.sendKinToKinMessage,
+    requestKinToKinSummary: (text) =>
+      args.controller.gpt.sendToGpt("normal", text),
     sendLastKinToGptDraft: args.controller.kin.sendLastKinToGptDraft,
     resetKinMessages: args.controller.panel.resetKinMessages,
     pendingInjectionCurrentPart: pendingInjectionProgress.currentPart,

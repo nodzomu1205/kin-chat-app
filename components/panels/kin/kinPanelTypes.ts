@@ -21,6 +21,12 @@ export type KinPanelProps = {
   kinInput: string;
   setKinInput: (value: string) => void;
   sendToKin: () => void;
+  sendKinToKinMessage: (
+    kinId: string,
+    text: string,
+    speakerLabel: string
+  ) => Promise<string>;
+  requestKinToKinSummary: (text: string) => void | Promise<void>;
   sendLastKinToGptDraft: () => void;
   resetKinMessages: () => void;
   pendingInjectionCurrentPart: number;

@@ -107,6 +107,7 @@ export default function ChatMessages({
             <MessageBubble
               role={m.role}
               text={m.text}
+              speakerLabel={m.meta?.speakerLabel}
               sources={m.sources}
               sourceDisplayCount={sourceDisplayCount}
               onImportYouTubeTranscript={onImportYouTubeTranscript}

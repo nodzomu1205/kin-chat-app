@@ -263,6 +263,10 @@ Current DB organization implementation:
   when narrower, self-contained chunks improve retrieval precision
 - source documents can be deleted only through the explicit post-generation
   action in the DB organization UI
+- DB document chunk loading pages through Supabase/PostgREST chunk rows until
+  exhausted. The `1000` page size is not a total cap; it prevents the default
+  1000-row response limit from truncating DB tab chunk counts, duplicate
+  detection, organization, or compaction inputs.
 
 Later:
 

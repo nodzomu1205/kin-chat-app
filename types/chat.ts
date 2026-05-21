@@ -17,6 +17,7 @@ export type SourceItem = {
 export type MessageMeta = {
   kind?: "normal" | "task_prep" | "task_deepen" | "task_format" | "task_info";
   taskDraftId?: string;
+  speakerLabel?: string;
   sourceType?:
     | "gpt_input"
     | "gpt_chat"

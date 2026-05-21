@@ -40,6 +40,13 @@ The current product direction is:
   - see `docs/library-rag-mvp.md`
 - File ingest
 - YouTube transcript fetch and Kin delivery
+- Kin-to-Kin chat relay
+  - the Kin panel can run a two-Kin relay session by alternating Kindroid API
+    sends between saved Kin profiles
+  - the app owns chat count, transcript display, stop/reset controls, max-count
+    termination, and final `SYS_INFO` notices
+  - Kin reply bubbles can display the active Kin label instead of the generic
+    `Kindroid` fallback
 - Website map / site contents support
   - `Website Map: <url>` displays the one-page map, extracted page contents,
     and linked files together in chat
@@ -134,7 +141,7 @@ The current verification baseline is:
 - `npm run lint` passes
 - `npm test` passes
 - `npm run build` passes
-- current test count: `230 files / 1080 tests`
+- current test count: `232 files / 1085 tests`
 
 Current maintenance status:
 
@@ -151,6 +158,15 @@ Current maintenance status:
 
 Recent regression fixes and maintainability wins include:
 
+- Kin-to-Kin chat v1 is available from the Kin panel. It supports a two-Kin
+  relay session, app-owned max-count enforcement, transcript display, stop/reset
+  controls, optional GPT summary request at completion, and final `SYS_INFO`
+  notices to both Kin profiles.
+- DB document chunk loading now pages through Supabase/PostgREST chunk rows, so
+  DB tab chunk counts, duplicate detection, and organization/compaction inputs
+  are no longer silently capped by the default 1000-row response.
+- Library DB panel border styling was normalized away from mixed shorthand /
+  longhand border props to avoid React 19 rerender warnings.
 - Website Map / Site Contents MVP now works as a one-page-at-a-time,
   inspectable crawler-lite flow with explicit library save and explicit linked
   file import. Source cards expose `サイトマップ表示`, while YouTube cards remain

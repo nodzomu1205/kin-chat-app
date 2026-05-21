@@ -1,13 +1,18 @@
 # Next Session Handover
 
-Updated: 2026-05-14
+Updated: 2026-05-21
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-14 Website Map / Site Contents MVP
-closeout. Start there for website crawling, source-card website actions,
-linked PDF/file discovery, page-text extraction, or saved website-map library
-display work:
+The newest active record is the 2026-05-21 Kin-to-Kin chat / DB chunk
+pagination closeout. Start there for Kin-to-Kin relay work, Kin speaker-label
+display, DB chunk-count regressions, or Library DB panel React style warnings:
+
+- [`HANDOFF-2026-05-21.md`](./HANDOFF-2026-05-21.md)
+
+For website crawling, source-card website actions, linked PDF/file discovery,
+page-text extraction, or saved website-map library display work, use the
+2026-05-14 Website Map / Site Contents MVP closeout:
 
 - [`HANDOFF-2026-05-14.md`](./HANDOFF-2026-05-14.md)
 
@@ -29,6 +34,28 @@ For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
 ## Current Next Start
+
+Current newest product slice is Kin-to-Kin chat v1:
+
+1. The Kin panel exposes `Kin間チャット`.
+2. v1 is intentionally two-Kin only.
+3. The app alternates API sends between the selected starter Kin and partner
+   Kin; it does not require simultaneous Kindroid connections.
+4. The app owns max-count enforcement, transcript display, stop/reset controls,
+   and final `SYS_INFO` notices to both Kin profiles.
+5. Optional completion summary sends the transcript to GPT as a summary request.
+6. Kin reply bubbles now store/display the active Kin label through
+   `Message.meta.speakerLabel`.
+
+Manual retest should start with a low max count such as `2` or `3`. Confirm the
+numeric max-count input accepts editing from the default `50`, the transcript
+increments, both Kin labels are visible, and the final notices are sent at the
+configured limit.
+
+DB/RAG watch update: DB document chunk loading now pages through
+`rag_document_chunks` in 1000-row pages until exhausted. This avoids the
+Supabase/PostgREST default response cap acting as a hidden total chunk cap for
+DB tab chunk counts, duplicate detection, organization, and compaction.
 
 Current default next work is no longer DB organization. The DB/RAG slice is in
 maintenance-watch after the organization workflow, full DB-card listing, and DB
@@ -322,7 +349,7 @@ Closeout verification passed:
 - `npx tsc --noEmit`
 - `npm run check:utf8`
 - `npm run lint`
-- `npm test` (`230 files / 1080 tests`)
+- `npm test` (`232 files / 1085 tests`)
 - `npm run build`
 
 The repository is in `late-stage maintenance-watch`, not active rescue.

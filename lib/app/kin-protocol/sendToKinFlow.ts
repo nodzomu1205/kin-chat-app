@@ -31,6 +31,7 @@ type RunSendKinMessageFlowArgs = {
   onPendingKinAck?: () => void | Promise<void>;
   onSysTaskSent?: (text: string) => void | Promise<void>;
   onKinReply?: (text: string) => void | Promise<void>;
+  kinSpeakerLabel?: string | null;
 };
 
 type KindroidApiResponse = {
@@ -55,8 +56,9 @@ export async function runSendKinMessageFlow({
   onPendingKinAck,
   onSysTaskSent,
   onKinReply,
+  kinSpeakerLabel,
 }: RunSendKinMessageFlowArgs) {
-  if (!text.trim() || !currentKin || kinLoading) return;
+  if (!text.trim() || !currentKin || kinLoading) return "";
 
   setKinConnectionState("idle");
   setKinLoading(true);
@@ -91,6 +93,7 @@ export async function runSendKinMessageFlow({
         id: generateId(),
         role: "kin",
         text: replyText,
+        meta: kinSpeakerLabel ? { speakerLabel: kinSpeakerLabel } : undefined,
       },
     ]);
     if (typeof data.reply === "string" && data.reply.trim()) {
@@ -136,6 +139,7 @@ export async function runSendKinMessageFlow({
         setKinInput(followupInput);
       }
     }
+    return replyText;
   } catch (error) {
     console.error(error);
     setKinConnectionState("error");
@@ -155,6 +159,7 @@ export async function runSendKinMessageFlow({
         })
       );
     }
+    return "";
   } finally {
     setKinLoading(false);
   }

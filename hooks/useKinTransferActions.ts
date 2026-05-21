@@ -43,6 +43,14 @@ function findRegisteredTaskForOutboundSysTask(
   });
 }
 
+function resolveCurrentKinLabel(args: {
+  currentKin: string | null;
+  kinList: Array<{ id: string; label: string }>;
+}) {
+  if (!args.currentKin) return null;
+  return args.kinList.find((item) => item.id === args.currentKin)?.label || null;
+}
+
 export function useKinTransferActions(
   args: UseKinTransferActionsArgs,
   deps?: { onPendingKinAck?: () => void | Promise<void> }
@@ -143,7 +151,38 @@ export function useKinTransferActions(
       onPendingKinAck: deps?.onPendingKinAck,
       onSysTaskSent: handleSysTaskSent,
       onKinReply: handleKinReplyProtocols,
+      kinSpeakerLabel: resolveCurrentKinLabel({
+        currentKin: args.currentKin,
+        kinList: args.kinList,
+      }),
     });
+  };
+
+  const sendKinToKinMessage = async (
+    kinId: string,
+    text: string,
+    speakerLabel: string
+  ) => {
+    const reply = await runSendKinMessageFlow({
+      text,
+      currentKin: kinId,
+      kinLoading: args.kinLoading,
+      setKinConnectionState: args.setKinConnectionState,
+      setKinLoading: args.setKinLoading,
+      pendingKinInjectionBlocks: [],
+      pendingKinInjectionIndex: 0,
+      pendingKinInjectionPurpose: "none",
+      setKinMessages: args.setKinMessages,
+      setKinInput: args.setKinInput,
+      ingestProtocolMessage: args.ingestProtocolMessage,
+      processMultipartTaskDoneText: (replyText) =>
+        args.processMultipartTaskDoneText(replyText),
+      setPendingKinInjectionIndex: args.setPendingKinInjectionIndex,
+      clearPendingKinInjection,
+      onKinReply: handleKinReplyProtocols,
+      kinSpeakerLabel: speakerLabel,
+    });
+    return reply;
   };
 
   const sendToKin = async () => {
@@ -180,6 +219,7 @@ export function useKinTransferActions(
     runStartKinTaskFromInput,
     startRegisteredTask,
     sendKinMessage,
+    sendKinToKinMessage,
     sendToKin,
     sendLastGptToKinDraft,
     sendLatestGptContentToKin,

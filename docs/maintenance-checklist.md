@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-05-14
+Updated: 2026-05-21
 
 ## Purpose
 
@@ -51,6 +51,17 @@ Latest status update:
   crawler-lite flow. Search/news/URL cards expose website actions; YouTube cards
   do not. Linked PDF/file bodies are imported only through explicit
   `Download and Read File`.
+- Kin-to-Kin chat v1 is implemented in the Kin panel as a two-Kin relay. The app
+  owns max-count enforcement, transcript state, stop/reset controls, final
+  `SYS_INFO` notices, and optional GPT summary request.
+- Kin reply display now supports `Message.meta.speakerLabel`, so the chat UI can
+  show the speaking Kin profile label instead of only the generic `Kindroid`
+  fallback.
+- DB document chunk loading pages through Supabase/PostgREST rows, removing the
+  accidental default 1000-row cap from DB tab chunk counts and DB maintenance
+  inputs.
+- Library DB panel border styles avoid mixed shorthand/longhand border props to
+  prevent React 19 rerender warnings.
 - Active-code mojibake cleanup was rerun after the Website Map slice. Remaining
   mojibake-looking patterns are regression-test patterns rather than
   user-facing owner files.
@@ -100,7 +111,7 @@ Latest status update:
   PowerShell bulk-edit encoding regression was found and repaired.
 - Full verification on 2026-05-14 passed:
   `npm run check:utf8`, `npx tsc --noEmit`, `npm run lint`,
-  `npm test` (`230 files / 1080 tests`), and `npm run build`.
+  `npm test` (`232 files / 1085 tests`), and `npm run build`.
 
 ## Exit Checklist
 
