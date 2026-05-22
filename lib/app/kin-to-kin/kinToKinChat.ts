@@ -13,6 +13,28 @@ export type KinToKinTranscriptEntry = {
   createdAt: string;
 };
 
+export type ParsedKinToKinChatReply = {
+  from: string;
+  to: string;
+  text: string;
+  matchedProtocol: boolean;
+};
+
+export type KinGroupChatRouteValidation =
+  | {
+      ok: true;
+      from: string;
+      to: string;
+      text: string;
+      recipient: KinToKinMember;
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
+
+export const KIN_GROUP_CHAT_END_TOKEN = "**END THE CHAT**";
+
 export function buildKinToKinStartBlock(args: {
   starter: string;
   partner: string;
@@ -30,6 +52,42 @@ export function buildKinToKinStartBlock(args: {
     `<<SYS_${args.starter}_TO_${args.partner}_CHAT>>`,
     "[YOUR MESSAGE]",
     `<<END_SYS_${args.starter}_TO_${args.partner}_CHAT>>`,
+    "<<END_SYS_KIN_TO_KIN_CHAT>>",
+  ].join("\n");
+}
+
+export function buildKinGroupChatStartBlock(args: {
+  facilitator: string;
+  participants: string[];
+  topic: string;
+  maxCount: number;
+}) {
+  return [
+    "<<SYS_KIN_TO_KIN_CHAT>>",
+    `MAX_CHAT_COUNT: ${args.maxCount}`,
+    `CHAT_MEMBERS: ${args.participants.join(", ")}`,
+    `STARTER: ${args.facilitator}`,
+    `TOPIC: ${args.topic}`,
+    "",
+    "You are the facilitator of this Kin group chat.",
+    "",
+    "Participants:",
+    ...formatKinGroupParticipantLines(args.facilitator, args.participants, {
+      facilitatorIsYou: true,
+    }),
+    "",
+    "Rules:",
+    "- Choose exactly one next speaker from the participant list.",
+    "- Your reply must use exactly this format:",
+    `  <<SYS_${args.facilitator}_TO_[ChosenParticipantKinName]_CHAT>>`,
+    "  [Your message to the chosen participant]",
+    `  <<END_SYS_${args.facilitator}_TO_[ChosenParticipantKinName]_CHAT>>`,
+    "- The chosen participant may not have seen the full conversation history.",
+    "- Add brief context inside your message when it helps the chosen participant answer well.",
+    "- If a participant asks another participant a question, you must coordinate it by choosing the next speaker yourself.",
+    `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+    "",
+    "Start the group chat now by choosing the first participant to speak.",
     "<<END_SYS_KIN_TO_KIN_CHAT>>",
   ].join("\n");
 }
@@ -54,6 +112,121 @@ export function buildKinToKinRelayBlock(args: {
   ].join("\n");
 }
 
+export function buildKinGroupChatRelayBlock(args: {
+  facilitator: string;
+  participants: string[];
+  recipient: string;
+  sender: string;
+  message: string;
+}) {
+  const isFacilitatorRecipient = args.recipient === args.facilitator;
+  if (isFacilitatorRecipient) {
+    return [
+      "System notice:",
+      "You are the facilitator of this Kin group chat.",
+      "",
+      "Participants:",
+      ...formatKinGroupParticipantLines(args.facilitator, args.participants, {
+        facilitatorIsYou: true,
+      }),
+      "",
+      "Rules:",
+      "- Choose exactly one next speaker from the participant list.",
+      "- Your reply must use exactly this format:",
+      `  <<SYS_${args.facilitator}_TO_[ChosenParticipantKinName]_CHAT>>`,
+      "  [Your message to the chosen participant]",
+      `  <<END_SYS_${args.facilitator}_TO_[ChosenParticipantKinName]_CHAT>>`,
+      "- The chosen participant may not have seen the full conversation history.",
+      "- Add brief context inside your message when it helps the chosen participant answer well.",
+      "- If the participant below asks another participant a question, you must coordinate it by choosing the next speaker yourself.",
+      `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+      "",
+      `Incoming message from ${args.sender}:`,
+      args.message.trim(),
+    ].join("\n");
+  }
+
+  return [
+    "System notice:",
+    "You are participating in a Kin group chat.",
+    "",
+    "Facilitator:",
+    args.facilitator,
+    "",
+    "Participants:",
+    ...formatKinGroupParticipantLines(args.facilitator, args.participants),
+    "",
+    "Rules:",
+    `- Reply only to the facilitator, ${args.facilitator}.`,
+    "- If you want another participant to answer something, ask the facilitator to pass it to them.",
+    "- Your reply must use exactly this format:",
+    `  <<SYS_${args.recipient}_TO_${args.facilitator}_CHAT>>`,
+    "  [Your message to the facilitator]",
+    `  <<END_SYS_${args.recipient}_TO_${args.facilitator}_CHAT>>`,
+    "",
+    "Incoming message from the facilitator:",
+    args.message.trim(),
+  ].join("\n");
+}
+
+export function buildKinGroupChatRetryBlock(args: {
+  facilitator: string;
+  participants: string[];
+  sender: string;
+  reason: string;
+}) {
+  const isFacilitator = args.sender === args.facilitator;
+  if (isFacilitator) {
+    return [
+      "System notice:",
+      "Your previous reply could not be relayed because its routing format was invalid.",
+      "",
+      "Reason:",
+      args.reason,
+      "",
+      "Participants:",
+      ...formatKinGroupParticipantLines(args.facilitator, args.participants, {
+        facilitatorIsYou: true,
+      }),
+      "",
+      "Rules:",
+      "- Choose exactly one next speaker from the participant list.",
+      "- Your reply must use exactly this format:",
+      `  <<SYS_${args.facilitator}_TO_[ChosenParticipantKinName]_CHAT>>`,
+      "  [Your message to the chosen participant]",
+      `  <<END_SYS_${args.facilitator}_TO_[ChosenParticipantKinName]_CHAT>>`,
+      "- Add brief context inside your message when it helps the chosen participant answer well.",
+      `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+      "",
+      "Please rewrite your previous message in the correct format.",
+    ].join("\n");
+  }
+
+  return [
+    "System notice:",
+    "Your previous reply could not be relayed because its routing format was invalid.",
+    "",
+    "Reason:",
+    args.reason,
+    "",
+    "Facilitator:",
+    args.facilitator,
+    "",
+    "Participants:",
+    ...formatKinGroupParticipantLines(args.facilitator, args.participants),
+    "",
+    "Rules:",
+    `- Reply only to the facilitator, ${args.facilitator}.`,
+    "- If you want another participant to answer something, ask the facilitator to pass it to them.",
+    "- Your reply must use exactly this format:",
+    `  <<SYS_${args.sender}_TO_${args.facilitator}_CHAT>>`,
+    "  [Your message to the facilitator]",
+    `  <<END_SYS_${args.sender}_TO_${args.facilitator}_CHAT>>`,
+    "",
+    "Please rewrite your previous message in the correct format.",
+  ].join("\n");
+}
+
 export function buildKinToKinLimitNotice(args: {
   maxCount: number;
   topic: string;
@@ -71,7 +244,7 @@ export function buildKinToKinLimitNotice(args: {
 export function parseKinToKinChatReply(
   text: string,
   expected: { from: string; to: string }
-) {
+): ParsedKinToKinChatReply {
   const escapedFrom = escapeRegExp(expected.from);
   const escapedTo = escapeRegExp(expected.to);
   const exact = new RegExp(
@@ -89,6 +262,72 @@ export function parseKinToKinChatReply(
     text: stripProtocolNoise(body),
     matchedProtocol: Boolean(match || looseMatch),
   };
+}
+
+export function parseKinToKinProtocolBlock(
+  text: string
+): ParsedKinToKinChatReply {
+  const loose = /<<SYS_([^>]+?)_TO_([^>]+?)_CHAT>>([\s\S]*?)<<END_SYS_[^>]+?_TO_[^>]+?_CHAT>>/i;
+  const looseMatch = text.match(loose);
+  const body = (looseMatch?.[3] || text).trim();
+
+  return {
+    from: looseMatch?.[1]?.trim() || "",
+    to: looseMatch?.[2]?.trim() || "",
+    text: stripProtocolNoise(body),
+    matchedProtocol: Boolean(looseMatch),
+  };
+}
+
+export function validateKinGroupChatRoute(args: {
+  parsed: ParsedKinToKinChatReply;
+  sender: KinToKinMember;
+  facilitator: KinToKinMember;
+  members: KinToKinMember[];
+}): KinGroupChatRouteValidation {
+  if (!args.parsed.matchedProtocol) {
+    return { ok: false, reason: "The reply did not include a SYS chat block." };
+  }
+  if (args.parsed.from !== args.sender.label) {
+    return {
+      ok: false,
+      reason: `The FROM name must be ${args.sender.label}.`,
+    };
+  }
+
+  const recipient = args.members.find((member) => member.label === args.parsed.to);
+  if (!recipient) {
+    return {
+      ok: false,
+      reason: "The TO name did not match any group participant.",
+    };
+  }
+
+  const senderIsFacilitator = args.sender.id === args.facilitator.id;
+  if (senderIsFacilitator && recipient.id === args.facilitator.id) {
+    return {
+      ok: false,
+      reason: "The facilitator must choose a participant as the next speaker.",
+    };
+  }
+  if (!senderIsFacilitator && recipient.id !== args.facilitator.id) {
+    return {
+      ok: false,
+      reason: `Participants must reply to the facilitator, ${args.facilitator.label}.`,
+    };
+  }
+
+  return {
+    ok: true,
+    from: args.parsed.from,
+    to: args.parsed.to,
+    text: args.parsed.text,
+    recipient,
+  };
+}
+
+export function containsKinGroupChatEndToken(text: string) {
+  return text.includes(KIN_GROUP_CHAT_END_TOKEN);
 }
 
 export function buildKinToKinSummaryRequest(args: {
@@ -122,6 +361,19 @@ function stripProtocolNoise(text: string) {
     })
     .join("\n")
     .trim();
+}
+
+function formatKinGroupParticipantLines(
+  facilitator: string,
+  participants: string[],
+  options?: { facilitatorIsYou?: boolean }
+) {
+  return participants.map((participant) => {
+    if (participant !== facilitator) return `- ${participant}`;
+    return options?.facilitatorIsYou
+      ? `- ${participant} (facilitator, you)`
+      : `- ${participant} (facilitator)`;
+  });
 }
 
 function escapeRegExp(value: string) {

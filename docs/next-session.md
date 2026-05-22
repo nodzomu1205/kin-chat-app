@@ -1,12 +1,18 @@
 # Next Session Handover
 
-Updated: 2026-05-21
+Updated: 2026-05-22
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-21 Kin-to-Kin chat / DB chunk
-pagination closeout. Start there for Kin-to-Kin relay work, Kin speaker-label
-display, DB chunk-count regressions, or Library DB panel React style warnings:
+The newest active record is the 2026-05-22 Kin-to-Kin facilitator-led group
+chat closeout. Start there for three-or-more Kin chat, facilitator routing,
+invalid route retry handling, or Kin-to-Kin participant selection UI:
+
+- [`HANDOFF-2026-05-22.md`](./HANDOFF-2026-05-22.md)
+
+Use the 2026-05-21 Kin-to-Kin chat / DB chunk pagination closeout for the
+original two-Kin relay implementation, Kin speaker-label display, DB
+chunk-count regressions, or Library DB panel React style warnings:
 
 - [`HANDOFF-2026-05-21.md`](./HANDOFF-2026-05-21.md)
 
@@ -35,7 +41,34 @@ For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 
 ## Current Next Start
 
-Current newest product slice is Kin-to-Kin chat v1:
+Current newest product slice is Kin-to-Kin facilitator-led group chat:
+
+1. The Kin-to-Kin drawer supports one or more selected participant Kin profiles.
+2. One selected participant keeps the original two-Kin alternating relay.
+3. Two or more selected participants use group mode.
+4. Group mode sends the initial request only to the starter Kin.
+5. The starter Kin acts as facilitator and chooses the next participant through
+   the existing `<<SYS_[Facilitator]_TO_[Participant]_CHAT>>` format.
+6. Participants reply only to the facilitator with
+   `<<SYS_[Participant]_TO_[Facilitator]_CHAT>>`.
+7. The app validates route shape and participant names before relaying.
+8. Invalid routes are retried with a short English system notice to the same
+   Kin, with retry count capped to avoid infinite correction loops.
+9. The facilitator can end group chat early by including `**END THE CHAT**` in
+   the message body; participants cannot end the session with that token.
+10. The drawer UI is now compact: participant chips stay inside a small
+    scrollable grid and PC controls no longer stretch across the full width.
+
+Manual retest should start with three Kin profiles and a low max count such as
+`3` or `4`. Confirm only the starter receives the initial prompt, the starter
+selects a participant, participants reply to the starter, and invalid direct
+participant-to-participant output is retried rather than relayed. Also confirm
+that the facilitator can end the session with `**END THE CHAT**`.
+
+Live note: the first three-Kin live test after this implementation progressed
+normally and was reported as very good.
+
+Previous product slice was Kin-to-Kin chat v1:
 
 1. The Kin panel exposes `Kin間チャット`.
 2. v1 is intentionally two-Kin only.

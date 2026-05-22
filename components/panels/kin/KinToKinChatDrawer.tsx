@@ -1,13 +1,21 @@
-"use client";
+﻿"use client";
 
 import React, { useMemo, useRef, useState } from "react";
 import type { KinProfile } from "@/types/chat";
+import { generateId } from "@/lib/shared/uuid";
 import {
+  buildKinGroupChatRelayBlock,
+  buildKinGroupChatRetryBlock,
+  buildKinGroupChatStartBlock,
   buildKinToKinLimitNotice,
   buildKinToKinRelayBlock,
   buildKinToKinStartBlock,
   buildKinToKinSummaryRequest,
+  containsKinGroupChatEndToken,
+  parseKinToKinProtocolBlock,
   parseKinToKinChatReply,
+  validateKinGroupChatRoute,
+  type KinToKinMember,
   type KinToKinTranscriptEntry,
 } from "@/lib/app/kin-to-kin/kinToKinChat";
 
@@ -35,7 +43,9 @@ export default function KinToKinChatDrawer({
   requestSummary,
 }: Props) {
   const [starterId, setStarterId] = useState(() => kinList[0]?.id || "");
-  const [partnerId, setPartnerId] = useState(() => kinList[1]?.id || "");
+  const [participantIds, setParticipantIds] = useState<string[]>(() =>
+    kinList[1]?.id ? [kinList[1].id] : []
+  );
   const [topic, setTopic] = useState("");
   const [maxCountInput, setMaxCountInput] = useState("50");
   const [summarizeOnEnd, setSummarizeOnEnd] = useState(false);
@@ -48,22 +58,38 @@ export default function KinToKinChatDrawer({
     starterId && kinList.some((kin) => kin.id === starterId)
       ? starterId
       : kinList[0]?.id || "";
-  const resolvedPartnerId =
-    partnerId &&
-    partnerId !== resolvedStarterId &&
-    kinList.some((kin) => kin.id === partnerId)
-      ? partnerId
-      : kinList.find((kin) => kin.id !== resolvedStarterId)?.id || "";
 
   const availablePartners = useMemo(
     () => kinList.filter((kin) => kin.id !== resolvedStarterId),
     [kinList, resolvedStarterId]
   );
+  const resolvedParticipantIds = useMemo(() => {
+    return participantIds.filter(
+      (id) => id !== resolvedStarterId && kinList.some((kin) => kin.id === id)
+    );
+  }, [kinList, participantIds, resolvedStarterId]);
+  const selectedMembers = useMemo(
+    () =>
+      [resolvedStarterId, ...resolvedParticipantIds]
+        .map((id) => kinList.find((kin) => kin.id === id))
+        .filter((kin): kin is KinProfile => Boolean(kin)),
+    [kinList, resolvedParticipantIds, resolvedStarterId]
+  );
+  const hasDuplicateSelectedLabels =
+    new Set(selectedMembers.map((kin) => kin.label)).size !==
+    selectedMembers.length;
+  const selectedParticipantLabels = availablePartners
+    .filter((kin) => resolvedParticipantIds.includes(kin.id))
+    .map((kin) => kin.label);
+  const participantModeLabel =
+    resolvedParticipantIds.length > 1
+      ? `${resolvedParticipantIds.length + 1} members / group`
+      : "2 members";
   const canStart =
     kinList.length >= 2 &&
     resolvedStarterId &&
-    resolvedPartnerId &&
-    resolvedStarterId !== resolvedPartnerId &&
+    resolvedParticipantIds.length > 0 &&
+    !hasDuplicateSelectedLabels &&
     topic.trim() &&
     resolveMaxCount(maxCountInput) > 0 &&
     status !== "running";
@@ -74,8 +100,7 @@ export default function KinToKinChatDrawer({
   };
 
   const finishSession = async (params: {
-    starter: KinProfile;
-    partner: KinProfile;
+    members: KinProfile[];
     reason: "limit" | "stopped";
   }) => {
     setStatus(params.reason === "limit" ? "completed" : "paused");
@@ -84,8 +109,9 @@ export default function KinToKinChatDrawer({
         maxCount: resolveMaxCount(maxCountInput),
         topic: topic.trim(),
       });
-      await sendKinToKinMessage(params.starter.id, noticeBlock, params.starter.label);
-      await sendKinToKinMessage(params.partner.id, noticeBlock, params.partner.label);
+      for (const member of params.members) {
+        await sendKinToKinMessage(member.id, noticeBlock, member.label);
+      }
     }
     if (summarizeOnEnd && transcriptRef.current.length > 0) {
       await requestSummary(
@@ -99,8 +125,10 @@ export default function KinToKinChatDrawer({
 
   const startSession = async () => {
     const starter = kinList.find((kin) => kin.id === resolvedStarterId);
-    const partner = kinList.find((kin) => kin.id === resolvedPartnerId);
-    if (!starter || !partner || !canStart) return;
+    const participants = resolvedParticipantIds
+      .map((id) => kinList.find((kin) => kin.id === id))
+      .filter((kin): kin is KinProfile => Boolean(kin));
+    if (!starter || participants.length === 0 || !canStart) return;
     const maxCount = resolveMaxCount(maxCountInput);
 
     stopRequestedRef.current = false;
@@ -110,6 +138,16 @@ export default function KinToKinChatDrawer({
     setNotice("");
 
     try {
+      if (participants.length > 1) {
+        await runGroupSession({
+          starter,
+          participants,
+          maxCount,
+        });
+        return;
+      }
+
+      const partner = participants[0];
       let sender = starter;
       let receiver = partner;
       let outbound = buildKinToKinStartBlock({
@@ -121,14 +159,14 @@ export default function KinToKinChatDrawer({
 
       for (let count = 1; count <= maxCount; count += 1) {
         if (stopRequestedRef.current) {
-          await finishSession({ starter, partner, reason: "stopped" });
+          await finishSession({ members: [starter, partner], reason: "stopped" });
           return;
         }
 
         const reply = await sendKinToKinMessage(sender.id, outbound, sender.label);
         if (!reply.trim()) {
           setStatus("error");
-          setNotice(`${sender.label} から有効な返信を受信できませんでした。`);
+          setNotice("No valid reply was received from " + sender.label + ".");
           return;
         }
 
@@ -137,7 +175,7 @@ export default function KinToKinChatDrawer({
           to: receiver.label,
         });
         const entry = {
-          id: `kin-chat-${Date.now()}-${count}`,
+          id: generateId(),
           from: parsed.from,
           to: parsed.to,
           text: parsed.text,
@@ -148,7 +186,7 @@ export default function KinToKinChatDrawer({
         appendEntry(entry);
 
         if (count >= maxCount) {
-          await finishSession({ starter, partner, reason: "limit" });
+          await finishSession({ members: [starter, partner], reason: "limit" });
           return;
         }
 
@@ -164,7 +202,113 @@ export default function KinToKinChatDrawer({
       }
     } catch (error) {
       setStatus("error");
-      setNotice(error instanceof Error ? error.message : "Kin間チャットに失敗しました。");
+      setNotice(error instanceof Error ? error.message : "Kin-to-Kin chat failed.");
+    }
+  };
+
+  const runGroupSession = async (params: {
+    starter: KinProfile;
+    participants: KinProfile[];
+    maxCount: number;
+  }) => {
+    const members = [params.starter, ...params.participants];
+    const memberRefs: KinToKinMember[] = members.map((member) => ({
+      id: member.id,
+      label: member.label,
+    }));
+    const facilitator = memberRefs[0];
+    const participantLabels = memberRefs.map((member) => member.label);
+    let sender = params.starter;
+    let outbound = buildKinGroupChatStartBlock({
+      facilitator: params.starter.label,
+      participants: participantLabels,
+      topic: topic.trim(),
+      maxCount: params.maxCount,
+    });
+    let count = 0;
+    let retryCount = 0;
+
+    while (count < params.maxCount) {
+      if (stopRequestedRef.current) {
+        await finishSession({ members, reason: "stopped" });
+        return;
+      }
+
+      const reply = await sendKinToKinMessage(sender.id, outbound, sender.label);
+      if (!reply.trim()) {
+        setStatus("error");
+        setNotice(`No valid reply was received from ${sender.label}.`);
+        return;
+      }
+
+      const parsed = parseKinToKinProtocolBlock(reply);
+      const validation = validateKinGroupChatRoute({
+        parsed,
+        sender: { id: sender.id, label: sender.label },
+        facilitator,
+        members: memberRefs,
+      });
+
+      if (!validation.ok) {
+        retryCount += 1;
+        if (retryCount > 2) {
+          setStatus("error");
+          setNotice(
+            `${sender.label} could not rewrite the group chat route correctly: ${validation.reason}`
+          );
+          return;
+        }
+        outbound = buildKinGroupChatRetryBlock({
+          facilitator: params.starter.label,
+          participants: participantLabels,
+          sender: sender.label,
+          reason: validation.reason,
+        });
+        continue;
+      }
+
+      retryCount = 0;
+      count += 1;
+      const entry = {
+        id: generateId(),
+        from: validation.from,
+        to: validation.to,
+        text: validation.text,
+        count,
+        maxCount: params.maxCount,
+        createdAt: new Date().toISOString(),
+      };
+      appendEntry(entry);
+
+      if (
+        validation.from === params.starter.label &&
+        containsKinGroupChatEndToken(validation.text)
+      ) {
+        await finishSession({ members, reason: "limit" });
+        return;
+      }
+
+      if (count >= params.maxCount) {
+        await finishSession({ members, reason: "limit" });
+        return;
+      }
+
+      outbound = buildKinGroupChatRelayBlock({
+        facilitator: params.starter.label,
+        participants: participantLabels,
+        recipient: validation.recipient.label,
+        sender: validation.from,
+        message: validation.text,
+      });
+      const nextSender = members.find(
+        (member) => member.id === validation.recipient.id
+      );
+      if (!nextSender) {
+        setStatus("error");
+        setNotice("Next Kin participant could not be resolved.");
+        return;
+      }
+      sender = nextSender;
     }
   };
 
@@ -172,30 +316,27 @@ export default function KinToKinChatDrawer({
     <div style={drawerStyle}>
       <div style={headerStyle}>
         <div>
-          <div style={titleStyle}>Kin間チャット</div>
-          <div style={bodyStyle}>
-            2名のKinを順番に呼び出し、返信を相手Kinへ転送します。
-          </div>
+          <div style={titleStyle}>Kin-to-Kin chat</div>
         </div>
         <span style={statusPillStyle}>{status}</span>
       </div>
 
       {kinList.length < 2 ? (
-        <div style={alertStyle}>Kinを2名以上登録すると利用できます。</div>
+        <div style={alertStyle}>Register at least two Kin profiles to use this chat.</div>
       ) : (
         <>
           <div style={formGridStyle}>
             <label style={fieldStyle}>
-              <span style={labelStyle}>開始Kin</span>
+              <span style={labelStyle}>Starter Kin</span>
               <select
                 value={resolvedStarterId}
                 disabled={status === "running"}
                 onChange={(event) => {
                   const next = event.currentTarget.value;
                   setStarterId(next);
-                  if (resolvedPartnerId === next) {
-                    setPartnerId(kinList.find((kin) => kin.id !== next)?.id || "");
-                  }
+                  setParticipantIds((current) =>
+                    current.filter((id) => id !== next)
+                  );
                 }}
                 style={inputStyle}
               >
@@ -208,23 +349,50 @@ export default function KinToKinChatDrawer({
             </label>
 
             <label style={fieldStyle}>
-              <span style={labelStyle}>相手Kin</span>
-              <select
-                value={resolvedPartnerId}
-                disabled={status === "running"}
-                onChange={(event) => setPartnerId(event.currentTarget.value)}
-                style={inputStyle}
-              >
-                {availablePartners.map((kin) => (
-                  <option key={kin.id} value={kin.id}>
-                    {kin.label}
-                  </option>
-                ))}
-              </select>
+              <span style={labelStyle}>Participants / {participantModeLabel}</span>
+              <div style={participantPanelStyle}>
+                <div style={participantSummaryStyle}>
+                  {selectedParticipantLabels.length > 0
+                    ? selectedParticipantLabels.join(", ")
+                    : "Select at least one participant"}
+                </div>
+                <div style={participantListStyle}>
+                {availablePartners.map((kin) => {
+                  const checked = resolvedParticipantIds.includes(kin.id);
+                  return (
+                    <button
+                      key={kin.id}
+                      type="button"
+                      aria-pressed={checked}
+                      disabled={status === "running"}
+                      onClick={() => {
+                        setParticipantIds((current) =>
+                          checked
+                            ? current.filter((id) => id !== kin.id)
+                            : [...new Set([...current, kin.id])]
+                        );
+                      }}
+                      style={{
+                        ...participantOptionStyle,
+                        borderColor: checked ? "#a78bfa" : "#cbd5e1",
+                        background: checked ? "#f3e8ff" : "#ffffff",
+                        color: checked ? "#5b21b6" : "#334155",
+                        cursor: status === "running" ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <span style={participantCheckStyle}>
+                        {checked ? "ON" : "OFF"}
+                      </span>
+                      <span style={participantNameStyle}>{kin.label}</span>
+                    </button>
+                  );
+                })}
+                </div>
+              </div>
             </label>
 
             <label style={fieldStyle}>
-              <span style={labelStyle}>会話上限</span>
+              <span style={labelStyle}>Max turns</span>
               <input
                 type="number"
                 min={1}
@@ -238,7 +406,7 @@ export default function KinToKinChatDrawer({
             </label>
 
             <div style={fieldStyle}>
-              <span style={labelStyle}>終了時サマリー</span>
+              <span style={labelStyle}>Summary on end</span>
               <button
                 type="button"
                 disabled={status === "running"}
@@ -253,19 +421,19 @@ export default function KinToKinChatDrawer({
                 }}
                 aria-pressed={summarizeOnEnd}
               >
-                {summarizeOnEnd ? "ON" : "OFF"} / GPTへ要約依頼
+                {summarizeOnEnd ? "ON" : "OFF"}
               </button>
             </div>
           </div>
 
           <label style={fieldStyle}>
-            <span style={labelStyle}>トピック</span>
+            <span style={labelStyle}>Topic</span>
             <textarea
               value={topic}
               disabled={status === "running"}
               onChange={(event) => setTopic(event.currentTarget.value)}
-              placeholder="会話させたいテーマ"
-              style={{ ...inputStyle, minHeight: 58, resize: "vertical" }}
+              placeholder="Conversation topic"
+              style={topicInputStyle}
             />
           </label>
 
@@ -280,18 +448,18 @@ export default function KinToKinChatDrawer({
                 cursor: canStart ? "pointer" : "not-allowed",
               }}
             >
-              開始
+              Start
             </button>
             <button
               type="button"
               disabled={status !== "running"}
               onClick={() => {
                 stopRequestedRef.current = true;
-                setNotice("現在の送受信が終わったら停止します。");
+                setNotice("The session will stop after the current send/receive cycle finishes.");
               }}
               style={secondaryButtonStyle}
             >
-              停止
+              Stop
             </button>
             <button
               type="button"
@@ -304,7 +472,7 @@ export default function KinToKinChatDrawer({
               }}
               style={secondaryButtonStyle}
             >
-              リセット
+              Reset
             </button>
           </div>
         </>
@@ -314,7 +482,7 @@ export default function KinToKinChatDrawer({
 
       <div style={transcriptStyle}>
         {transcript.length === 0 ? (
-          <div style={bodyStyle}>会話ログはまだありません。</div>
+          <div style={bodyStyle}>No conversation log yet.</div>
         ) : (
           transcript.map((entry) => (
             <div key={entry.id} style={entryStyle}>
@@ -332,8 +500,8 @@ export default function KinToKinChatDrawer({
 
 const drawerStyle: React.CSSProperties = {
   display: "grid",
-  gap: 10,
-  padding: 10,
+  gap: 6,
+  padding: "7px 8px",
   borderBottomWidth: 1,
   borderBottomStyle: "solid",
   borderBottomColor: "#ddd6fe",
@@ -344,12 +512,12 @@ const drawerStyle: React.CSSProperties = {
 const headerStyle: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
-  gap: 10,
+  gap: 8,
   alignItems: "flex-start",
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: 13,
+  fontSize: 12,
   fontWeight: 800,
   color: "#3b0764",
 };
@@ -366,8 +534,8 @@ const statusPillStyle: React.CSSProperties = {
   borderStyle: "solid",
   borderColor: "#c4b5fd",
   borderRadius: 999,
-  padding: "3px 8px",
-  fontSize: 11,
+  padding: "2px 7px",
+  fontSize: 10,
   fontWeight: 800,
   color: "#5b21b6",
   background: "#ffffff",
@@ -375,18 +543,21 @@ const statusPillStyle: React.CSSProperties = {
 
 const formGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: 8,
+  gridTemplateColumns: "165px 220px 82px 74px",
+  gap: 6,
+  justifyContent: "start",
+  alignItems: "end",
+  overflowX: "auto",
 };
 
 const fieldStyle: React.CSSProperties = {
   display: "grid",
-  gap: 4,
+  gap: 3,
   minWidth: 0,
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: 10,
   fontWeight: 800,
   color: "#475569",
 };
@@ -396,27 +567,99 @@ const inputStyle: React.CSSProperties = {
   borderWidth: 1,
   borderStyle: "solid",
   borderColor: "#cbd5e1",
-  borderRadius: 8,
-  padding: "7px 8px",
+  borderRadius: 7,
+  padding: "5px 7px",
   fontSize: 12,
   boxSizing: "border-box",
   background: "#ffffff",
   color: "#0f172a",
 };
 
+const topicInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  maxWidth: 640,
+  minHeight: 36,
+  resize: "vertical",
+};
+
+const participantPanelStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 4,
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderColor: "#cbd5e1",
+  borderRadius: 7,
+  padding: 5,
+  background: "#ffffff",
+};
+
+const participantSummaryStyle: React.CSSProperties = {
+  minHeight: 14,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#475569",
+};
+
+const participantListStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(86px, 1fr))",
+  gap: 3,
+  maxHeight: 54,
+  overflow: "auto",
+};
+
+const participantOptionStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 4,
+  minWidth: 0,
+  width: "100%",
+  borderWidth: 1,
+  borderStyle: "solid",
+  borderRadius: 5,
+  padding: "3px 5px",
+  fontSize: 10,
+  fontWeight: 700,
+  textAlign: "left",
+};
+
+const participantCheckStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 24,
+  flexShrink: 0,
+  borderRadius: 999,
+  padding: "1px 0",
+  background: "rgba(255,255,255,0.72)",
+  fontSize: 8,
+  fontWeight: 900,
+};
+
+const participantNameStyle: React.CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
 const actionsStyle: React.CSSProperties = {
   display: "flex",
-  gap: 8,
+  gap: 6,
   flexWrap: "wrap",
 };
 
 const toggleButtonStyle: React.CSSProperties = {
-  width: "100%",
+  width: 74,
   borderWidth: 1,
   borderStyle: "solid",
   borderRadius: 999,
-  padding: "7px 10px",
-  fontSize: 12,
+  padding: "5px 8px",
+  fontSize: 11,
   fontWeight: 800,
   textAlign: "center",
   boxSizing: "border-box",
@@ -425,10 +668,10 @@ const toggleButtonStyle: React.CSSProperties = {
 const primaryButtonStyle: React.CSSProperties = {
   border: 0,
   borderRadius: 999,
-  padding: "7px 12px",
+  padding: "5px 10px",
   background: "#6d28d9",
   color: "#ffffff",
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 800,
 };
 
@@ -437,10 +680,10 @@ const secondaryButtonStyle: React.CSSProperties = {
   borderStyle: "solid",
   borderColor: "#cbd5e1",
   borderRadius: 999,
-  padding: "7px 12px",
+  padding: "5px 10px",
   background: "#ffffff",
   color: "#334155",
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 800,
   cursor: "pointer",
 };
@@ -459,8 +702,8 @@ const alertStyle: React.CSSProperties = {
 
 const transcriptStyle: React.CSSProperties = {
   display: "grid",
-  gap: 8,
-  maxHeight: 220,
+  gap: 6,
+  maxHeight: 180,
   overflow: "auto",
 };
 
