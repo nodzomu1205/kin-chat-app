@@ -65,8 +65,11 @@ selects a participant, participants reply to the starter, and invalid direct
 participant-to-participant output is retried rather than relayed. Also confirm
 that the facilitator can end the session with `**END THE CHAT**`.
 
-Live note: the first three-Kin live test after this implementation progressed
-normally and was reported as very good.
+Live note: the three-or-more Kin group chat was tested successfully. Follow-up
+fixes on 2026-05-23 added the missing one-to-one starter `**END THE CHAT**`
+notice and changed `**END THE CHAT**` completion to use a distinct
+ended-by-starter notice instead of the max-count notice. The detector also
+accepts the common typo `**(END THE CHAT)**`.
 
 Previous product slice was Kin-to-Kin chat v1:
 

@@ -3,6 +3,7 @@ import {
   buildKinGroupChatRelayBlock,
   buildKinGroupChatRetryBlock,
   buildKinGroupChatStartBlock,
+  buildKinToKinEndedNotice,
   buildKinToKinLimitNotice,
   buildKinToKinRelayBlock,
   buildKinToKinStartBlock,
@@ -26,6 +27,7 @@ describe("kinToKinChat", () => {
     expect(block).toContain("MAX_CHAT_COUNT: 50");
     expect(block).toContain("CHAT_MEMBERS: AAA, BBB");
     expect(block).toContain("<<SYS_AAA_TO_BBB_CHAT>>");
+    expect(block).toContain("**END THE CHAT**");
   });
 
   it("parses a wrapped Kin-to-Kin reply and removes relay metadata", () => {
@@ -60,10 +62,27 @@ describe("kinToKinChat", () => {
         maxCount: 2,
       })
     ).toContain("CHAT_COUNT: 1/2");
+    expect(
+      buildKinToKinRelayBlock({
+        from: "BBB",
+        to: "AAA",
+        message: "Your turn.",
+        topic: "market outlook",
+        count: 1,
+        maxCount: 2,
+        canEndChat: true,
+      })
+    ).toContain("As the starter, you may end the chat");
 
     expect(
       buildKinToKinLimitNotice({ maxCount: 2, topic: "market outlook" })
     ).toContain("上限 2 回");
+    expect(buildKinToKinEndedNotice({ topic: "market outlook" })).toContain(
+      "終了トークン"
+    );
+    expect(buildKinToKinEndedNotice({ topic: "market outlook" })).not.toContain(
+      "上限"
+    );
 
     expect(
       buildKinToKinSummaryRequest({
@@ -166,6 +185,9 @@ describe("kinToKinChat", () => {
 
   it("detects the facilitator end-chat token in message bodies", () => {
     expect(containsKinGroupChatEndToken("Thanks. **END THE CHAT**")).toBe(true);
+    expect(containsKinGroupChatEndToken("Thanks. **(END THE CHAT)**")).toBe(
+      true
+    );
     expect(containsKinGroupChatEndToken("Please continue.")).toBe(false);
   });
 });

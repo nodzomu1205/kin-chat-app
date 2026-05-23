@@ -7,6 +7,7 @@ import {
   buildKinGroupChatRelayBlock,
   buildKinGroupChatRetryBlock,
   buildKinGroupChatStartBlock,
+  buildKinToKinEndedNotice,
   buildKinToKinLimitNotice,
   buildKinToKinRelayBlock,
   buildKinToKinStartBlock,
@@ -101,14 +102,19 @@ export default function KinToKinChatDrawer({
 
   const finishSession = async (params: {
     members: KinProfile[];
-    reason: "limit" | "stopped";
+    reason: "limit" | "stopped" | "ended";
   }) => {
-    setStatus(params.reason === "limit" ? "completed" : "paused");
-    if (params.reason === "limit") {
-      const noticeBlock = buildKinToKinLimitNotice({
-        maxCount: resolveMaxCount(maxCountInput),
-        topic: topic.trim(),
-      });
+    setStatus(params.reason === "stopped" ? "paused" : "completed");
+    if (params.reason === "limit" || params.reason === "ended") {
+      const noticeBlock =
+        params.reason === "limit"
+          ? buildKinToKinLimitNotice({
+              maxCount: resolveMaxCount(maxCountInput),
+              topic: topic.trim(),
+            })
+          : buildKinToKinEndedNotice({
+              topic: topic.trim(),
+            });
       for (const member of params.members) {
         await sendKinToKinMessage(member.id, noticeBlock, member.label);
       }
@@ -185,6 +191,14 @@ export default function KinToKinChatDrawer({
         };
         appendEntry(entry);
 
+        if (
+          sender.id === starter.id &&
+          containsKinGroupChatEndToken(parsed.text)
+        ) {
+          await finishSession({ members: [starter, partner], reason: "ended" });
+          return;
+        }
+
         if (count >= maxCount) {
           await finishSession({ members: [starter, partner], reason: "limit" });
           return;
@@ -197,6 +211,7 @@ export default function KinToKinChatDrawer({
           topic: topic.trim(),
           count,
           maxCount,
+          canEndChat: entry.to === starter.label,
         });
         [sender, receiver] = [receiver, sender];
       }
@@ -284,7 +299,7 @@ export default function KinToKinChatDrawer({
         validation.from === params.starter.label &&
         containsKinGroupChatEndToken(validation.text)
       ) {
-        await finishSession({ members, reason: "limit" });
+        await finishSession({ members, reason: "ended" });
         return;
       }
 

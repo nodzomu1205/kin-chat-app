@@ -34,6 +34,7 @@ export type KinGroupChatRouteValidation =
     };
 
 export const KIN_GROUP_CHAT_END_TOKEN = "**END THE CHAT**";
+export const KIN_GROUP_CHAT_END_TOKEN_WITH_PARENS = "**(END THE CHAT)**";
 
 export function buildKinToKinStartBlock(args: {
   starter: string;
@@ -52,6 +53,7 @@ export function buildKinToKinStartBlock(args: {
     `<<SYS_${args.starter}_TO_${args.partner}_CHAT>>`,
     "[YOUR MESSAGE]",
     `<<END_SYS_${args.starter}_TO_${args.partner}_CHAT>>`,
+    `NOTICE: As the starter, you may end the chat by including ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
     "<<END_SYS_KIN_TO_KIN_CHAT>>",
   ].join("\n");
 }
@@ -99,6 +101,7 @@ export function buildKinToKinRelayBlock(args: {
   topic: string;
   count: number;
   maxCount: number;
+  canEndChat?: boolean;
 }) {
   return [
     `<<SYS_${args.from}_TO_${args.to}_CHAT>>`,
@@ -108,6 +111,11 @@ export function buildKinToKinRelayBlock(args: {
     args.message.trim(),
     "",
     `NOTICE: Reply with <<SYS_${args.to}_TO_${args.from}_CHAT>> only.`,
+    ...(args.canEndChat
+      ? [
+          `NOTICE: As the starter, you may end the chat by including ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+        ]
+      : []),
     `<<END_SYS_${args.from}_TO_${args.to}_CHAT>>`,
   ].join("\n");
 }
@@ -241,6 +249,17 @@ export function buildKinToKinLimitNotice(args: {
   ].join("\n");
 }
 
+export function buildKinToKinEndedNotice(args: { topic: string }) {
+  return [
+    "<<SYS_INFO>>",
+    "TITLE: Kin間チャット終了",
+    "CONTENT:",
+    "Starter Kin が終了トークンを送信したため、Kin間チャットを終了しました。",
+    `TOPIC: ${args.topic}`,
+    "<<END_SYS_INFO>>",
+  ].join("\n");
+}
+
 export function parseKinToKinChatReply(
   text: string,
   expected: { from: string; to: string }
@@ -327,7 +346,10 @@ export function validateKinGroupChatRoute(args: {
 }
 
 export function containsKinGroupChatEndToken(text: string) {
-  return text.includes(KIN_GROUP_CHAT_END_TOKEN);
+  return (
+    text.includes(KIN_GROUP_CHAT_END_TOKEN) ||
+    text.includes(KIN_GROUP_CHAT_END_TOKEN_WITH_PARENS)
+  );
 }
 
 export function buildKinToKinSummaryRequest(args: {
