@@ -411,7 +411,10 @@ export type ChatPageActionGroups = {
     registerTaskDraftFromInput: () => Promise<void>;
     runStartKinTaskFromInput: () => Promise<void>;
     startRegisteredTask: (task: RegisteredTask) => void;
-    sendKinMessage: (text: string) => Promise<void>;
+    sendKinMessage: (
+      text: string,
+      options?: { userMessageText?: string }
+    ) => Promise<void>;
     sendKinToKinMessage: (
       kinId: string,
       text: string,

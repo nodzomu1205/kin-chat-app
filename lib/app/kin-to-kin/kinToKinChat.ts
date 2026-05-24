@@ -1,3 +1,5 @@
+import type { Message } from "@/types/chat";
+
 export type KinToKinMember = {
   id: string;
   label: string;
@@ -11,6 +13,11 @@ export type KinToKinTranscriptEntry = {
   count: number;
   maxCount: number;
   createdAt: string;
+};
+
+export type KinToKinChatContextEntry = {
+  speaker: string;
+  text: string;
 };
 
 export type ParsedKinToKinChatReply = {
@@ -41,6 +48,7 @@ export function buildKinToKinStartBlock(args: {
   partner: string;
   topic: string;
   maxCount: number;
+  recentContext?: KinToKinChatContextEntry[];
 }) {
   return [
     "<<SYS_KIN_TO_KIN_CHAT>>",
@@ -48,6 +56,7 @@ export function buildKinToKinStartBlock(args: {
     `CHAT_MEMBERS: ${args.starter}, ${args.partner}`,
     `STARTER: ${args.starter}`,
     `TOPIC: ${args.topic}`,
+    ...formatRecentContextLines(args.recentContext),
     "INSTRUCTION:",
     "Send one message to your chat member. Reply only with:",
     `<<SYS_${args.starter}_TO_${args.partner}_CHAT>>`,
@@ -63,6 +72,7 @@ export function buildKinGroupChatStartBlock(args: {
   participants: string[];
   topic: string;
   maxCount: number;
+  recentContext?: KinToKinChatContextEntry[];
 }) {
   return [
     "<<SYS_KIN_TO_KIN_CHAT>>",
@@ -70,6 +80,7 @@ export function buildKinGroupChatStartBlock(args: {
     `CHAT_MEMBERS: ${args.participants.join(", ")}`,
     `STARTER: ${args.facilitator}`,
     `TOPIC: ${args.topic}`,
+    ...formatRecentContextLines(args.recentContext),
     "",
     "You are the facilitator of this Kin group chat.",
     "",
@@ -102,11 +113,13 @@ export function buildKinToKinRelayBlock(args: {
   count: number;
   maxCount: number;
   canEndChat?: boolean;
+  recentContext?: KinToKinChatContextEntry[];
 }) {
   return [
     `<<SYS_${args.from}_TO_${args.to}_CHAT>>`,
     `CHAT_COUNT: ${args.count}/${args.maxCount}`,
     `TOPIC: ${args.topic}`,
+    ...formatRecentContextLines(args.recentContext),
     "",
     args.message.trim(),
     "",
@@ -126,6 +139,7 @@ export function buildKinGroupChatRelayBlock(args: {
   recipient: string;
   sender: string;
   message: string;
+  recentContext?: KinToKinChatContextEntry[];
 }) {
   const isFacilitatorRecipient = args.recipient === args.facilitator;
   if (isFacilitatorRecipient) {
@@ -149,6 +163,7 @@ export function buildKinGroupChatRelayBlock(args: {
       "- If the participant below asks another participant a question, you must coordinate it by choosing the next speaker yourself.",
       `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
       "",
+      ...formatRecentContextLines(args.recentContext),
       `Incoming message from ${args.sender}:`,
       args.message.trim(),
     ].join("\n");
@@ -172,6 +187,7 @@ export function buildKinGroupChatRelayBlock(args: {
     "  [Your message to the facilitator]",
     `  <<END_SYS_${args.recipient}_TO_${args.facilitator}_CHAT>>`,
     "",
+    ...formatRecentContextLines(args.recentContext),
     "Incoming message from the facilitator:",
     args.message.trim(),
   ].join("\n");
@@ -182,6 +198,7 @@ export function buildKinGroupChatRetryBlock(args: {
   participants: string[];
   sender: string;
   reason: string;
+  recentContext?: KinToKinChatContextEntry[];
 }) {
   const isFacilitator = args.sender === args.facilitator;
   if (isFacilitator) {
@@ -206,6 +223,7 @@ export function buildKinGroupChatRetryBlock(args: {
       "- Add brief context inside your message when it helps the chosen participant answer well.",
       `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
       "",
+      ...formatRecentContextLines(args.recentContext),
       "Please rewrite your previous message in the correct format.",
     ].join("\n");
   }
@@ -231,6 +249,7 @@ export function buildKinGroupChatRetryBlock(args: {
     "  [Your message to the facilitator]",
     `  <<END_SYS_${args.sender}_TO_${args.facilitator}_CHAT>>`,
     "",
+    ...formatRecentContextLines(args.recentContext),
     "Please rewrite your previous message in the correct format.",
   ].join("\n");
 }
@@ -238,6 +257,7 @@ export function buildKinGroupChatRetryBlock(args: {
 export function buildKinToKinLimitNotice(args: {
   maxCount: number;
   topic: string;
+  recentContext?: KinToKinChatContextEntry[];
 }) {
   return [
     "<<SYS_INFO>>",
@@ -245,17 +265,22 @@ export function buildKinToKinLimitNotice(args: {
     "CONTENT:",
     `Kin間チャットは上限 ${args.maxCount} 回に到達したため終了しました。`,
     `TOPIC: ${args.topic}`,
+    ...formatRecentContextLines(args.recentContext),
     "<<END_SYS_INFO>>",
   ].join("\n");
 }
 
-export function buildKinToKinEndedNotice(args: { topic: string }) {
+export function buildKinToKinEndedNotice(args: {
+  topic: string;
+  recentContext?: KinToKinChatContextEntry[];
+}) {
   return [
     "<<SYS_INFO>>",
     "TITLE: Kin間チャット終了",
     "CONTENT:",
     "Starter Kin が終了トークンを送信したため、Kin間チャットを終了しました。",
     `TOPIC: ${args.topic}`,
+    ...formatRecentContextLines(args.recentContext),
     "<<END_SYS_INFO>>",
   ].join("\n");
 }
@@ -368,6 +393,72 @@ export function buildKinToKinSummaryRequest(args: {
   ].join("\n");
 }
 
+export function buildKinToKinChatContext(
+  entries: KinToKinChatContextEntry[],
+  count: number
+) {
+  if (!Number.isFinite(count) || count <= 0) return [];
+  return entries
+    .filter((entry) => entry.speaker.trim() && entry.text.trim())
+    .slice(-Math.floor(count))
+    .map((entry) => ({
+      speaker: entry.speaker.trim(),
+      text: entry.text.trim(),
+    }));
+}
+
+export function resolveKinChatContextCount(value: string) {
+  if (!value.trim()) return 0;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.floor(parsed));
+}
+
+export function buildKinChatContextEntriesFromMessages(messages: Message[]) {
+  return messages.map((message) => ({
+    speaker: resolveMessageSpeaker(message),
+    text: message.text,
+  }));
+}
+
+export function buildKinToKinChatContextBeforeIncoming(args: {
+  entries: KinToKinChatContextEntry[];
+  count: number;
+  incoming: KinToKinChatContextEntry;
+}) {
+  const normalizedIncoming = {
+    speaker: args.incoming.speaker.trim(),
+    text: args.incoming.text.trim(),
+  };
+  const entries = [...args.entries];
+  const last = entries[entries.length - 1];
+  if (
+    last &&
+    last.speaker.trim() === normalizedIncoming.speaker &&
+    last.text.trim() === normalizedIncoming.text
+  ) {
+    entries.pop();
+  }
+  return buildKinToKinChatContext(entries, args.count);
+}
+
+export function buildKinUserMessageWithRecentContext(args: {
+  message: string;
+  recentContext: KinToKinChatContextEntry[];
+}) {
+  const message = args.message.trim();
+  if (!message || args.recentContext.length === 0) return message;
+  return [
+    "<<KIN_CHAT_WINDOW_CONTEXT>>",
+    "The following recent chat-window messages are context for the user's message.",
+    ...args.recentContext.map((entry) => `${entry.speaker}: ${entry.text}`),
+    "<<END_KIN_CHAT_WINDOW_CONTEXT>>",
+    "",
+    "USER_MESSAGE:",
+    message,
+  ].join("\n");
+}
+
 function stripProtocolNoise(text: string) {
   return text
     .split(/\r?\n/)
@@ -385,6 +476,19 @@ function stripProtocolNoise(text: string) {
     .trim();
 }
 
+function formatRecentContextLines(entries?: KinToKinChatContextEntry[]) {
+  const context = buildKinToKinChatContext(entries || [], entries?.length || 0);
+  if (context.length === 0) return [];
+  return [
+    "",
+    "RECENT_CHAT_CONTEXT:",
+    "The user included the following recent chat-window messages as context. Use them only as background for the topic.",
+    ...context.map((entry) => `${entry.speaker}: ${entry.text}`),
+    "END_RECENT_CHAT_CONTEXT",
+    "",
+  ];
+}
+
 function formatKinGroupParticipantLines(
   facilitator: string,
   participants: string[],
@@ -400,4 +504,11 @@ function formatKinGroupParticipantLines(
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function resolveMessageSpeaker(message: Message) {
+  if (message.meta?.speakerLabel?.trim()) return message.meta.speakerLabel.trim();
+  if (message.role === "user") return "User";
+  if (message.role === "gpt") return "GPT";
+  return "Kin";
 }

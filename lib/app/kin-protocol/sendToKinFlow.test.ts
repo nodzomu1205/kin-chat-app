@@ -157,4 +157,48 @@ describe("runSendKinMessageFlow", () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it("can display a shorter outbound user message than the API payload", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ reply: "Hello from Kin One." }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+    const setKinMessages = vi.fn();
+    const args = createArgs({
+      text: "<<KIN_CHAT_WINDOW_CONTEXT>>\nContext\n<<END_KIN_CHAT_WINDOW_CONTEXT>>\n\nUSER_MESSAGE:\nHello.",
+      pendingKinInjectionBlocks: [],
+      setKinMessages,
+      userMessageText: "Hello.",
+    });
+
+    await runSendKinMessageFlow(args);
+
+    const appendUser = setKinMessages.mock.calls.find((call) => {
+      const updater = call[0] as (prev: unknown[]) => unknown[];
+      const next = updater([]);
+      return next.some(
+        (message) =>
+          typeof message === "object" &&
+          message !== null &&
+          "role" in message &&
+          message.role === "user"
+      );
+    })?.[0] as (prev: unknown[]) => Array<{ role: string; text: string }>;
+
+    expect(appendUser([])).toContainEqual(
+      expect.objectContaining({ role: "user", text: "Hello." })
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/kindroid",
+      expect.objectContaining({
+        body: expect.stringContaining("<<KIN_CHAT_WINDOW_CONTEXT>>"),
+      })
+    );
+    vi.unstubAllGlobals();
+  });
 });

@@ -3,11 +3,14 @@ import {
   buildKinGroupChatRelayBlock,
   buildKinGroupChatRetryBlock,
   buildKinGroupChatStartBlock,
+  buildKinToKinChatContext,
+  buildKinToKinChatContextBeforeIncoming,
   buildKinToKinEndedNotice,
   buildKinToKinLimitNotice,
   buildKinToKinRelayBlock,
   buildKinToKinStartBlock,
   buildKinToKinSummaryRequest,
+  buildKinUserMessageWithRecentContext,
   containsKinGroupChatEndToken,
   parseKinToKinProtocolBlock,
   parseKinToKinChatReply,
@@ -21,13 +24,72 @@ describe("kinToKinChat", () => {
       partner: "BBB",
       topic: "market outlook",
       maxCount: 50,
+      recentContext: [
+        { speaker: "User", text: "Earlier user note." },
+        { speaker: "AAA", text: "Earlier Kin reply." },
+      ],
     });
 
     expect(block).toContain("<<SYS_KIN_TO_KIN_CHAT>>");
     expect(block).toContain("MAX_CHAT_COUNT: 50");
     expect(block).toContain("CHAT_MEMBERS: AAA, BBB");
+    expect(block).toContain("RECENT_CHAT_CONTEXT:");
+    expect(block).toContain("User: Earlier user note.");
+    expect(block).toContain("AAA: Earlier Kin reply.");
     expect(block).toContain("<<SYS_AAA_TO_BBB_CHAT>>");
     expect(block).toContain("**END THE CHAT**");
+  });
+
+  it("selects the latest requested chat-window context entries", () => {
+    expect(
+      buildKinToKinChatContext(
+        [
+          { speaker: "User", text: "First" },
+          { speaker: "AAA", text: "Second" },
+          { speaker: "BBB", text: "Third" },
+        ],
+        2
+      )
+    ).toEqual([
+      { speaker: "AAA", text: "Second" },
+      { speaker: "BBB", text: "Third" },
+    ]);
+
+    expect(
+      buildKinToKinChatContext([{ speaker: "User", text: "Ignored" }], 0)
+    ).toEqual([]);
+  });
+
+  it("excludes the incoming message duplicate before selecting relay context", () => {
+    expect(
+      buildKinToKinChatContextBeforeIncoming({
+        entries: [
+          { speaker: "User", text: "First" },
+          { speaker: "AAA", text: "Second" },
+          { speaker: "BBB", text: "Incoming" },
+        ],
+        count: 2,
+        incoming: { speaker: "BBB", text: "Incoming" },
+      })
+    ).toEqual([
+      { speaker: "User", text: "First" },
+      { speaker: "AAA", text: "Second" },
+    ]);
+  });
+
+  it("wraps a normal user-to-Kin message with recent chat-window context", () => {
+    const text = buildKinUserMessageWithRecentContext({
+      message: "What do you think?",
+      recentContext: [
+        { speaker: "User", text: "First point." },
+        { speaker: "Emma", text: "Second point." },
+      ],
+    });
+
+    expect(text).toContain("<<KIN_CHAT_WINDOW_CONTEXT>>");
+    expect(text).toContain("User: First point.");
+    expect(text).toContain("Emma: Second point.");
+    expect(text).toContain("USER_MESSAGE:\nWhat do you think?");
   });
 
   it("parses a wrapped Kin-to-Kin reply and removes relay metadata", () => {
@@ -60,8 +122,20 @@ describe("kinToKinChat", () => {
         topic: "market outlook",
         count: 1,
         maxCount: 2,
+        recentContext: [{ speaker: "User", text: "Prior note." }],
       })
     ).toContain("CHAT_COUNT: 1/2");
+    expect(
+      buildKinToKinRelayBlock({
+        from: "AAA",
+        to: "BBB",
+        message: "Hello.",
+        topic: "market outlook",
+        count: 1,
+        maxCount: 2,
+        recentContext: [{ speaker: "User", text: "Prior note." }],
+      })
+    ).toContain("User: Prior note.");
     expect(
       buildKinToKinRelayBlock({
         from: "BBB",
@@ -75,14 +149,34 @@ describe("kinToKinChat", () => {
     ).toContain("As the starter, you may end the chat");
 
     expect(
-      buildKinToKinLimitNotice({ maxCount: 2, topic: "market outlook" })
+      buildKinToKinLimitNotice({
+        maxCount: 2,
+        topic: "market outlook",
+        recentContext: [{ speaker: "BBB", text: "Final point before limit." }],
+      })
     ).toContain("上限 2 回");
-    expect(buildKinToKinEndedNotice({ topic: "market outlook" })).toContain(
-      "終了トークン"
-    );
+    expect(
+      buildKinToKinLimitNotice({
+        maxCount: 2,
+        topic: "market outlook",
+        recentContext: [{ speaker: "BBB", text: "Final point before limit." }],
+      })
+    ).toContain("BBB: Final point before limit.");
+    expect(
+      buildKinToKinEndedNotice({
+        topic: "market outlook",
+        recentContext: [{ speaker: "AAA", text: "Final conclusion." }],
+      })
+    ).toContain("終了トークン");
     expect(buildKinToKinEndedNotice({ topic: "market outlook" })).not.toContain(
       "上限"
     );
+    expect(
+      buildKinToKinEndedNotice({
+        topic: "market outlook",
+        recentContext: [{ speaker: "AAA", text: "Final conclusion." }],
+      })
+    ).toContain("AAA: Final conclusion.");
 
     expect(
       buildKinToKinSummaryRequest({
@@ -108,9 +202,11 @@ describe("kinToKinChat", () => {
       participants: ["AAA", "BBB", "CCC"],
       topic: "market outlook",
       maxCount: 6,
+      recentContext: [{ speaker: "User", text: "Prior group context." }],
     });
 
     expect(start).toContain("<<SYS_KIN_TO_KIN_CHAT>>");
+    expect(start).toContain("User: Prior group context.");
     expect(start).toContain("- AAA (facilitator, you)");
     expect(start).toContain("Choose exactly one next speaker");
     expect(start).toContain("<<SYS_AAA_TO_[ChosenParticipantKinName]_CHAT>>");
@@ -122,9 +218,11 @@ describe("kinToKinChat", () => {
       recipient: "BBB",
       sender: "AAA",
       message: "Please compare this with the prior point.",
+      recentContext: [{ speaker: "CCC", text: "Group context line." }],
     });
 
     expect(relay).toContain("Reply only to the facilitator, AAA.");
+    expect(relay).toContain("CCC: Group context line.");
     expect(relay).toContain("Incoming message from the facilitator:");
     expect(relay).toContain("Please compare this with the prior point.");
     expect(relay).not.toContain("<<SYS_AAA_TO_BBB_CHAT>>");
@@ -176,11 +274,13 @@ describe("kinToKinChat", () => {
       participants: ["AAA", "BBB", "CCC"],
       sender: "BBB",
       reason: "Participants must reply to the facilitator, AAA.",
+      recentContext: [{ speaker: "AAA", text: "Retry context." }],
     });
 
     expect(retry).toContain("Your previous reply could not be relayed");
     expect(retry).toContain("Reply only to the facilitator, AAA.");
     expect(retry).toContain("<<SYS_BBB_TO_AAA_CHAT>>");
+    expect(retry).toContain("AAA: Retry context.");
   });
 
   it("detects the facilitator end-chat token in message bodies", () => {

@@ -230,7 +230,10 @@ export function useKinTransferActions(
     args.focusKinPanel();
   };
 
-  const sendKinMessage = async (text: string) => {
+  const sendKinMessage = async (
+    text: string,
+    options?: { userMessageText?: string }
+  ) => {
     const allTargets = resolveKinSendTargets({
       currentKin: args.currentKin,
       selectedKinIds: args.selectedKinIds,
@@ -271,6 +274,7 @@ export function useKinTransferActions(
         onSysTaskSent: handleSysTaskSent,
         onKinReply: handleKinReplyProtocols,
         kinSpeakerLabel: sendTargets[0].label,
+        userMessageText: options?.userMessageText,
       });
       return;
     }
@@ -279,7 +283,7 @@ export function useKinTransferActions(
     args.setKinLoading(true);
     args.setKinMessages((prev) => [
       ...prev,
-      { id: generateId(), role: "user", text },
+      { id: generateId(), role: "user", text: options?.userMessageText ?? text },
     ]);
     args.setKinInput("");
     args.ingestProtocolMessage(text, "user_to_kin");

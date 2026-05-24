@@ -216,9 +216,14 @@ Should not do:
 Current UI boundary:
 
 - `Kin間チャット` lives in the Kin panel, not the GPT panel.
-- v1 relays between exactly two saved Kin profiles.
+- The drawer can run either the original two-Kin relay or facilitator-led group
+  chat with multiple participant Kin.
+- The `Context` numeric input controls how many recent visible chat-window
+  messages are sent as background context.
+- The same `Context` value also applies to ordinary user-to-Kin sends from the
+  Kin composer.
 - The app sends a starter `SYS_KIN_TO_KIN_CHAT` block to the starter Kin, then
-  relays each parsed `SYS_<FROM>_TO_<TO>_CHAT` body to the other Kin.
+  relays each parsed `SYS_<FROM>_TO_<TO>_CHAT` body to the next Kin.
 
 Should do:
 
@@ -229,14 +234,23 @@ Should do:
 - display Kin reply authors through `Message.meta.speakerLabel`
 - keep completion summary as a GPT request built from the transcript, not as a
   hidden memory or library write
+- include `RECENT_CHAT_CONTEXT` on Kin-to-Kin start, relay, invalid-route retry,
+  and final notices when `Context` is greater than zero
+- include the live Kin-to-Kin transcript in the context candidates after the
+  session starts
+- exclude the duplicated `Incoming message` body from relay context so the
+  configured context count is used for earlier messages
+- keep final notices different: they should include the final transcript context
+  because there is no separate `Incoming message` body
 
 Should not do:
 
 - require simultaneous Kindroid connections
-- support group routing in v1
 - let Kin-supplied `CHAT_COUNT` override the app-owned count
 - start a Kin-to-Kin session from ordinary Kin replies outside the explicit
   Kin panel control
+- mix chat-window context into `SYS_*` task/protocol sends from the ordinary Kin
+  composer
 
 ## 8. Multi-Recipient Kin Send
 

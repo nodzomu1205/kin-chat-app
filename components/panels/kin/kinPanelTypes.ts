@@ -23,6 +23,10 @@ export type KinPanelProps = {
   kinMessages: Message[];
   kinInput: string;
   setKinInput: (value: string) => void;
+  sendKinMessage: (
+    text: string,
+    options?: { userMessageText?: string }
+  ) => Promise<void>;
   sendToKin: () => void;
   sendKinToKinMessage: (
     kinId: string,

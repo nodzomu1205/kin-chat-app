@@ -34,6 +34,7 @@ export function useChatPageKinPanelProps(
     kinMessages: args.kinState.kinMessages,
     kinInput: args.kinState.kinInput,
     setKinInput: args.kinState.setKinInput,
+    sendKinMessage: args.controller.kin.sendKinMessage,
     sendToKin: args.controller.kin.sendToKin,
     sendKinToKinMessage: args.controller.kin.sendKinToKinMessage,
     requestKinToKinSummary: (text) =>

@@ -1,9 +1,12 @@
 ﻿"use client";
 
 import React, { useMemo, useRef, useState } from "react";
-import type { KinProfile } from "@/types/chat";
+import type { KinProfile, Message } from "@/types/chat";
 import { generateId } from "@/lib/shared/uuid";
 import {
+  buildKinChatContextEntriesFromMessages,
+  buildKinToKinChatContext,
+  buildKinToKinChatContextBeforeIncoming,
   buildKinGroupChatRelayBlock,
   buildKinGroupChatRetryBlock,
   buildKinGroupChatStartBlock,
@@ -15,13 +18,18 @@ import {
   containsKinGroupChatEndToken,
   parseKinToKinProtocolBlock,
   parseKinToKinChatReply,
+  resolveKinChatContextCount,
   validateKinGroupChatRoute,
+  type KinToKinChatContextEntry,
   type KinToKinMember,
   type KinToKinTranscriptEntry,
 } from "@/lib/app/kin-to-kin/kinToKinChat";
 
 type Props = {
   kinList: KinProfile[];
+  chatMessages: Message[];
+  contextCountInput: string;
+  setContextCountInput: (value: string) => void;
   sendKinToKinMessage: (
     kinId: string,
     text: string,
@@ -40,6 +48,9 @@ function resolveMaxCount(value: string) {
 
 export default function KinToKinChatDrawer({
   kinList,
+  chatMessages,
+  contextCountInput,
+  setContextCountInput,
   sendKinToKinMessage,
   requestSummary,
 }: Props) {
@@ -94,6 +105,30 @@ export default function KinToKinChatDrawer({
     topic.trim() &&
     resolveMaxCount(maxCountInput) > 0 &&
     status !== "running";
+  const baseContextEntries = useMemo<KinToKinChatContextEntry[]>(
+    () => buildKinChatContextEntriesFromMessages(chatMessages),
+    [chatMessages]
+  );
+  const buildContextEntries = () => [
+    ...baseContextEntries,
+    ...transcriptRef.current.map((entry) => ({
+      speaker: entry.from,
+      text: entry.text,
+    })),
+  ];
+  const resolveRecentContext = () =>
+    buildKinToKinChatContext(
+      buildContextEntries(),
+      resolveKinChatContextCount(contextCountInput)
+    );
+  const resolveRecentContextBeforeIncoming = (
+    incoming: KinToKinChatContextEntry
+  ) =>
+    buildKinToKinChatContextBeforeIncoming({
+      entries: buildContextEntries(),
+      count: resolveKinChatContextCount(contextCountInput),
+      incoming,
+    });
 
   const appendEntry = (entry: KinToKinTranscriptEntry) => {
     transcriptRef.current = [...transcriptRef.current, entry];
@@ -111,9 +146,11 @@ export default function KinToKinChatDrawer({
           ? buildKinToKinLimitNotice({
               maxCount: resolveMaxCount(maxCountInput),
               topic: topic.trim(),
+              recentContext: resolveRecentContext(),
             })
           : buildKinToKinEndedNotice({
               topic: topic.trim(),
+              recentContext: resolveRecentContext(),
             });
       for (const member of params.members) {
         await sendKinToKinMessage(member.id, noticeBlock, member.label);
@@ -161,6 +198,7 @@ export default function KinToKinChatDrawer({
         partner: partner.label,
         topic: topic.trim(),
         maxCount,
+        recentContext: resolveRecentContext(),
       });
 
       for (let count = 1; count <= maxCount; count += 1) {
@@ -212,6 +250,10 @@ export default function KinToKinChatDrawer({
           count,
           maxCount,
           canEndChat: entry.to === starter.label,
+          recentContext: resolveRecentContextBeforeIncoming({
+            speaker: entry.from,
+            text: entry.text,
+          }),
         });
         [sender, receiver] = [receiver, sender];
       }
@@ -239,6 +281,7 @@ export default function KinToKinChatDrawer({
       participants: participantLabels,
       topic: topic.trim(),
       maxCount: params.maxCount,
+      recentContext: resolveRecentContext(),
     });
     let count = 0;
     let retryCount = 0;
@@ -278,6 +321,7 @@ export default function KinToKinChatDrawer({
           participants: participantLabels,
           sender: sender.label,
           reason: validation.reason,
+          recentContext: resolveRecentContext(),
         });
         continue;
       }
@@ -314,6 +358,10 @@ export default function KinToKinChatDrawer({
         recipient: validation.recipient.label,
         sender: validation.from,
         message: validation.text,
+        recentContext: resolveRecentContextBeforeIncoming({
+          speaker: validation.from,
+          text: validation.text,
+        }),
       });
       const nextSender = members.find(
         (member) => member.id === validation.recipient.id
@@ -416,6 +464,26 @@ export default function KinToKinChatDrawer({
                 value={maxCountInput}
                 onChange={(event) => setMaxCountInput(event.currentTarget.value)}
                 onBlur={() => setMaxCountInput(String(resolveMaxCount(maxCountInput)))}
+                style={inputStyle}
+              />
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={labelStyle}>Context</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                disabled={status === "running"}
+                value={contextCountInput}
+                onChange={(event) =>
+                  setContextCountInput(event.currentTarget.value)
+                }
+                onBlur={() =>
+                  setContextCountInput(
+                    String(resolveKinChatContextCount(contextCountInput))
+                  )
+                }
                 style={inputStyle}
               />
             </label>
@@ -558,7 +626,7 @@ const statusPillStyle: React.CSSProperties = {
 
 const formGridStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "165px 220px 82px 74px",
+  gridTemplateColumns: "165px 220px 82px 82px 74px",
   gap: 6,
   justifyContent: "start",
   alignItems: "end",

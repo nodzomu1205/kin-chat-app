@@ -6,6 +6,7 @@ Updated: 2026-05-24
 
 The newest active record is the 2026-05-24 multi-recipient Kin send closeout.
 Start there for normal/SYS_INFO sends to multiple Kin, multipart SYS_INFO fanout,
+recent chat-window context for ordinary and Kin-to-Kin sends,
 task-execution Kin routing, or the Kin drawer `送信対象` / `タスク実行` controls:
 
 - [`HANDOFF-2026-05-24.md`](./HANDOFF-2026-05-24.md)
@@ -64,12 +65,19 @@ Current newest product slice is multi-recipient Kin send:
    transcript/draft/PPT/file-saving response blocks.
 8. Kin-to-Kin chat ignores normal send target selection and continues using its
    own drawer-selected direct-send route.
+9. The Kin-to-Kin drawer `Context` input controls recent chat-window context for
+   ordinary Kin composer sends and Kin-to-Kin start/relay/retry/final notices.
+   Relay sends remove the duplicated `Incoming message` from context before
+   taking N earlier messages.
 
 Manual retest should use at least three Kin profiles. Select all as
 `送信対象`, send a normal message, send a multi-part `SYS_INFO`, and confirm one
 user bubble, one reply per Kin, and PART advancement only after all selected Kin
 reply. Then set one `タスク実行` Kin and confirm a task response block only goes
-to that Kin.
+to that Kin. Also set `Context` above zero, send an ordinary Kin message, and
+start a Kin-to-Kin chat. Confirm the outgoing API payload includes context while
+visible user bubbles stay clean, and confirm relay context does not duplicate
+the separate `Incoming message`.
 
 Current newest product slice is Kin-to-Kin facilitator-led group chat:
 

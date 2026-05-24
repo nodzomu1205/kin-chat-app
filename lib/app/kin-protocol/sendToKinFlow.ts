@@ -35,6 +35,7 @@ type RunSendKinMessageFlowArgs = {
   manageLoading?: boolean;
   managePendingInjection?: boolean;
   appendUserMessage?: boolean;
+  userMessageText?: string;
 };
 
 type KindroidApiResponse = {
@@ -63,6 +64,7 @@ export async function runSendKinMessageFlow({
   manageLoading = true,
   managePendingInjection = true,
   appendUserMessage = true,
+  userMessageText,
 }: RunSendKinMessageFlowArgs) {
   if (!text.trim() || !currentKin || (manageLoading && kinLoading)) return "";
 
@@ -75,7 +77,10 @@ export async function runSendKinMessageFlow({
     pendingKinInjectionBlocks[pendingKinInjectionIndex] ?? null;
 
   if (appendUserMessage) {
-    setKinMessages((prev) => [...prev, { id: generateId(), role: "user", text }]);
+    setKinMessages((prev) => [
+      ...prev,
+      { id: generateId(), role: "user", text: userMessageText ?? text },
+    ]);
     setKinInput("");
     ingestProtocolMessage(text, "user_to_kin");
   }

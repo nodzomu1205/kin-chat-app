@@ -3,6 +3,12 @@
 import React, { useState } from "react";
 import ChatMessages from "@/components/message/ChatMessages";
 import {
+  buildKinChatContextEntriesFromMessages,
+  buildKinToKinChatContext,
+  buildKinUserMessageWithRecentContext,
+  resolveKinChatContextCount,
+} from "@/lib/app/kin-to-kin/kinToKinChat";
+import {
   createInitialKinPanelVisibility,
   getKinLoadingText,
   getKinPendingInjectionLabel,
@@ -45,6 +51,7 @@ export default function KinPanel(props: KinPanelProps) {
     kinMessages,
     kinInput,
     setKinInput,
+    sendKinMessage,
     sendToKin,
     sendKinToKinMessage,
     requestKinToKinSummary,
@@ -64,6 +71,7 @@ export default function KinPanel(props: KinPanelProps) {
     })
   );
   const [showKinToKinChat, setShowKinToKinChat] = useState(false);
+  const [kinChatContextCountInput, setKinChatContextCountInput] = useState("0");
   const visibility = resolveKinPanelVisibility(visibilityState, {
     isMobile,
     kinCount: kinList.length,
@@ -87,6 +95,28 @@ export default function KinPanel(props: KinPanelProps) {
   const injectionTotalParts = isSendingSingleSysInjection
     ? 1
     : pendingInjectionTotalParts;
+  const sendKinInputWithContext = () => {
+    const displayText = kinInput.trim();
+    if (!displayText) {
+      void sendToKin();
+      return;
+    }
+    if (/<<SYS_/i.test(displayText)) {
+      void sendToKin();
+      return;
+    }
+    const recentContext = buildKinToKinChatContext(
+      buildKinChatContextEntriesFromMessages(kinMessages),
+      resolveKinChatContextCount(kinChatContextCountInput)
+    );
+    void sendKinMessage(
+      buildKinUserMessageWithRecentContext({
+        message: displayText,
+        recentContext,
+      }),
+      { userMessageText: displayText }
+    );
+  };
 
   return (
     <div
@@ -142,6 +172,9 @@ export default function KinPanel(props: KinPanelProps) {
       {showKinToKinChat && (
         <KinToKinChatDrawer
           kinList={kinList}
+          chatMessages={kinMessages}
+          contextCountInput={kinChatContextCountInput}
+          setContextCountInput={setKinChatContextCountInput}
           sendKinToKinMessage={sendKinToKinMessage}
           requestSummary={requestKinToKinSummary}
         />
@@ -193,7 +226,7 @@ export default function KinPanel(props: KinPanelProps) {
         <KinComposer
           value={kinInput}
           onChange={setKinInput}
-          onSubmit={sendToKin}
+          onSubmit={sendKinInputWithContext}
           loading={loading}
           isMobile={isMobile}
         />
