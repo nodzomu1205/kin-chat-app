@@ -10,6 +10,7 @@ export type KinSelectionState = "none" | "selected";
 const KIN_LIST_KEY = "kin_list";
 const CURRENT_KIN_KEY = "kin_current";
 const KIN_STATUS_KEY = "kin_status";
+const SELECTED_KIN_IDS_KEY = "kin_selected_ids";
 
 const createKinLabel = (index: number) => `Kin ${index + 1}`;
 
@@ -24,6 +25,7 @@ export function useKinManager() {
   const [kinNameInput, setKinNameInput] = useState("");
   const [kinList, setKinList] = useState<KinProfile[]>([]);
   const [currentKin, setCurrentKin] = useState<string | null>(null);
+  const [selectedKinIds, setSelectedKinIds] = useState<string[]>([]);
   const [kinConnectionState, setKinConnectionState] =
     useState<KinConnectionState>("idle");
   const [hydrated, setHydrated] = useState(false);
@@ -39,6 +41,7 @@ export function useKinManager() {
   useEffect(() => {
     const savedKinList = localStorage.getItem(KIN_LIST_KEY);
     const savedCurrentKin = localStorage.getItem(CURRENT_KIN_KEY);
+    const savedSelectedKinIds = localStorage.getItem(SELECTED_KIN_IDS_KEY);
     const savedStatus = localStorage.getItem(KIN_STATUS_KEY);
 
     if (!savedKinList) {
@@ -97,18 +100,43 @@ export function useKinManager() {
         typeof savedCurrentKin === "string" &&
         savedCurrentKin.trim() &&
         deduped.some((item) => item.id === savedCurrentKin);
+      const parsedSelectedKinIds = (() => {
+        if (!savedSelectedKinIds) return [];
+        try {
+          const parsed = JSON.parse(savedSelectedKinIds) as unknown;
+          if (!Array.isArray(parsed)) return [];
+          return parsed.filter(
+            (id): id is string =>
+              typeof id === "string" && deduped.some((item) => item.id === id)
+          );
+        } catch {
+          return [];
+        }
+      })();
 
       if (hasSavedCurrentKin) {
         setCurrentKin(savedCurrentKin);
+        setSelectedKinIds(
+          parsedSelectedKinIds.length > 0
+            ? parsedSelectedKinIds
+            : [savedCurrentKin]
+        );
         setKinConnectionState(savedStatus === "error" ? "error" : "connected");
       } else if (savedStatus === "idle") {
         setCurrentKin(null);
+        setSelectedKinIds(parsedSelectedKinIds);
         setKinConnectionState("idle");
       } else if (deduped.length > 0) {
         setCurrentKin(deduped[0].id);
+        setSelectedKinIds(
+          parsedSelectedKinIds.length > 0
+            ? parsedSelectedKinIds
+            : [deduped[0].id]
+        );
         setKinConnectionState("connected");
       } else {
         setCurrentKin(null);
+        setSelectedKinIds([]);
         setKinConnectionState("idle");
       }
     } catch {
@@ -122,6 +150,9 @@ export function useKinManager() {
     if (!hydrated) return;
     const deduped = dedupeKinProfiles(kinList);
     localStorage.setItem(KIN_LIST_KEY, JSON.stringify(deduped));
+    setSelectedKinIds((prev) =>
+      prev.filter((id) => deduped.some((item) => item.id === id))
+    );
   }, [hydrated, kinList]);
 
   useEffect(() => {
@@ -138,6 +169,11 @@ export function useKinManager() {
     if (!hydrated) return;
     localStorage.setItem(KIN_STATUS_KEY, kinConnectionState);
   }, [hydrated, kinConnectionState]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    localStorage.setItem(SELECTED_KIN_IDS_KEY, JSON.stringify(selectedKinIds));
+  }, [hydrated, selectedKinIds]);
 
   const connectKin = () => {
     const trimmedId = kinIdInput.trim();
@@ -161,18 +197,25 @@ export function useKinManager() {
     });
 
     setCurrentKin(trimmedId);
+    setSelectedKinIds([trimmedId]);
     setKinConnectionState("connected");
     setKinIdInput("");
     setKinNameInput("");
   };
 
   const switchKin = (id: string) => {
+    if (currentKin === id) {
+      setCurrentKin(null);
+      setKinConnectionState("idle");
+      return;
+    }
     setCurrentKin(id);
     setKinConnectionState("connected");
   };
 
   const disconnectKin = () => {
     setCurrentKin(null);
+    setSelectedKinIds([]);
     setKinConnectionState("idle");
   };
 
@@ -186,6 +229,7 @@ export function useKinManager() {
       setCurrentKin(null);
       setKinConnectionState("idle");
     }
+    setSelectedKinIds((prev) => prev.filter((selectedId) => selectedId !== id));
   };
 
   const renameKin = (id: string, label: string) => {
@@ -197,6 +241,22 @@ export function useKinManager() {
     );
   };
 
+  const toggleKinRecipient = (id: string) => {
+    setSelectedKinIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((selectedId) => selectedId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const selectAllKinRecipients = () => {
+    setSelectedKinIds((prev) =>
+      prev.length === kinList.length && kinList.every((kin) => prev.includes(kin.id))
+        ? []
+        : kinList.map((kin) => kin.id)
+    );
+  };
+
   return {
     kinIdInput,
     setKinIdInput,
@@ -204,6 +264,7 @@ export function useKinManager() {
     setKinNameInput,
     kinList,
     currentKin,
+    selectedKinIds,
     kinStatus,
     kinConnectionState,
     setKinConnectionState,
@@ -213,5 +274,7 @@ export function useKinManager() {
     disconnectKin,
     removeKin,
     renameKin,
+    toggleKinRecipient,
+    selectAllKinRecipients,
   };
 }

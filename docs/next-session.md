@@ -1,12 +1,18 @@
 # Next Session Handover
 
-Updated: 2026-05-22
+Updated: 2026-05-24
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-22 Kin-to-Kin facilitator-led group
-chat closeout. Start there for three-or-more Kin chat, facilitator routing,
-invalid route retry handling, or Kin-to-Kin participant selection UI:
+The newest active record is the 2026-05-24 multi-recipient Kin send closeout.
+Start there for normal/SYS_INFO sends to multiple Kin, multipart SYS_INFO fanout,
+task-execution Kin routing, or the Kin drawer `送信対象` / `タスク実行` controls:
+
+- [`HANDOFF-2026-05-24.md`](./HANDOFF-2026-05-24.md)
+
+The 2026-05-22 Kin-to-Kin facilitator-led group chat closeout remains the entry
+point for three-or-more Kin chat, facilitator routing, invalid route retry
+handling, or Kin-to-Kin participant selection UI:
 
 - [`HANDOFF-2026-05-22.md`](./HANDOFF-2026-05-22.md)
 
@@ -40,6 +46,30 @@ For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 - [`presentation-renderer/slide-frame-design-plan.md`](./presentation-renderer/slide-frame-design-plan.md)
 
 ## Current Next Start
+
+Current newest product slice is multi-recipient Kin send:
+
+1. The Kin list separates `送信対象` from `タスク実行`.
+2. Normal messages and `SYS_INFO` go to all selected `送信対象` Kin.
+3. `ALL` toggles all send targets on/off.
+4. Multi-recipient user messages display once in chat, while Kin replies retain
+   per-Kin speaker labels.
+5. Multipart `SYS_INFO` sends each PART to every selected Kin and advances only
+   after every target returns a receipt. `Received.` and `Received. Send the
+   next.` are both accepted.
+6. Multipart fanout sends are sequenced across targets to avoid external API
+   concurrency drops.
+7. Task protocol sends route only to the single `タスク実行` Kin. This includes
+   `SYS_TASK`, `SYS_TASK_CONFIRM`, `SYS_USER_RESPONSE`, and GPT/search/library/
+   transcript/draft/PPT/file-saving response blocks.
+8. Kin-to-Kin chat ignores normal send target selection and continues using its
+   own drawer-selected direct-send route.
+
+Manual retest should use at least three Kin profiles. Select all as
+`送信対象`, send a normal message, send a multi-part `SYS_INFO`, and confirm one
+user bubble, one reply per Kin, and PART advancement only after all selected Kin
+reply. Then set one `タスク実行` Kin and confirm a task response block only goes
+to that Kin.
 
 Current newest product slice is Kin-to-Kin facilitator-led group chat:
 

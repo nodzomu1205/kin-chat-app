@@ -1,6 +1,6 @@
 # Protocol Actions
 
-Updated: 2026-05-21
+Updated: 2026-05-24
 
 ## Purpose
 This document defines the current authority boundaries for protocol-related user actions.
@@ -237,6 +237,39 @@ Should not do:
 - let Kin-supplied `CHAT_COUNT` override the app-owned count
 - start a Kin-to-Kin session from ordinary Kin replies outside the explicit
   Kin panel control
+
+## 8. Multi-Recipient Kin Send
+
+Current UI boundary:
+
+- `送信対象`: one or more Kin profiles for ordinary user messages and
+  multi-recipient `SYS_INFO`
+- `タスク実行`: one task-execution Kin for `SYS_TASK` and task protocol replies
+- `ALL`: toggles all `送信対象` Kin on/off
+
+Should do:
+
+- send ordinary user messages and ordinary `SYS_INFO` to all selected
+  `送信対象` Kin
+- display a multi-recipient user message once, not once per Kin target
+- keep Kin replies labeled with `Message.meta.speakerLabel`
+- send multipart `SYS_INFO` to every selected `送信対象` Kin and advance the next
+  PART only after every selected target returns a receipt
+- accept both `Received.` and `Received. Send the next.` as multipart receipts
+- route task protocol sends only to the single `タスク実行` Kin, including:
+  `SYS_TASK`, `SYS_TASK_CONFIRM`, `SYS_USER_RESPONSE`, `SYS_GPT_RESPONSE`,
+  `SYS_SEARCH_RESPONSE`, `SYS_YOUTUBE_TRANSCRIPT_RESPONSE`,
+  `SYS_LIBRARY_DATA_RESPONSE`, `SYS_LIBRARY_IMAGE_DATA_RESPONSE`,
+  `SYS_DRAFT_PREPARATION_RESPONSE`, `SYS_DRAFT_MODIFICATION_RESPONSE`,
+  `SYS_PPT_DESIGN_RESPONSE`, and `SYS_FILE_SAVING_RESPONSE`
+- keep Kin-to-Kin chat on its direct `sendKinToKinMessage(kinId, ...)` route
+
+Should not do:
+
+- use `送信対象` for task-response protocol blocks
+- route `SYS_INFO` fanout through the task-execution Kin selection
+- let a failed multipart target silently disappear from chat
+- route Kin-to-Kin chat through the normal selected-recipient list
 
 ## Source Of Truth Rules
 

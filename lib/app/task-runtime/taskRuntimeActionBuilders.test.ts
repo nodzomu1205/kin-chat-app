@@ -95,6 +95,7 @@ function createKinTransferArgs(): UseKinTransferActionsArgs {
   return {
     ...createTaskProtocolArgs(),
     currentKin: "kin-1",
+    selectedKinIds: ["kin-1"],
     kinList: [{ id: "kin-1", label: "Kin One" }],
     getTaskBaseText: vi.fn(() => "Task body"),
     getTaskSlotLabel: vi.fn(() => "2"),

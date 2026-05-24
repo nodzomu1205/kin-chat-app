@@ -16,7 +16,12 @@ import type {
 export type ChatPageWorkspaceCompositionState = {
   app: Pick<
     ChatPageWorkspaceViewAppArgs,
-    "currentKin" | "currentKinLabel" | "kinStatus" | "kinList" | "isMobile"
+    | "currentKin"
+    | "currentKinLabel"
+    | "kinStatus"
+    | "kinList"
+    | "selectedKinIds"
+    | "isMobile"
   >;
   ui: Omit<
     ChatPageWorkspaceViewUiArgs,
@@ -240,7 +245,11 @@ export type ChatPageWorkspaceCompositionActions = {
   >;
   kin: Pick<
     ChatPageWorkspaceViewKinArgs,
-    "setKinIdInput" | "setKinNameInput" | "renameKin"
+    | "setKinIdInput"
+    | "setKinNameInput"
+    | "renameKin"
+    | "toggleKinRecipient"
+    | "selectAllKinRecipients"
   >;
   reset: ChatPageWorkspaceViewResetArgs;
 };

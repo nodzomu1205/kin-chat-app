@@ -47,6 +47,17 @@ The current product direction is:
     termination, and final `SYS_INFO` notices
   - Kin reply bubbles can display the active Kin label instead of the generic
     `Kindroid` fallback
+- Multi-recipient Kin send
+  - the Kin list separates `送信対象` for ordinary messages / `SYS_INFO` from a
+    single `タスク実行` Kin for task execution
+  - `ALL` toggles every Kin as a send target
+  - normal messages and `SYS_INFO` can be sent to multiple Kin while user chat
+    displays the outbound message once
+  - multipart `SYS_INFO` waits for receipts from every selected Kin before
+    advancing to the next part
+  - task protocol responses such as `SYS_GPT_RESPONSE`,
+    `SYS_SEARCH_RESPONSE`, and draft/file/PPT response blocks route only to the
+    task-execution Kin
 - Website map / site contents support
   - `Website Map: <url>` displays the one-page map, extracted page contents,
     and linked files together in chat

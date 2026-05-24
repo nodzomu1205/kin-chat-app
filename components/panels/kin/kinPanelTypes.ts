@@ -14,7 +14,10 @@ export type KinPanelProps = {
   currentKin: string | null;
   currentKinLabel: string | null;
   kinList: KinProfile[];
+  selectedKinIds: string[];
   switchKin: (id: string) => void;
+  toggleKinRecipient: (id: string) => void;
+  selectAllKinRecipients: () => void;
   removeKin: (id: string) => void;
   renameKin: (id: string, label: string) => void;
   kinMessages: Message[];

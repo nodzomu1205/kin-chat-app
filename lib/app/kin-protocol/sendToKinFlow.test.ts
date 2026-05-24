@@ -120,4 +120,41 @@ describe("runSendKinMessageFlow", () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it("can skip appending the outbound user message for grouped multi-send display", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ reply: "Hello from Kin One." }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+    const setKinMessages = vi.fn();
+    const setKinInput = vi.fn();
+    const ingestProtocolMessage = vi.fn();
+    const args = createArgs({
+      pendingKinInjectionBlocks: [],
+      setKinMessages,
+      setKinInput,
+      ingestProtocolMessage,
+      appendUserMessage: false,
+    });
+
+    await runSendKinMessageFlow(args);
+
+    const appendedRoles = setKinMessages.mock.calls.flatMap((call) => {
+      const updater = call[0] as (prev: unknown[]) => Array<{ role: string }>;
+      return updater([]).map((message) => message.role);
+    });
+
+    expect(appendedRoles).toEqual(["kin"]);
+    expect(setKinInput).not.toHaveBeenCalledWith("");
+    expect(ingestProtocolMessage).not.toHaveBeenCalledWith(
+      args.text,
+      "user_to_kin"
+    );
+    vi.unstubAllGlobals();
+  });
 });

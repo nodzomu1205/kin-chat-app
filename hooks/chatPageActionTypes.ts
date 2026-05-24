@@ -56,6 +56,7 @@ export type MemoryUpdateOptions = {
 
 export type ChatPageIdentityArgs = {
   currentKin: string | null;
+  selectedKinIds: string[];
   kinList: Array<{ id: string; label: string }>;
   isMobile: boolean;
   setActivePanelTab: React.Dispatch<React.SetStateAction<ChatPanelTab>>;
@@ -288,6 +289,7 @@ export type UseKinTransferActionsArgs = Pick<
   | "applyTaskUsage"
   | "approvedIntentPhrases"
   | "currentKin"
+  | "selectedKinIds"
   | "kinList"
   | "currentTaskDraft"
   | "registeredTasks"

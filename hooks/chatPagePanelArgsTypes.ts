@@ -26,6 +26,7 @@ export type ChatPagePanelBaseArgs = {
     currentKinLabel: string | null;
     kinStatus: string;
     kinList: KinPanelProps["kinList"];
+    selectedKinIds: string[];
     isMobile: boolean;
   };
   taskProtocolView: TaskProtocolView;
@@ -40,10 +41,13 @@ export type ChatPageKinPanelCompositionArgs = ChatPagePanelBaseArgs & {
     kinNameInput: string;
     setKinNameInput: (value: string) => void;
     currentKin: string | null;
+    selectedKinIds: string[];
     kinMessages: Message[];
     kinInput: string;
     setKinInput: (value: string) => void;
     renameKin: KinPanelProps["renameKin"];
+    toggleKinRecipient: KinPanelProps["toggleKinRecipient"];
+    selectAllKinRecipients: KinPanelProps["selectAllKinRecipients"];
     kinBottomRef: KinPanelProps["kinBottomRef"];
     loading: boolean;
     pendingInjectionBlocks: string[];

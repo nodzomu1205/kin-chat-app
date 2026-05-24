@@ -182,6 +182,10 @@ export type ChatPageWorkspaceViewKinArgs = {
   kinNameInput: ChatPageKinPanelCompositionArgs["kinState"]["kinNameInput"];
   setKinNameInput: ChatPageKinPanelCompositionArgs["kinState"]["setKinNameInput"];
   renameKin: ChatPageKinPanelCompositionArgs["kinState"]["renameKin"];
+  toggleKinRecipient:
+    ChatPageKinPanelCompositionArgs["kinState"]["toggleKinRecipient"];
+  selectAllKinRecipients:
+    ChatPageKinPanelCompositionArgs["kinState"]["selectAllKinRecipients"];
 };
 
 export type ChatPageWorkspaceViewResetArgs = Pick<

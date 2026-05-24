@@ -18,6 +18,7 @@ function buildWorkspaceStateApp(args: ChatPageWorkspaceStateApp) {
     currentKinLabel: args.currentKinLabel,
     kinStatus: args.kinStatus,
     kinList: args.kinList,
+    selectedKinIds: args.selectedKinIds,
     isMobile: args.isMobile,
   } satisfies ChatPageWorkspaceStateApp;
 }

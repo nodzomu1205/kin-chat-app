@@ -20,6 +20,7 @@ export function buildChatPageControllerIdentityArgs(
 ): ChatPageIdentityArgs {
   return {
     currentKin: args.app.currentKin,
+    selectedKinIds: args.app.selectedKinIds,
     kinList: args.app.kinList,
     isMobile: args.app.isMobile,
     setActivePanelTab: args.app.setActivePanelTab,
@@ -258,6 +259,7 @@ export function buildKinTransferActionArgs(
     applyTaskUsage: groups.services.applyTaskUsage,
     approvedIntentPhrases: groups.protocol.approvedIntentPhrases,
     currentKin: groups.identity.currentKin,
+    selectedKinIds: groups.identity.selectedKinIds,
     kinList: groups.identity.kinList,
     currentTaskDraft: groups.task.currentTaskDraft,
     registeredTasks: groups.task.registeredTasks,

@@ -36,7 +36,10 @@ export default function KinPanel(props: KinPanelProps) {
     currentKinLabel,
     kinList,
     currentKin,
+    selectedKinIds,
     switchKin,
+    toggleKinRecipient,
+    selectAllKinRecipients,
     removeKin,
     renameKin,
     kinMessages,
@@ -66,6 +69,13 @@ export default function KinPanel(props: KinPanelProps) {
     kinCount: kinList.length,
   });
   const lastMessage = kinMessages[kinMessages.length - 1];
+  const selectedKinLabels = selectedKinIds
+    .map((id) => kinList.find((kin) => kin.id === id)?.label)
+    .filter((label): label is string => Boolean(label));
+  const headerKinLabel =
+    selectedKinLabels.length > 1
+      ? `${selectedKinLabels[0]} +${selectedKinLabels.length - 1}`
+      : selectedKinLabels[0] || currentKinLabel;
   const isSendingSingleSysInjection =
     loading &&
     pendingInjectionTotalParts === 0 &&
@@ -88,7 +98,7 @@ export default function KinPanel(props: KinPanelProps) {
       }}
     >
       <KinHeader
-        currentKinLabel={currentKinLabel}
+        currentKinLabel={headerKinLabel}
         kinStatus={kinStatus}
         onToggleKinList={() =>
           setVisibilityState((prev) => toggleKinPanelListVisibility(prev))
@@ -112,7 +122,10 @@ export default function KinPanel(props: KinPanelProps) {
             showConnectForm={visibility.showConnectForm}
             kinList={kinList}
             currentKin={currentKin}
+            selectedKinIds={selectedKinIds}
             switchKin={switchKin}
+            toggleKinRecipient={toggleKinRecipient}
+            selectAllKinRecipients={selectAllKinRecipients}
             disconnectKin={disconnectKin}
             removeKin={removeKin}
             renameKin={renameKin}

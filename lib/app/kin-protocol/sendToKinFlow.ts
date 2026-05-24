@@ -32,6 +32,9 @@ type RunSendKinMessageFlowArgs = {
   onSysTaskSent?: (text: string) => void | Promise<void>;
   onKinReply?: (text: string) => void | Promise<void>;
   kinSpeakerLabel?: string | null;
+  manageLoading?: boolean;
+  managePendingInjection?: boolean;
+  appendUserMessage?: boolean;
 };
 
 type KindroidApiResponse = {
@@ -57,18 +60,25 @@ export async function runSendKinMessageFlow({
   onSysTaskSent,
   onKinReply,
   kinSpeakerLabel,
+  manageLoading = true,
+  managePendingInjection = true,
+  appendUserMessage = true,
 }: RunSendKinMessageFlowArgs) {
-  if (!text.trim() || !currentKin || kinLoading) return "";
+  if (!text.trim() || !currentKin || (manageLoading && kinLoading)) return "";
 
   setKinConnectionState("idle");
-  setKinLoading(true);
+  if (manageLoading) {
+    setKinLoading(true);
+  }
 
   const currentPendingBlock =
     pendingKinInjectionBlocks[pendingKinInjectionIndex] ?? null;
 
-  setKinMessages((prev) => [...prev, { id: generateId(), role: "user", text }]);
-  setKinInput("");
-  ingestProtocolMessage(text, "user_to_kin");
+  if (appendUserMessage) {
+    setKinMessages((prev) => [...prev, { id: generateId(), role: "user", text }]);
+    setKinInput("");
+    ingestProtocolMessage(text, "user_to_kin");
+  }
 
   try {
     const res = await fetch("/api/kindroid", {
@@ -104,33 +114,35 @@ export async function runSendKinMessageFlow({
 
     setKinConnectionState("connected");
 
-    const pendingAction = resolvePendingKinInjectionAction({
-      text,
-      currentPendingBlock,
-      replyText,
-      pendingKinInjectionIndex,
-      pendingKinInjectionBlocks,
-    });
+    if (managePendingInjection) {
+      const pendingAction = resolvePendingKinInjectionAction({
+        text,
+        currentPendingBlock,
+        replyText,
+        pendingKinInjectionIndex,
+        pendingKinInjectionBlocks,
+      });
 
-    if (pendingAction.type === "advance") {
-      setPendingKinInjectionIndex(pendingAction.nextIndex);
-      setKinInput(pendingAction.nextInput);
-    } else if (pendingAction.type === "complete") {
-      clearPendingKinInjection();
-      const shouldContinueTask = pendingKinInjectionPurpose === "task_context";
-      if (shouldContinueTask) {
-        await onPendingKinAck?.();
-      }
-      if (
-        shouldContinueTask &&
-        pendingAction.finalReplyNeedsTaskContinuation &&
-        shouldPromptKinToContinueAfterPendingInfoDelivery(replyText)
-      ) {
-        setKinInput(buildContinueTaskAfterMultipartReceiptBlock());
+      if (pendingAction.type === "advance") {
+        setPendingKinInjectionIndex(pendingAction.nextIndex);
+        setKinInput(pendingAction.nextInput);
+      } else if (pendingAction.type === "complete") {
+        clearPendingKinInjection();
+        const shouldContinueTask = pendingKinInjectionPurpose === "task_context";
+        if (shouldContinueTask) {
+          await onPendingKinAck?.();
+        }
+        if (
+          shouldContinueTask &&
+          pendingAction.finalReplyNeedsTaskContinuation &&
+          shouldPromptKinToContinueAfterPendingInfoDelivery(replyText)
+        ) {
+          setKinInput(buildContinueTaskAfterMultipartReceiptBlock());
+        }
       }
     }
 
-    if (pendingKinInjectionBlocks.length === 0) {
+    if (managePendingInjection && pendingKinInjectionBlocks.length === 0) {
       const followupInput = resolveKinFollowupInput({
         replyText,
         outboundText: text,
@@ -161,6 +173,8 @@ export async function runSendKinMessageFlow({
     }
     return "";
   } finally {
-    setKinLoading(false);
+    if (manageLoading) {
+      setKinLoading(false);
+    }
   }
 }

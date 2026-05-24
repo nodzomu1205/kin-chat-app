@@ -42,7 +42,10 @@ type Props = {
   showConnectForm: boolean;
   kinList: { id: string; label: string }[];
   currentKin: string | null;
+  selectedKinIds: string[];
   switchKin: (id: string) => void;
+  toggleKinRecipient: (id: string) => void;
+  selectAllKinRecipients: () => void;
   disconnectKin: () => void;
   removeKin: (id: string) => void;
   renameKin: (id: string, label: string) => void;
@@ -59,7 +62,10 @@ export default function KinManagementDrawer({
   showConnectForm,
   kinList,
   currentKin,
+  selectedKinIds,
   switchKin,
+  toggleKinRecipient,
+  selectAllKinRecipients,
   disconnectKin,
   removeKin,
   renameKin,
@@ -70,6 +76,9 @@ export default function KinManagementDrawer({
   connectKin,
   isMobile = false,
 }: Props) {
+  const allRecipientsSelected =
+    kinList.length > 0 && kinList.every((kin) => selectedKinIds.includes(kin.id));
+
   return (
     <>
       {showKinList ? (
@@ -107,6 +116,19 @@ export default function KinManagementDrawer({
                 padding: "6px 10px",
                 fontSize: 12,
               }}
+              onClick={selectAllKinRecipients}
+              disabled={kinList.length === 0}
+            >
+              {allRecipientsSelected ? "ALL OFF" : "ALL"}
+            </button>
+
+            <button
+              type="button"
+              style={{
+                ...buttonSecondary,
+                padding: "6px 10px",
+                fontSize: 12,
+              }}
               onClick={disconnectKin}
               disabled={!currentKin}
               title={KIN_MANAGEMENT_TEXT.disconnectTitle}
@@ -131,19 +153,42 @@ export default function KinManagementDrawer({
             >
               {kinList.map((kin) => {
                 const active = kin.id === currentKin;
+                const selected = selectedKinIds.includes(kin.id);
 
                 return (
                   <div
                     key={kin.id}
                     style={{
-                      border: active ? "1px solid #c4b5fd" : "1px solid #e5e7eb",
-                      background: active ? "#faf5ff" : "#fff",
+                      border: selected
+                        ? "1px solid #c4b5fd"
+                        : "1px solid #e5e7eb",
+                      background: selected ? "#faf5ff" : "#fff",
                       borderRadius: 12,
                       padding: 10,
                     }}
-                  >
-                    <div
-                      style={{
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#4b5563",
+                          marginBottom: 8,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleKinRecipient(kin.id)}
+                        />
+                        送信対象
+                      </label>
+
+                      <div
+                        style={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
@@ -187,6 +232,21 @@ export default function KinManagementDrawer({
                           flexShrink: 0,
                         }}
                       >
+                        <button
+                          type="button"
+                          style={{
+                            ...miniButton,
+                            border: active
+                              ? "1px solid #c4b5fd"
+                              : "1px solid #d1d5db",
+                            background: active ? "#f1e8fb" : "#fff",
+                            color: active ? "#6d4f97" : "#374151",
+                          }}
+                          onClick={() => switchKin(kin.id)}
+                        >
+                          タスク実行
+                        </button>
+
                         {active ? (
                           <span
                             style={{
@@ -200,7 +260,7 @@ export default function KinManagementDrawer({
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {KIN_MANAGEMENT_TEXT.active}
+                            ON
                           </span>
                         ) : null}
 

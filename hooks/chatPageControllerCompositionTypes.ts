@@ -23,6 +23,7 @@ export type TaskProtocolView = ReturnType<typeof useTaskProtocolProjection>;
 export type ChatPageControllerCompositionArgs = {
   app: {
     currentKin: string | null;
+    selectedKinIds: string[];
     kinList: Array<{ id: string; label: string }>;
     isMobile: boolean;
     setActivePanelTab: React.Dispatch<React.SetStateAction<ChatPanelTab>>;

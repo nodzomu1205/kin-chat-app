@@ -170,6 +170,8 @@ function buildWorkspaceActionsKin(args: ChatPageWorkspaceActionsKin) {
     setKinIdInput: args.setKinIdInput,
     setKinNameInput: args.setKinNameInput,
     renameKin: args.renameKin,
+    toggleKinRecipient: args.toggleKinRecipient,
+    selectAllKinRecipients: args.selectAllKinRecipients,
   } satisfies ChatPageWorkspaceActionsKin;
 }
 
