@@ -1,4 +1,10 @@
 import type { TaskIntent } from "@/types/taskProtocol";
+import {
+  GPT_SYS_MESSAGE_PART_RANGE,
+  KIN_OUTGOING_MESSAGE_MAX_CHARS,
+  KIN_OUTGOING_MESSAGE_PART_MAX_CHARS,
+  KIN_OUTGOING_MESSAGE_PART_MIN_CHARS,
+} from "@/lib/shared/kinMessageLimits";
 
 const DOCUMENT_OUTPUT_TYPES = new Set([
   "essay",
@@ -444,11 +450,11 @@ SUMMARY: Summarize what was completed here.${doneArtifactLines}
 
 export function buildDeliveryLimits(intent: TaskIntent): string[] {
   const lines = [
-    "- You may receive long GPT protocol messages in 3200-3600 character parts labeled as PART n/total.",
+    `- You may receive long GPT protocol messages in ${GPT_SYS_MESSAGE_PART_RANGE} character parts labeled as PART n/total.`,
     "- If this <<SYS_TASK>> arrives as multiple PART n/total messages, reply only with <<KIN_RESPONSE>> Received. Send the next. <<END_KIN_RESPONSE>> until the final part arrives.",
     "- Do not begin execution or external actions until the final PART arrives.",
-    "- Keep each outgoing message at or under 700 characters.",
-    "- If a single outgoing message would exceed 700 characters, split it into 600-700 character parts before sending.",
+    `- Keep each outgoing message at or under ${KIN_OUTGOING_MESSAGE_MAX_CHARS} characters.`,
+    `- If a single outgoing message would exceed ${KIN_OUTGOING_MESSAGE_MAX_CHARS} characters, split it into ${KIN_OUTGOING_MESSAGE_PART_MIN_CHARS}-${KIN_OUTGOING_MESSAGE_PART_MAX_CHARS} character parts before sending.`,
     "- When splitting, label each part as PART n/total.",
     "- The final part must clearly say it is the last part.",
   ];

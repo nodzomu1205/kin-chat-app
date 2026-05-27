@@ -1,6 +1,6 @@
 # Protocol Actions
 
-Updated: 2026-05-24
+Updated: 2026-05-27
 
 ## Purpose
 This document defines the current authority boundaries for protocol-related user actions.
@@ -121,11 +121,16 @@ Should do:
 - transform compiled prompt into pending Kin blocks
 - set first Kin input block
 - handle Kin-side message preparation / transport
+- keep Kin outgoing message limit text aligned to
+  `lib/shared/kinMessageLimits.ts`: max 500 characters, split oversized output
+  into 400-500 character `PART n/total` messages
 
 Should not do:
 - reinterpret task meaning
 - decide whether a phrase is approved
 - choose original instruction fallback order
+- hard-code a second Kin outgoing message length rule in prompt, task, or resend
+  paths
 
 ## 5. Library / draft / file-saving protocol
 

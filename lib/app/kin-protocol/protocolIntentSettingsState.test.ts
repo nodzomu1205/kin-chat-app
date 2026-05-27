@@ -55,7 +55,8 @@ describe("protocolIntentSettingsState", () => {
       })
     );
 
-    expect(state.protocolPrompt).toContain("700 characters");
+    expect(state.protocolPrompt).toContain("500 characters");
+    expect(state.protocolPrompt).toContain("400-500 character parts");
     expect(state.protocolPrompt).toContain("3200-3600");
   });
 });

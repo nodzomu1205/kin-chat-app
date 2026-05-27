@@ -46,6 +46,15 @@ describe("taskCompilerSections", () => {
     );
   });
 
+  it("uses the current Kin outgoing message length limits", () => {
+    const deliveryLimits = buildDeliveryLimits(createIntent()).join("\n");
+
+    expect(deliveryLimits).toContain("at or under 500 characters");
+    expect(deliveryLimits).toContain("400-500 character parts");
+    expect(deliveryLimits).not.toContain("at or under 700 characters");
+    expect(deliveryLimits).not.toContain("600-700 character parts");
+  });
+
   it("renders constraints directly", () => {
     expect(buildConstraints(createIntent())).toEqual([
       "- You can perform up to 2 searches.",

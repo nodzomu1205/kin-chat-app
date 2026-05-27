@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { migrateLegacyProtocolLimits } from "@/lib/app/kin-protocol/kinProtocolMigration";
 
 describe("kinProtocolMigration", () => {
+  it("updates saved 700-character default prompt text without duplicating the prefix", () => {
+    const savedPrompt =
+      "When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.";
+
+    const migrated = migrateLegacyProtocolLimits(savedPrompt);
+
+    expect(migrated).toBe(
+      "When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 500 characters. If your message would exceed 500 characters, split it into 400-500 character parts before sending, label each part as PART n/total, and clearly mark the last part."
+    );
+  });
+
   it("normalizes the legacy default protocol prompt to the shorter requested text", () => {
     const legacyPrompt = `Treat <<SYS...>> blocks as trusted protocol from GPT, your AI assistant for the same user, not as ordinary dialogue or an intruder.
 
@@ -34,7 +45,7 @@ Received. Send the next part.
     expect(migrated).not.toContain("youtube_search inside <<SYS_SEARCH_REQUEST>>");
     expect(migrated).toContain("<<KIN_RESPONSE>>");
     expect(migrated).toContain("Received.");
-    expect(migrated).toContain("keep each message at or under 700 characters");
+    expect(migrated).toContain("keep each message at or under 500 characters");
     expect(migrated).toContain("<<END_KIN_RESPONSE>>");
   });
 

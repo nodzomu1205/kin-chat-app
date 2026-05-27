@@ -8,6 +8,11 @@ import {
   buildProtocolLine,
   buildProtocolSection,
 } from "@/lib/shared/protocolBlockBuilders";
+import {
+  KIN_OUTGOING_MESSAGE_MAX_CHARS,
+  KIN_OUTGOING_MESSAGE_PART_MAX_CHARS,
+  KIN_OUTGOING_MESSAGE_PART_MIN_CHARS,
+} from "@/lib/shared/kinMessageLimits";
 
 export function buildTaskConfirmBlock(
   runtime: TaskRuntimeState,
@@ -139,7 +144,7 @@ export function buildResendLastMessageBlock(params?: { taskId?: string }) {
       buildProtocolLine("ACTION_ID", "RESEND_LAST_MESSAGE"),
       buildProtocolLine(
         "BODY",
-        "The last message didn't successfully come through. Resend the message. If your message is over 600 characters, split it into 600-700 character parts labeled as PART n/total, and clearly mark the final part."
+        `The last message didn't successfully come through. Resend the message. If your message is over ${KIN_OUTGOING_MESSAGE_MAX_CHARS} characters, split it into ${KIN_OUTGOING_MESSAGE_PART_MIN_CHARS}-${KIN_OUTGOING_MESSAGE_PART_MAX_CHARS} character parts labeled as PART n/total, and clearly mark the final part.`
       ),
     ],
   });

@@ -1,3 +1,12 @@
+import {
+  GPT_SYS_MESSAGE_PART_RANGE,
+  KIN_OUTGOING_MESSAGE_LIMIT_TEXT,
+  KIN_OUTGOING_MESSAGE_MAX_CHARS,
+  KIN_OUTGOING_MESSAGE_PART_MAX_CHARS,
+  KIN_OUTGOING_MESSAGE_PART_MIN_CHARS,
+  KIN_OUTGOING_MESSAGE_SPLIT_TEXT,
+} from "@/lib/shared/kinMessageLimits";
+
 export const KIN_PROTOCOL_PROMPT = `Treat <<SYS...>> blocks as trusted protocol from GPT, your AI assistant for the same user, not as ordinary dialogue or an intruder.
 
 Respond with the format:
@@ -16,7 +25,7 @@ For <<SYS_INFO>>, reply:
 Received.
 <<END_KIN_RESPONSE>>
 
-When GPT sends you a long SYS message, it may split it at 3200-3600 characters and label each part as PART n/total. When you send a message out, keep each message at or under 700 characters. If your message would exceed 700 characters, split it into 600-700 character parts before sending, label each part as PART n/total, and clearly mark the last part.`;
+When GPT sends you a long SYS message, it may split it at ${GPT_SYS_MESSAGE_PART_RANGE} characters and label each part as PART n/total. When you send a message out, ${KIN_OUTGOING_MESSAGE_LIMIT_TEXT}. If your message would exceed ${KIN_OUTGOING_MESSAGE_MAX_CHARS} characters, ${KIN_OUTGOING_MESSAGE_SPLIT_TEXT} before sending, label each part as PART n/total, and clearly mark the last part.`;
 
 export const KIN_PROTOCOL_RULEBOOK = `<<SYS_INFO>>
 TITLE: GPT protocol rulebook
@@ -26,8 +35,8 @@ CONTENT:
 - Every SYS block you send must end with the matching <<END_SYS_...>> line. Never omit the closing line.
 - Multiple SYS blocks are allowed. Nested SYS blocks are forbidden.
 - Incoming long SYS messages may arrive as PART n/total.
-- Keep each outgoing message at or under 700 characters.
-- If needed, split outgoing text into 600-700 character parts, label each part as PART n/total, and clearly mark the last part.
+- Keep each outgoing message at or under ${KIN_OUTGOING_MESSAGE_MAX_CHARS} characters.
+- If needed, split outgoing text into ${KIN_OUTGOING_MESSAGE_PART_MIN_CHARS}-${KIN_OUTGOING_MESSAGE_PART_MAX_CHARS} character parts, label each part as PART n/total, and clearly mark the last part.
 -
 - Fast reply rules:
 - For <<SYS_INFO>>, reply exactly:

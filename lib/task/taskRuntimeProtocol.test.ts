@@ -67,6 +67,12 @@ describe("taskRuntimeProtocol", () => {
     expect(buildResendLastMessageBlock({ taskId: "TASK-1" })).toContain(
       "ACTION_ID: RESEND_LAST_MESSAGE"
     );
+    expect(buildResendLastMessageBlock({ taskId: "TASK-1" })).toContain(
+      "over 500 characters"
+    );
+    expect(buildResendLastMessageBlock({ taskId: "TASK-1" })).toContain(
+      "400-500 character parts"
+    );
     expect(
       buildYoutubeTranscriptRetryBlock({
         taskId: "TASK-1",

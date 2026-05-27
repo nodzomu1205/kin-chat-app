@@ -6,7 +6,8 @@ Updated: 2026-05-27
 
 The newest active record is the 2026-05-27 Kin/GPT settings UI closeout. Start
 there for Kin drawer tab behavior, compact Kin list cards, GPT library settings
-layout, or DB candidate chunk limit `0` behavior:
+layout, DB candidate chunk limit `0` behavior, or the Kin outgoing message
+limit change to 500 characters / 400-500 character parts:
 
 - [`HANDOFF-2026-05-27.md`](./HANDOFF-2026-05-27.md)
 
@@ -68,6 +69,10 @@ Current newest product slice is Kin/GPT settings UI cleanup:
 7. Settings UI labels use `DB参照` rather than `RAG参照`.
 8. `DB参照 検索候補チャンク上限` accepts and persists `0`; at runtime `0` skips DB
    candidate search with `candidate_count_zero` instead of being rounded to `1`.
+
+9. Kin-facing protocol prompts, compiled `SYS_TASK` delivery limits, and
+   automatic resend guidance now share the 500-character outgoing-message
+   limit and 400-500 character split range from `lib/shared/kinMessageLimits.ts`.
 
 Manual retest should open Kin list, connection, and Kin-to-Kin chat in sequence
 and confirm only one drawer is expanded. On mobile, confirm Kin-to-Kin controls
