@@ -271,10 +271,12 @@ describe("panelPropsBuilders", () => {
     props.settings.onChangeSourceDisplayCount(999);
     props.settings.onChangeLibraryIndexResponseCount(0);
     props.settings.onChangeLibraryReferenceCount(999);
+    props.settings.onChangeLibraryRagCandidateCount(0);
     props.settings.onChangeLibraryRagCandidateCount(999999);
     expect(onChangeSourceDisplayCount).toHaveBeenCalledWith(20);
     expect(onChangeLibraryIndexResponseCount).toHaveBeenCalledWith(1);
     expect(onChangeLibraryReferenceCount).toHaveBeenCalledWith(20);
+    expect(onChangeLibraryRagCandidateCount).toHaveBeenCalledWith(0);
     expect(onChangeLibraryRagCandidateCount).toHaveBeenCalledWith(100000);
 
     props.task.onAnswerTaskRequest?.("REQ-1");

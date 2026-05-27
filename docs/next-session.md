@@ -1,13 +1,19 @@
 # Next Session Handover
 
-Updated: 2026-05-24
+Updated: 2026-05-27
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-24 multi-recipient Kin send closeout.
-Start there for normal/SYS_INFO sends to multiple Kin, multipart SYS_INFO fanout,
-recent chat-window context for ordinary and Kin-to-Kin sends,
-task-execution Kin routing, or the Kin drawer `送信対象` / `タスク実行` controls:
+The newest active record is the 2026-05-27 Kin/GPT settings UI closeout. Start
+there for Kin drawer tab behavior, compact Kin list cards, GPT library settings
+layout, or DB candidate chunk limit `0` behavior:
+
+- [`HANDOFF-2026-05-27.md`](./HANDOFF-2026-05-27.md)
+
+The 2026-05-24 multi-recipient Kin send closeout remains the entry point for
+normal/SYS_INFO sends to multiple Kin, multipart SYS_INFO fanout, recent
+chat-window context for ordinary and Kin-to-Kin sends, task-execution Kin
+routing, or the Kin drawer `送信対象` / `タスク実行` controls:
 
 - [`HANDOFF-2026-05-24.md`](./HANDOFF-2026-05-24.md)
 
@@ -48,7 +54,28 @@ For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 
 ## Current Next Start
 
-Current newest product slice is multi-recipient Kin send:
+Current newest product slice is Kin/GPT settings UI cleanup:
+
+1. The Kin panel exposes `Kin間チャット` as a hanging header tab.
+2. Kin list / connection / Kin-to-Kin drawers are mutually exclusive.
+3. The Kin-to-Kin drawer fits mobile width without horizontal scrolling.
+4. Kin list cards are compact: Kin ID is on the `送信対象` row, and the display
+   name editor sits on the Kin name/action row.
+5. GPT library settings show direct reference plus capacity first, then image
+   library reference, then DB reference.
+6. Redundant panel titles and gray explanatory copy were removed from the GPT
+   library settings panels.
+7. Settings UI labels use `DB参照` rather than `RAG参照`.
+8. `DB参照 検索候補チャンク上限` accepts and persists `0`; at runtime `0` skips DB
+   candidate search with `candidate_count_zero` instead of being rounded to `1`.
+
+Manual retest should open Kin list, connection, and Kin-to-Kin chat in sequence
+and confirm only one drawer is expanded. On mobile, confirm Kin-to-Kin controls
+fit without horizontal scrolling. In GPT library settings, confirm the panel
+order and compact copy, then set `DB参照 検索候補チャンク上限` to blank/`0` and
+confirm it remains `0` after leaving and reopening settings.
+
+Previous product slice was multi-recipient Kin send:
 
 1. The Kin list separates `送信対象` from `タスク実行`.
 2. Normal messages and `SYS_INFO` go to all selected `送信対象` Kin.

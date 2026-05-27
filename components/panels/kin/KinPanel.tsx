@@ -15,7 +15,6 @@ import {
   resolveKinPanelVisibility,
   shouldShowKinManagementDrawer,
   toggleKinPanelConnectVisibility,
-  toggleKinPanelListVisibility,
 } from "@/lib/app/ui-state/kinPanelVisibility";
 import type { KinPanelProps } from "./kinPanelTypes";
 import KinHeader from "./KinHeader";
@@ -117,6 +116,32 @@ export default function KinPanel(props: KinPanelProps) {
       { userMessageText: displayText }
     );
   };
+  const closeKinDrawers = () => {
+    setVisibilityState({ showKinList: false, showConnectForm: false });
+  };
+  const toggleKinListDrawer = () => {
+    setShowKinToKinChat(false);
+    setVisibilityState((prev) => ({
+      showKinList: !prev.showKinList,
+      showConnectForm: false,
+    }));
+  };
+  const toggleConnectDrawer = () => {
+    setShowKinToKinChat(false);
+    setVisibilityState((prev) =>
+      toggleKinPanelConnectVisibility(
+        { showKinList: false, showConnectForm: prev.showConnectForm },
+        {
+          isMobile,
+          kinCount: kinList.length,
+        }
+      )
+    );
+  };
+  const toggleKinToKinChatDrawer = () => {
+    closeKinDrawers();
+    setShowKinToKinChat((current) => !current);
+  };
 
   return (
     <div
@@ -130,18 +155,10 @@ export default function KinPanel(props: KinPanelProps) {
       <KinHeader
         currentKinLabel={headerKinLabel}
         kinStatus={kinStatus}
-        onToggleKinList={() =>
-          setVisibilityState((prev) => toggleKinPanelListVisibility(prev))
-        }
-        onToggleKinToKinChat={() => setShowKinToKinChat((current) => !current)}
-        onToggleConnectForm={() =>
-          setVisibilityState((prev) =>
-            toggleKinPanelConnectVisibility(prev, {
-              isMobile,
-              kinCount: kinList.length,
-            })
-          )
-        }
+        onToggleKinList={toggleKinListDrawer}
+        onToggleKinToKinChat={toggleKinToKinChatDrawer}
+        onToggleConnectForm={toggleConnectDrawer}
+        kinToKinChatOpen={showKinToKinChat}
         isMobile={isMobile}
       />
 
@@ -177,6 +194,7 @@ export default function KinPanel(props: KinPanelProps) {
           setContextCountInput={setKinChatContextCountInput}
           sendKinToKinMessage={sendKinToKinMessage}
           requestSummary={requestKinToKinSummary}
+          isMobile={isMobile}
         />
       )}
 

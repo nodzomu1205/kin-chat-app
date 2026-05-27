@@ -1,6 +1,6 @@
 # Maintenance Completion Checklist
 
-Updated: 2026-05-21
+Updated: 2026-05-27
 
 ## Purpose
 
@@ -100,6 +100,10 @@ Latest status update:
 - Library reference protocol is now intentionally consolidated on
   `SYS_LIBRARY_DATA_REQUEST / RESPONSE`; retired `LIBRARY_INDEX/ITEM` blocks
   are rejected by parser coverage.
+- Kin/GPT settings UI cleanup is in maintenance-watch: Kin drawer tabs are
+  mutually exclusive and compact, GPT library settings now show direct
+  reference + capacity, image reference, and DB reference in that order, and
+  `DB参照 検索候補チャンク上限` accepts persisted `0` to skip DB candidate search.
 - Draft Preparation, Draft Modification, and File Saving are implemented with
   local file-save gating, generated library summaries, length validation, and
   latest-draft fallback coverage.

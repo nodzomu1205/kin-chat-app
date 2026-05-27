@@ -73,21 +73,14 @@ export const GPT_SETTINGS_SECTION_TEXT = {
   autoLibraryReferenceHelp:
     "Kin の発話や検索結果、取込文書などをもとに、ライブラリ候補を自動で参照に含めます。",
   directLibraryReferenceLabel: "直接参照",
-  directLibraryReferenceHelp:
-    "指定件数分のライブラリカード本文をそのまま文脈に含めます。確実に参照させたいカード向けです。",
-  ragLibraryReferenceLabel: "RAG参照",
-  ragLibraryReferenceHelp:
-    "ライブラリ全体から質問に近いチャンクだけを検索して文脈に含めます。広く効率的に参照したいカード向けです。",
+  ragLibraryReferenceLabel: "DB参照",
   ragLibraryReferenceCountLabel: "DB参照 文脈投入チャンク上限",
   ragLibraryCandidateCountLabel: "DB参照 検索候補チャンク上限",
   ragLibrarySimilarityThresholdLabel: "DB参照 類似度閾値",
   libraryReferenceModeLabel: "ライブラリ参照モード",
   libraryIndexResponseCountLabel: "ライブラリカード上限",
   libraryReferenceCountLabel: "ライブラリ参照件数",
-  imageLibraryReferenceTitle: "画像ライブラリ参照",
   imageLibraryReferenceEnabledLabel: "画像ライブラリ参照",
-  imageLibraryReferenceEnabledHelp:
-    "PPT設計書作成とPPTX出力で、画像ライブラリカードを候補として使います。",
   imageLibraryReferenceCountLabel: "画像ライブラリ参照件数",
   imageLibraryCardLimitLabel: "画像ライブラリカード上限",
   libraryStorageLabel: "ライブラリ容量",

@@ -35,11 +35,14 @@ export async function fetchRagLibraryReferenceContext(params: {
     Number.isFinite(params.candidateCount)
     ? params.candidateCount
     : 100;
+  if (!query) return { context: "", matches: [], skippedReason: "empty_query" };
+  if (rawCandidateCount <= 0) {
+    return { context: "", matches: [], skippedReason: "candidate_count_zero" };
+  }
   const candidateCount = Math.min(
     MAX_RAG_LIBRARY_CANDIDATE_COUNT,
     Math.max(matchCount, Math.floor(rawCandidateCount))
   );
-  if (!query) return { context: "", matches: [], skippedReason: "empty_query" };
 
   try {
     const response = await fetch("/api/library-rag/search", {

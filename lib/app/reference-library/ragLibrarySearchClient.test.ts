@@ -86,4 +86,22 @@ describe("fetchRagLibraryReferenceContext", () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(body.candidateCount).toBe(100000);
   });
+
+  it("skips search when candidate count is zero", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchRagLibraryReferenceContext({
+      query: "disabled candidate lookup",
+      matchCount: 10,
+      candidateCount: 0,
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      context: "",
+      matches: [],
+      skippedReason: "candidate_count_zero",
+    });
+  });
 });

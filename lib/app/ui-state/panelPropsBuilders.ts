@@ -104,7 +104,7 @@ export function buildGptPanelProps(args: BuildGptPanelArgs): BuiltGptPanelProps 
     settings.onChangeLibraryRagReferenceCount(clampPanelCount(value, 0, 50));
   const onChangeLibraryRagCandidateCount = (value: number) =>
     settings.onChangeLibraryRagCandidateCount(
-      clampPanelCount(value, 1, MAX_LIBRARY_RAG_CANDIDATE_COUNT)
+      clampPanelCount(value, 0, MAX_LIBRARY_RAG_CANDIDATE_COUNT)
     );
   const onChangeLibraryRagSimilarityThreshold = (value: number) =>
     settings.onChangeLibraryRagSimilarityThreshold(

@@ -166,6 +166,16 @@ export default function KinManagementDrawer({
                       borderRadius: 12,
                       padding: 10,
                     }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        marginBottom: 8,
+                        minWidth: 0,
+                      }}
                     >
                       <label
                         style={{
@@ -175,8 +185,8 @@ export default function KinManagementDrawer({
                           fontSize: 12,
                           fontWeight: 700,
                           color: "#4b5563",
-                          marginBottom: 8,
                           cursor: "pointer",
+                          flexShrink: 0,
                         }}
                       >
                         <input
@@ -189,10 +199,26 @@ export default function KinManagementDrawer({
 
                       <div
                         style={{
+                          fontSize: 11,
+                          color: "#6b7280",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          textAlign: "right",
+                          minWidth: 0,
+                        }}
+                        title={kin.id}
+                      >
+                        {kin.id}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
                         display: "flex",
-                        justifyContent: "space-between",
                         alignItems: "center",
                         gap: 8,
+                        flexWrap: isMobile ? "wrap" : "nowrap",
                       }}
                     >
                       <button
@@ -204,8 +230,9 @@ export default function KinManagementDrawer({
                           padding: 0,
                           margin: 0,
                           cursor: "pointer",
-                          minWidth: 0,
-                          flex: 1,
+                          minWidth: isMobile ? "40%" : 96,
+                          maxWidth: isMobile ? "none" : 160,
+                          flex: isMobile ? "1 1 40%" : "0 1 160px",
                           textAlign: "left",
                         }}
                       >
@@ -224,12 +251,32 @@ export default function KinManagementDrawer({
                         </div>
                       </button>
 
+                      <input
+                        defaultValue={kin.label}
+                        onBlur={(event) => renameKin(kin.id, event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") event.currentTarget.blur();
+                        }}
+                        style={{
+                          flex: isMobile ? "1 1 100%" : "0 1 110px",
+                          minWidth: isMobile ? "100%" : 90,
+                          maxWidth: isMobile ? "none" : 110,
+                          padding: "6px 8px",
+                          borderRadius: 8,
+                          border: "1px solid #d1d5db",
+                          fontSize: 12,
+                          boxSizing: "border-box",
+                          background: "#fff",
+                        }}
+                      />
+
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
                           flexShrink: 0,
+                          marginLeft: isMobile ? 0 : "auto",
                         }}
                       >
                         <button
@@ -273,37 +320,6 @@ export default function KinManagementDrawer({
                         </button>
                       </div>
                     </div>
-
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#6b7280",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                      title={kin.id}
-                    >
-                      {kin.id}
-                    </div>
-
-                    <input
-                      defaultValue={kin.label}
-                      onBlur={(event) => renameKin(kin.id, event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") event.currentTarget.blur();
-                      }}
-                      style={{
-                        width: "100%",
-                        padding: "6px 8px",
-                        borderRadius: 8,
-                        border: "1px solid #d1d5db",
-                        fontSize: 12,
-                        boxSizing: "border-box",
-                        background: "#fff",
-                        marginTop: 8,
-                      }}
-                    />
                   </div>
                 );
               })}

@@ -5,7 +5,7 @@ import { searchLibraryRagContext } from "@/lib/server/rag/libraryRagSearch";
 const requestSchema = z.object({
   query: z.string().default(""),
   matchCount: z.number().int().min(1).optional(),
-  candidateCount: z.number().int().min(1).optional(),
+  candidateCount: z.number().int().min(0).optional(),
   matchThreshold: z.number().min(-1).max(1).optional(),
   documentIds: z.array(z.string()).optional(),
   filterMetadata: z.record(z.unknown()).optional(),

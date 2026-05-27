@@ -24,6 +24,7 @@ import {
   MemorySettingsSection,
 } from "./GptSettingsDrawerSections";
 import {
+  DbLibraryReferenceSettingsSection,
   LibrarySettingsSection,
   ImageLibraryReferenceSettingsSection,
   ProtocolSettingsSection,
@@ -274,20 +275,12 @@ export default function GptSettingsDrawer(props: Props) {
             libraryReferenceMode={props.libraryReferenceMode}
             libraryIndexResponseCount={props.libraryIndexResponseCount}
             libraryReferenceCount={props.libraryReferenceCount}
-            libraryRagReferenceEnabled={props.libraryRagReferenceEnabled}
-            libraryRagReferenceCount={props.libraryRagReferenceCount}
-            libraryRagCandidateCount={props.libraryRagCandidateCount}
-            libraryRagSimilarityThreshold={props.libraryRagSimilarityThreshold}
             libraryStorageMB={props.libraryStorageMB}
             libraryReferenceEstimatedTokens={props.libraryReferenceEstimatedTokens}
             onChangeAutoLibraryReferenceEnabled={props.onChangeAutoLibraryReferenceEnabled}
             onChangeLibraryReferenceMode={props.onChangeLibraryReferenceMode}
             onChangeLibraryIndexResponseCount={props.onChangeLibraryIndexResponseCount}
             onChangeLibraryReferenceCount={props.onChangeLibraryReferenceCount}
-            onChangeLibraryRagReferenceEnabled={props.onChangeLibraryRagReferenceEnabled}
-            onChangeLibraryRagReferenceCount={props.onChangeLibraryRagReferenceCount}
-            onChangeLibraryRagCandidateCount={props.onChangeLibraryRagCandidateCount}
-            onChangeLibraryRagSimilarityThreshold={props.onChangeLibraryRagSimilarityThreshold}
           />
           <ImageLibraryReferenceSettingsSection
             isMobile={props.isMobile}
@@ -301,6 +294,17 @@ export default function GptSettingsDrawer(props: Props) {
               props.onChangeImageLibraryReferenceCount
             }
             onChangeImageLibraryCardLimit={props.onChangeImageLibraryCardLimit}
+          />
+          <DbLibraryReferenceSettingsSection
+            isMobile={props.isMobile}
+            libraryRagReferenceEnabled={props.libraryRagReferenceEnabled}
+            libraryRagReferenceCount={props.libraryRagReferenceCount}
+            libraryRagCandidateCount={props.libraryRagCandidateCount}
+            libraryRagSimilarityThreshold={props.libraryRagSimilarityThreshold}
+            onChangeLibraryRagReferenceEnabled={props.onChangeLibraryRagReferenceEnabled}
+            onChangeLibraryRagReferenceCount={props.onChangeLibraryRagReferenceCount}
+            onChangeLibraryRagCandidateCount={props.onChangeLibraryRagCandidateCount}
+            onChangeLibraryRagSimilarityThreshold={props.onChangeLibraryRagSimilarityThreshold}
           />
         </>
       ) : null}

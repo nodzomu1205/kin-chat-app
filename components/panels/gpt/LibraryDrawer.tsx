@@ -1263,7 +1263,7 @@ function LibraryDbLogPanel({
         <div style={placeholderStyle}>
           <div style={placeholderTitleStyle}>参照ログはまだありません</div>
           <div style={placeholderBodyStyle}>
-            RAG参照をONにして会話またはタスク操作を実行すると、DB検索結果がここに表示されます。
+            DB参照をONにして会話またはタスク操作を実行すると、DB検索結果がここに表示されます。
           </div>
         </div>
       ) : (

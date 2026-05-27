@@ -161,7 +161,7 @@ function loadInitialReferenceLibraryState() {
 
   if (savedRagCandidateCount) {
     const parsed = Number(savedRagCandidateCount);
-    if (Number.isFinite(parsed) && parsed >= 1) {
+    if (Number.isFinite(parsed) && parsed >= 0) {
       initialState.libraryRagCandidateCount = parsed;
     }
   }

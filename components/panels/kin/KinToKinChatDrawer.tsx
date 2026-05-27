@@ -36,6 +36,7 @@ type Props = {
     speakerLabel: string
   ) => Promise<string>;
   requestSummary: (text: string) => void | Promise<void>;
+  isMobile?: boolean;
 };
 
 type SessionStatus = "idle" | "running" | "paused" | "completed" | "error";
@@ -53,6 +54,7 @@ export default function KinToKinChatDrawer({
   setContextCountInput,
   sendKinToKinMessage,
   requestSummary,
+  isMobile = false,
 }: Props) {
   const [starterId, setStarterId] = useState(() => kinList[0]?.id || "");
   const [participantIds, setParticipantIds] = useState<string[]>(() =>
@@ -376,19 +378,19 @@ export default function KinToKinChatDrawer({
   };
 
   return (
-    <div style={drawerStyle}>
+    <div style={drawerStyle(isMobile)}>
       <div style={headerStyle}>
-        <div>
+        <div style={titleRowStyle}>
           <div style={titleStyle}>Kin-to-Kin chat</div>
+          <span style={statusPillStyle}>{status}</span>
         </div>
-        <span style={statusPillStyle}>{status}</span>
       </div>
 
       {kinList.length < 2 ? (
         <div style={alertStyle}>Register at least two Kin profiles to use this chat.</div>
       ) : (
         <>
-          <div style={formGridStyle}>
+          <div style={formGridStyle(isMobile)}>
             <label style={fieldStyle}>
               <span style={labelStyle}>Starter Kin</span>
               <select
@@ -411,7 +413,7 @@ export default function KinToKinChatDrawer({
               </select>
             </label>
 
-            <label style={fieldStyle}>
+            <label style={wideFieldStyle(isMobile)}>
               <span style={labelStyle}>Participants / {participantModeLabel}</span>
               <div style={participantPanelStyle}>
                 <div style={participantSummaryStyle}>
@@ -419,7 +421,7 @@ export default function KinToKinChatDrawer({
                     ? selectedParticipantLabels.join(", ")
                     : "Select at least one participant"}
                 </div>
-                <div style={participantListStyle}>
+                <div style={participantListStyle(isMobile)}>
                 {availablePartners.map((kin) => {
                   const checked = resolvedParticipantIds.includes(kin.id);
                   return (
@@ -509,7 +511,7 @@ export default function KinToKinChatDrawer({
             </div>
           </div>
 
-          <label style={fieldStyle}>
+          <label style={wideFieldStyle(isMobile)}>
             <span style={labelStyle}>Topic</span>
             <textarea
               value={topic}
@@ -581,22 +583,29 @@ export default function KinToKinChatDrawer({
   );
 }
 
-const drawerStyle: React.CSSProperties = {
+const drawerStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "grid",
   gap: 6,
-  padding: "7px 8px",
+  padding: isMobile ? "22px 8px 7px" : "18px 8px 7px",
   borderBottomWidth: 1,
   borderBottomStyle: "solid",
   borderBottomColor: "#ddd6fe",
   background: "rgba(250,245,255,0.94)",
   flexShrink: 0,
-};
+});
 
 const headerStyle: React.CSSProperties = {
   display: "flex",
-  justifyContent: "space-between",
+  justifyContent: "flex-start",
   gap: 8,
   alignItems: "flex-start",
+};
+
+const titleRowStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  minWidth: 0,
 };
 
 const titleStyle: React.CSSProperties = {
@@ -624,20 +633,28 @@ const statusPillStyle: React.CSSProperties = {
   background: "#ffffff",
 };
 
-const formGridStyle: React.CSSProperties = {
+const formGridStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "grid",
-  gridTemplateColumns: "165px 220px 82px 82px 74px",
+  gridTemplateColumns: isMobile
+    ? "minmax(0, 1fr) minmax(0, 1fr)"
+    : "165px minmax(220px, 1fr) 82px 82px 74px",
   gap: 6,
-  justifyContent: "start",
+  justifyContent: "stretch",
   alignItems: "end",
-  overflowX: "auto",
-};
+  width: "100%",
+  minWidth: 0,
+});
 
 const fieldStyle: React.CSSProperties = {
   display: "grid",
   gap: 3,
   minWidth: 0,
 };
+
+const wideFieldStyle = (isMobile: boolean): React.CSSProperties => ({
+  ...fieldStyle,
+  gridColumn: isMobile ? "1 / -1" : undefined,
+});
 
 const labelStyle: React.CSSProperties = {
   fontSize: 10,
@@ -660,7 +677,7 @@ const inputStyle: React.CSSProperties = {
 
 const topicInputStyle: React.CSSProperties = {
   ...inputStyle,
-  maxWidth: 640,
+  maxWidth: "100%",
   minHeight: 36,
   resize: "vertical",
 };
@@ -686,13 +703,15 @@ const participantSummaryStyle: React.CSSProperties = {
   color: "#475569",
 };
 
-const participantListStyle: React.CSSProperties = {
+const participantListStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(86px, 1fr))",
+  gridTemplateColumns: isMobile
+    ? "repeat(2, minmax(0, 1fr))"
+    : "repeat(auto-fit, minmax(86px, 1fr))",
   gap: 3,
-  maxHeight: 54,
+  maxHeight: isMobile ? 84 : 54,
   overflow: "auto",
-};
+});
 
 const participantOptionStyle: React.CSSProperties = {
   display: "flex",

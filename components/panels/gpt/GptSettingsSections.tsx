@@ -156,99 +156,85 @@ export function LibrarySettingsSection(props: {
   libraryReferenceMode: LibraryReferenceMode;
   libraryIndexResponseCount: number;
   libraryReferenceCount: number;
-  libraryRagReferenceEnabled: boolean;
-  libraryRagReferenceCount: number;
-  libraryRagCandidateCount: number;
-  libraryRagSimilarityThreshold: number;
   libraryStorageMB: number;
   libraryReferenceEstimatedTokens: number;
   onChangeAutoLibraryReferenceEnabled: (value: boolean) => void;
   onChangeLibraryReferenceMode: (value: LibraryReferenceMode) => void;
   onChangeLibraryIndexResponseCount: (value: number) => void;
   onChangeLibraryReferenceCount: (value: number) => void;
+}) {
+  return (
+    <div style={{ ...sectionCard, display: "grid", gap: 10 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: props.isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
+          gap: 10,
+        }}
+      >
+        <InlineToggle
+          label={GPT_SETTINGS_SECTION_TEXT.directLibraryReferenceLabel}
+          checked={props.autoLibraryReferenceEnabled}
+          onChange={props.onChangeAutoLibraryReferenceEnabled}
+        />
+        <LabeledSelect
+          label={GPT_SETTINGS_SECTION_TEXT.libraryReferenceModeLabel}
+          value={props.libraryReferenceMode}
+          onChange={(value) =>
+            props.onChangeLibraryReferenceMode(value as LibraryReferenceMode)
+          }
+        >
+          <option value="summary_only">summary only</option>
+          <option value="summary_with_excerpt">summary + excerpt</option>
+        </LabeledSelect>
+        <NumberField
+          label={GPT_SETTINGS_SECTION_TEXT.libraryIndexResponseCountLabel}
+          value={String(props.libraryIndexResponseCount)}
+          onChange={(value) =>
+            props.onChangeLibraryIndexResponseCount(
+              Number(value.replace(/[^\d]/g, "") || 1)
+            )
+          }
+          maxWidth={compactNumberFieldWidth}
+        />
+        <NumberField
+          label={GPT_SETTINGS_SECTION_TEXT.libraryReferenceCountLabel}
+          value={String(props.libraryReferenceCount)}
+          onChange={(value) =>
+            props.onChangeLibraryReferenceCount(
+              Number(value.replace(/[^\d]/g, "") || 0)
+            )
+          }
+          maxWidth={compactNumberFieldWidth}
+        />
+        <ReadonlyStatField
+          label={GPT_SETTINGS_SECTION_TEXT.libraryStorageLabel}
+          value={`${props.libraryStorageMB.toFixed(3)} MB`}
+          maxWidth={compactStatFieldWidth}
+        />
+        <ReadonlyStatField
+          label={GPT_SETTINGS_SECTION_TEXT.libraryEstimatedTokensLabel}
+          value={`${GPT_SETTINGS_SECTION_TEXT.libraryEstimatedTokensValuePrefix}${props.libraryReferenceEstimatedTokens}`}
+          maxWidth={compactStatFieldWidth}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function DbLibraryReferenceSettingsSection(props: {
+  isMobile?: boolean;
+  libraryRagReferenceEnabled: boolean;
+  libraryRagReferenceCount: number;
+  libraryRagCandidateCount: number;
+  libraryRagSimilarityThreshold: number;
   onChangeLibraryRagReferenceEnabled: (value: boolean) => void;
   onChangeLibraryRagReferenceCount: (value: number) => void;
   onChangeLibraryRagCandidateCount: (value: number) => void;
   onChangeLibraryRagSimilarityThreshold: (value: number) => void;
 }) {
-  const gridColumns = props.isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))";
-
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: gridColumns,
-        gap: 12,
-      }}
-    >
-      <div
-        style={{
-          ...sectionCard,
-          display: "grid",
-          gap: 12,
-        }}
-      >
-        <div>
-          <div style={{ ...labelStyle, marginBottom: 4 }}>
-            {GPT_SETTINGS_SECTION_TEXT.directLibraryReferenceLabel}
-          </div>
-          <div style={helpTextStyle}>
-            {GPT_SETTINGS_SECTION_TEXT.directLibraryReferenceHelp}
-          </div>
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: props.isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
-            gap: 10,
-          }}
-        >
-          <InlineToggle
-            label={GPT_SETTINGS_SECTION_TEXT.directLibraryReferenceLabel}
-            checked={props.autoLibraryReferenceEnabled}
-            onChange={props.onChangeAutoLibraryReferenceEnabled}
-          />
-          <LabeledSelect
-            label={GPT_SETTINGS_SECTION_TEXT.libraryReferenceModeLabel}
-            value={props.libraryReferenceMode}
-            onChange={(value) =>
-              props.onChangeLibraryReferenceMode(value as LibraryReferenceMode)
-            }
-          >
-            <option value="summary_only">summary only</option>
-            <option value="summary_with_excerpt">summary + excerpt</option>
-          </LabeledSelect>
-          <NumberField
-            label={GPT_SETTINGS_SECTION_TEXT.libraryIndexResponseCountLabel}
-            value={String(props.libraryIndexResponseCount)}
-            onChange={(value) =>
-              props.onChangeLibraryIndexResponseCount(
-                Number(value.replace(/[^\d]/g, "") || 1)
-              )
-            }
-            maxWidth={compactNumberFieldWidth}
-          />
-          <NumberField
-            label={GPT_SETTINGS_SECTION_TEXT.libraryReferenceCountLabel}
-            value={String(props.libraryReferenceCount)}
-            onChange={(value) =>
-              props.onChangeLibraryReferenceCount(
-                Number(value.replace(/[^\d]/g, "") || 0)
-              )
-            }
-            maxWidth={compactNumberFieldWidth}
-          />
-        </div>
-      </div>
-      <div style={{ ...sectionCard, display: "grid", gap: 12 }}>
-        <div>
-          <div style={{ ...labelStyle, marginBottom: 4 }}>
-            {GPT_SETTINGS_SECTION_TEXT.ragLibraryReferenceLabel}
-          </div>
-          <div style={helpTextStyle}>
-            {GPT_SETTINGS_SECTION_TEXT.ragLibraryReferenceHelp}
-          </div>
-        </div>
+    <div style={{ ...sectionCard, display: "grid", gap: 10 }}>
         <div
           style={{
             display: "grid",
@@ -272,14 +258,13 @@ export function LibrarySettingsSection(props: {
             }
             maxWidth={compactNumberFieldWidth}
           />
-          <NumberField
+          <CommittedNumberField
             label={GPT_SETTINGS_SECTION_TEXT.ragLibraryCandidateCountLabel}
-            value={String(props.libraryRagCandidateCount)}
-            onChange={(value) =>
-              props.onChangeLibraryRagCandidateCount(
-                Number(value.replace(/[^\d]/g, "") || 1)
-              )
-            }
+            value={props.libraryRagCandidateCount}
+            min={0}
+            max={100000}
+            emptyValue={0}
+            onCommit={props.onChangeLibraryRagCandidateCount}
             maxWidth={compactNumberFieldWidth}
           />
           <CommittedDecimalField
@@ -291,27 +276,6 @@ export function LibrarySettingsSection(props: {
             maxWidth={compactNumberFieldWidth}
           />
         </div>
-      </div>
-      <div
-        style={{
-          ...sectionCard,
-          display: "grid",
-          gridColumn: props.isMobile ? undefined : "1 / -1",
-          gridTemplateColumns: props.isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
-          gap: 10,
-        }}
-      >
-        <ReadonlyStatField
-          label={GPT_SETTINGS_SECTION_TEXT.libraryStorageLabel}
-          value={`${props.libraryStorageMB.toFixed(3)} MB`}
-          maxWidth={compactStatFieldWidth}
-        />
-        <ReadonlyStatField
-          label={GPT_SETTINGS_SECTION_TEXT.libraryEstimatedTokensLabel}
-          value={`${GPT_SETTINGS_SECTION_TEXT.libraryEstimatedTokensValuePrefix}${props.libraryReferenceEstimatedTokens}`}
-          maxWidth={compactStatFieldWidth}
-        />
-      </div>
     </div>
   );
 }
@@ -355,9 +319,6 @@ export function ImageLibraryReferenceSettingsSection(props: {
 }) {
   return (
     <div style={sectionCard}>
-      <div style={{ ...labelStyle, marginBottom: 10 }}>
-        {GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceTitle}
-      </div>
       <div
         style={{
           display: "grid",
@@ -371,7 +332,6 @@ export function ImageLibraryReferenceSettingsSection(props: {
           label={GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceEnabledLabel}
           checked={props.imageLibraryReferenceEnabled}
           onChange={props.onChangeImageLibraryReferenceEnabled}
-          help={GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceEnabledHelp}
         />
         <CommittedNumberField
           label={GPT_SETTINGS_SECTION_TEXT.imageLibraryReferenceCountLabel}
@@ -399,6 +359,7 @@ function CommittedNumberField(props: {
   value: number;
   min: number;
   max: number;
+  emptyValue?: number;
   onCommit: (value: number) => void;
   maxWidth?: number | string;
 }) {
@@ -410,7 +371,7 @@ function CommittedNumberField(props: {
 
   const commit = () => {
     const digits = input.replace(/[^\d]/g, "");
-    const parsed = digits ? Number(digits) : props.value;
+    const parsed = digits ? Number(digits) : (props.emptyValue ?? props.value);
     const next = Math.max(props.min, Math.min(props.max, parsed));
     setInput(String(next));
     if (next !== props.value) props.onCommit(next);

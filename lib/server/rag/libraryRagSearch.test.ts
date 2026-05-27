@@ -192,6 +192,24 @@ describe("searchLibraryRagContext", () => {
     });
   });
 
+  it("skips Supabase search when candidate count is zero", async () => {
+    hasSupabaseRagConfig.mockReturnValue(true);
+
+    const result = await searchLibraryRagContext({
+      query: "disabled candidate lookup",
+      candidateCount: 0,
+      matchCount: 10,
+    });
+
+    expect(createOpenAIEmbeddingWithUsage).not.toHaveBeenCalled();
+    expect(matchSupabaseRagLibraryChunks).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      context: "",
+      matches: [],
+      skippedReason: "candidate_count_zero",
+    });
+  });
+
   it("passes candidate document ids through to Supabase search", async () => {
     hasSupabaseRagConfig.mockReturnValue(true);
     createOpenAIEmbeddingWithUsage.mockResolvedValue({

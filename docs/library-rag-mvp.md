@@ -1,6 +1,6 @@
 # Library, DB, And DB Reference Log
 
-Updated: 2026-05-12
+Updated: 2026-05-27
 
 ## Direction
 
@@ -191,6 +191,8 @@ Current DB reference limits:
   capped separately from search breadth
 - `DB参照 検索候補チャンク上限` controls how many candidate chunks Supabase can
   inspect before the app trims the final injected context
+- setting the candidate chunk upper bound to `0` intentionally disables DB
+  candidate search for that request path and reports `candidate_count_zero`
 - the candidate chunk upper bound is currently capped at `100000`, not `500`,
   so broad DB scans can be requested when the user wants recall over speed
 - values above `100000` are normalized down to that safety cap at the UI,
