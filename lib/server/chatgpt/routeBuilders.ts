@@ -1,8 +1,10 @@
 import {
   buildBaseSystemPrompt,
   buildInstructionWrappedInput,
+  buildReplyDraftFollowupInput,
   buildSearchSystemPrompt,
 } from "@/lib/server/chatgpt/promptBuilders";
+import { isReplyDraftFollowupRequest } from "@/lib/shared/replyDraftFollowup";
 import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
 import { memoryToPrompt } from "@/lib/memory-domain/memory";
 import { normalizeChatMessages } from "@/lib/server/chatgpt/requestNormalization";
@@ -67,6 +69,14 @@ export function buildChatCompletionMessages(args: {
   searchQuery?: string;
   searchText?: string;
 }): OpenAIMessage[] {
+  const normalizedRecent = normalizeChatMessages(args.recentMessages).slice(-16);
+  const shouldBuildReplyDraftFollowup =
+    args.instructionMode === "normal" &&
+    isReplyDraftFollowupRequest({
+      input: args.input,
+      recentMessages: normalizedRecent,
+    });
+
   const messages: OpenAIMessage[] = [
     {
       role: "system",
@@ -102,8 +112,7 @@ export function buildChatCompletionMessages(args: {
   }
 
   messages.push(
-    ...normalizeChatMessages(args.recentMessages)
-      .slice(-16)
+    ...normalizedRecent
       .map((message): OpenAIMessage => ({
         role: message.role === "user" ? "user" : "assistant",
         content: message.text,
@@ -112,7 +121,9 @@ export function buildChatCompletionMessages(args: {
 
   messages.push({
     role: "user",
-    content: buildInstructionWrappedInput(args.input, args.instructionMode),
+    content: shouldBuildReplyDraftFollowup
+      ? buildReplyDraftFollowupInput(args.input)
+      : buildInstructionWrappedInput(args.input, args.instructionMode),
   });
 
   return messages;
@@ -136,10 +147,14 @@ export function buildChatPromptMetrics(args: {
   searchText?: string;
 }): ChatPromptMetrics {
   const normalizedRecent = normalizeChatMessages(args.recentMessages).slice(-16);
-  const wrappedInput = buildInstructionWrappedInput(
-    args.input,
-    args.instructionMode
-  );
+  const wrappedInput =
+    args.instructionMode === "normal" &&
+    isReplyDraftFollowupRequest({
+      input: args.input,
+      recentMessages: normalizedRecent,
+    })
+      ? buildReplyDraftFollowupInput(args.input)
+      : buildInstructionWrappedInput(args.input, args.instructionMode);
   const baseSystemPrompt = buildBaseSystemPrompt({
     normalizedMemory: args.normalizedMemory,
     reasoningMode: args.reasoningMode,

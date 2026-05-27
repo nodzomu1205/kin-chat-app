@@ -2,6 +2,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import GptToolbar from "@/components/panels/gpt/GptToolbar";
+import { GPT_TOOLBAR_TEXT } from "@/components/panels/gpt/gptUiText";
 
 describe("GptToolbar", () => {
   it("renders the reset button with the rotation arrow", () => {
@@ -47,5 +48,28 @@ describe("GptToolbar", () => {
     );
 
     expect(html).toContain("データ取込");
+  });
+
+  it("renders only the supported chat instruction buttons", () => {
+    const html = renderToStaticMarkup(
+      <GptToolbar
+        activeTab="chat"
+        onChangeTab={() => {}}
+        onAction={() => {}}
+        onRunTask={() => {}}
+        onRunDeepen={() => {}}
+        onRunTaskUpdate={() => {}}
+        onImportLastResponse={() => {}}
+        onAttachSearchResult={() => {}}
+        onSendLatestResponseToKin={() => {}}
+        onSendCurrentTaskToKin={() => {}}
+        onRegisterTask={() => {}}
+        onTransfer={() => {}}
+        onReset={() => {}}
+      />
+    );
+
+    expect(html).toContain(GPT_TOOLBAR_TEXT.translate);
+    expect(html).toContain(GPT_TOOLBAR_TEXT.replyOnly);
   });
 });

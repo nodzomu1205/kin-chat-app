@@ -3,8 +3,14 @@ import { createEmptyMemory } from "@/lib/memory-domain/memory";
 import {
   buildBaseSystemPrompt,
   buildInstructionWrappedInput,
+  buildReplyDraftFollowupInput,
   buildSearchSystemPrompt,
 } from "@/lib/server/chatgpt/promptBuilders";
+import {
+  hasReplyDraftOffer,
+  isReplyDraftAffirmation,
+  REPLY_DRAFT_OFFER_TEXT,
+} from "@/lib/shared/replyDraftFollowup";
 
 describe("promptBuilders", () => {
   it("wraps translate_explain input with translation instructions", () => {
@@ -13,9 +19,23 @@ describe("promptBuilders", () => {
       "translate_explain"
     );
 
-    expect(result).toContain("Translate the following message into natural Japanese");
-    expect(result).toContain("Source message:");
+    expect(result).toContain("Translate the following source message into natural Japanese");
+    expect(result).toContain("[原文]");
+    expect(result).toContain("[日本語訳]");
+    expect(result).toContain("[解説]");
+    expect(result).toContain(REPLY_DRAFT_OFFER_TEXT);
     expect(result).toContain("Hello there");
+  });
+
+  it("detects reply-draft followup consent after an explanation offer", () => {
+    expect(hasReplyDraftOffer(`...\n${REPLY_DRAFT_OFFER_TEXT}`)).toBe(true);
+    expect(isReplyDraftAffirmation("はい。短く回答して下さい。")).toBe(true);
+    expect(isReplyDraftAffirmation("いいえ、大丈夫です。")).toBe(false);
+
+    const result = buildReplyDraftFollowupInput("はい。短く回答して下さい。");
+    expect(result).toContain("accepted the previous offer");
+    expect(result).toContain("same language as the original source message");
+    expect(result).toContain("はい。短く回答して下さい。");
   });
 
   it("wraps reply_only input with reply-only instructions", () => {
@@ -23,16 +43,6 @@ describe("promptBuilders", () => {
 
     expect(result).toContain("Output only the reply text.");
     expect(result).toContain("Message:");
-  });
-
-  it("splits polish input into draft and revision request", () => {
-    const result = buildInstructionWrappedInput(
-      "Draft text\n---\nMake it warmer",
-      "polish"
-    );
-
-    expect(result).toContain("Draft:\nDraft text");
-    expect(result).toContain("Revision request:\nMake it warmer");
   });
 
   it("returns raw input for normal instruction mode", () => {

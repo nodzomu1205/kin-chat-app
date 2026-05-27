@@ -66,6 +66,38 @@ describe("routeBuilders", () => {
     });
   });
 
+  it("turns normal consent after an explanation offer into a reply draft request", () => {
+    const messages = buildChatCompletionMessages({
+      normalizedMemory: createEmptyMemory(),
+      reasoningMode: "strict",
+      instructionMode: "normal",
+      input: "はい。短く回答して下さい。",
+      recentMessages: [
+        { role: "user", text: "Thanks for reaching out." },
+        {
+          role: "assistant",
+          text: [
+            "[原文]",
+            "Thanks for reaching out.",
+            "",
+            "[日本語訳]",
+            "ご連絡ありがとうございます。",
+            "",
+            "[解説]",
+            "丁寧な導入表現です。",
+            "",
+            "返信案を作りますか？",
+          ].join("\n"),
+        },
+      ],
+    });
+
+    expect(messages.at(-1)?.content).toContain(
+      "accepted the previous offer to create a reply draft"
+    );
+    expect(messages.at(-1)?.content).toContain("はい。短く回答して下さい。");
+  });
+
   it("measures the exact chat prompt payload from built messages", () => {
     const normalizedMemory = createEmptyMemory();
     const messages = buildChatCompletionMessages({

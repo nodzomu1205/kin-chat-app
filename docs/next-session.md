@@ -73,12 +73,20 @@ Current newest product slice is Kin/GPT settings UI cleanup:
 9. Kin-facing protocol prompts, compiled `SYS_TASK` delivery limits, and
    automatic resend guidance now share the 500-character outgoing-message
    limit and 400-500 character split range from `lib/shared/kinMessageLimits.ts`.
+10. GPT chat toolbar labels changed from `翻訳` to `解説` and from `返信のみ` to
+    `返信案`. The old `整える` button and `polish` instruction mode were removed.
+11. The `解説` flow now outputs `[原文]`, `[日本語訳]`, `[解説]`, then asks
+    `返信案を作りますか？`. Affirmative follow-ups create a reply draft in the same
+    language as `[原文]` and skip DB/RAG plus direct library reference injection
+    for speed.
 
 Manual retest should open Kin list, connection, and Kin-to-Kin chat in sequence
 and confirm only one drawer is expanded. On mobile, confirm Kin-to-Kin controls
 fit without horizontal scrolling. In GPT library settings, confirm the panel
 order and compact copy, then set `DB参照 検索候補チャンク上限` to blank/`0` and
-confirm it remains `0` after leaving and reopening settings.
+confirm it remains `0` after leaving and reopening settings. Also use the GPT
+chat `解説` button on an English message, answer `はい。短く回答して下さい。`, and
+confirm the reply draft is English and returns without DB/reference delay.
 
 Previous product slice was multi-recipient Kin send:
 

@@ -14,8 +14,7 @@ export type ChatMessage = {
 export type InstructionMode =
   | "normal"
   | "translate_explain"
-  | "reply_only"
-  | "polish";
+  | "reply_only";
 
 export type ReasoningMode = "strict" | "creative";
 
@@ -29,8 +28,7 @@ export function resolveChatRouteMode(body: unknown): ChatRouteMode | null {
 
 export function normalizeInstructionMode(value: unknown): InstructionMode {
   return value === "translate_explain" ||
-    value === "reply_only" ||
-    value === "polish"
+    value === "reply_only"
     ? value
     : "normal";
 }

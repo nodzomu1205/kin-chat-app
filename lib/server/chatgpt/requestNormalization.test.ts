@@ -23,7 +23,6 @@ describe("requestNormalization", () => {
       "translate_explain"
     );
     expect(normalizeInstructionMode("reply_only")).toBe("reply_only");
-    expect(normalizeInstructionMode("polish")).toBe("polish");
     expect(normalizeInstructionMode("unknown")).toBe("normal");
 
     expect(normalizeReasoningMode("strict")).toBe("strict");

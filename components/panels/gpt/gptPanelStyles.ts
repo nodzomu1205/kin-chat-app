@@ -105,23 +105,6 @@ export const buttonReply: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-export const buttonPolish: React.CSSProperties = {
-  padding: "0 12px",
-  height: 32,
-  borderRadius: 10,
-  border: "1px solid #fde68a",
-  background: "#fffbeb",
-  color: "#b45309",
-  cursor: "pointer",
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-  fontSize: 12,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxSizing: "border-box",
-};
-
 export const buttonTask: React.CSSProperties = {
   padding: "0 12px",
   height: 32,

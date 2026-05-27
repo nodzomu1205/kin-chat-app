@@ -4,7 +4,6 @@ import React from "react";
 import type { GptInstructionMode } from "./gptPanelTypes";
 import {
   buttonDeepen,
-  buttonPolish,
   buttonReply,
   buttonReset,
   buttonSwitch,
@@ -123,13 +122,6 @@ function ActionRow({
           onClick={() => onAction("reply_only")}
         >
           {GPT_TOOLBAR_TEXT.replyOnly}
-        </button>
-        <button
-          type="button"
-          style={resetLike(buttonPolish)}
-          onClick={() => onAction("polish")}
-        >
-          {GPT_TOOLBAR_TEXT.polish}
         </button>
         <button
           type="button"

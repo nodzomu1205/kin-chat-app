@@ -12,9 +12,8 @@ export const GPT_PANEL_TEXT = {
 export const GPT_TOOLBAR_TEXT = {
   mobileSwitchTitle: "画面切替",
   mobileSwitchButton: "⇄",
-  translate: "翻訳",
-  replyOnly: "返信のみ",
-  polish: "整える",
+  translate: "解説",
+  replyOnly: "返信案",
   sendToKin: "Kinに送る",
   reset: "↻",
   resetTitle: "リセット",

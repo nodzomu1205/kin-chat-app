@@ -4,22 +4,23 @@ import type {
   InstructionMode,
   ReasoningMode,
 } from "@/lib/server/chatgpt/requestNormalization";
+import { REPLY_DRAFT_OFFER_TEXT } from "@/lib/shared/replyDraftFollowup";
 
-function parsePolishInput(input: string) {
-  const separator = /\n\s*---\s*\n/;
-  const parts = input.split(separator);
+export function buildReplyDraftFollowupInput(input: string) {
+  return `
+The user accepted the previous offer to create a reply draft.
 
-  if (parts.length <= 1) {
-    return {
-      draft: input.trim(),
-      request: "",
-    };
-  }
+Rules:
+- Use the immediately preceding explained source message and Japanese translation as context.
+- Create a natural reply draft that fits that source message.
+- Write the reply draft in the same language as the original source message in [原文].
+- Follow any extra constraints in the user's latest message, such as length, tone, or language.
+- Output only the reply draft.
+- Do not add headings or commentary.
 
-  return {
-    draft: parts[0]?.trim() || "",
-    request: parts.slice(1).join("\n---\n").trim(),
-  };
+User's latest request:
+${input}
+  `.trim();
 }
 
 export function buildInstructionWrappedInput(
@@ -28,13 +29,19 @@ export function buildInstructionWrappedInput(
 ) {
   if (instructionMode === "translate_explain") {
     return `
-Translate the following message into natural Japanese, then explain its nuance in Japanese.
+Translate the following source message into natural Japanese, then add a brief Japanese explanation.
 
 Rules:
-- First provide a natural Japanese rendering.
-- Then explain tone, intention, and nuance clearly.
-- If there are multiple possible interpretations, note the likely one.
-- Keep the explanation concise and practical.
+- Use exactly these section headings in this order:
+  [原文]
+  [日本語訳]
+  [解説]
+- In [原文], reproduce the source message.
+- In [日本語訳], provide a natural Japanese translation.
+- In [解説], add only a short, practical explanation of tone, intention, and nuance.
+- Keep [解説] brief. Do not write a detailed linguistic analysis unless the user asks for it.
+- After [解説], ask this exact question on its own line:
+  ${REPLY_DRAFT_OFFER_TEXT}
 
 Source message:
 ${input}
@@ -53,27 +60,6 @@ Rules:
 
 Message:
 ${input}
-    `.trim();
-  }
-
-  if (instructionMode === "polish") {
-    const { draft, request } = parsePolishInput(input);
-
-    return `
-Polish the following draft in place.
-
-Rules:
-- Rewrite only the draft text.
-- Preserve the intended meaning.
-- Improve clarity, flow, and tone.
-- If there is an explicit request, follow it.
-- Output only the rewritten draft.
-
-Draft:
-${draft}
-
-Revision request:
-${request || "None"}
     `.trim();
   }
 

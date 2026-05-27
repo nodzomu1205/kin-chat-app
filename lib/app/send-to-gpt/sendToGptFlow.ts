@@ -25,6 +25,7 @@ import {
   runSavedDocumentEditFlow,
 } from "@/lib/app/reference-library/savedDocumentEditFlow";
 import { parseTaskInput } from "@/lib/task/taskInputParser";
+import { isReplyDraftFollowupRequest } from "@/lib/shared/replyDraftFollowup";
 import {
   appendSendToGptFailureMessage,
   applySendToGptRequestStart,
@@ -84,22 +85,30 @@ export async function runSendToGptFlow(args: RunSendToGptFlowArgs) {
   }
 
   try {
-    const shouldUseDbReference = shouldUseDbReferenceForInput(rawText);
+    const recentMessagesForReference =
+      flowArgs.recentChatMessages ||
+      flowArgs.gptStateRef.current.recentMessages ||
+      [];
+    const shouldSkipReferenceForReplyDraft = isReplyDraftFollowupRequest({
+      input: rawText,
+      recentMessages: recentMessagesForReference,
+    });
+    const shouldUseDbReference =
+      !shouldSkipReferenceForReplyDraft && shouldUseDbReferenceForInput(rawText);
     const dbReferenceQuery = shouldUseDbReference
       ? buildDbReferenceQuery({
           currentInput: rawText,
-          recentMessages:
-            flowArgs.recentChatMessages ||
-            flowArgs.gptStateRef.current.recentMessages ||
-            [],
+          recentMessages: recentMessagesForReference,
         })
       : rawText;
     const libraryReferenceContext =
-      shouldUseDbReference && flowArgs.buildLibraryReferenceContextForQuery
-        ? await flowArgs.buildLibraryReferenceContextForQuery(dbReferenceQuery, {
-            originalQuery: rawText,
-          })
-        : flowArgs.buildLibraryReferenceContext();
+      shouldSkipReferenceForReplyDraft
+        ? ""
+        : shouldUseDbReference && flowArgs.buildLibraryReferenceContextForQuery
+          ? await flowArgs.buildLibraryReferenceContextForQuery(dbReferenceQuery, {
+              originalQuery: rawText,
+            })
+          : flowArgs.buildLibraryReferenceContext();
     const flowArgsWithResolvedLibraryContext = {
       ...flowArgs,
       buildLibraryReferenceContext: () => libraryReferenceContext,

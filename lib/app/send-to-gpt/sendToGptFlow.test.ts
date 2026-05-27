@@ -283,6 +283,148 @@ describe("runSendToGptFlow", () => {
     expect(dbQuery).toContain("道田氏との関係は？");
   });
 
+  it("skips DB and direct library reference for explanation reply-draft followups", async () => {
+    let messages: Message[] = [];
+    let inputValue = "はい。短く回答して下さい。";
+    let requestBody: Record<string, unknown> | null = null;
+    const buildLibraryReferenceContext = vi.fn(() => "direct library ctx");
+    const buildLibraryReferenceContextForQuery = vi.fn(async () => "DB ctx");
+    const recentMessages: Message[] = [
+      {
+        id: "u1",
+        role: "user",
+        text: "Thanks for reaching out.",
+      },
+      {
+        id: "g1",
+        role: "gpt",
+        text: [
+          "[原文]",
+          "Thanks for reaching out.",
+          "",
+          "[日本語訳]",
+          "ご連絡ありがとうございます。",
+          "",
+          "[解説]",
+          "丁寧な導入表現です。",
+          "",
+          "返信案を作りますか？",
+        ].join("\n"),
+      },
+    ];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (_url, init?: RequestInit) => {
+        requestBody =
+          typeof init?.body === "string"
+            ? (JSON.parse(init.body) as Record<string, unknown>)
+            : null;
+        return {
+          ok: true,
+          json: async () => ({
+            reply: "Thank you for reaching out. I appreciate your message.",
+          }),
+        };
+      })
+    );
+
+    await runSendToGptFlow({
+      gptInput: inputValue,
+      gptLoading: false,
+      autoGenerateLibrarySummary: true,
+      processMultipartTaskDoneText: () => null,
+      taskProtocolRuntime: {
+        currentTaskId: null,
+        currentTaskTitle: "",
+        currentTaskIntent: null,
+        originalInstruction: "",
+        compiledTaskPrompt: "",
+        taskStatus: "idle",
+        latestSummary: "",
+        requirementProgress: [],
+        pendingRequests: [],
+        userFacingRequests: [],
+        completedSearches: [],
+        protocolLog: [],
+      },
+      currentTaskId: null,
+      findPendingRequest: () => null,
+      applyPrefixedTaskFieldsFromText: () => ({
+        searchQuery: "",
+        freeText: inputValue,
+        title: "",
+        userInstruction: "",
+      }),
+      getProtocolLimitViolation: () => null,
+      shouldInjectTaskContextWithSettings: () => false,
+      referenceLibraryItems: [],
+      libraryIndexResponseCount: 10,
+      buildLibraryReferenceContext,
+      buildLibraryReferenceContextForQuery,
+      taskProtocolAnswerPendingRequest: () => {},
+      ingestProtocolMessage: () => {},
+      searchMode: "normal",
+      searchEngines: ["google_search"],
+      searchLocation: "Japan",
+      parseWrappedSearchResponse: () => null,
+      recordSearchContext: () => ({ rawResultId: "RAW-1" }),
+      getContinuationTokenForSeries: () => "",
+      getAskAiModeLinkForQuery: () => "",
+      applySearchUsage: () => {},
+      applyChatUsage: () => {},
+      applyTaskUsage: () => {},
+      handleGptMemory: async () => ({ compressionUsage: null }),
+      applyCompressionUsage: () => {},
+      chatRecentLimit: 8,
+      recentChatMessages: recentMessages,
+      gptStateRef: {
+        current: {
+          recentMessages,
+          memory: {
+            facts: [],
+            preferences: [],
+            lists: {},
+            context: {
+              currentTopic: "",
+              currentTask: "",
+              followUpRule: "",
+              lastUserIntent: "",
+            },
+          },
+        },
+      },
+      setGptMessages: (next) => {
+        messages = typeof next === "function" ? next(messages) : next;
+      },
+      setGptInput: (next) => {
+        inputValue = typeof next === "function" ? next(inputValue) : next;
+      },
+      setGptLoading: () => {},
+      setKinInput: () => {},
+      setPendingKinInjectionBlocks: () => {},
+      setPendingKinInjectionIndex: () => {},
+      setActiveTabToKin: undefined,
+      instructionMode: "normal",
+      reasoningMode: "strict",
+      recordIngestedDocument: (document) => ({
+        id: "DOC-1",
+        sourceType: "ingested_file",
+        ...document,
+      }),
+      updateStoredDocument: () => undefined,
+    });
+
+    expect(buildLibraryReferenceContextForQuery).not.toHaveBeenCalled();
+    expect(buildLibraryReferenceContext).not.toHaveBeenCalled();
+    const capturedRequestBody = requestBody as Record<string, unknown> | null;
+    expect(capturedRequestBody?.["storedLibraryContext"]).toBe("");
+    expect(capturedRequestBody?.["input"]).toBe("はい。短く回答して下さい。");
+    expect(messages.at(-1)?.text).toBe(
+      "Thank you for reaching out. I appreciate your message."
+    );
+  });
+
   it("short-circuits website map commands before DB reference lookup", async () => {
     let messages: Message[] = [];
     let inputValue = "Website Map: https://example.com";
