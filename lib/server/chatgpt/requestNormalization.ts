@@ -14,7 +14,10 @@ export type ChatMessage = {
 export type InstructionMode =
   | "normal"
   | "translate_explain"
-  | "reply_only";
+  | "reply_only"
+  | "translate_reply_en"
+  | "translate_reply_ru"
+  | "translate_reply_jp";
 
 export type ReasoningMode = "strict" | "creative";
 
@@ -28,7 +31,10 @@ export function resolveChatRouteMode(body: unknown): ChatRouteMode | null {
 
 export function normalizeInstructionMode(value: unknown): InstructionMode {
   return value === "translate_explain" ||
-    value === "reply_only"
+    value === "reply_only" ||
+    value === "translate_reply_en" ||
+    value === "translate_reply_ru" ||
+    value === "translate_reply_jp"
     ? value
     : "normal";
 }

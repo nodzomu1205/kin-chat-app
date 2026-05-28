@@ -3,73 +3,51 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import GptToolbar from "@/components/panels/gpt/GptToolbar";
 import { GPT_TOOLBAR_TEXT } from "@/components/panels/gpt/gptUiText";
+import { GPT_TOOLBAR_TEXT_OVERRIDES } from "@/components/panels/gpt/gptUiTextOverrides";
+
+function renderToolbar(activeTab: React.ComponentProps<typeof GptToolbar>["activeTab"]) {
+  return renderToStaticMarkup(
+    <GptToolbar
+      activeTab={activeTab}
+      onChangeTab={() => {}}
+      onAction={() => {}}
+      onRunTask={() => {}}
+      onRunDeepen={() => {}}
+      onRunTaskUpdate={() => {}}
+      onImportLastResponse={() => {}}
+      onAttachSearchResult={() => {}}
+      onSendLatestResponseToKin={() => {}}
+      onSendCurrentTaskToKin={() => {}}
+      onRegisterTask={() => {}}
+      onTransfer={() => {}}
+      onReset={() => {}}
+    />
+  );
+}
 
 describe("GptToolbar", () => {
   it("renders the reset button with the rotation arrow", () => {
-    const html = renderToStaticMarkup(
-      <GptToolbar
-        activeTab="chat"
-        onChangeTab={() => {}}
-        onAction={() => {}}
-        onRunTask={() => {}}
-        onRunDeepen={() => {}}
-        onRunTaskUpdate={() => {}}
-        onImportLastResponse={() => {}}
-        onAttachSearchResult={() => {}}
-        onSendLatestResponseToKin={() => {}}
-        onSendCurrentTaskToKin={() => {}}
-        onRegisterTask={() => {}}
-        onTransfer={() => {}}
-        onReset={() => {}}
-      />
-    );
+    const html = renderToolbar("chat");
 
-    expect(html).toContain("遶奇ｽｻ");
+    expect(html).toContain(GPT_TOOLBAR_TEXT.reset);
     expect(html).not.toContain(">・・・");
   });
 
   it("shows the updated data import label on the secondary task tab", () => {
-    const html = renderToStaticMarkup(
-      <GptToolbar
-        activeTab="task_secondary"
-        onChangeTab={() => {}}
-        onAction={() => {}}
-        onRunTask={() => {}}
-        onRunDeepen={() => {}}
-        onRunTaskUpdate={() => {}}
-        onImportLastResponse={() => {}}
-        onAttachSearchResult={() => {}}
-        onSendLatestResponseToKin={() => {}}
-        onSendCurrentTaskToKin={() => {}}
-        onRegisterTask={() => {}}
-        onTransfer={() => {}}
-        onReset={() => {}}
-      />
-    );
+    const html = renderToolbar("task_secondary");
 
-    expect(html).toContain("データ取込");
+    expect(html).toContain(GPT_TOOLBAR_TEXT_OVERRIDES.attachSearchResult);
   });
 
-  it("renders only the supported chat instruction buttons", () => {
-    const html = renderToStaticMarkup(
-      <GptToolbar
-        activeTab="chat"
-        onChangeTab={() => {}}
-        onAction={() => {}}
-        onRunTask={() => {}}
-        onRunDeepen={() => {}}
-        onRunTaskUpdate={() => {}}
-        onImportLastResponse={() => {}}
-        onAttachSearchResult={() => {}}
-        onSendLatestResponseToKin={() => {}}
-        onSendCurrentTaskToKin={() => {}}
-        onRegisterTask={() => {}}
-        onTransfer={() => {}}
-        onReset={() => {}}
-      />
-    );
+  it("renders the supported chat instruction and transfer controls", () => {
+    const html = renderToolbar("chat");
 
     expect(html).toContain(GPT_TOOLBAR_TEXT.translate);
     expect(html).toContain(GPT_TOOLBAR_TEXT.replyOnly);
+    expect(html).toContain("EN");
+    expect(html).toContain("RU");
+    expect(html).toContain("JP");
+    expect(html).toContain(GPT_TOOLBAR_TEXT.sendToKin);
+    expect(html).toContain(GPT_TOOLBAR_TEXT.translateReplyTitle);
   });
 });

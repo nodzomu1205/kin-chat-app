@@ -45,6 +45,17 @@ describe("promptBuilders", () => {
     expect(result).toContain("Message:");
   });
 
+  it("wraps language reply translation modes with output-only instructions", () => {
+    const result = buildInstructionWrappedInput(
+      "また明日話そう",
+      "translate_reply_en"
+    );
+
+    expect(result).toContain("Translate the following reply draft into natural English");
+    expect(result).toContain("Output only the translated reply text.");
+    expect(result).toContain("また明日話そう");
+  });
+
   it("returns raw input for normal instruction mode", () => {
     expect(buildInstructionWrappedInput("plain text", "normal")).toBe(
       "plain text"

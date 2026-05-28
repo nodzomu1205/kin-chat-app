@@ -39,7 +39,10 @@ import type { TokenUsage as CoreTokenUsage } from "@/lib/app/gpt-memory/gptMemor
 export type GptInstructionMode =
   | "normal"
   | "translate_explain"
-  | "reply_only";
+  | "reply_only"
+  | "translate_reply_en"
+  | "translate_reply_ru"
+  | "translate_reply_jp";
 
 export type UploadKind = "auto" | "text" | "image" | "pdf" | "mixed";
 export type IngestMode = "compact" | "detailed" | "max";

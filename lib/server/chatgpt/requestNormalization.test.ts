@@ -23,6 +23,15 @@ describe("requestNormalization", () => {
       "translate_explain"
     );
     expect(normalizeInstructionMode("reply_only")).toBe("reply_only");
+    expect(normalizeInstructionMode("translate_reply_en")).toBe(
+      "translate_reply_en"
+    );
+    expect(normalizeInstructionMode("translate_reply_ru")).toBe(
+      "translate_reply_ru"
+    );
+    expect(normalizeInstructionMode("translate_reply_jp")).toBe(
+      "translate_reply_jp"
+    );
     expect(normalizeInstructionMode("unknown")).toBe("normal");
 
     expect(normalizeReasoningMode("strict")).toBe("strict");

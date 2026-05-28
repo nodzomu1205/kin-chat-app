@@ -14,6 +14,7 @@ export const GPT_TOOLBAR_TEXT = {
   mobileSwitchButton: "⇄",
   translate: "解説",
   replyOnly: "返信案",
+  translateReplyTitle: "返信案を選択した言語に変換",
   sendToKin: "Kinに送る",
   reset: "↻",
   resetTitle: "リセット",

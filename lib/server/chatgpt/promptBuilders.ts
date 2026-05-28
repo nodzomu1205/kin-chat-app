@@ -63,6 +63,32 @@ ${input}
     `.trim();
   }
 
+  if (
+    instructionMode === "translate_reply_en" ||
+    instructionMode === "translate_reply_ru" ||
+    instructionMode === "translate_reply_jp"
+  ) {
+    const targetLanguage =
+      instructionMode === "translate_reply_en"
+        ? "English"
+        : instructionMode === "translate_reply_ru"
+          ? "Russian"
+          : "Japanese";
+
+    return `
+Translate the following reply draft into natural ${targetLanguage}.
+
+Rules:
+- Output only the translated reply text.
+- Do not add headings, notes, alternatives, or commentary.
+- Preserve the original meaning, tone, emoji, line breaks, and direct-address style when possible.
+- If the input is already in ${targetLanguage}, lightly polish it only when needed.
+
+Reply draft:
+${input}
+    `.trim();
+  }
+
   return input;
 }
 

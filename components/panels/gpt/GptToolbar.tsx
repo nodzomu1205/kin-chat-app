@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import type { GptInstructionMode } from "./gptPanelTypes";
 import {
   buttonDeepen,
@@ -77,6 +77,131 @@ const tint = (
   color,
 });
 
+const iconOnly = (base: React.CSSProperties): React.CSSProperties => ({
+  ...resetLike(base),
+  width: 32,
+  minWidth: 32,
+  padding: 0,
+  fontSize: 0,
+});
+
+function TransferIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 19.2c0-6.9 3.9-11.6 10.2-12.5V3.8c0-.7.8-1.1 1.3-.6l5.1 5.1c.4.4.4 1 0 1.4L16 14.8c-.5.5-1.3.1-1.3-.6v-3C9.8 11.8 7 14.5 5.8 19.4c-.2.8-1.3.7-1.3-.2Z"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+type TranslateReplyOption = {
+  label: "EN" | "RU" | "JP";
+  mode: Extract<
+    GptInstructionMode,
+    "translate_reply_en" | "translate_reply_ru" | "translate_reply_jp"
+  >;
+};
+
+const TRANSLATE_REPLY_OPTIONS: TranslateReplyOption[] = [
+  { label: "EN", mode: "translate_reply_en" },
+  { label: "RU", mode: "translate_reply_ru" },
+  { label: "JP", mode: "translate_reply_jp" },
+];
+
+function TranslateReplySplitButton({
+  selected,
+  onSelect,
+  onAction,
+}: {
+  selected: TranslateReplyOption;
+  onSelect: (option: TranslateReplyOption) => void;
+  onAction: (mode: TranslateReplyOption["mode"]) => void;
+}) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "stretch",
+        height: 32,
+        flexShrink: 0,
+      }}
+    >
+      <button
+        type="button"
+        style={{
+          ...resetLike(buttonReply),
+          minWidth: 42,
+          padding: "0 10px",
+          borderRadius: "10px 0 0 10px",
+          borderRight: "none",
+        }}
+        onClick={() => onAction(selected.mode)}
+        title={GPT_TOOLBAR_TEXT.translateReplyTitle}
+      >
+        {selected.label}
+      </button>
+      <span
+        style={{
+          position: "relative",
+          width: 25,
+          flexShrink: 0,
+        }}
+      >
+        <span
+          title={GPT_TOOLBAR_TEXT.translateReplyTitle}
+          style={{
+            width: "100%",
+            height: "100%",
+            borderRadius: "0 10px 10px 0",
+            border: "1px solid #bbf7d0",
+            background: "#f0fdf4",
+            color: "#15803d",
+            cursor: "pointer",
+            fontSize: 11,
+            fontWeight: 800,
+            padding: 0,
+            boxSizing: "border-box",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          ▾
+        </span>
+        <select
+          aria-label={GPT_TOOLBAR_TEXT.translateReplyTitle}
+          value={selected.label}
+          onChange={(event) => {
+            const next = TRANSLATE_REPLY_OPTIONS.find(
+              (option) => option.label === event.target.value
+            );
+            if (next) onSelect(next);
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            opacity: 0,
+            cursor: "pointer",
+          }}
+        >
+          {TRANSLATE_REPLY_OPTIONS.map((option) => (
+            <option key={option.label} value={option.label}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </span>
+    </span>
+  );
+}
+
 function ActionRow({
   activeTab,
   isMobile,
@@ -93,6 +218,8 @@ function ActionRow({
   onTransfer,
   onReset,
 }: Omit<Props, "onChangeTab">) {
+  const [translateReplyOption, setTranslateReplyOption] =
+    useState<TranslateReplyOption>(TRANSLATE_REPLY_OPTIONS[0]);
   const maybeSwitch =
     isMobile && onSwitchPanel ? (
       <button
@@ -123,12 +250,19 @@ function ActionRow({
         >
           {GPT_TOOLBAR_TEXT.replyOnly}
         </button>
+        <TranslateReplySplitButton
+          selected={translateReplyOption}
+          onSelect={setTranslateReplyOption}
+          onAction={onAction}
+        />
         <button
           type="button"
-          style={resetLike(buttonTransfer)}
+          style={iconOnly(buttonTransfer)}
           onClick={onTransfer}
+          aria-label={GPT_TOOLBAR_TEXT.sendToKin}
+          title={GPT_TOOLBAR_TEXT.sendToKin}
         >
-          {GPT_TOOLBAR_TEXT.sendToKin}
+          <TransferIcon />
         </button>
         <button
           type="button"

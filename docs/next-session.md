@@ -1,11 +1,18 @@
 # Next Session Handover
 
-Updated: 2026-05-27
+Updated: 2026-05-28
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-27 Kin/GPT settings UI closeout. Start
-there for Kin drawer tab behavior, compact Kin list cards, GPT library settings
+The newest active record is the 2026-05-28 compact transfer / GPT reply
+translation closeout. Start there for the Kin/GPT compact curved-arrow transfer
+buttons, GPT chat-tab `EN/RU/JP` reply-translation split button, or the
+`translate_reply_*` instruction modes:
+
+- [`HANDOFF-2026-05-28.md`](./HANDOFF-2026-05-28.md)
+
+The 2026-05-27 Kin/GPT settings UI closeout remains the entry point for
+Kin drawer tab behavior, compact Kin list cards, GPT library settings
 layout, DB candidate chunk limit `0` behavior, or the Kin outgoing message
 limit change to 500 characters / 400-500 character parts:
 
