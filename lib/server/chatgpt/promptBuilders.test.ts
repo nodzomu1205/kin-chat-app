@@ -7,6 +7,8 @@ import {
   buildSearchSystemPrompt,
 } from "@/lib/server/chatgpt/promptBuilders";
 import {
+  extractReplyDraftOriginalSource,
+  findLatestReplyDraftOfferMessage,
   hasReplyDraftOffer,
   isReplyDraftAffirmation,
   REPLY_DRAFT_OFFER_TEXT,
@@ -32,10 +34,42 @@ describe("promptBuilders", () => {
     expect(isReplyDraftAffirmation("はい。短く回答して下さい。")).toBe(true);
     expect(isReplyDraftAffirmation("いいえ、大丈夫です。")).toBe(false);
 
-    const result = buildReplyDraftFollowupInput("はい。短く回答して下さい。");
+    const result = buildReplyDraftFollowupInput(
+      "はい。短く回答して下さい。",
+      "Thanks for reaching out."
+    );
     expect(result).toContain("accepted the previous offer");
     expect(result).toContain("same language as the original source message");
+    expect(result).toContain("Original source message from [原文]");
+    expect(result).toContain("Thanks for reaching out.");
+    expect(result).toContain("Do not use the language of a plain acceptance");
     expect(result).toContain("はい。短く回答して下さい。");
+  });
+
+  it("extracts the original source from the latest reply-draft offer", () => {
+    const latest = findLatestReplyDraftOfferMessage([
+      { role: "assistant", text: "older" },
+      {
+        role: "assistant",
+        text: [
+          "[原文]",
+          "I hope you are doing well.",
+          "",
+          "[日本語訳]",
+          "お元気でお過ごしのことと思います。",
+          "",
+          "[解説]",
+          "丁寧な書き出しです。",
+          "",
+          REPLY_DRAFT_OFFER_TEXT,
+        ].join("\n"),
+      },
+    ]);
+
+    expect(latest).toBeTruthy();
+    expect(extractReplyDraftOriginalSource(latest?.text || "")).toBe(
+      "I hope you are doing well."
+    );
   });
 
   it("wraps reply_only input with reply-only instructions", () => {

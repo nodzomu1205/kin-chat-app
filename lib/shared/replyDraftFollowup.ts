@@ -23,3 +23,22 @@ export function isReplyDraftFollowupRequest(params: {
     .find((message) => message.role !== "user");
   return !!latestAssistant && hasReplyDraftOffer(latestAssistant.text);
 }
+
+export function findLatestReplyDraftOfferMessage(
+  recentMessages?: { role?: string; text: string }[]
+) {
+  return [...(recentMessages || [])]
+    .reverse()
+    .find(
+      (message) =>
+        message.role !== "user" && hasReplyDraftOffer(message.text)
+    );
+}
+
+export function extractReplyDraftOriginalSource(text: string) {
+  const match = text.match(
+    /\[原文\]\s*([\s\S]*?)(?:\n\s*\[(?:日本語訳|解説)\]|$)/u
+  );
+  const source = match?.[1]?.trim();
+  return source || "";
+}

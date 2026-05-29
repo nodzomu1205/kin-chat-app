@@ -4,7 +4,11 @@ import {
   buildReplyDraftFollowupInput,
   buildSearchSystemPrompt,
 } from "@/lib/server/chatgpt/promptBuilders";
-import { isReplyDraftFollowupRequest } from "@/lib/shared/replyDraftFollowup";
+import {
+  extractReplyDraftOriginalSource,
+  findLatestReplyDraftOfferMessage,
+  isReplyDraftFollowupRequest,
+} from "@/lib/shared/replyDraftFollowup";
 import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
 import { memoryToPrompt } from "@/lib/memory-domain/memory";
 import { normalizeChatMessages } from "@/lib/server/chatgpt/requestNormalization";
@@ -76,6 +80,12 @@ export function buildChatCompletionMessages(args: {
       input: args.input,
       recentMessages: normalizedRecent,
     });
+  const replyDraftOfferMessage = shouldBuildReplyDraftFollowup
+    ? findLatestReplyDraftOfferMessage(normalizedRecent)
+    : undefined;
+  const replyDraftOriginalSource = replyDraftOfferMessage
+    ? extractReplyDraftOriginalSource(replyDraftOfferMessage.text)
+    : "";
 
   const messages: OpenAIMessage[] = [
     {
@@ -122,7 +132,7 @@ export function buildChatCompletionMessages(args: {
   messages.push({
     role: "user",
     content: shouldBuildReplyDraftFollowup
-      ? buildReplyDraftFollowupInput(args.input)
+      ? buildReplyDraftFollowupInput(args.input, replyDraftOriginalSource)
       : buildInstructionWrappedInput(args.input, args.instructionMode),
   });
 
@@ -153,7 +163,12 @@ export function buildChatPromptMetrics(args: {
       input: args.input,
       recentMessages: normalizedRecent,
     })
-      ? buildReplyDraftFollowupInput(args.input)
+      ? buildReplyDraftFollowupInput(
+          args.input,
+          extractReplyDraftOriginalSource(
+            findLatestReplyDraftOfferMessage(normalizedRecent)?.text || ""
+          )
+        )
       : buildInstructionWrappedInput(args.input, args.instructionMode);
   const baseSystemPrompt = buildBaseSystemPrompt({
     normalizedMemory: args.normalizedMemory,

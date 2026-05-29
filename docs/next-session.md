@@ -6,8 +6,10 @@ Updated: 2026-05-28
 
 The newest active record is the 2026-05-28 compact transfer / GPT reply
 translation closeout. Start there for the Kin/GPT compact curved-arrow transfer
-buttons, GPT chat-tab `EN/RU/JP` reply-translation split button, or the
-`translate_reply_*` instruction modes:
+buttons, GPT chat-tab `EN/RU/JP` reply-translation split button, the
+`translate_reply_*` instruction modes, or the `解説` -> `返信案を作りますか？`
+follow-up behavior that keeps reply drafts in the `[原文]` language unless the
+user explicitly asks for another language:
 
 - [`HANDOFF-2026-05-28.md`](./HANDOFF-2026-05-28.md)
 

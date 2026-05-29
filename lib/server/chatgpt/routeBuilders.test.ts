@@ -95,6 +95,12 @@ describe("routeBuilders", () => {
     expect(messages.at(-1)?.content).toContain(
       "accepted the previous offer to create a reply draft"
     );
+    expect(messages.at(-1)?.content).toContain(
+      "Original source message from [原文]:\nThanks for reaching out."
+    );
+    expect(messages.at(-1)?.content).toContain(
+      "Do not use the language of a plain acceptance"
+    );
     expect(messages.at(-1)?.content).toContain("はい。短く回答して下さい。");
   });
 

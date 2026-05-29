@@ -6,15 +6,28 @@ import type {
 } from "@/lib/server/chatgpt/requestNormalization";
 import { REPLY_DRAFT_OFFER_TEXT } from "@/lib/shared/replyDraftFollowup";
 
-export function buildReplyDraftFollowupInput(input: string) {
+export function buildReplyDraftFollowupInput(
+  input: string,
+  originalSourceMessage?: string
+) {
+  const sourceBlock = originalSourceMessage?.trim()
+    ? `
+Original source message from [原文]:
+${originalSourceMessage.trim()}
+`
+    : "";
+
   return `
 The user accepted the previous offer to create a reply draft.
+${sourceBlock}
 
 Rules:
 - Use the immediately preceding explained source message and Japanese translation as context.
 - Create a natural reply draft that fits that source message.
 - Write the reply draft in the same language as the original source message in [原文].
-- Follow any extra constraints in the user's latest message, such as length, tone, or language.
+- If "Original source message from [原文]" is provided above, use that message as the authority for the reply language.
+- Do not use the language of a plain acceptance such as "はい", "うん", "yes", or "ok" to choose the reply language.
+- Follow any extra constraints in the user's latest message, such as length, tone, or an explicit request to use a different language.
 - Output only the reply draft.
 - Do not add headings or commentary.
 
