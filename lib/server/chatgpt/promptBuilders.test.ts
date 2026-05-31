@@ -12,6 +12,7 @@ import {
   hasReplyDraftOffer,
   isReplyDraftAffirmation,
   REPLY_DRAFT_OFFER_TEXT,
+  resolveReplyDraftTargetLanguage,
 } from "@/lib/shared/replyDraftFollowup";
 
 describe("promptBuilders", () => {
@@ -39,7 +40,7 @@ describe("promptBuilders", () => {
       "Thanks for reaching out."
     );
     expect(result).toContain("accepted the previous offer");
-    expect(result).toContain("same language as the original source message");
+    expect(result).toContain("Reply language: English.");
     expect(result).toContain(
       "the original source message is from a woman and the reply is from the male user"
     );
@@ -72,6 +73,21 @@ describe("promptBuilders", () => {
     expect(extractReplyDraftOriginalSource(latest?.text || "")).toBe(
       "I hope you are doing well."
     );
+  });
+
+  it("resolves reply-draft language from explicit user instruction before source text", () => {
+    expect(
+      resolveReplyDraftTargetLanguage({
+        latestRequest: "はい。ロシア語でカジュアルに。",
+        originalSource: "Thanks for reaching out.",
+      })
+    ).toBe("Russian");
+    expect(
+      resolveReplyDraftTargetLanguage({
+        latestRequest: "Yes",
+        originalSource: "Thanks for reaching out.",
+      })
+    ).toBe("English");
   });
 
   it("wraps reply_only input with reply-only instructions", () => {

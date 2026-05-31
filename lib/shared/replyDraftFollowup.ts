@@ -42,3 +42,19 @@ export function extractReplyDraftOriginalSource(text: string) {
   const source = match?.[1]?.trim();
   return source || "";
 }
+
+export function resolveReplyDraftTargetLanguage(params: {
+  latestRequest: string;
+  originalSource: string;
+}) {
+  const request = params.latestRequest.normalize("NFKC").toLowerCase();
+  if (/(?:ロシア語|露語|russian|\bru\b)/u.test(request)) return "Russian";
+  if (/(?:英語|english|\ben\b)/u.test(request)) return "English";
+  if (/(?:日本語|japanese|\bjp\b|\bja\b)/u.test(request)) return "Japanese";
+
+  const source = params.originalSource.trim();
+  if (/[А-Яа-яЁё]/u.test(source)) return "Russian";
+  if (/[ぁ-んァ-ン一-龯]/u.test(source)) return "Japanese";
+  if (/[A-Za-z]/u.test(source)) return "English";
+  return "the same language as the original source message";
+}

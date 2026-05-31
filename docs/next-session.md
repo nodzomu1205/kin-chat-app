@@ -1,6 +1,6 @@
 # Next Session Handover
 
-Updated: 2026-05-28
+Updated: 2026-05-31
 
 ## Latest Handoff
 
@@ -10,8 +10,10 @@ buttons, GPT chat-tab `EN/RU/JP` reply-translation split button, the
 `translate_reply_*` instruction modes, or the `解説` -> `返信案を作りますか？`
 follow-up behavior that builds from extracted `[原文]` plus the user's latest
 instruction, without passing the prior translation/explanation text as reply
-context. Reply-draft prompts also assume the source speaker is a woman and the
-replying user is a man:
+context. The follow-up route resolves an explicit reply language from the
+user's latest instruction first, otherwise from `[原文]`, so plain `Yes` on an
+English source sends `Reply language: English.`. Reply-draft prompts also
+assume the source speaker is a woman and the replying user is a man:
 
 - [`HANDOFF-2026-05-28.md`](./HANDOFF-2026-05-28.md)
 
@@ -87,9 +89,9 @@ Current newest product slice is Kin/GPT settings UI cleanup:
 10. GPT chat toolbar labels changed from `翻訳` to `解説` and from `返信のみ` to
     `返信案`. The old `整える` button and `polish` instruction mode were removed.
 11. The `解説` flow now outputs `[原文]`, `[日本語訳]`, `[解説]`, then asks
-    `返信案を作りますか？`. Affirmative follow-ups create a reply draft in the same
-    language as `[原文]` and skip DB/RAG plus direct library reference injection
-    for speed.
+    `返信案を作りますか？`. Affirmative follow-ups extract `[原文]`, resolve a concrete
+    reply language from the user's latest instruction or the source text, and
+    skip DB/RAG plus direct library reference injection for speed.
 
 Manual retest should open Kin list, connection, and Kin-to-Kin chat in sequence
 and confirm only one drawer is expanded. On mobile, confirm Kin-to-Kin controls

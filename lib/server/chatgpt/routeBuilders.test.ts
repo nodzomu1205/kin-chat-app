@@ -98,6 +98,7 @@ describe("routeBuilders", () => {
     expect(messages.at(-1)?.content).toContain(
       "Original source message from [原文]:\nThanks for reaching out."
     );
+    expect(messages.at(-1)?.content).toContain("Reply language: English.");
     expect(messages.at(-1)?.content).toContain("はい。短く回答して下さい。");
     expect(messages).toHaveLength(2);
     expect(messages.map((message) => message.content).join("\n")).not.toContain(
@@ -106,6 +107,44 @@ describe("routeBuilders", () => {
     expect(messages.map((message) => message.content).join("\n")).not.toContain(
       "丁寧な導入表現です。"
     );
+  });
+
+  it("keeps an English reply-draft followup in English for plain Yes consent", () => {
+    const messages = buildChatCompletionMessages({
+      normalizedMemory: createEmptyMemory(),
+      reasoningMode: "strict",
+      instructionMode: "normal",
+      input: "Yes",
+      recentMessages: [
+        { role: "user", text: "I hope you are doing well." },
+        {
+          role: "assistant",
+          text: [
+            "[原文]",
+            "I hope you are doing well.",
+            "",
+            "[日本語訳]",
+            "お元気でお過ごしのことと思います。",
+            "",
+            "[解説]",
+            "丁寧な書き出しです。",
+            "",
+            "返信案を作りますか？",
+          ].join("\n"),
+        },
+      ],
+    });
+
+    const payload = messages.map((message) => message.content).join("\n");
+
+    expect(messages).toHaveLength(2);
+    expect(messages.at(-1)?.content).toContain("Reply language: English.");
+    expect(messages.at(-1)?.content).toContain("User's latest request:\nYes");
+    expect(payload).toContain(
+      "Original source message from [原文]:\nI hope you are doing well."
+    );
+    expect(payload).not.toContain("お元気でお過ごしのことと思います。");
+    expect(payload).not.toContain("丁寧な書き出しです。");
   });
 
   it("measures the exact chat prompt payload from built messages", () => {
