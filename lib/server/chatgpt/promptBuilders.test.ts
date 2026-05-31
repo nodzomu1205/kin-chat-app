@@ -40,9 +40,11 @@ describe("promptBuilders", () => {
     );
     expect(result).toContain("accepted the previous offer");
     expect(result).toContain("same language as the original source message");
+    expect(result).toContain(
+      "the original source message is from a woman and the reply is from the male user"
+    );
     expect(result).toContain("Original source message from [原文]");
     expect(result).toContain("Thanks for reaching out.");
-    expect(result).toContain("Do not use the language of a plain acceptance");
     expect(result).toContain("はい。短く回答して下さい。");
   });
 
@@ -76,6 +78,9 @@ describe("promptBuilders", () => {
     const result = buildInstructionWrappedInput("Thanks!", "reply_only");
 
     expect(result).toContain("Output only the reply text.");
+    expect(result).toContain(
+      "the message is from a woman and the reply is from the male user"
+    );
     expect(result).toContain("Message:");
   });
 

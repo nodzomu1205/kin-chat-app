@@ -98,10 +98,14 @@ describe("routeBuilders", () => {
     expect(messages.at(-1)?.content).toContain(
       "Original source message from [原文]:\nThanks for reaching out."
     );
-    expect(messages.at(-1)?.content).toContain(
-      "Do not use the language of a plain acceptance"
-    );
     expect(messages.at(-1)?.content).toContain("はい。短く回答して下さい。");
+    expect(messages).toHaveLength(2);
+    expect(messages.map((message) => message.content).join("\n")).not.toContain(
+      "ご連絡ありがとうございます。"
+    );
+    expect(messages.map((message) => message.content).join("\n")).not.toContain(
+      "丁寧な導入表現です。"
+    );
   });
 
   it("measures the exact chat prompt payload from built messages", () => {

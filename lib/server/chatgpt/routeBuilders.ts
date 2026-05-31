@@ -86,6 +86,9 @@ export function buildChatCompletionMessages(args: {
   const replyDraftOriginalSource = replyDraftOfferMessage
     ? extractReplyDraftOriginalSource(replyDraftOfferMessage.text)
     : "";
+  const recentMessagesForPrompt = shouldBuildReplyDraftFollowup
+    ? []
+    : normalizedRecent;
 
   const messages: OpenAIMessage[] = [
     {
@@ -122,7 +125,7 @@ export function buildChatCompletionMessages(args: {
   }
 
   messages.push(
-    ...normalizedRecent
+    ...recentMessagesForPrompt
       .map((message): OpenAIMessage => ({
         role: message.role === "user" ? "user" : "assistant",
         content: message.text,
@@ -157,19 +160,21 @@ export function buildChatPromptMetrics(args: {
   searchText?: string;
 }): ChatPromptMetrics {
   const normalizedRecent = normalizeChatMessages(args.recentMessages).slice(-16);
-  const wrappedInput =
+  const shouldBuildReplyDraftFollowup =
     args.instructionMode === "normal" &&
     isReplyDraftFollowupRequest({
       input: args.input,
       recentMessages: normalizedRecent,
-    })
-      ? buildReplyDraftFollowupInput(
-          args.input,
-          extractReplyDraftOriginalSource(
-            findLatestReplyDraftOfferMessage(normalizedRecent)?.text || ""
-          )
+    });
+  const includedRecent = shouldBuildReplyDraftFollowup ? [] : normalizedRecent;
+  const wrappedInput = shouldBuildReplyDraftFollowup
+    ? buildReplyDraftFollowupInput(
+        args.input,
+        extractReplyDraftOriginalSource(
+          findLatestReplyDraftOfferMessage(normalizedRecent)?.text || ""
         )
-      : buildInstructionWrappedInput(args.input, args.instructionMode);
+      )
+    : buildInstructionWrappedInput(args.input, args.instructionMode);
   const baseSystemPrompt = buildBaseSystemPrompt({
     normalizedMemory: args.normalizedMemory,
     reasoningMode: args.reasoningMode,
@@ -191,15 +196,15 @@ export function buildChatPromptMetrics(args: {
     (sum, message) => sum + (message.role === "system" ? message.content.length : 0),
     0
   );
-  const recentChars = normalizedRecent.reduce(
+  const recentChars = includedRecent.reduce(
     (sum, message) => sum + message.text.length,
     0
   );
-  const recentUserChars = normalizedRecent.reduce(
+  const recentUserChars = includedRecent.reduce(
     (sum, message) => sum + (message.role === "user" ? message.text.length : 0),
     0
   );
-  const recentAssistantChars = normalizedRecent.reduce(
+  const recentAssistantChars = includedRecent.reduce(
     (sum, message) => sum + (message.role !== "user" ? message.text.length : 0),
     0
   );
@@ -208,7 +213,7 @@ export function buildChatPromptMetrics(args: {
     messageCount: args.messages.length,
     systemMessageCount: args.messages.filter((message) => message.role === "system")
       .length,
-    recentMessageCount: normalizedRecent.length,
+    recentMessageCount: includedRecent.length,
     totalChars,
     systemChars,
     baseSystemChars: baseSystemPrompt.length,

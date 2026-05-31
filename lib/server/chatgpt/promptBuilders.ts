@@ -22,12 +22,13 @@ The user accepted the previous offer to create a reply draft.
 ${sourceBlock}
 
 Rules:
-- Use the immediately preceding explained source message and Japanese translation as context.
-- Create a natural reply draft that fits that source message.
+- Treat the original source message in [原文] as the message being replied to.
+- Create a natural reply draft that answers or responds to the original source message.
+- Assume the original source message is from a woman and the reply is from the male user.
 - Write the reply draft in the same language as the original source message in [原文].
 - If "Original source message from [原文]" is provided above, use that message as the authority for the reply language.
-- Do not use the language of a plain acceptance such as "はい", "うん", "yes", or "ok" to choose the reply language.
 - Follow any extra constraints in the user's latest message, such as length, tone, or an explicit request to use a different language.
+- If the original source asks for facts or commitments not supplied by the user, do not invent specifics; write a tactful reply that leaves room to confirm details.
 - Output only the reply draft.
 - Do not add headings or commentary.
 
@@ -69,6 +70,7 @@ Rules:
 - Output only the reply text.
 - Do not add headings or commentary.
 - Keep the tone natural and helpful.
+- Assume the message is from a woman and the reply is from the male user.
 - Use the message context as-is.
 
 Message:
