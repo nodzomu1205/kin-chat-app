@@ -32,6 +32,9 @@ describe("requestNormalization", () => {
     expect(normalizeInstructionMode("translate_reply_jp")).toBe(
       "translate_reply_jp"
     );
+    expect(normalizeInstructionMode("translate_reply_it")).toBe(
+      "translate_reply_it"
+    );
     expect(normalizeInstructionMode("unknown")).toBe("normal");
 
     expect(normalizeReasoningMode("strict")).toBe("strict");

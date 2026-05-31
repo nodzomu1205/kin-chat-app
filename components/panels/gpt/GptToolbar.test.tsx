@@ -47,6 +47,7 @@ describe("GptToolbar", () => {
     expect(html).toContain("EN");
     expect(html).toContain("RU");
     expect(html).toContain("JP");
+    expect(html).toContain("IT");
     expect(html).toContain(GPT_TOOLBAR_TEXT.sendToKin);
     expect(html).toContain(GPT_TOOLBAR_TEXT.translateReplyTitle);
   });

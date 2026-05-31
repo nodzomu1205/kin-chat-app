@@ -88,14 +88,17 @@ ${input}
   if (
     instructionMode === "translate_reply_en" ||
     instructionMode === "translate_reply_ru" ||
-    instructionMode === "translate_reply_jp"
+    instructionMode === "translate_reply_jp" ||
+    instructionMode === "translate_reply_it"
   ) {
     const targetLanguage =
       instructionMode === "translate_reply_en"
         ? "English"
         : instructionMode === "translate_reply_ru"
           ? "Russian"
-          : "Japanese";
+          : instructionMode === "translate_reply_jp"
+            ? "Japanese"
+            : "Italian";
 
     return `
 Translate the following reply draft into natural ${targetLanguage}.

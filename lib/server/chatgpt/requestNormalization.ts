@@ -17,7 +17,8 @@ export type InstructionMode =
   | "reply_only"
   | "translate_reply_en"
   | "translate_reply_ru"
-  | "translate_reply_jp";
+  | "translate_reply_jp"
+  | "translate_reply_it";
 
 export type ReasoningMode = "strict" | "creative";
 
@@ -34,7 +35,8 @@ export function normalizeInstructionMode(value: unknown): InstructionMode {
     value === "reply_only" ||
     value === "translate_reply_en" ||
     value === "translate_reply_ru" ||
-    value === "translate_reply_jp"
+    value === "translate_reply_jp" ||
+    value === "translate_reply_it"
     ? value
     : "normal";
 }

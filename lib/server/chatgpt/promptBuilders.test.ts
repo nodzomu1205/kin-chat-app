@@ -88,6 +88,12 @@ describe("promptBuilders", () => {
         originalSource: "Thanks for reaching out.",
       })
     ).toBe("English");
+    expect(
+      resolveReplyDraftTargetLanguage({
+        latestRequest: "はい。イタリア語で明るく。",
+        originalSource: "Thanks for reaching out.",
+      })
+    ).toBe("Italian");
   });
 
   it("wraps reply_only input with reply-only instructions", () => {
@@ -103,10 +109,10 @@ describe("promptBuilders", () => {
   it("wraps language reply translation modes with output-only instructions", () => {
     const result = buildInstructionWrappedInput(
       "また明日話そう",
-      "translate_reply_en"
+      "translate_reply_it"
     );
 
-    expect(result).toContain("Translate the following reply draft into natural English");
+    expect(result).toContain("Translate the following reply draft into natural Italian");
     expect(result).toContain("Output only the translated reply text.");
     expect(result).toContain("また明日話そう");
   });

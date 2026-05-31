@@ -42,7 +42,8 @@ export type GptInstructionMode =
   | "reply_only"
   | "translate_reply_en"
   | "translate_reply_ru"
-  | "translate_reply_jp";
+  | "translate_reply_jp"
+  | "translate_reply_it";
 
 export type UploadKind = "auto" | "text" | "image" | "pdf" | "mixed";
 export type IngestMode = "compact" | "detailed" | "max";

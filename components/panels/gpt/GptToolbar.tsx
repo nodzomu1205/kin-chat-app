@@ -100,10 +100,13 @@ function TransferIcon() {
 }
 
 type TranslateReplyOption = {
-  label: "EN" | "RU" | "JP";
+  label: "EN" | "RU" | "JP" | "IT";
   mode: Extract<
     GptInstructionMode,
-    "translate_reply_en" | "translate_reply_ru" | "translate_reply_jp"
+    | "translate_reply_en"
+    | "translate_reply_ru"
+    | "translate_reply_jp"
+    | "translate_reply_it"
   >;
 };
 
@@ -111,6 +114,7 @@ const TRANSLATE_REPLY_OPTIONS: TranslateReplyOption[] = [
   { label: "EN", mode: "translate_reply_en" },
   { label: "RU", mode: "translate_reply_ru" },
   { label: "JP", mode: "translate_reply_jp" },
+  { label: "IT", mode: "translate_reply_it" },
 ];
 
 function TranslateReplySplitButton({

@@ -51,6 +51,7 @@ export function resolveReplyDraftTargetLanguage(params: {
   if (/(?:ロシア語|露語|russian|\bru\b)/u.test(request)) return "Russian";
   if (/(?:英語|english|\ben\b)/u.test(request)) return "English";
   if (/(?:日本語|japanese|\bjp\b|\bja\b)/u.test(request)) return "Japanese";
+  if (/(?:イタリア語|伊語|italian|\bit\b)/u.test(request)) return "Italian";
 
   const source = params.originalSource.trim();
   if (/[А-Яа-яЁё]/u.test(source)) return "Russian";

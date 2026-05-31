@@ -6,14 +6,15 @@ Updated: 2026-05-31
 
 The newest active record is the 2026-05-28 compact transfer / GPT reply
 translation closeout. Start there for the Kin/GPT compact curved-arrow transfer
-buttons, GPT chat-tab `EN/RU/JP` reply-translation split button, the
+buttons, GPT chat-tab `EN/RU/JP/IT` reply-translation split button, the
 `translate_reply_*` instruction modes, or the `解説` -> `返信案を作りますか？`
 follow-up behavior that builds from extracted `[原文]` plus the user's latest
 instruction, without passing the prior translation/explanation text as reply
 context. The follow-up route resolves an explicit reply language from the
 user's latest instruction first, otherwise from `[原文]`, so plain `Yes` on an
-English source sends `Reply language: English.`. Reply-draft prompts also
-assume the source speaker is a woman and the replying user is a man:
+English source sends `Reply language: English.`; explicit Italian instructions
+are also recognized. Reply-draft prompts also assume the source speaker is a
+woman and the replying user is a man:
 
 - [`HANDOFF-2026-05-28.md`](./HANDOFF-2026-05-28.md)
 
