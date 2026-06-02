@@ -147,6 +147,96 @@ describe("routeBuilders", () => {
     expect(payload).not.toContain("丁寧な書き出しです。");
   });
 
+  it("keeps an Italian reply-draft followup in Italian for plain Yes consent", () => {
+    const messages = buildChatCompletionMessages({
+      normalizedMemory: createEmptyMemory(),
+      reasoningMode: "strict",
+      instructionMode: "normal",
+      input: "Yes",
+      recentMessages: [
+        { role: "user", text: "Ciao, grazie per il tuo messaggio." },
+        {
+          role: "assistant",
+          text: [
+            "[原文]",
+            "Ciao, grazie per il tuo messaggio.",
+            "",
+            "[日本語訳]",
+            "こんにちは、ご連絡ありがとうございます。",
+            "",
+            "[解説]",
+            "カジュアルで自然な挨拶です。",
+            "",
+            "返信案を作りますか？",
+          ].join("\n"),
+        },
+      ],
+    });
+
+    const payload = messages.map((message) => message.content).join("\n");
+
+    expect(messages).toHaveLength(2);
+    expect(messages.at(-1)?.content).toContain("Reply language: Italian.");
+    expect(messages.at(-1)?.content).toContain("User's latest request:\nYes");
+    expect(payload).toContain(
+      "Original source message from [原文]:\nCiao, grazie per il tuo messaggio."
+    );
+    expect(payload).not.toContain("こんにちは、ご連絡ありがとうございます。");
+    expect(payload).not.toContain("カジュアルで自然な挨拶です。");
+  });
+
+  it("omits memory, stored contexts, search context, and recent history for reply-draft followups", () => {
+    const memory = createEmptyMemory();
+    memory.facts.push("ユーザーは日本語で短く返すことを好む。");
+    memory.context.currentTopic = "前回の別件";
+
+    const messages = buildChatCompletionMessages({
+      normalizedMemory: memory,
+      reasoningMode: "strict",
+      instructionMode: "normal",
+      input: "Yes",
+      recentMessages: [
+        { role: "user", text: "Ciao, grazie per il tuo messaggio." },
+        {
+          role: "assistant",
+          text: [
+            "[原文]",
+            "Ciao, grazie per il tuo messaggio.",
+            "",
+            "[日本語訳]",
+            "こんにちは、ご連絡ありがとうございます。",
+            "",
+            "[解説]",
+            "カジュアルで自然な挨拶です。",
+            "",
+            "返信案を作りますか？",
+          ].join("\n"),
+        },
+      ],
+      storedLibraryContext: "library ctx with unrelated Japanese guidance",
+      storedSearchContext: "search ctx with unrelated Japanese guidance",
+      storedDocumentContext: "document ctx with unrelated Japanese guidance",
+      searchQuery: "unrelated query",
+      searchText: "unrelated search evidence",
+    });
+
+    const payload = messages.map((message) => message.content).join("\n");
+
+    expect(messages).toHaveLength(2);
+    expect(payload).toContain("Reply language: Italian.");
+    expect(payload).toContain(
+      "Original source message from [原文]:\nCiao, grazie per il tuo messaggio."
+    );
+    expect(payload).not.toContain("ユーザーは日本語で短く返すことを好む。");
+    expect(payload).not.toContain("前回の別件");
+    expect(payload).not.toContain("library ctx");
+    expect(payload).not.toContain("search ctx");
+    expect(payload).not.toContain("document ctx");
+    expect(payload).not.toContain("unrelated search evidence");
+    expect(payload).not.toContain("こんにちは、ご連絡ありがとうございます。");
+    expect(payload).not.toContain("カジュアルで自然な挨拶です。");
+  });
+
   it("measures the exact chat prompt payload from built messages", () => {
     const normalizedMemory = createEmptyMemory();
     const messages = buildChatCompletionMessages({

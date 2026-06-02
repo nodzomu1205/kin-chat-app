@@ -10,7 +10,7 @@ import {
   isReplyDraftFollowupRequest,
 } from "@/lib/shared/replyDraftFollowup";
 import type { ChatPromptMetrics } from "@/lib/shared/chatPromptMetrics";
-import { memoryToPrompt } from "@/lib/memory-domain/memory";
+import { createEmptyMemory, memoryToPrompt } from "@/lib/memory-domain/memory";
 import { normalizeChatMessages } from "@/lib/server/chatgpt/requestNormalization";
 import type {
   InstructionMode,
@@ -89,39 +89,44 @@ export function buildChatCompletionMessages(args: {
   const recentMessagesForPrompt = shouldBuildReplyDraftFollowup
     ? []
     : normalizedRecent;
+  const systemPromptMemory = shouldBuildReplyDraftFollowup
+    ? createEmptyMemory()
+    : args.normalizedMemory;
 
   const messages: OpenAIMessage[] = [
     {
       role: "system",
       content: buildBaseSystemPrompt({
-        normalizedMemory: args.normalizedMemory,
+        normalizedMemory: systemPromptMemory,
         reasoningMode: args.reasoningMode,
       }),
     },
   ];
 
-  for (const candidate of [
-    args.storedLibraryContext,
-    args.storedSearchContext,
-    args.storedDocumentContext,
-  ]) {
-    if (typeof candidate === "string" && candidate.trim()) {
+  if (!shouldBuildReplyDraftFollowup) {
+    for (const candidate of [
+      args.storedLibraryContext,
+      args.storedSearchContext,
+      args.storedDocumentContext,
+    ]) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        messages.push({
+          role: "system",
+          content: candidate.trim(),
+        });
+      }
+    }
+
+    if (args.searchQuery && args.searchText) {
       messages.push({
         role: "system",
-        content: candidate.trim(),
+        content: buildSearchSystemPrompt(
+          args.searchQuery,
+          args.searchText,
+          args.reasoningMode
+        ),
       });
     }
-  }
-
-  if (args.searchQuery && args.searchText) {
-    messages.push({
-      role: "system",
-      content: buildSearchSystemPrompt(
-        args.searchQuery,
-        args.searchText,
-        args.reasoningMode
-      ),
-    });
   }
 
   messages.push(
@@ -175,19 +180,22 @@ export function buildChatPromptMetrics(args: {
         )
       )
     : buildInstructionWrappedInput(args.input, args.instructionMode);
+  const systemPromptMemory = shouldBuildReplyDraftFollowup
+    ? createEmptyMemory()
+    : args.normalizedMemory;
   const baseSystemPrompt = buildBaseSystemPrompt({
-    normalizedMemory: args.normalizedMemory,
+    normalizedMemory: systemPromptMemory,
     reasoningMode: args.reasoningMode,
   });
   const searchPromptChars =
-    args.searchQuery && args.searchText
+    !shouldBuildReplyDraftFollowup && args.searchQuery && args.searchText
       ? buildSearchSystemPrompt(
           args.searchQuery,
           args.searchText,
           args.reasoningMode
         ).length
       : 0;
-  const memoryChars = memoryToPrompt(args.normalizedMemory).length;
+  const memoryChars = memoryToPrompt(systemPromptMemory).length;
   const totalChars = args.messages.reduce(
     (sum, message) => sum + message.content.length,
     0
@@ -218,9 +226,15 @@ export function buildChatPromptMetrics(args: {
     systemChars,
     baseSystemChars: baseSystemPrompt.length,
     memoryChars,
-    storedLibraryChars: safeTrimmedLength(args.storedLibraryContext),
-    storedSearchChars: safeTrimmedLength(args.storedSearchContext),
-    storedDocumentChars: safeTrimmedLength(args.storedDocumentContext),
+    storedLibraryChars: shouldBuildReplyDraftFollowup
+      ? 0
+      : safeTrimmedLength(args.storedLibraryContext),
+    storedSearchChars: shouldBuildReplyDraftFollowup
+      ? 0
+      : safeTrimmedLength(args.storedSearchContext),
+    storedDocumentChars: shouldBuildReplyDraftFollowup
+      ? 0
+      : safeTrimmedLength(args.storedDocumentContext),
     searchPromptChars,
     recentChars,
     recentUserChars,

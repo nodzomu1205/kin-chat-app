@@ -51,11 +51,26 @@ export function resolveReplyDraftTargetLanguage(params: {
   if (/(?:ロシア語|露語|russian|\bru\b)/u.test(request)) return "Russian";
   if (/(?:英語|english|\ben\b)/u.test(request)) return "English";
   if (/(?:日本語|japanese|\bjp\b|\bja\b)/u.test(request)) return "Japanese";
-  if (/(?:イタリア語|伊語|italian|\bit\b)/u.test(request)) return "Italian";
+  if (/(?:イタリア語|伊語|italian)/u.test(request)) return "Italian";
+  if (/(?:^|[\s([/])IT(?:$|[\s)\]/])/u.test(params.latestRequest.normalize("NFKC"))) {
+    return "Italian";
+  }
 
   const source = params.originalSource.trim();
   if (/[А-Яа-яЁё]/u.test(source)) return "Russian";
   if (/[ぁ-んァ-ン一-龯]/u.test(source)) return "Japanese";
+  if (looksLikeItalianSource(source)) return "Italian";
   if (/[A-Za-z]/u.test(source)) return "English";
   return "the same language as the original source message";
+}
+
+function looksLikeItalianSource(source: string) {
+  const normalized = source.normalize("NFKC").toLowerCase();
+  if (/[àèéìòù]/u.test(normalized)) return true;
+
+  const markers = normalized.match(
+    /\b(?:ciao|grazie|prego|buongiorno|buonasera|arrivederci|sono|siamo|sei|siete|che|perché|perche|anche|questo|questa|questi|queste|molto|bene|allora|vorrei|posso|puoi|della|dello|degli|alla|alle|nel|nella|con|non|per|una|uno|gli|le|il)\b/gu
+  );
+
+  return (markers?.length || 0) >= 2;
 }

@@ -13,8 +13,11 @@ instruction, without passing the prior translation/explanation text as reply
 context. The follow-up route resolves an explicit reply language from the
 user's latest instruction first, otherwise from `[原文]`, so plain `Yes` on an
 English source sends `Reply language: English.`; explicit Italian instructions
-are also recognized. Reply-draft prompts also assume the source speaker is a
-woman and the replying user is a man:
+are also recognized, and Italian source text is detected before the generic
+Latin-letter English fallback. Reply-draft follow-ups omit memory, stored
+contexts, search evidence, and recent chat history so the prompt is scoped to
+the extracted `[原文]` plus the latest user instruction. Reply-draft prompts also
+assume the source speaker is a woman and the replying user is a man:
 
 - [`HANDOFF-2026-05-28.md`](./HANDOFF-2026-05-28.md)
 
@@ -92,7 +95,8 @@ Current newest product slice is Kin/GPT settings UI cleanup:
 11. The `解説` flow now outputs `[原文]`, `[日本語訳]`, `[解説]`, then asks
     `返信案を作りますか？`. Affirmative follow-ups extract `[原文]`, resolve a concrete
     reply language from the user's latest instruction or the source text, and
-    skip DB/RAG plus direct library reference injection for speed.
+    skip DB/RAG, direct library reference injection, stored/search/document
+    context, memory, and recent chat history for reply-draft isolation.
 
 Manual retest should open Kin list, connection, and Kin-to-Kin chat in sequence
 and confirm only one drawer is expanded. On mobile, confirm Kin-to-Kin controls

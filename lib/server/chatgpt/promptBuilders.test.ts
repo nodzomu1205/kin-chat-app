@@ -94,6 +94,18 @@ describe("promptBuilders", () => {
         originalSource: "Thanks for reaching out.",
       })
     ).toBe("Italian");
+    expect(
+      resolveReplyDraftTargetLanguage({
+        latestRequest: "Yes",
+        originalSource: "Ciao, grazie per il tuo messaggio.",
+      })
+    ).toBe("Italian");
+    expect(
+      resolveReplyDraftTargetLanguage({
+        latestRequest: "Yes. Make it casual.",
+        originalSource: "Thanks for reaching out.",
+      })
+    ).toBe("English");
   });
 
   it("wraps reply_only input with reply-only instructions", () => {
