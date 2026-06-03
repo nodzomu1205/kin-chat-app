@@ -15,7 +15,7 @@ import {
   buildKinToKinRelayBlock,
   buildKinToKinStartBlock,
   buildKinToKinSummaryRequest,
-  containsKinGroupChatEndToken,
+  canEndKinToKinChat,
   parseKinToKinProtocolBlock,
   parseKinToKinChatReply,
   resolveKinChatContextCount,
@@ -47,6 +47,12 @@ function resolveMaxCount(value: string) {
   return Math.max(1, Math.min(200, Math.floor(parsed)));
 }
 
+function resolveMinCount(value: string, maxCount: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.min(maxCount, Math.floor(parsed)));
+}
+
 export default function KinToKinChatDrawer({
   kinList,
   chatMessages,
@@ -61,6 +67,7 @@ export default function KinToKinChatDrawer({
     kinList[1]?.id ? [kinList[1].id] : []
   );
   const [topic, setTopic] = useState("");
+  const [minCountInput, setMinCountInput] = useState("1");
   const [maxCountInput, setMaxCountInput] = useState("50");
   const [summarizeOnEnd, setSummarizeOnEnd] = useState(false);
   const [status, setStatus] = useState<SessionStatus>("idle");
@@ -175,6 +182,7 @@ export default function KinToKinChatDrawer({
       .filter((kin): kin is KinProfile => Boolean(kin));
     if (!starter || participants.length === 0 || !canStart) return;
     const maxCount = resolveMaxCount(maxCountInput);
+    const minCount = resolveMinCount(minCountInput, maxCount);
 
     stopRequestedRef.current = false;
     transcriptRef.current = [];
@@ -187,6 +195,7 @@ export default function KinToKinChatDrawer({
         await runGroupSession({
           starter,
           participants,
+          minCount,
           maxCount,
         });
         return;
@@ -199,6 +208,7 @@ export default function KinToKinChatDrawer({
         starter: starter.label,
         partner: partner.label,
         topic: topic.trim(),
+        minCount,
         maxCount,
         recentContext: resolveRecentContext(),
       });
@@ -232,8 +242,13 @@ export default function KinToKinChatDrawer({
         appendEntry(entry);
 
         if (
-          sender.id === starter.id &&
-          containsKinGroupChatEndToken(parsed.text)
+          canEndKinToKinChat({
+            sender: sender.label,
+            starter: starter.label,
+            text: parsed.text,
+            count,
+            minCount,
+          })
         ) {
           await finishSession({ members: [starter, partner], reason: "ended" });
           return;
@@ -250,8 +265,9 @@ export default function KinToKinChatDrawer({
           message: entry.text,
           topic: topic.trim(),
           count,
+          minCount,
           maxCount,
-          canEndChat: entry.to === starter.label,
+          canEndChat: entry.to === starter.label && count + 1 >= minCount,
           recentContext: resolveRecentContextBeforeIncoming({
             speaker: entry.from,
             text: entry.text,
@@ -268,6 +284,7 @@ export default function KinToKinChatDrawer({
   const runGroupSession = async (params: {
     starter: KinProfile;
     participants: KinProfile[];
+    minCount: number;
     maxCount: number;
   }) => {
     const members = [params.starter, ...params.participants];
@@ -282,6 +299,7 @@ export default function KinToKinChatDrawer({
       facilitator: params.starter.label,
       participants: participantLabels,
       topic: topic.trim(),
+      minCount: params.minCount,
       maxCount: params.maxCount,
       recentContext: resolveRecentContext(),
     });
@@ -323,6 +341,9 @@ export default function KinToKinChatDrawer({
           participants: participantLabels,
           sender: sender.label,
           reason: validation.reason,
+          minCount: params.minCount,
+          maxCount: params.maxCount,
+          count,
           recentContext: resolveRecentContext(),
         });
         continue;
@@ -342,8 +363,13 @@ export default function KinToKinChatDrawer({
       appendEntry(entry);
 
       if (
-        validation.from === params.starter.label &&
-        containsKinGroupChatEndToken(validation.text)
+        canEndKinToKinChat({
+          sender: validation.from,
+          starter: params.starter.label,
+          text: validation.text,
+          count,
+          minCount: params.minCount,
+        })
       ) {
         await finishSession({ members, reason: "ended" });
         return;
@@ -360,6 +386,9 @@ export default function KinToKinChatDrawer({
         recipient: validation.recipient.label,
         sender: validation.from,
         message: validation.text,
+        minCount: params.minCount,
+        maxCount: params.maxCount,
+        count,
         recentContext: resolveRecentContextBeforeIncoming({
           speaker: validation.from,
           text: validation.text,
@@ -457,6 +486,26 @@ export default function KinToKinChatDrawer({
             </label>
 
             <label style={fieldStyle}>
+              <span style={labelStyle}>Min turns</span>
+              <input
+                type="number"
+                min={1}
+                max={resolveMaxCount(maxCountInput)}
+                disabled={status === "running"}
+                value={minCountInput}
+                onChange={(event) => setMinCountInput(event.currentTarget.value)}
+                onBlur={() =>
+                  setMinCountInput(
+                    String(
+                      resolveMinCount(minCountInput, resolveMaxCount(maxCountInput))
+                    )
+                  )
+                }
+                style={inputStyle}
+              />
+            </label>
+
+            <label style={fieldStyle}>
               <span style={labelStyle}>Max turns</span>
               <input
                 type="number"
@@ -465,7 +514,11 @@ export default function KinToKinChatDrawer({
                 disabled={status === "running"}
                 value={maxCountInput}
                 onChange={(event) => setMaxCountInput(event.currentTarget.value)}
-                onBlur={() => setMaxCountInput(String(resolveMaxCount(maxCountInput)))}
+                onBlur={() => {
+                  const maxCount = resolveMaxCount(maxCountInput);
+                  setMaxCountInput(String(maxCount));
+                  setMinCountInput(String(resolveMinCount(minCountInput, maxCount)));
+                }}
                 style={inputStyle}
               />
             </label>
@@ -637,7 +690,7 @@ const formGridStyle = (isMobile: boolean): React.CSSProperties => ({
   display: "grid",
   gridTemplateColumns: isMobile
     ? "minmax(0, 1fr) minmax(0, 1fr)"
-    : "165px minmax(220px, 1fr) 82px 82px 74px",
+    : "165px minmax(220px, 1fr) 82px 82px 82px 74px",
   gap: 6,
   justifyContent: "stretch",
   alignItems: "end",

@@ -43,8 +43,10 @@ The current product direction is:
 - Kin-to-Kin chat relay
   - the Kin panel can run a two-Kin relay session by alternating Kindroid API
     sends between saved Kin profiles
-  - the app owns chat count, transcript display, stop/reset controls, max-count
-    termination, and final `SYS_INFO` notices
+  - the app owns chat count, transcript display, stop/reset controls,
+    min/max-count termination, and final `SYS_INFO` notices
+  - starter/facilitator `**END THE CHAT**` output is ignored until the configured
+    minimum turn count has been reached
   - Kin reply bubbles can display the active Kin label instead of the generic
     `Kindroid` fallback
 - Multi-recipient Kin send

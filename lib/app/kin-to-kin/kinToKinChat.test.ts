@@ -11,6 +11,7 @@ import {
   buildKinToKinStartBlock,
   buildKinToKinSummaryRequest,
   buildKinUserMessageWithRecentContext,
+  canEndKinToKinChat,
   containsKinGroupChatEndToken,
   parseKinToKinProtocolBlock,
   parseKinToKinChatReply,
@@ -23,6 +24,7 @@ describe("kinToKinChat", () => {
       starter: "AAA",
       partner: "BBB",
       topic: "market outlook",
+      minCount: 3,
       maxCount: 50,
       recentContext: [
         { speaker: "User", text: "Earlier user note." },
@@ -31,6 +33,7 @@ describe("kinToKinChat", () => {
     });
 
     expect(block).toContain("<<SYS_KIN_TO_KIN_CHAT>>");
+    expect(block).toContain("MIN_CHAT_COUNT: 3");
     expect(block).toContain("MAX_CHAT_COUNT: 50");
     expect(block).toContain("CHAT_MEMBERS: AAA, BBB");
     expect(block).toContain("RECENT_CHAT_CONTEXT:");
@@ -38,6 +41,7 @@ describe("kinToKinChat", () => {
     expect(block).toContain("AAA: Earlier Kin reply.");
     expect(block).toContain("<<SYS_AAA_TO_BBB_CHAT>>");
     expect(block).toContain("**END THE CHAT**");
+    expect(block).toContain("only after MIN_CHAT_COUNT has been reached");
   });
 
   it("selects the latest requested chat-window context entries", () => {
@@ -121,6 +125,7 @@ describe("kinToKinChat", () => {
         message: "Hello.",
         topic: "market outlook",
         count: 1,
+        minCount: 2,
         maxCount: 2,
         recentContext: [{ speaker: "User", text: "Prior note." }],
       })
@@ -132,6 +137,7 @@ describe("kinToKinChat", () => {
         message: "Hello.",
         topic: "market outlook",
         count: 1,
+        minCount: 2,
         maxCount: 2,
         recentContext: [{ speaker: "User", text: "Prior note." }],
       })
@@ -143,6 +149,7 @@ describe("kinToKinChat", () => {
         message: "Your turn.",
         topic: "market outlook",
         count: 1,
+        minCount: 2,
         maxCount: 2,
         canEndChat: true,
       })
@@ -201,11 +208,13 @@ describe("kinToKinChat", () => {
       facilitator: "AAA",
       participants: ["AAA", "BBB", "CCC"],
       topic: "market outlook",
+      minCount: 4,
       maxCount: 6,
       recentContext: [{ speaker: "User", text: "Prior group context." }],
     });
 
     expect(start).toContain("<<SYS_KIN_TO_KIN_CHAT>>");
+    expect(start).toContain("MIN_CHAT_COUNT: 4");
     expect(start).toContain("User: Prior group context.");
     expect(start).toContain("- AAA (facilitator, you)");
     expect(start).toContain("Choose exactly one next speaker");
@@ -218,6 +227,9 @@ describe("kinToKinChat", () => {
       recipient: "BBB",
       sender: "AAA",
       message: "Please compare this with the prior point.",
+      minCount: 4,
+      maxCount: 6,
+      count: 1,
       recentContext: [{ speaker: "CCC", text: "Group context line." }],
     });
 
@@ -226,6 +238,22 @@ describe("kinToKinChat", () => {
     expect(relay).toContain("Incoming message from the facilitator:");
     expect(relay).toContain("Please compare this with the prior point.");
     expect(relay).not.toContain("<<SYS_AAA_TO_BBB_CHAT>>");
+
+    const facilitatorRelayBeforeMinimum = buildKinGroupChatRelayBlock({
+      facilitator: "AAA",
+      participants: ["AAA", "BBB", "CCC"],
+      recipient: "AAA",
+      sender: "BBB",
+      message: "Back to you.",
+      minCount: 4,
+      maxCount: 6,
+      count: 2,
+    });
+
+    expect(facilitatorRelayBeforeMinimum).toContain("MIN_CHAT_COUNT: 4");
+    expect(facilitatorRelayBeforeMinimum).toContain(
+      "Do not include **END THE CHAT** yet"
+    );
   });
 
   it("validates group chat routing through the facilitator", () => {
@@ -274,6 +302,9 @@ describe("kinToKinChat", () => {
       participants: ["AAA", "BBB", "CCC"],
       sender: "BBB",
       reason: "Participants must reply to the facilitator, AAA.",
+      minCount: 2,
+      maxCount: 6,
+      count: 1,
       recentContext: [{ speaker: "AAA", text: "Retry context." }],
     });
 
@@ -289,5 +320,37 @@ describe("kinToKinChat", () => {
       true
     );
     expect(containsKinGroupChatEndToken("Please continue.")).toBe(false);
+  });
+
+  it("allows only the starter to end after the minimum turn count", () => {
+    expect(
+      canEndKinToKinChat({
+        sender: "AAA",
+        starter: "AAA",
+        text: "Done. **END THE CHAT**",
+        count: 2,
+        minCount: 3,
+      })
+    ).toBe(false);
+
+    expect(
+      canEndKinToKinChat({
+        sender: "AAA",
+        starter: "AAA",
+        text: "Done. **END THE CHAT**",
+        count: 3,
+        minCount: 3,
+      })
+    ).toBe(true);
+
+    expect(
+      canEndKinToKinChat({
+        sender: "BBB",
+        starter: "AAA",
+        text: "Done. **END THE CHAT**",
+        count: 4,
+        minCount: 3,
+      })
+    ).toBe(false);
   });
 });

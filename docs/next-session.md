@@ -1,10 +1,18 @@
 # Next Session Handover
 
-Updated: 2026-05-31
+Updated: 2026-06-03
 
 ## Latest Handoff
 
-The newest active record is the 2026-05-28 compact transfer / GPT reply
+The newest active record is the 2026-06-03 Kin-to-Kin minimum-turn closeout.
+Start there for the `Min turns` / `Max turns` drawer controls, Kin-facing
+`MIN_CHAT_COUNT` instructions, and the runtime guard that ignores starter /
+facilitator `**END THE CHAT**` output until the minimum turn count has been
+reached:
+
+- [`HANDOFF-2026-06-03.md`](./HANDOFF-2026-06-03.md)
+
+The previous active record is the 2026-05-28 compact transfer / GPT reply
 translation closeout. Start there for the Kin/GPT compact curved-arrow transfer
 buttons, GPT chat-tab `EN/RU/JP/IT` reply-translation split button, the
 `translate_reply_*` instruction modes, or the `解説` -> `返信案を作りますか？`
@@ -72,7 +80,27 @@ For PPT work, use the 2026-05-10 PPT / library maintenance closeout:
 
 ## Current Next Start
 
-Current newest product slice is Kin/GPT settings UI cleanup:
+Current newest product slice is Kin-to-Kin minimum-turn control:
+
+1. The Kin-to-Kin drawer shows `Min turns` before `Max turns`.
+2. `Min turns` is clamped between `1` and the resolved `Max turns`.
+3. Kin-facing start/relay/retry instructions include `MIN_CHAT_COUNT`.
+4. Starter / facilitator `**END THE CHAT**` ends the chat only after the minimum
+   turn count has been reached.
+5. Early starter / facilitator `**END THE CHAT**` output is recorded as a normal
+   message and the session continues.
+6. The shared `canEndKinToKinChat(...)` helper owns the end-token / starter /
+   minimum-count decision for one-to-one and group chat paths.
+
+Manual retest should set `Min turns` higher than `1`, ask the starter or
+facilitator to end early with `**END THE CHAT**`, and confirm the session
+continues until at least the minimum count. Then confirm the same token ends the
+session after the minimum count is reached, while participant-side tokens remain
+non-terminal.
+
+Previous product slice:
+
+Kin/GPT settings UI cleanup:
 
 1. The Kin panel exposes `Kin間チャット` as a hanging header tab.
 2. Kin list / connection / Kin-to-Kin drawers are mutually exclusive.
@@ -137,7 +165,7 @@ start a Kin-to-Kin chat. Confirm the outgoing API payload includes context while
 visible user bubbles stay clean, and confirm relay context does not duplicate
 the separate `Incoming message`.
 
-Current newest product slice is Kin-to-Kin facilitator-led group chat:
+Previous product slice was Kin-to-Kin facilitator-led group chat:
 
 1. The Kin-to-Kin drawer supports one or more selected participant Kin profiles.
 2. One selected participant keeps the original two-Kin alternating relay.

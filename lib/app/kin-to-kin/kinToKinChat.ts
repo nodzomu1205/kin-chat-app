@@ -47,11 +47,13 @@ export function buildKinToKinStartBlock(args: {
   starter: string;
   partner: string;
   topic: string;
+  minCount: number;
   maxCount: number;
   recentContext?: KinToKinChatContextEntry[];
 }) {
   return [
     "<<SYS_KIN_TO_KIN_CHAT>>",
+    `MIN_CHAT_COUNT: ${args.minCount}`,
     `MAX_CHAT_COUNT: ${args.maxCount}`,
     `CHAT_MEMBERS: ${args.starter}, ${args.partner}`,
     `STARTER: ${args.starter}`,
@@ -62,7 +64,8 @@ export function buildKinToKinStartBlock(args: {
     `<<SYS_${args.starter}_TO_${args.partner}_CHAT>>`,
     "[YOUR MESSAGE]",
     `<<END_SYS_${args.starter}_TO_${args.partner}_CHAT>>`,
-    `NOTICE: As the starter, you may end the chat by including ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+    `NOTICE: As the starter, you may end the chat by including ${KIN_GROUP_CHAT_END_TOKEN} in your message body only after MIN_CHAT_COUNT has been reached.`,
+    `NOTICE: If ${KIN_GROUP_CHAT_END_TOKEN} appears before MIN_CHAT_COUNT, the app will ignore it and continue the chat.`,
     "<<END_SYS_KIN_TO_KIN_CHAT>>",
   ].join("\n");
 }
@@ -71,11 +74,13 @@ export function buildKinGroupChatStartBlock(args: {
   facilitator: string;
   participants: string[];
   topic: string;
+  minCount: number;
   maxCount: number;
   recentContext?: KinToKinChatContextEntry[];
 }) {
   return [
     "<<SYS_KIN_TO_KIN_CHAT>>",
+    `MIN_CHAT_COUNT: ${args.minCount}`,
     `MAX_CHAT_COUNT: ${args.maxCount}`,
     `CHAT_MEMBERS: ${args.participants.join(", ")}`,
     `STARTER: ${args.facilitator}`,
@@ -98,7 +103,8 @@ export function buildKinGroupChatStartBlock(args: {
     "- The chosen participant may not have seen the full conversation history.",
     "- Add brief context inside your message when it helps the chosen participant answer well.",
     "- If a participant asks another participant a question, you must coordinate it by choosing the next speaker yourself.",
-    `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+    `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body only after MIN_CHAT_COUNT has been reached.`,
+    `- If ${KIN_GROUP_CHAT_END_TOKEN} appears before MIN_CHAT_COUNT, the app will ignore it and continue the chat.`,
     "",
     "Start the group chat now by choosing the first participant to speak.",
     "<<END_SYS_KIN_TO_KIN_CHAT>>",
@@ -111,6 +117,7 @@ export function buildKinToKinRelayBlock(args: {
   message: string;
   topic: string;
   count: number;
+  minCount: number;
   maxCount: number;
   canEndChat?: boolean;
   recentContext?: KinToKinChatContextEntry[];
@@ -118,6 +125,7 @@ export function buildKinToKinRelayBlock(args: {
   return [
     `<<SYS_${args.from}_TO_${args.to}_CHAT>>`,
     `CHAT_COUNT: ${args.count}/${args.maxCount}`,
+    `MIN_CHAT_COUNT: ${args.minCount}`,
     `TOPIC: ${args.topic}`,
     ...formatRecentContextLines(args.recentContext),
     "",
@@ -126,9 +134,11 @@ export function buildKinToKinRelayBlock(args: {
     `NOTICE: Reply with <<SYS_${args.to}_TO_${args.from}_CHAT>> only.`,
     ...(args.canEndChat
       ? [
-          `NOTICE: As the starter, you may end the chat by including ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+          `NOTICE: As the starter, you may end the chat by including ${KIN_GROUP_CHAT_END_TOKEN} in your message body because MIN_CHAT_COUNT has been reached.`,
         ]
-      : []),
+      : [
+          `NOTICE: Do not include ${KIN_GROUP_CHAT_END_TOKEN} yet. If it appears before MIN_CHAT_COUNT, the app will ignore it and continue the chat.`,
+        ]),
     `<<END_SYS_${args.from}_TO_${args.to}_CHAT>>`,
   ].join("\n");
 }
@@ -139,6 +149,9 @@ export function buildKinGroupChatRelayBlock(args: {
   recipient: string;
   sender: string;
   message: string;
+  minCount: number;
+  maxCount: number;
+  count: number;
   recentContext?: KinToKinChatContextEntry[];
 }) {
   const isFacilitatorRecipient = args.recipient === args.facilitator;
@@ -152,6 +165,9 @@ export function buildKinGroupChatRelayBlock(args: {
         facilitatorIsYou: true,
       }),
       "",
+      `CHAT_COUNT: ${args.count}/${args.maxCount}`,
+      `MIN_CHAT_COUNT: ${args.minCount}`,
+      "",
       "Rules:",
       "- Choose exactly one next speaker from the participant list.",
       "- Your reply must use exactly this format:",
@@ -161,7 +177,13 @@ export function buildKinGroupChatRelayBlock(args: {
       "- The chosen participant may not have seen the full conversation history.",
       "- Add brief context inside your message when it helps the chosen participant answer well.",
       "- If the participant below asks another participant a question, you must coordinate it by choosing the next speaker yourself.",
-      `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+      ...(args.count + 1 >= args.minCount
+        ? [
+            `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body because MIN_CHAT_COUNT has been reached.`,
+          ]
+        : [
+            `- Do not include ${KIN_GROUP_CHAT_END_TOKEN} yet. If it appears before MIN_CHAT_COUNT, the app will ignore it and continue the chat.`,
+          ]),
       "",
       ...formatRecentContextLines(args.recentContext),
       `Incoming message from ${args.sender}:`,
@@ -198,6 +220,9 @@ export function buildKinGroupChatRetryBlock(args: {
   participants: string[];
   sender: string;
   reason: string;
+  minCount: number;
+  maxCount: number;
+  count: number;
   recentContext?: KinToKinChatContextEntry[];
 }) {
   const isFacilitator = args.sender === args.facilitator;
@@ -214,6 +239,9 @@ export function buildKinGroupChatRetryBlock(args: {
         facilitatorIsYou: true,
       }),
       "",
+      `CHAT_COUNT: ${args.count}/${args.maxCount}`,
+      `MIN_CHAT_COUNT: ${args.minCount}`,
+      "",
       "Rules:",
       "- Choose exactly one next speaker from the participant list.",
       "- Your reply must use exactly this format:",
@@ -221,7 +249,13 @@ export function buildKinGroupChatRetryBlock(args: {
       "  [Your message to the chosen participant]",
       `  <<END_SYS_${args.facilitator}_TO_[ChosenParticipantKinName]_CHAT>>`,
       "- Add brief context inside your message when it helps the chosen participant answer well.",
-      `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body.`,
+      ...(args.count + 1 >= args.minCount
+        ? [
+            `- To end the chat, include ${KIN_GROUP_CHAT_END_TOKEN} in your message body because MIN_CHAT_COUNT has been reached.`,
+          ]
+        : [
+            `- Do not include ${KIN_GROUP_CHAT_END_TOKEN} yet. If it appears before MIN_CHAT_COUNT, the app will ignore it and continue the chat.`,
+          ]),
       "",
       ...formatRecentContextLines(args.recentContext),
       "Please rewrite your previous message in the correct format.",
@@ -374,6 +408,20 @@ export function containsKinGroupChatEndToken(text: string) {
   return (
     text.includes(KIN_GROUP_CHAT_END_TOKEN) ||
     text.includes(KIN_GROUP_CHAT_END_TOKEN_WITH_PARENS)
+  );
+}
+
+export function canEndKinToKinChat(args: {
+  sender: string;
+  starter: string;
+  text: string;
+  count: number;
+  minCount: number;
+}) {
+  return (
+    args.sender === args.starter &&
+    args.count >= args.minCount &&
+    containsKinGroupChatEndToken(args.text)
   );
 }
 
